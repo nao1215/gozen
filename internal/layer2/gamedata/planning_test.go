@@ -1,6 +1,7 @@
 package gamedata
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -572,5 +573,131 @@ func TestBoundedEntryPictureVersionAndHeight(t *testing.T) {
 		if (err == nil) != tc.valid {
 			t.Fatalf("%+v: %v", tc, err)
 		}
+	}
+}
+
+func TestPlanningCalendarBoundaries(t *testing.T) {
+	const calendar = "start: '2032-02-28', end: '2032-03-01', phases: [morning]"
+	for _, tc := range []struct{ name, calendar, want string }{
+		{"leap day", calendar + ", closed: ['2032-02-29'], weekdays_off: [0, 6]", ""},
+		{"same day", "start: '2032-02-29', end: '2032-02-29', phases: [morning]", ""},
+		{"invalid leap day", "start: '2031-02-29', end: '2031-03-01', phases: [morning]", "expected an ISO date"},
+		{"backwards", "start: '2032-03-01', end: '2032-02-28', phases: [morning]", "end precedes start"},
+		{"missing phase", "start: '2032-02-28', end: '2032-03-01', phases: []", "at least one phase"},
+		{"duplicate phase", "start: '2032-02-28', end: '2032-03-01', phases: [morning, morning]", "duplicate phase"},
+		{"invalid closure", calendar + ", closed: ['2031-02-29']", "expected an ISO date"},
+		{"weekday below", calendar + ", weekdays_off: [-1]", "weekday must be"},
+		{"weekday above", calendar + ", weekdays_off: [7]", "weekday must be"},
+		{"unknown look", calendar + ", looks: {noon: {}}", "a look names a phase"},
+		{"closed look", calendar + ", looks: {closed: {color: '#ccddee', wash: 0.1}}", ""},
+		{"wash without color", calendar + ", looks: {morning: {wash: 0.1}}", "a wash needs a color"},
+		{"nan wash", calendar + ", looks: {morning: {wash: .nan}}", "wash must be"},
+		{"negative wash", calendar + ", looks: {morning: {wash: -0.1}}", "wash must be"},
+		{"excess wash", calendar + ", looks: {morning: {color: '#ccddee', wash: 1}}", "wash must be"},
+		{"long clock", calendar + ", looks: {morning: {time: '1234567890123'}}", "at most 12 characters"},
+		{"clock boundary", calendar + ", looks: {morning: {time: '123456789012'}}", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			src := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {" + tc.calendar + "}\n"
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestPlanningActivityGraphBoundaries(t *testing.T) {
+	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-08-01', end: '2030-08-31', phases: [morning]}\n  entities: {potter: {name: Potter}}\n  activities: "
+	for _, tc := range []struct{ name, activities, want string }{
+		{"zero effort", "{a: {effort: 0}}", "finite and positive"},
+		{"negative effort", "{a: {effort: -1}}", "finite and positive"},
+		{"nonfinite effort", "{a: {effort: .inf}}", "finite and positive"},
+		{"unknown predecessor", "{a: {effort: 1, after: [missing]}}", "unknown activity"},
+		{"self dependency", "{a: {effort: 1, after: [a]}}", "cyclic dependency"},
+		{"shared predecessor", "{a: {effort: 1}, b: {effort: 2, after: [a]}, c: {effort: 3, after: [a, b]}}", ""},
+		{"ratio below", "{a: {effort: 1, dependency_ratio: -0.01}}", "ratio must be"},
+		{"ratio above", "{a: {effort: 1, dependency_ratio: 1.01}}", "ratio must be"},
+		{"ratio zero", "{a: {effort: 1, dependency_ratio: 0}}", ""},
+		{"ratio one", "{a: {effort: 1, dependency_ratio: 1}}", ""},
+		{"invalid date", "{a: {effort: 1, from: '2030-02-29'}}", "expected an ISO date"},
+		{"backwards dates", "{a: {effort: 1, from: '2030-08-02', to: '2030-08-01'}}", "end precedes start"},
+		{"missing parent", "{a: {effort: 1, parent: missing}}", "root activity"},
+		{"self parent", "{a: {effort: 1, parent: a}}", "root activity"},
+		{"one child", "{a: {effort: 2}, b: {effort: 2, parent: a}}", "at least two"},
+		{"lost effort", "{a: {effort: 3}, b: {effort: 1, parent: a}, c: {effort: 1, parent: a}}", "conserve parent effort"},
+		{"assigned child", "{a: {effort: 2}, b: {effort: 1, parent: a, assignee: potter}, c: {effort: 1, parent: a}}", "must be unassigned"},
+		{"valid split", "{a: {effort: 3, assignee: potter}, b: {effort: 1, parent: a}, c: {effort: 2, parent: a}}", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(header + tc.activities + "\n")}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestPlanningCallOpacityBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		valid bool
+	}{
+		{"0", true}, {"1", true}, {"0.5", true}, {"-0.1", false}, {"1.01", false}, {".nan", false}, {".inf", false}, {"-.inf", false},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			src := "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-08-01', end: '2030-08-31', phases: [morning]}\nscreens:\n  call: {title: Call, kind: ensemble, view: {chat: {}, call: {layout: full, captions: overlay, window_opacity: " + tc.value + "}}}\n"
+			_, err := Load(fstest.MapFS{"game.yaml": {Data: []byte(src)}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}})
+			if tc.valid {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "window_opacity") {
+				t.Fatalf("invalid opacity accepted or misdiagnosed: %v", err)
+			}
+		})
+	}
+}
+
+// Large authored schedules should not require comparing every task with every
+// other task merely to validate split effort.
+func BenchmarkPlanningActivities(b *testing.B) {
+	for _, count := range []int{100, 1000} {
+		var src strings.Builder
+		src.WriteString("schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-08-01', end: '2030-08-31', phases: [morning]}\n  activities:\n")
+		for i := range count {
+			fmt.Fprintf(&src, "    task%d: {effort: 3}\n    left%d: {effort: 1, parent: task%d}\n    right%d: {effort: 2, parent: task%d}\n", i, i, i, i, i)
+		}
+		fsys := fstest.MapFS{"game.yaml": {Data: []byte(src.String())}, "data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")}}
+		b.Run(fmt.Sprintf("load/%d", count), func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := Load(fsys); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+		db, err := Load(fsys)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.Run(fmt.Sprintf("validate/%d", count), func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				c := checker{db: db}
+				c.planning()
+				if len(c.errs) != 0 {
+					b.Fatal(c.errs)
+				}
+			}
+		})
 	}
 }

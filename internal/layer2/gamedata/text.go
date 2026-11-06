@@ -1,8 +1,8 @@
 package gamedata
 
 import (
+	"iter"
 	"strings"
-	"sync"
 
 	"github.com/nao1215/gozen/internal/expr"
 )
@@ -11,38 +11,72 @@ import (
 // is a literal brace.
 func Interpolations(s string) []string {
 	var out []string
-	for {
-		i := strings.Index(s, "{")
-		if i < 0 {
-			return out
+	for part := range textParts(s) {
+		if part.expression {
+			out = append(out, part.text)
 		}
-		if strings.HasPrefix(s[i:], "{{") {
-			s = s[i+2:]
-			continue
+	}
+	return out
+}
+
+// textPart is either literal text (with escaped braces resolved) or an expression.
+// Both validation and rendering consume the same delimiter rules.
+type textPart struct {
+	text       string
+	expression bool
+}
+
+func textParts(s string) iter.Seq[textPart] {
+	return func(yield func(textPart) bool) {
+		for {
+			i := strings.IndexByte(s, '{')
+			if i < 0 {
+				yield(textPart{text: s})
+				return
+			}
+			if !yield(textPart{text: s[:i]}) {
+				return
+			}
+			s = s[i:]
+			if strings.HasPrefix(s, "{{") {
+				if !yield(textPart{text: "{"}) {
+					return
+				}
+				s = s[2:]
+				continue
+			}
+			j := interpolationEnd(s)
+			if j < 0 {
+				yield(textPart{text: s})
+				return
+			}
+			if !yield(textPart{text: s[1:j], expression: true}) {
+				return
+			}
+			s = s[j+1:]
 		}
-		j := strings.Index(s[i:], "}")
-		if j < 0 {
-			return out
-		}
-		out = append(out, s[i+1:i+j])
-		s = s[i+j+1:]
 	}
 }
 
-var textCache sync.Map // string -> *expr.Expr
-
-func parseExpr(src string) (Expr, error) {
-	if e, ok := textCache.Load(src); ok {
-		if parsed, ok := e.(*expr.Expr); ok {
-			return Expr{parsed}, nil
+// interpolationEnd follows the expression lexer's quote and escape rules.
+func interpolationEnd(s string) int {
+	var quote byte
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			switch c {
+			case '\\':
+				i++
+			case quote:
+				quote = 0
+			}
+		} else if c == '\'' || c == '"' {
+			quote = c
+		} else if c == '}' {
+			return i
 		}
 	}
-	e, err := expr.Parse(src)
-	if err != nil {
-		return Expr{}, err
-	}
-	textCache.Store(src, e)
-	return Expr{e}, nil
+	return -1
 }
 
 // quoteExprString protects a value interpolated into an expression. The lexer
@@ -77,31 +111,19 @@ func fill(s string, value func(src string) (string, bool)) string {
 		return s
 	}
 	var b strings.Builder
-	for {
-		i := strings.Index(s, "{")
-		if i < 0 {
-			b.WriteString(s)
-			return b.String()
-		}
-		b.WriteString(s[:i])
-		if strings.HasPrefix(s[i:], "{{") {
-			b.WriteString("{")
-			s = s[i+2:]
-			continue
-		}
-		j := strings.Index(s[i:], "}")
-		if j < 0 {
-			b.WriteString(s[i:])
-			return b.String()
-		}
-		src := s[i+1 : i+j]
-		s = s[i+j+1:]
-		if v, ok := value(src); ok {
+	b.Grow(len(s))
+	for part := range textParts(s) {
+		if !part.expression {
+			b.WriteString(part.text)
+		} else if v, ok := value(part.text); ok {
 			b.WriteString(v)
-			continue
+		} else {
+			b.WriteByte('{')
+			b.WriteString(part.text)
+			b.WriteByte('}')
 		}
-		b.WriteString("{" + src + "}")
 	}
+	return b.String()
 }
 
 // Phrase is a text as written together with the values its {expressions} had when it was

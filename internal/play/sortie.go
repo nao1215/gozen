@@ -67,6 +67,7 @@ func (s *sortieScene) ready(id string) bool { return slices.Contains(s.r.Ready, 
 func (s *sortieScene) toggle(g *Game, id string) {
 	if i := slices.Index(s.picked, id); i >= 0 {
 		s.picked = slices.Delete(s.picked, i, i+1)
+		s.swap = -1
 		g.sfx("cancel")
 		return
 	}
@@ -75,6 +76,7 @@ func (s *sortieScene) toggle(g *Game, id string) {
 		return
 	}
 	s.picked = append(s.picked, id)
+	s.swap = -1
 	g.sfx("decide")
 }
 

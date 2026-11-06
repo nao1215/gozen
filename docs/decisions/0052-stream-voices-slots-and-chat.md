@@ -107,6 +107,7 @@ The reaction book (ADR 0015) already remembers, keeps its memory in the save acr
 
 - A comment's stimulus carries `value.hour` (the hour of the stream's clock, 0 to 23), `value.visits` (how many times the player opened the channel's shows, kept as `visits` in the channel's progress of the save), `value.days` (the days in a row), `value.step` (the affection step) and `value.family` (1 while an episode with `family: true` plays, one a family is in with a child among the guests, else 0, so the book's rules can keep to lines fit for it, as in `when: value.family == 0`); a tip's has them with `value.amount`, and a bot's tip only `value.amount`, `value.hour` and `value.family`. Remembering and recalling need nothing new:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 lexicon:
   snack: [chocolate, cookies, chips]

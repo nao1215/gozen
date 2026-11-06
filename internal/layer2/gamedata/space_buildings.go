@@ -76,8 +76,6 @@ func (s *Space) RoofParts() []SpaceRoofPart { return s.roofParts }
 // Dungeon and play use this index instead of scanning all authored roofs.
 func (s *Space) RoofCandidates(x, z int) []int { return s.roofCells[[2]int{x, z}] }
 
-func finiteBuilding(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
-
 func (s *Space) parseBuildings() {
 	for name, m := range s.Materials {
 		if m.Width == 0 {
@@ -91,7 +89,7 @@ func (s *Space) parseBuildings() {
 	s.roofParts = nil
 	s.roofCells = nil
 	for i, r := range s.Roofs[:min(len(s.Roofs), 32)] {
-		if !finiteBuilding(r.X+r.Y+r.Width+r.Depth+r.Base+r.Rise+r.Thickness) || r.Width <= 0 || r.Depth <= 0 || r.X < 0 || r.Y < 0 || r.X+r.Width > 64 || r.Y+r.Depth > 64 {
+		if !finiteNumber(r.X+r.Y+r.Width+r.Depth+r.Base+r.Rise+r.Thickness) || r.Width <= 0 || r.Depth <= 0 || r.X < 0 || r.Y < 0 || r.X+r.Width > 64 || r.Y+r.Depth > 64 {
 			continue
 		}
 		p := SpaceRoofPart{Bounds: [4]float64{r.X, r.Y, r.X + r.Width, r.Y + r.Depth}, C: float64(r.Level-1)*SpaceStoryHeight + r.Base, Thickness: r.Thickness, Roof: i}
@@ -251,7 +249,7 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 			c.errorf(diag.NotAWord, where, "material name must use lowercase letters, digits and underscore, starting with a letter")
 		}
 		c.picture(where+".picture", m.Picture)
-		if !finiteBuilding(m.Width+m.Height+m.OriginU+m.OriginV) || m.Width < .125 || m.Height < .125 || m.Width > 128 || m.Height > 128 || math.Abs(m.OriginU) > 128 || math.Abs(m.OriginV) > 128 {
+		if !finiteNumber(m.Width+m.Height+m.OriginU+m.OriginV) || m.Width < .125 || m.Height < .125 || m.Width > 128 || m.Height > 128 || math.Abs(m.OriginU) > 128 || math.Abs(m.OriginV) > 128 {
 			c.errorf(diag.OutOfRange, where, "want finite material dimensions in [0.125,128] and origins in [-128,128]")
 		}
 		if m.Color.Valid && m.Color.A != 255 {
@@ -287,7 +285,7 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if r.Shape != "gable" && r.Shape != "shed" && r.Shape != "flat" {
 			c.errorf(diag.Shape, where+".shape", "roof shape must be gable, shed or flat")
 		}
-		if !finiteBuilding(r.X + r.Y + r.Width + r.Depth + r.Base + r.Rise + r.Thickness) {
+		if !finiteNumber(r.X + r.Y + r.Width + r.Depth + r.Base + r.Rise + r.Thickness) {
 			c.errorf(diag.OutOfRange, where, "roof dimensions must be finite")
 			continue
 		}

@@ -1,6 +1,7 @@
 package gamedata
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -212,6 +213,24 @@ func TestSpeakerExpressionDiagnostics(t *testing.T) {
 				}
 			} else if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("want %s: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func BenchmarkExpandCall(b *testing.B) {
+	db := &DB{Events: map[string]*Event{"visit": {Params: map[string]string{"worker": "string"}}}}
+	for _, count := range []int{1, 512} {
+		b.Run(strconv.Itoa(count), func(b *testing.B) {
+			call := EventCall{Event: "visit", Each: &CallEach{Param: "worker", Items: make([]string, count)}}
+			for i := range call.Each.Items {
+				call.Each.Items[i] = "worker-" + strconv.Itoa(i)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := db.ExpandCall(call, nil); err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}

@@ -12,8 +12,12 @@ GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-l
 ATAGO ?= atago
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
+DEADCODE_VERSION ?= v0.52.0
+DEADCODE ?= $(GO) run golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
+# The base the complexity check compares with (CI fetches the history).
+BASE ?= origin/main
 
-.PHONY: website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-steps
+.PHONY: deadcode complexity website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-images-fresh docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -36,12 +40,23 @@ coverage:
 	cat "$$work/unit.out" > coverage.out; \
 	tail -n +2 "$$work/cli.out" >> coverage.out
 
-lint: arch boundary tidy workflows
+lint: arch boundary tidy workflows deadcode complexity
 	$(GOLANGCI_LINT) run ./...
 	$(GOLANGCI_LINT) fmt --diff
 	cd examples/go-zen && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
 	cd examples/novel && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
 	cd examples/campaign && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff
+
+# Functions no program of the module reaches, tests not counted: the linters'
+# unused sees one package at a time, so code kept alive only by its own tests
+# passes it. .deadcode-allow lists the kept ones (other platforms, test support).
+deadcode:
+	@out=$$($(DEADCODE) -test=false ./... | grep -v -E -f .deadcode-allow || true); \
+	if [ -n "$$out" ]; then echo "$$out"; echo "unreachable functions: remove them, or list a kept one in .deadcode-allow"; exit 1; fi
+
+# Cognitive complexity and length of the functions added or changed since BASE.
+complexity:
+	$(GOLANGCI_LINT) run -c .golangci-complexity.yml --new-from-merge-base=$(BASE) ./...
 
 # go.mod and go.sum of every module match what the imports need.
 tidy:
@@ -190,6 +205,11 @@ docs-images:
 
 docs-images-check:
 	GOZEN_DOCS_IMAGES=check $(if $(ONLY),GOZEN_DOCS_IMAGES_ONLY=$(ONLY)) $(XVFB) $(DOCS_TEST) -run '^TestDocImages$$' -v
+
+# The fast check: without a display, hash what makes every picture and compare it
+# with docs/images/inputs.sum (written by docs-images). Seconds instead of minutes.
+docs-images-fresh:
+	$(GO) test ./internal/dev/docs -count=1 -run '^TestDocImageInputs$$'
 
 # Runs the shell steps of README.md and website/content against this checkout.
 docs-steps:

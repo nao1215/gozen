@@ -135,7 +135,7 @@ func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
 		}
 		// The expression lexer only escapes the next byte; Go string escapes
 		// would change control characters into letters. Preserve their bytes.
-		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
+		args[each.Param] = MustExpr(quoteExprString(id))
 		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args, Ensemble: call.Ensemble}})
 	}
 	return commands, nil
@@ -335,6 +335,8 @@ func (c *checker) argumentType() *vtype {
 }
 
 func (c *checker) eventCall(w string, call EventCall, names []string) {
+	c.useDefinition("event", call.Event)
+	c.useDefinition("screen", call.Ensemble)
 	ev := c.db.Events[call.Event]
 	if ev == nil {
 		c.errorf(diag.UnknownReference, w, "unknown event %q", call.Event)
@@ -384,6 +386,7 @@ func (c *checker) eventCall(w string, call EventCall, names []string) {
 }
 
 func (c *checker) screenCall(w string, call ScreenCall, names []string) {
+	c.useDefinition("screen", call.Screen)
 	if call.mapped || len(call.Args) > 0 {
 		c.needsVersion(w, "screen arguments", SchemaVersion10)
 	}

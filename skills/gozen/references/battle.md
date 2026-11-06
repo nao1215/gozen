@@ -43,3 +43,10 @@ The battle AI history panel is on by default (button, B/PageUp, L1). `ui.battle_
 ## Measure
 
 `gozen sim battle` and `sim dive` (measure.md).
+
+## Tactic rows (schema 11)
+
+Rows under `battle.auto_tactics` and `battle.tactic_presets.*.rows` are enabled
+by default. Write `{condition: any, action: attack}` for an active row, or add
+`enabled: false` to keep a disabled row in the editor. A row of an older schema
+that omitted `enabled` needs `enabled: false` when the game moves to schema 11.

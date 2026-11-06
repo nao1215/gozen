@@ -42,6 +42,58 @@ runs:
     sample: office
     script: scripts/capture-office.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, office, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  phone-chat:
+    sample: office
+    script: scripts/capture-phone-chat.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_chat, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-feed:
+    sample: office
+    script: scripts/capture-phone-feed.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_feed, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-video:
+    sample: office
+    script: scripts/capture-phone-video.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_video, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-puppet:
+    sample: office
+    script: scripts/capture-phone-puppet.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_puppet, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-shop:
+    sample: office
+    script: scripts/capture-phone-shop.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_shop, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-bank:
+    sample: office
+    script: scripts/capture-phone-bank.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_bank, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-lock:
+    sample: office
+    script: scripts/capture-phone-lock.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_lock, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-call:
+    sample: office
+    script: scripts/capture-phone-call.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_call, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-sso:
+    sample: office
+    script: scripts/capture-phone-sso.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_sso, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-timeline:
+    sample: office
+    script: scripts/capture-phone-timeline.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_timeline, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-banner:
+    sample: office
+    script: scripts/capture-phone-banner.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_banner, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-support:
+    sample: office
+    script: scripts/capture-phone-support.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_support, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-contact:
+    sample: office
+    script: scripts/capture-phone-contact.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_contact, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   office-tour:
     sample: office
     script: scripts/capture-office-tour.txt
@@ -195,7 +247,8 @@ runs:
 #                             pick from another run, and the runs follow one
 #                             another in the order they first appear
 #   jpeg: {width, height, quality}             (quality is ffmpeg's -q:v)
-#   gif: {fps, width, height, colors, crop}    (crop is ffmpeg's w:h:x:y)
+#   gif: {fps, width, height, colors, crop, palette}  (crop is ffmpeg's w:h:x:y;
+#                             palette: scene gives each scene its own palette)
 #   mp4: {fps, width, height, crf}             (H.264 in full color, for the website)
 #   tolerance: share of pixels that may differ in the stale check (default 0.02)
 #
@@ -340,6 +393,71 @@ images:
     frames:
       - {shots: "full_*"}
       - {shots: "feature_*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-chat.mp4:
+    run: phone-chat
+    frames:
+      - {shots: pc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-feed.mp4:
+    run: phone-feed
+    frames:
+      - {shots: pf*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-video.mp4:
+    run: phone-video
+    frames:
+      - {shots: pv*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-puppet.mp4:
+    run: phone-puppet
+    frames:
+      - {shots: pp*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-shop.mp4:
+    run: phone-shop
+    frames:
+      - {shots: ps*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-bank.mp4:
+    run: phone-bank
+    frames:
+      - {shots: pb*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-lock.mp4:
+    run: phone-lock
+    frames:
+      - {shots: pl*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-call.mp4:
+    run: phone-call
+    frames:
+      - {shots: pk*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-sso.mp4:
+    run: phone-sso
+    frames:
+      - {shots: pa*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-timeline.mp4:
+    run: phone-timeline
+    frames:
+      - {shots: pt*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-banner.mp4:
+    run: phone-banner
+    frames:
+      - {shots: pn*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-support.mp4:
+    run: phone-support
+    frames:
+      - {shots: pu*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-contact.mp4:
+    run: phone-contact
+    frames:
+      - {shots: pq*}
     mp4: {fps: 12, width: 1280, height: 720}
   office.mp4:
     run: office-tour
@@ -583,6 +701,71 @@ images:
       - {shots: "lb*"}
       - {shots: "lc*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-chat.gif:
+    run: phone-chat
+    frames:
+      - {shots: "pc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-feed.gif:
+    run: phone-feed
+    frames:
+      - {shots: "pf*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-video.gif:
+    run: phone-video
+    frames:
+      - {shots: "pv*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-puppet.gif:
+    run: phone-puppet
+    frames:
+      - {shots: "pp*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-shop.gif:
+    run: phone-shop
+    frames:
+      - {shots: "ps*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-bank.gif:
+    run: phone-bank
+    frames:
+      - {shots: "pb*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-lock.gif:
+    run: phone-lock
+    frames:
+      - {shots: "pl*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-call.gif:
+    run: phone-call
+    frames:
+      - {shots: "pk*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-sso.gif:
+    run: phone-sso
+    frames:
+      - {shots: "pa*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-timeline.gif:
+    run: phone-timeline
+    frames:
+      - {shots: "pt*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-banner.gif:
+    run: phone-banner
+    frames:
+      - {shots: "pn*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-support.gif:
+    run: phone-support
+    frames:
+      - {shots: "pu*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+  phone-contact.gif:
+    run: phone-contact
+    frames:
+      - {shots: "pq*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
   novel-stage.gif:
     run: novel-stage
     frames:

@@ -2,6 +2,7 @@ package play
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"reflect"
@@ -10,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/session"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 // The visible answer index must identify the same authored action in both
@@ -293,5 +296,172 @@ func TestAuthorScreenContinuationAcrossFrontends(t *testing.T) {
 	wldPlay(t, g, "wait 40\npress z\nwait 8\n", 160)
 	if ss.Next().Kind != "" {
 		t.Fatal("opener did not finish")
+	}
+}
+
+// CPU-side drawing may repair view-local selection, but never saved state,
+// simulation randomness, or the caller's drawing style.
+func TestPlanningSurfaceDrawingPreservesState(t *testing.T) {
+	for _, kind := range []string{"entities", "ensemble", "islands", "timeline", "workspace"} {
+		for _, fullscreen := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/fullscreen=%t", kind, fullscreen), func(t *testing.T) {
+				g, _ := btlOpen(t, Options{Location: "camp"}, "", "")
+				p := &data.Planning{
+					Calendar: data.Calendar{Start: "2030-08-01", End: "2030-08-31", Phases: []string{"morning"}},
+					Entities: map[string]data.Entity{"potter": {Name: "Potter"}, "weaver": {Name: "Weaver"}},
+					Activities: map[string]data.Activity{
+						"pot":   {Name: "Pottery", Effort: 10, Assignee: "potter", From: "2030-07-20", To: "2030-09-01"},
+						"cloth": {Name: "Cloth", Effort: 5, Assignee: "weaver"},
+					},
+				}
+				g.db.Game.Planning = p
+				v := data.PlanningView{Fullscreen: fullscreen, FaceShape: "square", Detail: "notes", Portrait: "portrait", Camera: "camera", Icon: "icon", Badge: "badge", Mask: "mask", Highlight: "highlight", Fields: []data.PlanningField{{Key: "skill", Label: "Skill", Maximum: 10, Marks: []float64{5}}}}
+				g.db.Game.Screens = map[string]*data.AuthorScreen{"work": {Kind: kind, Title: "Workshop", View: v}}
+				g.st = testgame.State(g.db, 1)
+				g.st.Planning.Date = "2030-08-20"
+				g.st.Planning.Activities["pot"].Observed = 2
+				g.st.Planning.Entities["potter"].Observations = map[string]any{"notes": "Clay is ready.", "camera": true, "mask": true, "highlight": true, "skill": 4.0, "badge": "Host"}
+				g.st.Planning.Entities["weaver"].Observations = map[string]any{"notes": "Thread is ready.", "camera": false, "skill": 8.0}
+				s := newAuthorScreen(g, "work", nil, nil)
+				s.target = "potter"
+				before, err := json.Marshal(g.st)
+				if err != nil {
+					t.Fatal(err)
+				}
+				random, err := g.pcg.MarshalBinary()
+				if err != nil {
+					t.Fatal(err)
+				}
+				theme, shape := g.th, g.faceSquare
+				dst := covScreen()
+				for range 3 {
+					s.draw(g, dst)
+				}
+				after, err := json.Marshal(g.st)
+				if err != nil || !bytes.Equal(before, after) {
+					t.Fatal("drawing changed saved state", err)
+				}
+				randomAfter, err := g.pcg.MarshalBinary()
+				if err != nil || !bytes.Equal(random, randomAfter) {
+					t.Fatal("drawing consumed randomness", err)
+				}
+				if g.th != theme || g.faceSquare != shape {
+					t.Fatal("screen drawing leaked its style")
+				}
+				if s.target != "potter" {
+					t.Fatal("drawing lost an existing selected resident")
+				}
+			})
+		}
+	}
+}
+
+func TestTimelineCandidateDrawingKeepsSelectionAndState(t *testing.T) {
+	for _, light := range []bool{false, true} {
+		t.Run(strconv.FormatBool(light), func(t *testing.T) {
+			g, _ := btlOpen(t, Options{Location: "camp"}, "", "")
+			g.db.Game.Planning = &data.Planning{
+				Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-08-31", Phases: []string{"morning"}},
+				Entities:   map[string]data.Entity{"weaver": {Name: "Weaver"}},
+				Activities: map[string]data.Activity{"cloth": {Name: "Cloth", Assignee: "weaver", Effort: 10}},
+			}
+			g.db.Game.Screens = map[string]*data.AuthorScreen{
+				"timeline": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Light: light, Rows: []data.TimelineRow{{Label: "Crafts", Items: []data.TimelineItem{{Activity: "cloth", Screen: "pick"}}}}}},
+				"pick":     {Title: "Choose a maker", View: data.PlanningView{Portrait: "portrait", Fields: []data.PlanningField{{Key: "skill", Label: "Skill"}}}},
+			}
+			for i := range 12 {
+				g.db.Game.Screens["pick"].Entries = append(g.db.Game.Screens["pick"].Entries, data.ScreenEntry{Label: fmt.Sprintf("Maker %d", i), Text: strings.Repeat("A careful maker.\n", 14), Target: data.IDRef{ID: "weaver"}, When: data.MustExpr("!flag.hidden")})
+			}
+			g.st = testgame.State(g.db, 1)
+			g.st.Planning.Entities["weaver"].Observations["skill"] = 7.0
+			parent := newAuthorScreen(g, "timeline", nil, nil)
+			child := newAuthorScreen(g, "pick", nil, nil)
+			dst := covScreen()
+			child.draw(g, dst) // The same candidates also work without a timeline.
+			child.timelineContext, child.timelineActivity = parent, "cloth"
+			child.layoutTimelineCandidates(g)
+			child.list.sel = 11
+			child.list.scroll()
+			child.candidatePage = 1
+			before, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			theme := g.th
+			child.draw(g, dst)
+			if child.list.sel != 11 || child.candidatePage != 1 || child.list.top == 0 || g.th != theme {
+				t.Fatal("candidate drawing lost navigation or leaked its theme")
+			}
+			after, err := json.Marshal(g.st)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("candidate drawing changed state", err)
+			}
+			g.st.Flags["hidden"] = true
+			child.refresh(g)
+			child.draw(g, dst)
+			if len(child.entries) != 0 || child.list.sel != 0 {
+				t.Fatal("empty candidate refresh retained stale selection")
+			}
+		})
+	}
+}
+
+// Rendering variants must preserve action identity and must not consume game
+// randomness. This checks CPU-side scene behavior, not rendered GPU pixels.
+func TestAuthoredCardDrawingKeepsActionBindings(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry data.ScreenEntry
+	}{
+		{"small portrait", data.ScreenEntry{Icon: "x.png", Portrait: true, Bounds: []int{40, 120, 140, 160}, Text: "Potter"}},
+		{"large portrait", data.ScreenEntry{Icon: "x.png", Portrait: true, Bounds: []int{40, 120, 240, 420}, Text: "Ready for work."}},
+		{"muted portrait", data.ScreenEntry{Icon: "x.png", Muted: data.Expr{Expr: testgame.Expr("true")}, Bounds: []int{40, 120, 320, 120}}},
+		{"bottom icon", data.ScreenEntry{Icon: "x.png", Bounds: []int{40, 120, 240, 240}, Text: "Workshop\nAvailable"}},
+		{"primary card", data.ScreenEntry{Tone: "primary", Bounds: []int{40, 120, 320, 440}}},
+		{"note card", data.ScreenEntry{Tone: "note", Bounds: []int{40, 120, 320, 120}}},
+		{"contained picture", data.ScreenEntry{Picture: "x.png", PictureFit: "contain", Bounds: []int{40, 120, 320, 240}}},
+		{"cover picture", data.ScreenEntry{Picture: "x.png", Bounds: []int{40, 120, 320, 240}, Text: "Workshop"}},
+		{"standing bust", data.ScreenEntry{Bust: &data.EntryBust{Picture: "x.png", Width: .5}, Bounds: []int{40, 120, 320, 240}}},
+		{"bare bust", data.ScreenEntry{Bust: &data.EntryBust{Picture: "x.png", Width: 1, Bare: true}, Bounds: []int{40, 120, 320, 240}}},
+		{"top bust", data.ScreenEntry{Bust: &data.EntryBust{Picture: "x.png", Height: .5, Fit: "contain"}, Bounds: []int{40, 120, 320, 240}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g, s := openPartsBoard(t)
+			entry := tc.entry
+			entry.Label, entry.Do = "Count", g.db.Game.Screens[s.name].Entries[1].Do
+			entry.Dot, entry.Sign = "#55aa66", "x.png"
+			def := g.db.Game.Screens[s.name]
+			def.Entries = []data.ScreenEntry{entry}
+			def.View.Light = true
+			def.View.Window = "Workshop"
+			*s = *newAuthorScreen(g, s.name, s.done, nil)
+			before, err := json.Marshal(g.st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			random, err := g.pcg.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			theme := g.th
+			s.keyed = true
+			s.draw(g, covScreen())
+			after, err := json.Marshal(g.st)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("drawing changed game state", err)
+			}
+			randomAfter, err := g.pcg.MarshalBinary()
+			if err != nil || !bytes.Equal(random, randomAfter) || g.th != theme {
+				t.Fatal("drawing leaked style or randomness", err)
+			}
+			if len(s.indices) != 1 || s.indices[0] != 0 || s.list.sel != 0 {
+				t.Fatal("drawing changed the action binding")
+			}
+			r := entryBounds(entry)
+			wldPlay(t, g, fmt.Sprintf("click %d %d\nwait 8\n", r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2), 40)
+			if g.st.Vars["counted"] != float64(1) {
+				t.Fatalf("drawn card did not activate exactly once: %v", g.st.Vars)
+			}
+		})
 	}
 }

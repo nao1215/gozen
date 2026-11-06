@@ -5269,6 +5269,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "phone": {}
+          },
+          "required": [
+            "phone"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "sfx": {}
           },
           "required": [
@@ -5965,7 +5974,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "[ItemCount](#itemcount)"
+          "x-type": "[ItemCount](#itemcount) or string"
         },
         "gold": {
           "description": "An expression for gold to add. A negative value takes gold away.",
@@ -6267,6 +6276,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[OrderCmd](#ordercmd) or string"
+        },
+        "phone": {
+          "$ref": "#/$defs/PhoneCue",
+          "description": "Shows a phone over the scene until the player puts it down, without changing any state (ADR 0057): app chat (messages), feed (posts) or video (video), held upright or with hold landscape on its side.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneCue](#phonecue)"
         },
         "pick": {
           "description": "Picks an item of the current location's menu (a person, action or exit) by its label.",
@@ -6676,7 +6698,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "[ItemCount](#itemcount)"
+          "x-type": "[ItemCount](#itemcount) or string"
         },
         "target": {
           "description": "With `use`, the party member who receives the item. The first member when omitted.",
@@ -6974,7 +6996,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string → [Event](#event)"
+          "x-type": "string → [Event](#event) or Command[] (schema 11)"
         },
         "factions": {
           "additionalProperties": {
@@ -9904,106 +9926,116 @@
       "type": "object"
     },
     "Event": {
-      "additionalProperties": false,
-      "description": "A named list of commands, run from another event with `call` or by itself when its trigger fires.",
-      "properties": {
-        "do": {
-          "description": "The commands the event runs.",
+      "anyOf": [
+        {
           "items": {
             "$ref": "#/$defs/Command"
           },
-          "type": [
-            "array",
-            "null"
-          ],
-          "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[Command](#command)[]"
+          "type": "array"
         },
-        "location": {
-          "description": "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location.",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "optional",
-            "reference": "locations",
-            "version": "0, 1, 2"
+        {
+          "additionalProperties": false,
+          "properties": {
+            "do": {
+              "description": "The commands the event runs.",
+              "items": {
+                "$ref": "#/$defs/Command"
+              },
+              "type": [
+                "array",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty list",
+                "legacy_default": "empty list",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "[Command](#command)[]"
+            },
+            "location": {
+              "description": "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "locations",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "once": {
+              "description": "If `true`, a triggered event fires only once and is then marked as done.",
+              "type": "boolean",
+              "x-contract": {
+                "default": "false",
+                "legacy_default": "false",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "boolean"
+            },
+            "params": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10).",
+              "type": [
+                "object",
+                "null"
+              ],
+              "x-contract": {
+                "default": "empty map",
+                "legacy_default": "empty map",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string → string"
+            },
+            "trigger": {
+              "description": "When the event runs by itself: empty for only when called, `enter` on entering a location, or `auto` whenever its conditions hold.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "when": {
+              "description": "An expression that must hold for a triggered event to fire.",
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "x-contract": {
+                "default": "no expression (true as a condition, 0 as a number)",
+                "legacy_default": "no expression (true as a condition, 0 as a number)",
+                "zero": "expression value 0 (false as a condition)",
+                "required": "optional",
+                "reference": "expression; checked by gozen check",
+                "version": "0, 1, 2"
+              },
+              "x-type": "expression"
+            }
           },
-          "x-type": "string"
-        },
-        "once": {
-          "description": "If `true`, a triggered event fires only once and is then marked as done.",
-          "type": "boolean",
-          "x-contract": {
-            "default": "false",
-            "legacy_default": "false",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "boolean"
-        },
-        "params": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10).",
-          "type": [
-            "object",
-            "null"
-          ],
-          "x-contract": {
-            "default": "empty map",
-            "legacy_default": "empty map",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "string → string"
-        },
-        "trigger": {
-          "description": "When the event runs by itself: empty for only when called, `enter` on entering a location, or `auto` whenever its conditions hold.",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "string"
-        },
-        "when": {
-          "description": "An expression that must hold for a triggered event to fire.",
-          "type": [
-            "string",
-            "number",
-            "boolean",
-            "null"
-          ],
-          "x-contract": {
-            "default": "no expression (true as a condition, 0 as a number)",
-            "legacy_default": "no expression (true as a condition, 0 as a number)",
-            "zero": "expression value 0 (false as a condition)",
-            "required": "optional",
-            "reference": "expression; checked by gozen check",
-            "version": "0, 1, 2"
-          },
-          "x-type": "expression"
+          "type": "object"
         }
-      },
-      "type": "object"
+      ],
+      "description": "A named list of commands, run from another event with `call` or by itself when its trigger fires. In schema 11, an event without metadata can be written directly as a command list."
     },
     "EventCall": {
       "anyOf": [
@@ -11298,7 +11330,8 @@
               7,
               8,
               9,
-              10
+              10,
+              11
             ]
           }
         },
@@ -11678,7 +11711,8 @@
             7,
             8,
             9,
-            10
+            10,
+            11
           ],
           "type": "integer",
           "x-contract": {
@@ -12796,40 +12830,47 @@
       "type": "object"
     },
     "ItemCount": {
-      "additionalProperties": false,
-      "description": "An item and how many.",
-      "properties": {
-        "count": {
-          "description": "How many of the item. When omitted it is 1.",
-          "type": "integer",
-          "x-contract": {
-            "default": "1",
-            "legacy_default": "1",
-            "zero": "v1 keeps 0; v0 has per-field rules",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
-          },
-          "x-type": "integer"
+      "anyOf": [
+        {
+          "type": "string"
         },
-        "item": {
-          "description": "The ID of the item (an ID of items).",
-          "type": "string",
-          "x-contract": {
-            "default": "empty string",
-            "legacy_default": "empty string",
-            "zero": "-",
-            "required": "required",
-            "reference": "items",
-            "version": "0, 1, 2"
+        {
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "description": "How many of the item. When omitted it is 1.",
+              "type": "integer",
+              "x-contract": {
+                "default": "1",
+                "legacy_default": "1",
+                "zero": "v1 keeps 0; v0 has per-field rules",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2 (omitting it and writing 0 differ in v0)"
+              },
+              "x-type": "integer"
+            },
+            "item": {
+              "description": "The ID of the item (an ID of items).",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "required",
+                "reference": "items",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            }
           },
-          "x-type": "string"
+          "required": [
+            "item"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "item"
       ],
-      "type": "object"
+      "description": "An item and how many. In schema 11, a string item ID means one item."
     },
     "Learn": {
       "additionalProperties": false,
@@ -15187,6 +15228,1049 @@
         },
         "wash": {
           "description": "How strongly workspace surfaces are covered with the light, 0 through 0.8.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneCue": {
+      "additionalProperties": false,
+      "description": "A phone over the scene; the event waits until it is put down (a banner does not wait).",
+      "properties": {
+        "app": {
+          "description": "chat, feed, video, page, lock or banner; names the one list the phone shows.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "auto": {
+          "description": "True brings the lock screen's notices by themselves, one every second and a half.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "color": {
+          "description": "A page's app bar and buttons color, #rrggbb.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "date": {
+          "description": "Interpolated date under the lock screen's clock.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "hold": {
+          "description": "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "messages": {
+          "description": "The chat's messages, the first shown when the phone comes up and each press bringing the next.",
+          "items": {
+            "$ref": "#/$defs/PhoneMessage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneMessage](#phonemessage)[]"
+        },
+        "notices": {
+          "description": "The lock screen's notices, arriving one by one, or the banners shown at the top of the screen.",
+          "items": {
+            "$ref": "#/$defs/PhoneNotice"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneNotice](#phonenotice)[]"
+        },
+        "posts": {
+          "description": "The feed's posts, stacked top to bottom and scrolled.",
+          "items": {
+            "$ref": "#/$defs/PhonePost"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhonePost](#phonepost)[]"
+        },
+        "rows": {
+          "description": "The page's rows, stacked top to bottom and scrolled.",
+          "items": {
+            "$ref": "#/$defs/PhoneRow"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneRow](#phonerow)[]"
+        },
+        "time": {
+          "description": "Interpolated clock of the lock screen (the phone's clock when empty).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "Interpolated header of the app (a page's app bar).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "url": {
+          "description": "Interpolated address shown in a page's browser bar, instead of a title.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "var": {
+          "description": "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "The video app's clip.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneItem": {
+      "additionalProperties": false,
+      "description": "A row of a list on a page.",
+      "properties": {
+        "icon": {
+          "description": "Path of the item's round picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Interpolated text under the title.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "Interpolated title of the list row, such as a payee.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "value": {
+          "description": "Interpolated value on the right, such as a sum or a time.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneMessage": {
+      "additionalProperties": false,
+      "description": "One bubble of a chat: exactly one of text, picture and video, or only a day's separator.",
+      "properties": {
+        "day": {
+          "description": "Interpolated day's separator over the message, such as Yesterday; a message of only a day is the separator alone.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "from": {
+          "description": "Interpolated name of the sender, over the bubble.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "icon": {
+          "description": "Path of the sender's round picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "mine": {
+          "description": "True puts the bubble on the right, as sent by the phone's owner; it comes without typing dots.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "picture": {
+          "description": "Path of a picture under assets/ sent in the chat, at its own shape; a press on the newest one, or a click on any, opens it over the screen.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "read": {
+          "description": "True marks the owner's message as read.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "text": {
+          "description": "Interpolated text of the bubble.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "time": {
+          "description": "Interpolated time shown small beside the bubble, such as 9:41.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "A clip sent in the chat; a press on it while it is the newest turns the phone on its side and plays it.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneNotice": {
+      "additionalProperties": false,
+      "description": "A notification on the lock screen or a banner.",
+      "properties": {
+        "app": {
+          "description": "Interpolated short name of the app.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "call": {
+          "description": "True makes it an incoming call on the lock screen; OK answers and Cancel declines (a next notice rings again).",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "event": {
+          "description": "The parameterless event a click on the banner opens, after the event running.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "icon": {
+          "description": "Path of the app's picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "set": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Assignments made when the call is answered.",
+          "patternProperties": {
+            "^actor\\.[^.]+\\.tactics$": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "location": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            },
+            "party": {
+              "anyOf": [
+                {
+                  "description": "A name as written, not an expression.",
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
+        "text": {
+          "description": "Interpolated text of the notice, under its title.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "Interpolated title (a call's caller).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PhonePost": {
+      "additionalProperties": false,
+      "description": "One post of a feed: a picture, a video, or only text (a timeline's card).",
+      "properties": {
+        "icon": {
+          "description": "Path of the poster's round picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "likes": {
+          "description": "Number of likes; a click on the post adds the player's.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "picture": {
+          "description": "Path of the post's picture under assets/; a tall picture is cropped from its top.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "replies": {
+          "description": "Number of replies, next to the likes.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "reposts": {
+          "description": "Number of reposts, next to the likes.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "text": {
+          "description": "Interpolated caption under the picture, after the poster's name.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "time": {
+          "description": "Interpolated age of the post beside the poster's name, such as 2h or Yesterday.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "A clip playing in the post's place, looping, instead of a picture.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        },
+        "who": {
+          "description": "Interpolated name of who posted it.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneRow": {
+      "additionalProperties": false,
+      "description": "One row of a page: exactly one of text, picture, pictures, item and button.",
+      "properties": {
+        "bold": {
+          "description": "True draws the text bold.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "button": {
+          "description": "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "caption": {
+          "description": "Interpolated line under the picture or the QR code.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "columns": {
+          "description": "Pictures a line in the grid: 2 or 3 (0 is 3).",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "id": {
+          "description": "What the phone's var receives for the button (its label when empty).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "item": {
+          "$ref": "#/$defs/PhoneItem",
+          "description": "A list row: icon, title, text and a value on the right.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneItem](#phoneitem)"
+        },
+        "label": {
+          "description": "Interpolated short label on a locked picture, such as Supporters only.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "locked": {
+          "description": "A condition (or true) that, holding when the phone comes up, shows the picture or the grid darkened with a lock.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
+        "picture": {
+          "description": "Path of a picture under assets/, shown whole in its own shape.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "pictures": {
+          "description": "Paths of pictures under assets/ in a grid.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "qr": {
+          "description": "Interpolated text drawn as a QR code (a link, a contact), black on white and crisp, with the caption under it.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "set": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Assignments made when the button is pressed, written as the set command's.",
+          "patternProperties": {
+            "^actor\\.[^.]+\\.tactics$": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "location": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            },
+            "party": {
+              "anyOf": [
+                {
+                  "description": "A name as written, not an expression.",
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
+        "size": {
+          "description": "large or small text (the default is between).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Interpolated paragraphs of the row, wrapped to the page's width.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneVideo": {
+      "additionalProperties": false,
+      "description": "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front.",
+      "properties": {
+        "bounce": {
+          "description": "Seconds into the clip at which the puppet jiggles.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number[]"
+        },
+        "fade": {
+          "description": "Seconds at the end of each frame over which the next fades in (0 to a frame's length).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "fps": {
+          "description": "Frames shown a second (0 is 12).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "frames": {
+          "description": "Pictures under assets/ played in order as footage (a pattern such as clips/battle/*.jpg stands for the files it matches, sorted); a feed's post loops them, otherwise the clip stops on the last.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
+        "pan": {
+          "description": "True pushes in slowly on each frame, as on a single picture.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "picture": {
+          "description": "Path of the picture under assets/ that fills the frame; with frames, the poster drawn behind them.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "puppet": {
+          "description": "Path of a puppet file under assets/; it breathes and sways as on the stage.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "seconds": {
+          "description": "Length of the clip on the seek bar (0 is the frames' length, or 30).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "text": {
+          "description": "Interpolated title over the player.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "zoom": {
+          "description": "How many times the frame's height the puppet is drawn (0 is 1.5, its upper body).",
           "type": "number",
           "x-contract": {
             "default": "0",
@@ -22811,15 +23895,15 @@
           "x-type": "string"
         },
         "enabled": {
-          "description": "Whether the row is active. It is off by default.",
+          "description": "Whether the row is active. Omitted means true in schema 11 and false in earlier schemas.",
           "type": "boolean",
           "x-contract": {
-            "default": "false",
+            "default": "true in schema 11",
             "legacy_default": "false",
             "zero": "-",
             "required": "optional",
             "reference": "-",
-            "version": "0, 1, 2"
+            "version": "all; omitted enabled changes in schema 11"
           },
           "x-type": "boolean"
         },

@@ -91,3 +91,22 @@ func TestSimCampaignCompare(t *testing.T) {
 		t.Fatalf("ordinary JSON unexpectedly changed: %s", ordinary)
 	}
 }
+
+func TestFactionCountsPreservesUnownedRegions(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		counts map[string]int
+		want   string
+	}{
+		{"empty", nil, ""},
+		{"unowned", map[string]int{"": 7}, "none=7"},
+		{"mixed", map[string]int{"red": 2, "": 3, "blue": 5}, "none=3,blue=5,red=2"},
+		{"literal faction name", map[string]int{"": 3, "none": 4}, "none=3,none=4"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := factionCounts(tc.counts); got != tc.want {
+				t.Fatalf("counts = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

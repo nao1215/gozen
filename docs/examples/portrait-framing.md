@@ -5,8 +5,9 @@ not consume random numbers or change the line's read identity. An empty result
 uses the actor's default face. `face` and `face_expr` are mutually exclusive.
 The author supplies the images in the actor's `faces` directory.
 
+<!-- verify: parse presentation fragment; merge with the sample actors, planning data and assets -->
 ```yaml
-schema_version: 10
+schema_version: 11
 # In an event:
 do:
   - say:
@@ -37,6 +38,7 @@ stage can use `ui.stage_framing` to specify the same anchors explicitly; its
 
 An ensemble can opt into a bounded 4:3 tile grid and a read-only transcript:
 
+<!-- verify: parse presentation fragment; merge with the sample actors, planning data and assets -->
 ```yaml
 screens:
   roundtable:
@@ -88,6 +90,7 @@ Motion uses presentation ticks and a stable participant phase, never game random
 Detected face bounds anchor breathing, sway and speaking nods. Optional full-canvas
 variants must have identical dimensions and alignment to the base image:
 
+<!-- verify: parse presentation fragment; merge with the sample actors, planning data and assets -->
 ```yaml
 call:
   address: call.example.test/workshop

@@ -1152,7 +1152,7 @@ func (s *battleScene) event(g *Game) {
 		}
 		return
 	}
-	switch s.req.(type) {
+	switch r := s.req.(type) {
 	case event.Say, event.Choice:
 		if done, ans := g.talk.update(g); done {
 			if ans >= 0 {
@@ -1167,7 +1167,7 @@ func (s *battleScene) event(g *Game) {
 			s.req = nil
 		}
 	case event.Tap:
-		if g.updateTap() {
+		if g.updateTapOrPhone(r, s.runner.Answer) {
 			s.req = nil
 		}
 	}

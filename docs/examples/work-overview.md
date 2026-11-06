@@ -17,7 +17,9 @@ The optional UI material applies to planning panels, meeting transcripts and
 message windows. Omit it to retain the classic style. This neutral configuration
 can be used with the workshop example:
 
+<!-- verify: load as=game.yaml -->
 ```yaml
+schema_version: 11
 ui:
   material: {kind: glass, blur: 14, opacity: 0.78, border: 0.45, shadow: 0.65}
 ```

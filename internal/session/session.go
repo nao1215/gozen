@@ -168,6 +168,11 @@ func (s *Session) resume(c rpg.Cursor) error {
 		} else {
 			s.runner.Start(cmds)
 		}
+		for _, name := range c.Opened {
+			if err := s.runner.StartBound(name, nil); err != nil {
+				return err
+			}
+		}
 	}
 	if len(c.Inputs) > 0 && c.Line == 0 {
 		return s.resumeScreens(c.Inputs)

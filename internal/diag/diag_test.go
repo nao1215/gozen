@@ -3,6 +3,7 @@ package diag
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
 )
@@ -65,6 +66,22 @@ func TestRegisteredEntries(t *testing.T) {
 				t.Errorf("%s: detail and fix are sentences: %q", e.Code, s)
 			}
 		}
+		if (len(e.Example) == 0) == (strings.TrimSpace(e.NotYAML) == "") {
+			t.Errorf("%s needs exactly one reproduction or non-YAML reason", e.Code)
+		}
+		names := map[string]bool{}
+		for _, file := range e.Example {
+			if !fs.ValidPath(file.Name) || names[file.Name] {
+				t.Errorf("%s: invalid or duplicate file %q", e.Code, file.Name)
+			}
+			names[file.Name] = true
+			if file.Encoding != "" && file.Encoding != "base64" {
+				t.Errorf("%s: unknown encoding %q", e.Code, file.Encoding)
+			}
+		}
+		if len(e.Example) > 0 && !names["game.yaml"] {
+			t.Errorf("%s: missing game.yaml", e.Code)
+		}
 		text := Text(e)
 		if !strings.HasPrefix(text, e.Code.String()+" - ") || !strings.Contains(text, URL) {
 			t.Errorf("%s: %q", e.Code, text)
@@ -80,14 +97,23 @@ func TestRegisteredEntries(t *testing.T) {
 	}
 }
 
+func TestExamplesBelongToRegisteredCodes(t *testing.T) {
+	t.Parallel()
+	for number := range examples {
+		if _, ok := Lookup(Code(number)); !ok {
+			t.Errorf("example for unregistered code %d", number)
+		}
+	}
+}
+
 func TestRegisterRefusesIncompleteEntries(t *testing.T) {
 	full := Entry{Summary: "s", Detail: "d.", Fix: "f."}
 	for name, call := range map[string]func(){
-		"range":    func() { register(3001, "X", full) },
-		"family":   func() { register(1100, "X", full) },
-		"no name":  func() { register(1198, "", full) },
-		"no fix":   func() { register(1198, "X", Entry{Summary: "s", Detail: "d."}) },
-		"no group": func() { register(1001, "X", full) },
+		"range":           func() { register(3001, "X", full) },
+		"family":          func() { register(1100, "X", full) },
+		"no name":         func() { register(1198, "", full) },
+		"no group":        func() { register(1001, "X", full) },
+		"no reproduction": func() { register(1198, "X", full) },
 	} {
 		func() {
 			defer func() {
@@ -97,5 +123,96 @@ func TestRegisterRefusesIncompleteEntries(t *testing.T) {
 			}()
 			call()
 		}()
+	}
+}
+
+func TestRegisterRefusesMissingTextAndDuplicates(t *testing.T) {
+	full := Entry{Summary: "s", Detail: "d.", Fix: "f."}
+	existing := All()[0]
+	for name, tc := range map[string]struct {
+		call func()
+		want string
+	}{
+		"no summary": {func() { register(1198, "X", Entry{Detail: "d.", Fix: "f."}) }, "has no summary"},
+		"no detail":  {func() { register(1198, "X", Entry{Summary: "s", Fix: "f."}) }, "has no detail"},
+		"no fix": {func() {
+			register(1198, "X", Entry{Summary: "s", Detail: "d.", NotYAML: "Requires a command-line argument."})
+		}, "has no fix"},
+		"duplicate": {func() { register(int(existing.Code), "Copy", full) }, "already registered as " + existing.Name},
+	} {
+		func() {
+			defer func() {
+				r := recover()
+				if r == nil || !strings.Contains(fmt.Sprint(r), tc.want) {
+					t.Errorf("%s: panic %v, want %q", name, r, tc.want)
+				}
+			}()
+			tc.call()
+		}()
+	}
+}
+
+func TestParseAndNumberTolerateSpacesAndRejectJunk(t *testing.T) {
+	e := All()[0]
+	if c, ok := Parse("  " + strings.ToLower(e.Code.String()) + "\n"); !ok || c != e.Code {
+		t.Errorf("Parse with spaces: %v %v", c, ok)
+	}
+	if _, ok := Parse("GZN12"); ok {
+		t.Error("a short code parsed")
+	}
+	if _, ok := Parse("1101"); ok {
+		t.Error("digits without GZN parsed")
+	}
+	if n, ok := Number(" GZN0042 "); !ok || n != 42 {
+		t.Errorf("Number with spaces: %v %v", n, ok)
+	}
+	if _, ok := Number("GZN00x2"); ok {
+		t.Error("a code with a letter in it")
+	}
+}
+
+func TestNearListsTheFamilyOfACodeInOrder(t *testing.T) {
+	e := All()[0]
+	near := Near(e.Code)
+	if len(near) == 0 {
+		t.Fatalf("%s has no family", e.Code)
+	}
+	for i, n := range near {
+		if int(n.Code)/100 != int(e.Code)/100 || i > 0 && near[i-1].Code >= n.Code {
+			t.Errorf("%s is not in the family of %s in order", n.Code, e.Code)
+		}
+	}
+	if got := Near(Code(9999)); len(got) != 0 {
+		t.Errorf("an unknown family: %v", got)
+	}
+}
+
+func TestErrorWrappingKeepsTheCause(t *testing.T) {
+	cause := errors.New("disk on fire")
+	wrapped := Code(1501).Wrap(cause)
+	if !errors.Is(wrapped, cause) || Of(wrapped) != 1501 || !strings.HasSuffix(wrapped.Error(), "[GZN1501]") {
+		t.Errorf("%v", wrapped)
+	}
+	// The outermost code names the error.
+	if got := Of(Code(1502).Wrap(wrapped)); got != 1502 {
+		t.Errorf("the outermost code names the error: %v", got)
+	}
+}
+
+func TestFamiliesNameTheirRangesAndExitStatus(t *testing.T) {
+	fams := Families()
+	if len(fams) == 0 {
+		t.Fatal("no families")
+	}
+	seen := map[string]bool{}
+	for _, f := range fams {
+		if !strings.HasPrefix(f.Prefix, "GZN") || !strings.HasSuffix(f.Prefix, "xx") || len(f.Prefix) != 7 || f.Meaning == "" || f.Exit < 0 || f.Exit > 2 || seen[f.Prefix] {
+			t.Errorf("%+v", f)
+		}
+		seen[f.Prefix] = true
+		// Warnings (GZN01xx, GZN02xx) never fail a command; the 2xxx range is a usage error.
+		if (f.Prefix[3] == '0') != (f.Exit == 0) || (f.Prefix[3] == '2') != (f.Exit == 2) {
+			t.Errorf("%s exits with %d", f.Prefix, f.Exit)
+		}
 	}
 }

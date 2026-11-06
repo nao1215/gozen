@@ -40,7 +40,7 @@ func TestComplexityBudgets(t *testing.T) {
 	db := complexitySource(t, source)
 	cfg := ComplexityConfig{FileLines: 10, BlockLines: 3, Repetitions: 2, MinBlockNodes: 5, ExpressionLength: 8, ExpressionDepth: 1, ScreenOperations: 1, IndexedNames: 2, UnusedDefinitions: 2}
 	got := errors.Join(complexityWarningsForTest(t, db, cfg)...).Error()
-	for _, want := range []string{"game.yaml:1:1", "file lines = 15", "block lines = 7", "same-shaped screens blocks = 2", "expression characters = 15", "expression nesting = 2", "screen set/plan commands = 2", `indexed names "plot_#" = 2`, "possibly unreferenced screens definitions = 2"} {
+	for _, want := range []string{"game.yaml:1:1", "file lines = 15", "block lines = 7", "same-shaped screens blocks = 2", "expression characters = 15", "expression nesting = 2", "screen set/plan commands = 2", `indexed names "plot_#" = 2`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %s", want, got)
 		}
@@ -75,13 +75,13 @@ func TestComplexityBoundariesAndProse(t *testing.T) {
 func TestComplexityShapeAndAliases(t *testing.T) {
 	db := complexitySource(t, "screens:\n  one: &base {title: One, entries: [{label: Open, open: one}]}\n  two: {entries: [{open: one, label: Other}], title: Two}\n  three: *base\n")
 	cfg := ComplexityConfig{Repetitions: 2, MinBlockNodes: 1, UnusedDefinitions: 1}
-	got := errors.Join(complexityWarningsForTest(t, db, cfg)...).Error()
+	got := fmt.Sprint(complexityWarningsForTest(t, db, cfg))
 	// Anchors retain their authored structure; aliases are not expanded copies.
 	if strings.Contains(got, "same-shaped") {
 		t.Fatalf("alias expanded: %s", got)
 	}
-	if !strings.Contains(got, "two, three") || strings.Contains(got, ": one,") {
-		t.Fatalf("reference accounting: %s", got)
+	if strings.Contains(got, "unreferenced") {
+		t.Fatalf("exact screen warnings must not be duplicated by heuristics: %s", got)
 	}
 	db = complexitySource(t, "screens:\n  one: {title: One, entries: [{label: Open, open: one}]}\n  two: {entries: [{open: one, label: Other}], title: Two}\n")
 	if got := errors.Join(complexityWarningsForTest(t, db, cfg)...).Error(); !strings.Contains(got, "same-shaped screens blocks = 2") {
@@ -244,5 +244,42 @@ func TestComplexitySmallIDCopiesAndFalseFriends(t *testing.T) {
 	db.Game.Planning = &Planning{Entities: map[string]Entity{"fir": {}, "ash": {}, "maple": {}}}
 	if got := complexityWarningsForTest(t, db, ComplexityConfig{IndexedNames: 2}); len(got) != 0 {
 		t.Fatal(got)
+	}
+}
+
+func TestComplexityCompactEventExpressions(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 11\nid: small\nstart: {location: room}\n")},
+		"data/world.yaml": {Data: []byte("locations: {room: {name: Room}}\nevents:\n  award:\n    - gold: 'max(1, (2 + 3))'\n")},
+	}
+	db, err := Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	warnings, err := db.ComplexityWarnings(ComplexityConfig{ExpressionLength: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0].Error(), "expression characters = 15") || !strings.Contains(warnings[0].Error(), "data/world.yaml:4:") {
+		t.Fatalf("compact expression warnings: %v", warnings)
+	}
+}
+
+func TestComplexityUnusedPlanningRulesRemainHeuristic(t *testing.T) {
+	var source strings.Builder
+	source.WriteString("planning:\n  rules:\n")
+	for i := range 8 {
+		fmt.Fprintf(&source, "    rule_%d: {do: [{op: advance}]}\n", i)
+	}
+	db := complexitySource(t, source.String())
+	cfg := ComplexityConfig{Repetitions: -1, IndexedNames: -1}
+	warnings := complexityWarningsForTest(t, db, cfg)
+	if len(warnings) != 1 || !strings.Contains(warnings[0].Error(), "possibly unreferenced planning.rules definitions = 8") {
+		t.Fatal(warnings)
+	}
+	// A textual reference retains the old conservative heuristic for this kind.
+	db = complexitySource(t, source.String()+"start: {event: rule_0}\n")
+	if warnings := complexityWarningsForTest(t, db, cfg); len(warnings) != 0 {
+		t.Fatal(warnings)
 	}
 }

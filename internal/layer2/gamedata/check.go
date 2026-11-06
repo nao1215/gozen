@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 
+	"rsc.io/qr"
+
 	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 
 	"github.com/nao1215/gozen/internal/diag"
@@ -41,11 +43,14 @@ var (
 )
 
 type checker struct {
-	params        map[string]string
-	stateNames    map[string]StateName
-	pictureErrors map[string]error
-	db            *DB
-	errs          []error
+	// definitionUses records resolved IDs during a full Check, never script validation.
+	definitionUses    map[string]map[string]bool
+	definitionDynamic map[string]bool
+	params            map[string]string
+	stateNames        map[string]StateName
+	pictureErrors     map[string]error
+	db                *DB
+	errs              []error
 	// script checks the command list fed from Go (gozen's Session.Do). The spec version is a data contract, so it is not checked.
 	script bool
 	// noDev makes setting a party member's stats or level an error in script (a non-dev Session; author decision 5).
@@ -107,6 +112,11 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 		}
 	}
 	c.factionWords(where, e)
+	for _, comparison := range e.Comparisons() {
+		if comparison.Ref.Name == "location" && len(comparison.Ref.Path) == 0 {
+			c.useDefinition("location", comparison.Text)
+		}
+	}
 	for _, r := range e.Refs() {
 		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
 			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
@@ -138,12 +148,270 @@ func (c *checker) functionValues(where string, e Expr, names []string, over map[
 }
 
 func (c *checker) ref(where, kind, id string, ok bool) {
+	if ok {
+		c.useDefinition(kind, id)
+	}
 	if kind == "event" && id != "" && ok && len(c.db.Events[id].Params) > 0 {
 		c.errorf(diag.Shape, where, "event %q requires arguments; use a parameterless wrapper here", id)
 	}
 	if id != "" && !ok {
-		c.errorf(diag.UnknownReference, where, "unknown %s %q", kind, id)
+		message := fmt.Sprintf("unknown %s %q", kind, id)
+		section := map[string]string{"location": "locations", "actor": "actors", "item": "items", "skill": "skills", "class": "classes", "event": "events", "enemy": "enemies", "troop": "troops", "shop": "shops", "state": "states", "region": "regions", "faction": "factions", "song": "songs"}[kind]
+		if near := nearestName(id, c.db.Order[section]); near != "" {
+			message += fmt.Sprintf(lang.T("（%q の誤りですか？）"), near)
+		}
+		c.errorf(diag.UnknownReference, where, "%s", message)
 	}
+}
+
+// phone checks a phone command (ADR 0057): a known hold and app, the list the
+// app shows and nothing else, the pictures it draws and its texts.
+func (c *checker) phone(where string, p PhoneCue, names []string) {
+	switch p.Hold {
+	case "", "portrait", "landscape":
+	default:
+		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
+	}
+	apps := []string{"chat", "feed", "video", "page", "lock", "banner"}
+	lists := map[string]bool{
+		"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
+		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0,
+	}
+	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "lock": "notices", "banner": "notices"}
+	if _, ok := lists[p.App]; !ok {
+		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner のいずれかを指定してください（指定値 %q）"), p.App)
+		return
+	}
+	for _, app := range apps {
+		has := lists[app]
+		if app != p.App && keys[app] == keys[p.App] {
+			continue
+		}
+		if app == p.App && !has {
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s には %s が必要です"), app, keys[app])
+		}
+		if app != p.App && has {
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s は %s を表示しません"), p.App, keys[app])
+		}
+	}
+	c.text(where+".title", p.Title, names)
+	for i, m := range p.Messages {
+		at := fmt.Sprintf("%s.messages[%d]", where, i)
+		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n > 1 || n == 0 && m.Day == "" {
+			c.errorf(diag.Shape, at, "%s", lang.T("メッセージには text・picture・video のいずれか１つ、または day だけを指定してください"))
+		}
+		c.text(at+".time", m.Time, names)
+		c.text(at+".day", m.Day, names)
+		c.phoneVideo(at+".video", m.Video, names)
+		c.text(at+".from", m.From, names)
+		c.text(at+".text", m.Text, names)
+		c.picture(at+".picture", Picture{File: m.Picture})
+		c.picture(at+".icon", Picture{File: m.Icon})
+	}
+	for i, post := range p.Posts {
+		at := fmt.Sprintf("%s.posts[%d]", where, i)
+		if post.Picture != "" && post.Video != nil || post.Picture == "" && post.Video == nil && post.Text == "" {
+			c.errorf(diag.Shape, at, "%s", lang.T("投稿には picture・video・text だけのいずれか１つが必要です"))
+		}
+		if post.Replies < 0 || post.Reposts < 0 {
+			c.errorf(diag.Shape, at, "replies and reposts must not be negative")
+		}
+		c.phoneVideo(at+".video", post.Video, names)
+		if post.Likes < 0 {
+			c.errorf(diag.Shape, at+".likes", "%s", lang.T("likes は０以上を指定してください"))
+		}
+		c.text(at+".who", post.Who, names)
+		c.text(at+".time", post.Time, names)
+		c.text(at+".text", post.Text, names)
+		c.picture(at+".picture", Picture{File: post.Picture})
+		c.picture(at+".icon", Picture{File: post.Icon})
+	}
+	c.phoneVideo(where+".video", p.Video, names)
+	c.phonePage(where, p, names)
+	c.phoneLock(where, p, names)
+	if p.Var != "" {
+		if !hasPhoneResult(p) {
+			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep")
+		}
+		c.assignments(where+".var", map[string]Expr{p.Var: MustExpr(`""`)}, names)
+	}
+}
+
+// hasPhoneResult tells that the phone has something to keep: a page's button or a lock screen's call.
+func hasPhoneResult(p PhoneCue) bool {
+	for _, r := range p.Rows {
+		if r.Button != "" {
+			return true
+		}
+	}
+	for _, n := range p.Notices {
+		if n.Call && p.App == "lock" {
+			return true
+		}
+	}
+	return false
+}
+
+var phoneColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// phonePage checks a page: one header (a url or a title), its color, and rows
+// of exactly one kind each with the pictures they name.
+func (c *checker) phonePage(where string, p PhoneCue, names []string) {
+	if p.URL != "" && p.App != "page" {
+		c.errorf(diag.Shape, where+".url", "only a page has a url")
+	}
+	if p.App == "page" && p.URL != "" && p.Title != "" {
+		c.errorf(diag.Shape, where, "a page has a url or a title, not both")
+	}
+	if p.Color != "" && !phoneColor.MatchString(p.Color) {
+		c.errorf(diag.Shape, where+".color", "color must be #rrggbb, not %q", p.Color)
+	}
+	c.text(where+".url", p.URL, names)
+	for i, r := range p.Rows {
+		at := fmt.Sprintf("%s.rows[%d]", where, i)
+		if n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != "") + btoi(r.QR != ""); n != 1 {
+			c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them)")
+		}
+		if r.QR != "" {
+			if _, err := qr.Encode(r.QR, qr.M); err != nil {
+				c.errorf(diag.Shape, at+".qr", "the qr text is too long for a QR code (%d bytes)", len(r.QR))
+			}
+			c.text(at+".qr", r.QR, names)
+		}
+		switch r.Size {
+		case "", "large", "small":
+		default:
+			c.errorf(diag.Shape, at+".size", "size must be large or small, not %q", r.Size)
+		}
+		if r.Columns != 0 && r.Columns != 2 && r.Columns != 3 {
+			c.errorf(diag.Shape, at+".columns", "columns must be 2 or 3, not %d", r.Columns)
+		}
+		if r.Button == "" && (len(r.Set) > 0 || r.ID != "") {
+			c.errorf(diag.Shape, at, "only a button has set or id")
+		}
+		if r.Picture == "" && len(r.Pictures) == 0 && (r.Locked.Set() || r.Label != "") {
+			c.errorf(diag.Shape, at, "only a picture or pictures are locked")
+		}
+		c.assignments(at+".set", r.Set, names)
+		c.expr(at+".locked", r.Locked, names)
+		c.text(at+".label", r.Label, names)
+		c.text(at+".text", r.Text, names)
+		c.text(at+".caption", r.Caption, names)
+		c.text(at+".button", r.Button, names)
+		c.picture(at+".picture", Picture{File: r.Picture})
+		for k, f := range r.Pictures {
+			c.picture(fmt.Sprintf("%s.pictures[%d]", at, k), Picture{File: f})
+		}
+		if it := r.Item; it != nil {
+			if it.Title == "" && it.Text == "" {
+				c.errorf(diag.Shape, at+".item", "an item needs a title or a text")
+			}
+			c.picture(at+".item.icon", Picture{File: it.Icon})
+			for _, s := range []string{it.Title, it.Text, it.Value} {
+				c.text(at+".item", s, names)
+			}
+		}
+	}
+}
+
+// phoneLock checks a lock screen's texts and its notices.
+func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
+	c.text(where+".time", p.Time, names)
+	c.text(where+".date", p.Date, names)
+	for i, n := range p.Notices {
+		at := fmt.Sprintf("%s.notices[%d]", where, i)
+		if n.Title == "" && n.Text == "" {
+			c.errorf(diag.Shape, at, "a notice needs a title or a text")
+		}
+		if len(n.Set) > 0 && (!n.Call || p.App != "lock") {
+			c.errorf(diag.Shape, at+".set", "only a call on the lock screen has set (when it is answered)")
+		}
+		if n.Event != "" && p.App != "banner" {
+			c.errorf(diag.Shape, at+".event", "only a banner opens an event")
+		}
+		if n.Call && p.App != "lock" {
+			c.errorf(diag.Shape, at+".call", "only the lock screen takes calls")
+		}
+		if n.Event != "" {
+			c.useDefinition("event", n.Event) // a banner's click opens it
+		}
+		if ev, ok := c.db.Events[n.Event]; n.Event != "" && (!ok || ev == nil || len(ev.Params) > 0) {
+			c.errorf(diag.UnknownReference, at+".event", "no parameterless event %q", n.Event)
+		}
+		c.assignments(at+".set", n.Set, names)
+		c.picture(at+".icon", Picture{File: n.Icon})
+		for _, s := range []string{n.App, n.Title, n.Text} {
+			c.text(at, s, names)
+		}
+	}
+}
+
+// maxPhoneSeconds is the longest phone clip whose frame count (60 a second)
+// still fits an int32.
+const maxPhoneSeconds = float64(math.MaxInt32) / 60
+
+// phoneVideo checks a clip on the phone: a picture, frames or a puppet to
+// show, the files they name, its length, its frame rate and the seconds it
+// jiggles at.
+func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
+	if v == nil {
+		return
+	}
+	if v.Picture == "" && len(v.Frames) == 0 && v.Puppet == "" {
+		c.errorf(diag.Shape, where, "%s", lang.T("動画には picture・frames・puppet のいずれかが必要です"))
+	}
+	if !finiteNumber(v.Seconds) || v.Seconds > maxPhoneSeconds {
+		c.errorf(diag.OutOfRange, where+".seconds", lang.T("seconds は有限の数で %g 以下を指定してください"), maxPhoneSeconds)
+	}
+	if !finiteNumber(v.Zoom) {
+		c.errorf(diag.OutOfRange, where+".zoom", "%s", lang.T("zoom は有限の数を指定してください"))
+	}
+	if !finiteNumber(v.FPS) || !finiteNumber(v.Fade) {
+		c.errorf(diag.OutOfRange, where, "%s", lang.T("fps と fade は有限の数を指定してください"))
+	}
+	if v.Seconds < 0 {
+		c.errorf(diag.Shape, where+".seconds", "%s", lang.T("seconds は０以上を指定してください"))
+	}
+	if v.FPS < 0 {
+		c.errorf(diag.Shape, where+".fps", "fps must not be negative")
+	}
+	if len(v.Frames) == 0 && (v.Fade != 0 || v.Pan) {
+		c.errorf(diag.Shape, where, "fade and pan are for frames")
+	}
+	if v.Fade < 0 || v.Fade > 1/v.FrameRate() {
+		c.errorf(diag.Shape, where+".fade", "fade must be between 0 and a frame's length (%g seconds)", 1/v.FrameRate())
+	}
+	if v.Zoom < 0 {
+		c.errorf(diag.Shape, where+".zoom", "%s", lang.T("zoom は０以上を指定してください"))
+	}
+	frames := 0
+	for i, f := range v.Frames {
+		at := fmt.Sprintf("%s.frames[%d]", where, i)
+		pages := PhoneVideo{Frames: []string{f}}.FramePictures(c.db.FS)
+		if strings.ContainsAny(f, "*?[") && len(pages) == 0 {
+			c.errorf(diag.MissingAsset, at, "no picture matches %s under assets/", f)
+		}
+		for _, p := range pages {
+			c.picture(at, Picture{File: p})
+		}
+		frames += len(pages)
+	}
+	length := v.Length(frames)
+	if v.Seconds == 0 && length > maxPhoneSeconds {
+		c.errorf(diag.OutOfRange, where+".fps", lang.T("frames と fps の長さが %g 秒を超えています"), maxPhoneSeconds)
+	}
+	for i, at := range v.Bounce {
+		if !finiteNumber(at) || at < 0 || at > length {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), lang.T("bounce %g は動画の範囲外です（０〜%g 秒）"), at, length)
+		}
+	}
+	if v.Puppet != "" && !c.db.Exists("assets/"+v.Puppet) {
+		c.errorf(diag.MissingAsset, where+".puppet", lang.T("puppet assets/%s がありません"), v.Puppet)
+	} else {
+		c.puppet(where+".puppet", v.Puppet, "")
+	}
+	c.text(where+".text", v.Text, names)
+	c.picture(where+".picture", Picture{File: v.Picture})
 }
 
 func (c *checker) picture(where string, p Picture) {
@@ -193,25 +461,25 @@ func (c *checker) pictureLimit(where, p string) {
 
 // puppet checks a moving portrait's YAML and that its pictures exist. Picture sizes
 // and positions are checked when the game loads it (and by gozen art puppet).
-func (c *checker) puppet(where string, a *Actor) {
-	if a.Puppet == "" {
+func (c *checker) puppet(where string, file, face string) {
+	if file == "" {
 		return
 	}
-	b, err := fs.ReadFile(c.db.FS, "assets/"+a.Puppet)
+	b, err := fs.ReadFile(c.db.FS, "assets/"+file)
 	if err != nil {
-		c.errorf(diag.MissingAsset, where, "no file assets/%s", a.Puppet)
+		c.errorf(diag.MissingAsset, where, "no file assets/%s", file)
 		return
 	}
 	spec, err := puppetdef.Parse(b)
 	if err != nil {
-		c.errorf(diag.Shape, where, "%s: %v", a.Puppet, err)
+		c.errorf(diag.Shape, where, "%s: %v", file, err)
 		return
 	}
 	for _, p := range spec.Pictures() {
-		c.file(where, path.Join(path.Dir(a.Puppet), p))
+		c.file(where, path.Join(path.Dir(file), p))
 	}
-	if face := a.Face; face != "" && !slices.Contains(spec.FaceNames(), face) {
-		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", a.Puppet, face)
+	if face != "" && !slices.Contains(spec.FaceNames(), face) {
+		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", file, face)
 	}
 }
 
@@ -281,7 +549,8 @@ func (c *checker) requiredDefinitions() {
 // Check reports every problem of the data: unknown ids, missing pictures, expressions
 // using names unknown where they are written, commands without a verb.
 func (db *DB) Check() []error {
-	c := &checker{db: db}
+	db.definitionWarns = nil
+	c := &checker{db: db, definitionUses: map[string]map[string]bool{}, definitionDynamic: map[string]bool{}}
 	for _, err := range gameVersionErrors(db.Game) {
 		c.errs = append(c.errs, db.locateReported(err))
 	}
@@ -361,17 +630,17 @@ func (db *DB) Check() []error {
 		if len(m.Wallpaper) != 0 && len(m.Wallpaper) != 3 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material.wallpaper", "want three gradient colors")
 		}
-		if m.Refraction < 0 || m.Refraction > 32 || m.WallpaperStrength < 0 || m.WallpaperStrength > 1 {
+		if !finiteNumber(m.Refraction) || !finiteNumber(m.WallpaperStrength) || m.Refraction < 0 || m.Refraction > 32 || m.WallpaperStrength < 0 || m.WallpaperStrength > 1 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material", "refraction must be in [0,32]; wallpaper_strength in [0,1]")
 		}
-		if m.Blur < 0 || m.Blur > 64 || m.Opacity < 0 || m.Opacity > 1 || m.Border < 0 || m.Border > 1 || m.Shadow < 0 || m.Shadow > 1 {
+		if !finiteNumber(m.Blur) || !finiteNumber(m.Opacity) || !finiteNumber(m.Border) || !finiteNumber(m.Shadow) || m.Blur < 0 || m.Blur > 64 || m.Opacity < 0 || m.Opacity > 1 || m.Border < 0 || m.Border > 1 || m.Shadow < 0 || m.Shadow > 1 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material", "blur must be in [0,64]; opacity, border and shadow in [0,1]")
 		}
 	}
 	c.novelWindow(&g.UI)
 	if g.UI.Balloon != 0 {
 		c.needsVersion("game.yaml ui.balloon", "ui.balloon", SchemaVersion3)
-		if g.UI.Balloon < 0.01 || g.UI.Balloon > 0.2 {
+		if !finiteNumber(g.UI.Balloon) || g.UI.Balloon < 0.01 || g.UI.Balloon > 0.2 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.balloon", "want a fraction of the screen's height in [0.01, 0.2], got %g", g.UI.Balloon)
 		}
 	}
@@ -415,7 +684,7 @@ func (db *DB) Check() []error {
 	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
-		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
+		if !finiteNumber(tp.X) || !finiteNumber(tp.Bottom) || !finiteNumber(tp.Height) || tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.talk_portrait", "want x from 0 to 1, and bottom and height from 0 to 4 (fractions of the screen), got x %g, bottom %g, height %g", tp.X, tp.Bottom, tp.Height)
 		}
 	}
@@ -426,7 +695,7 @@ func (db *DB) Check() []error {
 	for i, f := range g.TitleFigures {
 		w := fmt.Sprintf("game.yaml title_figures[%d]", i)
 		c.picture(w, Picture{File: f.File})
-		if f.File == "" || f.X < 0 || f.X > 1 || f.Bottom < 0 || f.Height < 0 {
+		if f.File == "" || !finiteNumber(f.X) || !finiteNumber(f.Bottom) || !finiteNumber(f.Height) || f.X < 0 || f.X > 1 || f.Bottom < 0 || f.Height < 0 {
 			c.errorf(diag.OutOfRange, w, "a figure needs a file, x from 0 to 1, and bottom and height of 0 or more")
 		}
 	}
@@ -434,7 +703,7 @@ func (db *DB) Check() []error {
 	c.file("game.yaml fonts.subtitle", g.Fonts.Subtitle)
 	if tt := g.TitleText; tt != (TitleText{}) {
 		c.needsVersion("game.yaml title_text", "title_text", SchemaVersion3)
-		bad := tt.Size < 0 || tt.SubtitleSize < 0 || tt.Tracking != nil && *tt.Tracking < 0 || tt.SubtitleTracking != nil && *tt.SubtitleTracking < 0
+		bad := !finiteNumber(tt.Size) || tt.Size < 0 || !finiteNumber(tt.SubtitleSize) || tt.SubtitleSize < 0 || tt.Tracking != nil && (!finiteNumber(*tt.Tracking) || *tt.Tracking < 0) || tt.SubtitleTracking != nil && (!finiteNumber(*tt.SubtitleTracking) || *tt.SubtitleTracking < 0)
 		if bad {
 			c.errorf(diag.OutOfRange, "game.yaml title_text", "sizes and tracking must be 0 or more")
 		}
@@ -533,12 +802,17 @@ func (db *DB) Check() []error {
 		c.expr(w+".value", m.Value, FieldNames)
 		c.expr(w+".max_value", m.MaxValue, FieldNames)
 		c.expr(w+".when", m.When, FieldNames)
-		if !m.Value.Set() || m.Max < 0 {
+		if !m.Value.Set() || !finiteNumber(m.Max) || m.Max < 0 {
 			c.errorf(diag.OutOfRange, w, "a meter needs value (and max 0 or more)")
 		}
 		if m.Actor != "" {
 			_, ok := db.Actors[m.Actor]
 			c.ref(w+".actor", "actor", m.Actor, ok)
+		}
+		for j, mark := range m.Marks {
+			if !finiteNumber(mark) {
+				c.errorf(diag.OutOfRange, fmt.Sprintf("%s.marks[%d]", w, j), "a meter mark must be finite")
+			}
 		}
 		if len(m.MarkLabels) > len(m.Marks) {
 			c.errorf(diag.Shape, w+".mark_labels", "%d labels for %d marks", len(m.MarkLabels), len(m.Marks))
@@ -585,7 +859,7 @@ func (db *DB) Check() []error {
 			_, ok := db.States[cb.State]
 			c.ref(w+".state", "state", cb.State, ok)
 		}
-		if cb.Size < 0 || cb.Count < 0 || cb.Speed < 0 || cb.Rise < 0 {
+		if !finiteNumber(cb.Size) || !finiteNumber(cb.Speed) || !finiteNumber(cb.Rise) || cb.Size < 0 || cb.Count < 0 || cb.Speed < 0 || cb.Rise < 0 {
 			c.errorf(diag.OutOfRange, w, "size, count, speed and rise must not be negative")
 		}
 	}
@@ -704,7 +978,7 @@ func (db *DB) Check() []error {
 		if a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+a.Face+".png") {
 			c.errorf(diag.MissingAsset, w, "no face assets/%s/%s.png", a.Faces, a.Face)
 		}
-		c.puppet(w+".puppet", a)
+		c.puppet(w+".puppet", a.Puppet, a.Face)
 		c.voices(w+".voices", a)
 		c.doll(w+".doll", a.Doll)
 		for s, it := range a.Equip {
@@ -721,16 +995,23 @@ func (db *DB) Check() []error {
 			}
 		}
 		c.file(w+".cutin", a.Cutin)
-		if len(a.FaceBox) != 0 && len(a.FaceBox) != 3 {
-			c.errorf(diag.Shape, w+".face_box", "want [x, y, size] (parts of the picture)")
+		for _, box := range []struct {
+			name   string
+			values []float64
+		}{{"face_box", a.FaceBox}, {"cutin_box", a.CutinBox}} {
+			if len(box.values) != 0 && len(box.values) != 3 {
+				c.errorf(diag.Shape, w+"."+box.name, "want [x, y, size] (parts of the picture)")
+			}
+			for i, value := range box.values {
+				if !finiteNumber(value) {
+					c.errorf(diag.OutOfRange, fmt.Sprintf("%s.%s[%d]", w, box.name, i), "picture coordinates must be finite")
+				}
+			}
 		}
-		if len(a.CutinBox) != 0 && len(a.CutinBox) != 3 {
-			c.errorf(diag.Shape, w+".cutin_box", "want [x, y, size] (parts of the picture)")
-		}
-		if a.FaceShade < 0 || a.FaceShade > 1 {
+		if !finiteNumber(a.FaceShade) || a.FaceShade < 0 || a.FaceShade > 1 {
 			c.errorf(diag.OutOfRange, w+".face_shade", "want 0 to 1 (0 as drawn, 1 black), got %g", a.FaceShade)
 		}
-		if a.FaceShadeTop < 0 || a.FaceShadeTop > 1 {
+		if !finiteNumber(a.FaceShadeTop) || a.FaceShadeTop < 0 || a.FaceShadeTop > 1 {
 			c.errorf(diag.OutOfRange, w+".face_shade_top", "want 0 to 1 (0 as drawn, 1 black), got %g", a.FaceShadeTop)
 		}
 		if (a.FaceShade > 0 || a.FaceShadeTop > 0) && a.Faces == "" {
@@ -814,7 +1095,7 @@ func (db *DB) Check() []error {
 		if s.Restrict != "" && s.Restrict != "skip" && s.Restrict != "confuse" {
 			c.errorf(diag.NotAWord, w+".restrict", "want skip or confuse, not %q", s.Restrict)
 		}
-		if s.RestrictChance < 0 || s.RestrictChance >= 1 || s.RestrictChance > 0 && s.Restrict != "skip" {
+		if !finiteNumber(s.RestrictChance) || s.RestrictChance < 0 || s.RestrictChance >= 1 || s.RestrictChance > 0 && s.Restrict != "skip" {
 			c.errorf(diag.OutOfRange, w+".restrict_chance", "want 0 < chance < 1 with restrict: skip, not %g", s.RestrictChance)
 		}
 		for i := range s.Tick {
@@ -859,7 +1140,7 @@ func (db *DB) Check() []error {
 			c.errorf(diag.NotAWord, w+".motion", "want none, breathe, sway, or bob")
 		}
 		if e.Puppet != "" {
-			c.puppet(w+".puppet", &Actor{Puppet: e.Puppet})
+			c.puppet(w+".puppet", e.Puppet, "")
 		}
 		for _, d := range e.Drops {
 			_, ok := db.Items[d.Item]
@@ -902,10 +1183,10 @@ func (db *DB) Check() []error {
 			if ls.Level < 1 {
 				c.errorf(diag.OutOfRange, w+".level_scale.level", "%d (want 1 or more)", ls.Level)
 			}
-			if ls.Rate <= 0 || ls.Rate > 0.2 {
+			if !finiteNumber(ls.Rate) || ls.Rate <= 0 || ls.Rate > 0.2 {
 				c.errorf(diag.OutOfRange, w+".level_scale.rate", "%g (want more than 0, up to 0.2)", ls.Rate)
 			}
-			if !ls.Unbounded && (ls.Max <= 0 || ls.Max > 0.5) { // do not make it unboundedly strong like FF8 (training must always make things easier)
+			if !ls.Unbounded && (!finiteNumber(ls.Max) || ls.Max <= 0 || ls.Max > 0.5) { // do not make it unboundedly strong like FF8 (training must always make things easier)
 				c.errorf(diag.OutOfRange, w+".level_scale.max", "%g (want more than 0, up to 0.5)", ls.Max)
 			}
 			for _, s := range ls.Stats {
@@ -1106,6 +1387,7 @@ func (db *DB) Check() []error {
 	c.monsters()
 	c.mergeReachability()
 	c.streams()
+	db.definitionWarns = c.unusedDefinitions()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
@@ -1411,7 +1693,7 @@ func (c *checker) effect(where string, e *Effect) {
 		}
 	}
 	n := 0
-	if e.Recoil < 0 || e.Recoil > 1 {
+	if !finiteNumber(e.Recoil) || e.Recoil < 0 || e.Recoil > 1 {
 		c.errorf(diag.OutOfRange, where+".recoil", "recoil is a part of the damage (0 to 1)")
 	}
 	for _, set := range []bool{e.Damage.Set(), e.Heal.Set(), e.AddState != "", e.Remove != "", e.Revive.Set(), e.Escape, e.Summon != "", e.Transform != "", e.Merge != nil} {
@@ -1425,6 +1707,7 @@ func (c *checker) effect(where string, e *Effect) {
 }
 
 func (c *checker) ai(where string, ref AIRef) {
+	c.useDefinition("ai", ref.Name)
 	if ref.Name != "" {
 		if _, ok := c.db.AI[ref.Name]; !ok {
 			c.errorf(diag.UnknownReference, where, "unknown ai %q", ref.Name)
@@ -1482,6 +1765,7 @@ func (c *checker) say(w string, s *Say, names []string) {
 		c.needsVersion(w+".instant", "instant lines", SchemaVersion10)
 	}
 	if s.Ensemble != "" {
+		c.useDefinition("screen", s.Ensemble)
 		c.needsVersion(w+".ensemble", "ensemble lines", SchemaVersion10)
 		screen := db.Game.Screens[s.Ensemble]
 		if screen == nil || screen.Kind != "ensemble" {
@@ -1614,6 +1898,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.text(w+".respond.from", cmd.Respond.From, names)
 		case "notice":
 			c.text(w+".notice", cmd.Notice, names)
+		case "phone":
+			c.phone(w+".phone", *cmd.Phone, names)
 		case "call_view":
 			cam, share := cmd.CallView.Camera, cmd.CallView.Share
 			if (cam == nil) == (share == nil) {
@@ -1646,6 +1932,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			if cmd.Message.Text == "" {
 				c.errorf(diag.Shape, w+".message.text", "a message needs text")
 			}
+			c.useDefinition("event", cmd.Message.Event)
 			if ev := db.Events[cmd.Message.Event]; ev == nil || len(ev.Params) > 0 {
 				c.errorf(diag.UnknownReference, w+".message.event", "a message needs a parameterless event that asks for the decision")
 			}
@@ -1777,10 +2064,10 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			if f := cmd.Image.Fit; f != "" && f != "contain" && f != "cover" {
 				c.errorf(diag.NotAWord, w+".image", "fit is contain or cover, not %q", f)
 			}
-			if cmd.Image.Fade < 0 {
+			if !finiteNumber(cmd.Image.Fade) || cmd.Image.Fade < 0 {
 				c.errorf(diag.OutOfRange, w+".image", "fade is seconds (0 or more)")
 			}
-			if cmd.Image.Auto < 0 || (cmd.Image.Auto > 0 && (len(cmd.Image.Files) == 0 || cmd.Image.Page != 0 || cmd.Image.Pick.Set())) {
+			if !finiteNumber(cmd.Image.Auto) || cmd.Image.Auto < 0 || (cmd.Image.Auto > 0 && (len(cmd.Image.Files) == 0 || cmd.Image.Page != 0 || cmd.Image.Pick.Set())) {
 				c.errorf(diag.OutOfRange, w+".image.auto", "auto is seconds a picture (more than 0), with files shown one after another (not page or pick)")
 			}
 			if cmd.Image.Page < 0 || (cmd.Image.Page > 0 && len(cmd.Image.Files) == 0) {
@@ -1864,6 +2151,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open.Screen)
 			}
 		case "dive":
+			c.useDefinition("location", cmd.Dive)
 			if l, ok := db.Locations[cmd.Dive]; !ok {
 				c.ref(w+".dive", "location", cmd.Dive, false)
 			} else if l.Dungeon == nil || l.Dungeon.Generate == nil {
@@ -2027,6 +2315,7 @@ func groupOf(member *vtype) *vtype {
 			return tNum, ""
 		}
 		if it, ok := strings.CutPrefix(name, "wearing_"); ok {
+			c.useDefinition("item", it)
 			if _, ok := c.db.Items[it]; !ok {
 				return nil, fmt.Sprintf("unknown item %q", it)
 			}
@@ -2172,6 +2461,7 @@ func (c *checker) step(t *vtype, st expr.Step) (*vtype, string) {
 		return nil, t.desc + " is a list: index it with a number"
 	case vDyn:
 		if st.Name == "" { // expression index: the name is unknown
+			c.dynamicDefinition(t.key)
 			return t.elem, ""
 		}
 		if t.key != "" && !c.known(t.key, st.Name) {
@@ -2189,6 +2479,7 @@ func (c *checker) step(t *vtype, st expr.Step) (*vtype, string) {
 
 // known reports whether an ID of kind exists.
 func (c *checker) known(kind, id string) bool {
+	c.useDefinition(kind, id)
 	switch kind {
 	case "item":
 		return c.db.Items[id] != nil
@@ -2230,6 +2521,9 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 				c.errorf(diag.Expression, where, lang.T("%s の参照は宣言名を直接指定する必要がある"), r.Name)
 				continue
 			}
+		}
+		if len(r.Path) == 0 {
+			c.dynamicDefinition(t.key)
 		}
 		path := r.Name
 		for _, st := range r.Path {

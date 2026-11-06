@@ -380,7 +380,7 @@ func (s *authorScreen) update(g *Game) {
 		// would otherwise restore state from before the entry action.
 		g.evCmds, g.evSnap, g.evRand = nil, nil, nil
 		g.evName, g.evLines, g.evArrival = "", 0, false
-		g.evAnswers, g.evHist = nil, nil
+		g.evAnswers, g.evHist, g.evOpened = nil, nil, nil
 		if g.st.Location != s.origin {
 			g.pop()
 			if s.done != nil {
@@ -854,6 +854,9 @@ func (s *authorScreen) updateSurface(g *Game) {
 	if n == 0 {
 		return
 	}
+	// An action can remove itself or another focus stop during the refresh.
+	// Keep confirmation on a remaining control even before an arrow is pressed.
+	s.focus = max(0, min(s.focus, n-1))
 	if s.updateCarousel(g, actions) {
 		return
 	}

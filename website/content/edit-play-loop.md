@@ -9,6 +9,14 @@ Most of making a game is the second draft: a line that reads wrong, a fight that
 
 Run a game directory with `gozen run game`. Add `--dev` to enable the author tools below. YAML and asset changes can be reloaded with F5.
 
+Before playing, `gozen check game` reads the whole game and reports a broken reference, a wrong expression, a missing picture or a line too long for its window, each with its file and line:
+
+```text
+data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]
+```
+
+Between plays, `gozen sim battle` fights a battle many times and prints the win rate, and `gozen sim dive` plays a whole dungeon dive; the window, a headless session and these commands follow the same rules, so their numbers agree.
+
 ## Turn on the author tools
 
 <!-- verify: skip opens a game window and waits for input -->

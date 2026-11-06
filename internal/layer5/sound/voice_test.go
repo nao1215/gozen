@@ -1,6 +1,7 @@
 package sound
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"testing/fstest"
@@ -34,8 +35,60 @@ func TestVoiceClip(t *testing.T) {
 		}
 	}
 	PlayVoice(pcm, 1) // without an audio context nothing plays, and nothing breaks
-	if VoicePlaying() {
+	if voicePlayer != nil {
 		t.Fatal("a voice plays without an audio context")
 	}
 	StopVoice()
+}
+
+func TestVoiceCacheKeepsTheMostRecentlyUsed(t *testing.T) {
+	freshSession(t)
+	fsys := fstest.MapFS{}
+	for i := range voiceCacheSize + 1 {
+		fsys[fmt.Sprintf("v/%02d.wav", i)] = &fstest.MapFile{Data: testgame.Wav(0.01)}
+	}
+	for i := range voiceCacheSize {
+		if _, err := VoiceClip(fsys, fmt.Sprintf("v/%02d.wav", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Touch the oldest, then overflow: the second oldest must go, not the touched one.
+	if _, err := VoiceClip(fsys, "v/00.wav"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VoiceClip(fsys, fmt.Sprintf("v/%02d.wav", voiceCacheSize)); err != nil {
+		t.Fatal(err)
+	}
+	for name := range fsys {
+		delete(fsys, name)
+	}
+	if _, err := VoiceClip(fsys, "v/00.wav"); err != nil {
+		t.Fatalf("recently used voice dropped: %v", err)
+	}
+	if _, err := VoiceClip(fsys, "v/01.wav"); err == nil {
+		t.Fatal("least recently used voice was kept")
+	}
+	if len(voiceCache) > voiceCacheSize {
+		t.Fatalf("cache holds %d voices", len(voiceCache))
+	}
+}
+
+func TestVoiceVolumeAndClose(t *testing.T) {
+	freshSession(t)
+	SetVoiceVolume(0.4)
+	if voiceScale != 0.4 {
+		t.Fatal("SetVoiceVolume")
+	}
+	if _, err := VoiceClip(fstest.MapFS{"a.wav": {Data: testgame.Wav(0.01)}}, "a.wav"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Close(); err != nil {
+		t.Fatal(err)
+	}
+	if voiceScale != 1 || len(voiceCache) != 0 {
+		t.Fatal("Close keeps the voice settings of the ended session")
+	}
+	if voicePlayer != nil {
+		t.Fatal("nothing plays after Close")
+	}
 }

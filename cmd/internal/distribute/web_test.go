@@ -244,3 +244,30 @@ func TestWebPKeepsThinLines(t *testing.T) {
 		t.Fatalf("the lines keep a PSNR of %.1f dB, not 32", psnr)
 	}
 }
+
+func TestWebConversionPreservesCollidingDirectories(t *testing.T) {
+	src, bundle := t.TempDir(), webBundle(t)
+	if err := starter.Write(src, starter.Config{Template: "rpg", ID: "collision-test", Title: "Collision test"}); err != nil {
+		t.Fatal(err)
+	}
+	for name, b := range map[string][]byte{
+		"assets/note.txt":               []byte(strings.Repeat("A neutral note.\n", 100)),
+		"assets/note.txt.gz/notice.txt": []byte("directory content"),
+	} {
+		if err := cli.WriteNew(filepath.Join(src, filepath.FromSlash(name)), b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := filepath.Join(t.TempDir(), "site")
+	if err := Web(src, out, bundle, "devel", ""); err != nil {
+		t.Fatal(err)
+	}
+	files := manifest(t, out)
+	if f := files["assets/note.txt"]; f.File != f.Name || f.Gzip {
+		t.Fatalf("colliding conversion: %+v", f)
+	}
+	b, err := os.ReadFile(filepath.Join(out, "game", "assets", "note.txt.gz", "notice.txt")) //nolint:gosec // Test-owned exported file.
+	if err != nil || string(b) != "directory content" {
+		t.Fatalf("directory content lost: %q, %v", b, err)
+	}
+}

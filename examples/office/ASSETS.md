@@ -12,6 +12,11 @@ captured from it (`scripts/capture-office.txt`). The YAML (`game/game.yaml`,
 | `martin/`, `elena/`, `daniel/`, `iris/`, `nora/`, `mia/` | The standing picture of each team member (`normal.png`) | CC0 1.0 |
 | `icons/` | Face crops of the same pictures, for the carousel | CC0 1.0 |
 | `bg/office.jpg`, `bg/meeting.jpg`, `bg/pantry.jpg` | The office floor, the meeting room and the pantry, darkened for the glass panels | CC0 1.0 |
+| `phone/photo1.jpg` to `phone/photo10.jpg` | Mia's photos on the phone's feed (standing pictures on a plain backing) | CC0 1.0 |
+| `clip3/` | The standing pictures and puppet of Mia's dance clip on the phone's feed | CC0 1.0 |
+| `apps/` | Plain app icons for the phone's pages, lock screen and banners (a bank, a monitor, an on-call app, a calendar, a chat, a shop, a sign-in check, a timeline and a supporter site): a letter on a rounded square, drawn for this sample | CC0 1.0 |
+| `avatars/` | Plain avatars of the timeline's posters (a face and shoulders on a colored square), drawn for this sample | CC0 1.0 |
+| `clips/battle/`, `clips/cutin/`, `clips/call/` | The footage the phone's clips play: 640 px JPEG frames cut with ffmpeg from `docs/images/go-zen-battle.mp4`, `go-zen-cutin.mp4` and `workboard-call.mp4` (every third frame), captures of the Go Zen and office samples, which are made from their CC0 pictures | CC0 1.0 |
 | `faces.json` | The face box of each standing picture, written by `gozen faces` | MIT |
 
 No copyright is claimed in the pictures. To the extent any rights exist, they

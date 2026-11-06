@@ -173,7 +173,7 @@ var pages = map[string]clihelp.Page{
 		Usage:   []string{"gozen check [OPTIONS] <game-dir>"},
 		About: "Loads every definition of the game, resolves references and expressions, checks that " +
 			"the assets exist, and lays out dialogue and choices with the game's font and display rules. " +
-			"Warnings go to stderr and do not fail the check. --only structure does not read the font or " +
+			"Warnings go to stderr. --strict fails with exit 1 on warnings; --baseline FILE allows recorded counts per code and file and fails only on growth. --write-baseline FILE records counts in a new file. --only structure does not read the font or " +
 			"check the text layout, and stdout says so; --only layout checks the text layout alone. " +
 			"A game without fonts.regular in game.yaml is laid out with the built-in Go Regular font, " +
 			"which has Latin letters only; a warning lists the characters of the text it cannot draw.",
@@ -183,7 +183,7 @@ var pages = map[string]clihelp.Page{
 			{"check that dialogue and choices fit the message window", "gozen check --only layout game"},
 			{"print the problems as JSON for a tool or an agent", "gozen check --format json game"},
 		},
-		Groups: []clihelp.Group{{Title: "Check", Flags: []string{"only", "format"}}, general},
+		Groups: []clihelp.Group{{Title: "Check", Flags: []string{"only", "format", "strict", "baseline", "write-baseline"}}, general},
 	},
 	"sim battle": {
 		Summary: "fight AUTO battles against a troop",

@@ -9,12 +9,22 @@ name: Docs
 # The checks that need no display (the manifest against the references, the
 # verify marks, the YAML examples, README links) run in go test ./... (CI).
 #
+# The fast check of the pictures runs in the CI workflow (docs-images-fresh): it
+# compares the hashes of what makes each picture with docs/images/inputs.sum, so a
+# change that can alter a picture fails there until make docs-images has rewritten
+# that file. The full remake here therefore runs when a push or pull request changes
+# docs/images (the pictures, the manifest or inputs.sum), the code that makes them
+# (internal/dev/docs) or this workflow, and every night, to prove that the hashes and
+# the pictures still agree (a new ffmpeg or runner image is not in the hashes).
+#
 # Like the other full jobs, these run once the repository is public, or by hand
 # (docs/development/ci.md).
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 # Only superseded runs of the same pull request are canceled. Main and manual
@@ -43,16 +53,16 @@ jobs:
           persist-credentials: false
           # A pull request's merge commit and its first parent, the base it merges into.
           fetch-depth: 2
-      # A pull request that changes only words, the website, workflows or tests outside
-      # internal/dev/docs cannot change a picture, so it skips the remake. Any other
-      # file (code, samples, scripts, the manifest, docs/images, unknown files) runs it,
-      # and so does every push and manual run.
+      # Only a change to docs/images, internal/dev/docs or this workflow can make a
+      # picture differ from what inputs.sum says it was made from: every other input
+      # is in the hashes, which docs-images-fresh of the CI workflow checks. Nightly,
+      # manual runs and an unreadable diff always remake everything.
       - name: Decide whether the pictures can change
         id: scope
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          if [ "${EVENT}" != pull_request ]; then
+          if [ "${EVENT}" != pull_request ] && [ "${EVENT}" != push ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -63,10 +73,7 @@ jobs:
           run=false
           while IFS= read -r f; do
             case "${f}" in
-              "") ;;
               docs/images/* | internal/dev/docs/* | .github/workflows/docs.yml) run=true ;;
-              *.md | website/* | .github/* | e2e/* | bench/* | skills/* | LICENSE | *_test.go) ;;
-              *) run=true ;;
             esac
           done <<< "$files"
           echo "run=${run}" >> "$GITHUB_OUTPUT"
@@ -117,7 +124,11 @@ jobs:
       # Each runner also plays independent captures in parallel, one per CPU.
       - name: Remake the pictures and compare them with the committed ones
         if: steps.scope.outputs.run == 'true'
-        run: make docs-images-check
+        run: |
+          if ! make docs-images-check; then
+            echo "::error file=docs/images/manifest.yaml,title=Stale documentation pictures::The log above names each stale picture. Run make docs-images (or ONLY=name,... make docs-images) and commit the pictures with docs/images/inputs.sum; the fresh pictures are in the artifact docs-images-${GOZEN_DOCS_SHARD%%/*}."
+            exit 1
+          fi
       - name: Keep the fresh pictures of a failed check
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -3,6 +3,7 @@ package expr
 import (
 	"math"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -76,5 +77,70 @@ func TestBoundedRangeAndFirst(t *testing.T) {
 		if err == nil {
 			t.Errorf("accepted %s", src)
 		}
+	}
+}
+
+func BenchmarkCollectionEval(b *testing.B) {
+	values := make([]any, 1024)
+	for i := range values {
+		values[i] = float64(i)
+	}
+	env := Map{"rows": values}
+	for _, src := range []string{"sum(rows, it)", "count(rows, it > 500)", "filter(rows, it > 500)"} {
+		b.Run(src, func(b *testing.B) {
+			e := mustParse(src)
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := e.Eval(env); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+// Partitioning the input must not change a sum, and filtering must agree with
+// counting the same predicate. Each Eval has its own mutable item and budget.
+func TestCollectionPartitionAndConcurrentEvaluation(t *testing.T) {
+	t.Parallel()
+	sum := mustParse("sum(rows, it)")
+	count := mustParse("count(rows, it > 0)")
+	filter := mustParse("filter(rows, it > 0)")
+	for size := range 33 {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			t.Parallel()
+			values := make([]any, size)
+			want := 0.0
+			positive := 0
+			for i := range values {
+				n := float64(i - size/2)
+				values[i] = n
+				want += n
+				if n > 0 {
+					positive++
+				}
+			}
+			eval := func(e *Expr, rows []any) any {
+				t.Helper()
+				v, err := e.Eval(Map{"rows": rows})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return v
+			}
+			for split := 0; split <= size; split++ {
+				a, _ := ToNumber(eval(sum, values[:split]))
+				b, _ := ToNumber(eval(sum, values[split:]))
+				if a+b != want {
+					t.Fatalf("split %d: sum = %v, want %v", split, a+b, want)
+				}
+			}
+			if n := eval(count, values); n != float64(positive) {
+				t.Fatalf("count = %v, want %d", n, positive)
+			}
+			if rows, ok := eval(filter, values).([]any); !ok || len(rows) != positive {
+				t.Fatalf("filtered length = %d, want %d", len(rows), positive)
+			}
+		})
 	}
 }

@@ -1,8 +1,12 @@
 package play
 
 import (
+	"fmt"
 	"image"
+	"math/rand/v2"
 	"reflect"
+	"slices"
+	"strconv"
 	"testing"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -76,7 +80,7 @@ func TestChartLayoutReducesCrossings(t *testing.T) {
 	}
 	profiles["a"].Relations = []data.ProfileRelation{{Who: "d"}}
 	profiles["b"].Relations = []data.ProfileRelation{{Who: "c"}}
-	if got := chartCrossings(ids, profiles, chartLayout(ids, profiles)); got != 0 {
+	if got := chartCrossings(chartEdges(ids, profiles), chartLayout(ids, profiles)); got != 0 {
 		t.Fatalf("avoidable crossing remains: %d", got)
 	}
 }
@@ -228,5 +232,143 @@ func TestChartRouteAvoidsUnrelatedFace(t *testing.T) {
 		if d := chartSegmentDistance(route[i], route[i+1], points[2]); d < 54 {
 			t.Fatalf("line crosses unrelated face: %v (distance %v)", route, d)
 		}
+	}
+}
+
+func TestChartPointerZoomAndClose(t *testing.T) {
+	g := bookGame(t, Options{Location: "camp"}, "")
+	closed := 0
+	s := newProfiles(g, func() { closed++ })
+	s.chart = true
+	g.push(s)
+	depth := len(g.stack)
+	// Drawing every animation stage must not consume simulation randomness.
+	before, err := g.pcg.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dst := covScreen()
+	s.drawChart(g, dst)
+	points := chartPoints(s.ids, g.db.Profiles)
+	x, y := s.chartPoint(g, points[1])
+	g.in = input{click: true, mouse: image.Pt(int(x), int(y))}
+	s.updateChart(g)
+	if s.focus != -1 {
+		t.Fatal("pointer opened a hidden profile")
+	}
+	for _, tc := range []struct{ wheel, want float64 }{{1, 1.8}, {-1, .55}} {
+		g.in = input{wheel: tc.wheel}
+		for range 30 {
+			s.updateChart(g)
+		}
+		if s.zoom != tc.want {
+			t.Fatalf("zoom = %v, want %v", s.zoom, tc.want)
+		}
+	}
+	x, y = s.chartPoint(g, points[0])
+	g.in = input{click: true, mouse: image.Pt(int(x), int(y))}
+	s.updateChart(g)
+	if s.focus != 0 {
+		t.Fatalf("visible pointer target did not focus: %d", s.focus)
+	}
+	g.in = input{}
+	for range chartFocusFrames {
+		s.updateChart(g)
+		s.drawChart(g, dst)
+	}
+	shown, _ := s.chartDisplay(g, points)
+	x, y = s.chartPoint(g, shown[0])
+	g.in = input{click: true, mouse: image.Pt(int(x), int(y))}
+	s.updateChart(g)
+	if s.chart || !s.chartPage || len(g.stack) != depth || closed != 0 {
+		t.Fatal("second click did not enter detail in place")
+	}
+	g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+	s.update(g)
+	g.in = input{}
+	for range chartFocusFrames {
+		s.updateChart(g)
+		s.drawChart(g, dst)
+	}
+	if !s.chart || s.focus != -1 {
+		t.Fatal("detail cancel did not restore overview")
+	}
+	after, err := g.pcg.MarshalBinary()
+	if err != nil || string(before) != string(after) {
+		t.Fatal("chart browsing consumed simulation randomness", err)
+	}
+	g.in = input{pressed: [numButtons]bool{btnBook: true}}
+	s.updateChart(g)
+	if len(g.stack) != depth-1 || closed != 1 {
+		t.Fatal("book shortcut did not close exactly once")
+	}
+}
+
+func BenchmarkChartLayout(b *testing.B) {
+	for _, count := range []int{4, 8, 10, 12} {
+		b.Run(strconv.Itoa(count), func(b *testing.B) {
+			ids := make([]string, count)
+			profiles := map[string]*data.Profile{}
+			for i := range ids {
+				ids[i] = fmt.Sprintf("person-%d", i)
+			}
+			for i, id := range ids {
+				profiles[id] = &data.Profile{Affiliation: "Guild", Relations: []data.ProfileRelation{{Who: ids[(i+3)%count]}, {Who: ids[(i+5)%count]}}}
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				chartLayout(ids, profiles)
+			}
+		})
+	}
+}
+
+func TestChartLayoutPreservesGraph(t *testing.T) {
+	rng := rand.New(rand.NewPCG(71, 29)) //nolint:gosec // Reproducible graph inputs, not security randomness.
+	for count := 1; count <= 14; count++ {
+		for trial := range 20 {
+			ids := make([]string, count)
+			profiles := map[string]*data.Profile{}
+			for i := range ids {
+				ids[i] = strconv.Itoa(i)
+			}
+			for i, id := range ids {
+				profiles[id] = &data.Profile{Affiliation: strconv.Itoa(i % 3)}
+				for range 3 {
+					profiles[id].Relations = append(profiles[id].Relations, data.ProfileRelation{Who: ids[rng.IntN(count)]})
+				}
+			}
+			base := chartLayout(ids, nil)
+			got := chartLayout(ids, profiles)
+			if !slices.Equal(got, chartLayout(ids, profiles)) {
+				t.Fatalf("n=%d trial=%d: nondeterministic layout", count, trial)
+			}
+			edges := chartEdges(ids, profiles)
+			if chartCrossings(edges, got) > chartCrossings(edges, base) {
+				t.Fatalf("n=%d trial=%d: optimization increased crossings", count, trial)
+			}
+			used := map[image.Point]bool{}
+			for i, point := range got {
+				original := slices.Index(base, point)
+				if original < 0 || used[point] || profiles[ids[i]].Affiliation != profiles[ids[original]].Affiliation {
+					t.Fatalf("n=%d trial=%d: layout lost a slot or crossed affiliations: %v", count, trial, got)
+				}
+				used[point] = true
+			}
+			if count > 10 && !slices.Equal(got, base) {
+				t.Fatal("large chart exceeded its bounded layout search")
+			}
+		}
+	}
+}
+
+func TestChartEdgesIgnoreMissingAndSelfRelations(t *testing.T) {
+	ids := []string{"first", "missing", "last"}
+	profiles := map[string]*data.Profile{
+		"first": {Relations: []data.ProfileRelation{{Who: "first"}, {Who: "outside"}, {Who: "last"}}},
+		"last":  {Relations: []data.ProfileRelation{{Who: "first"}}},
+	}
+	if got := chartEdges(ids, profiles); !slices.Equal(got, []chartEdge{{0, 2}, {2, 0}}) {
+		t.Fatalf("resolved edges: %v", got)
 	}
 }

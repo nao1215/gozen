@@ -10,6 +10,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/layer1/decodeguard"
+	"github.com/nao1215/gozen/internal/savefile"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -38,10 +39,13 @@ const (
 	// screen kinds, views and workspace entries, say.ensemble and say.instant
 	// (ADR 0053), and ui.material.
 	SchemaVersion10 = 10
+	// SchemaVersion11 adds compact events and single-item commands, and enables
+	// authored tactic rows by default. Versions 0 through 10 keep their defaults.
+	SchemaVersion11 = 11
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
 	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
-	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams; 10 adds event arguments, planning and materials.
-	CurrentSchemaVersion = SchemaVersion10
+	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams; 10 adds event arguments, planning and materials; 11 adds compact authoring and enabled-by-default tactic rows.
+	CurrentSchemaVersion = SchemaVersion11
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the
@@ -55,7 +59,7 @@ var gameIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
 // ValidGameID shares the persistent identity constraint between loading and
 // template creation, so a CLI-generated game has the same save identity rules.
-func ValidGameID(id string) bool { return gameIDPattern.MatchString(id) }
+func ValidGameID(id string) bool { return gameIDPattern.MatchString(id) && savefile.ValidID(id) }
 
 // checkVersionHeader checks only the version, before the overall type conversion and data loading.
 // Even if future fields exist, the unknown-version diagnostic takes priority, and null or strings are not rounded to 0.
@@ -103,7 +107,7 @@ func versionErrors(g Game) []error {
 func gameVersionErrors(g Game) []error {
 	errs := versionErrors(g)
 	if g.SchemaVersion >= SchemaVersion1 && !ValidGameID(g.ID) {
-		errs = append(errs, fmt.Errorf(lang.T("game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください"), g.SchemaVersion))
+		errs = append(errs, fmt.Errorf(lang.T("game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの、予約語でない 255 バイト以内の名前を指定してください"), g.SchemaVersion))
 	}
 	return errs
 }

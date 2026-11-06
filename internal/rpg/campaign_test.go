@@ -2,6 +2,7 @@ package rpg_test
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/expr"
@@ -118,5 +119,37 @@ func TestCampaignSet(t *testing.T) {
 	}
 	if got := eval(t, back, "faction.blue.regions"); got != 2.0 {
 		t.Fatalf("after a save: %v", got)
+	}
+}
+
+func TestCampaignSetLargeTroopCounts(t *testing.T) {
+	db := testgame.LoadCampaign(t, nil)
+	st := testgame.State(db, 1)
+	st.Vars["campaign_general"], st.Vars["campaign_target"] = "scout", "field"
+	for _, path := range []string{"region.field.troops", "target.troops", "generals.scout.troops", "general.troops"} {
+		for _, n := range []float64{2147483648, 9223372036854775808, 1e200} {
+			if err := st.SetPath(path, n); err != nil {
+				t.Fatal(err)
+			}
+			if got := eval(t, st, path); got != n {
+				t.Errorf("%s = %v, want %g", path, got, n)
+			}
+		}
+		for _, n := range []float64{math.Inf(1), math.Inf(-1), math.NaN()} {
+			if err := st.SetPath(path, n); err == nil {
+				t.Errorf("accepted non-finite troops: %s = %v", path, n)
+			}
+		}
+	}
+	b, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := rpg.Parse(db, b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := eval(t, back, "generals.scout.troops"); got != 1e200 {
+		t.Errorf("saved troops = %v", got)
 	}
 }

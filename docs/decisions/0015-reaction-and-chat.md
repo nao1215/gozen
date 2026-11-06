@@ -59,6 +59,7 @@ Names usable in condition expressions (`expr`): `tag.T` (confidence, 0 if absent
 
 A character YAML (a shortened form of the example in `react/react_test.go`, with its Japanese dictionary words and lines given in English here):
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 lexicon:
   cat: [cat, kitten, {meow: 0.4}]
@@ -149,3 +150,7 @@ Before Gozen is made public, check the following. Anything that fails gets its A
 2. The YAML format is documented in the [schema](https://nao1215.github.io/gozen/schema/), and the validation in `Load` and `gozen check` find mistakes.
 3. It withstands untrusted input. It accepts free text and online opponents' words, so normalization, analyzers and masking have fuzz tests, and time and memory are bounded for large input.
 4. It has been confirmed to run on WASM in a user's game.
+
+## Later change (2026-11-06)
+
+`Mask` and `NewMask` were removed: since the Go APIs were retired (#56) no game could set them, and a whole-program dead code check (`make deadcode`) found them reachable only from their tests. `Filter` stays for the filters the engine itself sets.

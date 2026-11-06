@@ -36,7 +36,7 @@ Item:
   stats: "Stat bonuses the item gives when equipped."
   use: "What the item does when used, such as healing or damage to targets."
 ItemCount:
-  _: "An item and how many."
+  _: "An item and how many. In schema 11, a string item ID means one item."
   count: "How many of the item. When omitted it is 1."
   item: "The ID of the item (an ID of items)."
 Learn:

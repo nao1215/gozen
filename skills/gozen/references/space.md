@@ -1,6 +1,6 @@
 # Continuous stacked spaces
 
-For streets, houses with upper floors, bridges and atriums, set `schema_version: 8` and use `dungeon.space`. Supply 1 to 8 aligned rectangular `levels` (3 to 64 cells per side); `_` is open air. Straight `stairs` have a one-based lower `level`, zero-based `x` and `y`, a `facing`, and `length` 3 to 8. Keep headroom empty and both endpoints unconditional. `pos.level` is zero-based; save/restore, exploration and tile records keep the level.
+For streets, houses with upper floors, bridges and atriums, set `schema_version: 11` and use `dungeon.space`. Supply 1 to 8 aligned rectangular `levels` (3 to 64 cells per side); `_` is open air. Straight `stairs` have a one-based lower `level`, zero-based `x` and `y`, a `facing`, and `length` 3 to 8. Keep headroom empty and both endpoints unconditional. `pos.level` is zero-based; save/restore, exploration and tile records keep the level.
 
 Use `wall`, `floor_texture`, `ceiling_texture` and optional `space.sky` for materials. A sky panorama wraps horizontally, zenith at the top to horizon at the bottom. Do not combine a space with `map`, `generate`, roamers, themes, door or tile pictures, conditional looks, or slide and spin effects. Ordinary dungeons work without `space`.
 

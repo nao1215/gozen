@@ -150,3 +150,19 @@ events:
 		}
 	}
 }
+
+func TestDeclaredStateInitialNumbersAreFinite(t *testing.T) {
+	for _, value := range []string{".nan", ".inf", "-.inf", "0", "12.5", "-3"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": testgame.Game + "\nstate:\n  names:\n    var.amount: {type: number, initial: " + value + "}\n"})
+			invalid := strings.HasPrefix(strings.TrimPrefix(value, "-"), ".")
+			if invalid {
+				if err == nil || !strings.Contains(err.Error(), "state.names.var.amount.initial") {
+					t.Fatalf("nonfinite initial value %s was not diagnosed: %v", value, err)
+				}
+			} else if err != nil {
+				t.Fatalf("finite initial value %s was rejected: %v", value, err)
+			}
+		})
+	}
+}

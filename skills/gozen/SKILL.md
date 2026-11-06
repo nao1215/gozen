@@ -21,7 +21,7 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 
 Use `gozen help --format json` to inspect registered commands and options without loading a game. `gozen book GAME --format json` describes the whole game; add `--section lineage` to select only monster family trees.
 
-For every `sim` command, `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
+For the measurement commands (`sim battle`, `dive`, `floors`, `design`, `campaign`, `routes` and `breed`), `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
 
 <!-- verify: run fixture=cave -->
 ```shell
@@ -38,13 +38,22 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection, 7 for battle forms, 8 for stacked spaces), an `id`, and `start` with a `location` and a `party`.
-- A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
-- The two skills `attack` and `guard`, even in a game without battles.
+- `game.yaml` with `schema_version: 11`, a stable `id`, and `start.location`. Add `start.party` only for a combat game.
+- Combat party members need a class with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`. Narrative speakers use `actors` with a `name` and optional portraits; omit `class`.
+- Combat games need their attack and guard skills. A narrative game needs neither skills, classes nor a dummy party.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
 - No `fonts` is needed: the built-in Go font has Latin letters only. For Japanese or other scripts, put a font under `assets/` and name it in `fonts.regular`.
 
-A complete small game is in references/minimal.md.
+A complete small game is in references/minimal.md. For schema 11, write an event
+without metadata as `opening: [{say: Welcome}]` under `events`, and one-item
+transfers as `give: key` or `take: key`. Keep the full event mapping for `when`,
+`trigger`, `once`, `location` or `params`. An authored tactic row is enabled
+unless it says `enabled: false`.
+
+Before v1.0.0 gozen has no migration command; do not add one. To move a game
+to schema 11, change `schema_version` and write `enabled: false` on tactic rows
+that omitted `enabled`, then check and play it. Old engines cannot read schema
+11. See references/yaml.md for the full forms.
 
 Battle forms, HP pictures and moving enemies need schema version 7 (references/battle.md, references/puppet.md).
 
@@ -70,6 +79,8 @@ A first-person dungeon can take a ready look: `gozen theme list` shows the theme
 
 ## Read a reference when the game needs it
 
+- references/cli.md: every CLI command and option, checked against live help.
+- references/commands.md: every event verb and its purpose.
 - references/planning.md: management games: day flows, workspace cards, tickets, drag and drop, messages, video calls, guides, calendars and the office sample.
 - references/minimal.md: a complete two-file game to copy from.
 - references/yaml.md: YAML traps and which feature needs which `schema_version`.

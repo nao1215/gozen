@@ -10,6 +10,9 @@
 //	GZN1xxx  exit 1  processing failed: the game, a file, a simulation, a capture
 //	GZN2xxx  exit 2  the command line is invalid
 //
+// check --strict and --baseline budget growth make warnings fail with exit 1
+// without changing their code.
+//
 // The hundreds digit is the family: what the reader has to fix. One code per
 // fix, never one per call site, so the published list reads as problems a
 // person can act on. Messages may be reworded; codes do not change.
@@ -22,7 +25,6 @@ package diag
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -40,8 +42,8 @@ func (c Code) String() string {
 	return fmt.Sprintf("GZN%04d", int(c))
 }
 
-// ExitCode is the exit value a diagnostic with this code produces: the
-// thousands digit.
+// ExitCode is the default exit family: the thousands digit. check warning
+// enforcement promotes zero to 1 without changing the diagnostic identity.
 func (c Code) ExitCode() int { return int(c) / 1000 }
 
 // Mark adds the code to the end of a message: "msg [GZN1101]". The position
@@ -100,15 +102,30 @@ type Entry struct {
 	Detail string
 	// Fix tells the reader what to change.
 	Fix string
+	// Example contains the exact files for a standalone failing or warning game.
+	// errgen publishes these files; the CLI tests check the published examples.
+	Example []ExampleFile
+	// NotYAML explains why a command-line, runtime or filesystem problem cannot
+	// be reproduced by checking a YAML game. Exactly one of Example and NotYAML is set.
+	NotYAML string
 	// Since is the gozen version the code first shipped in.
 	Since string
 }
 
+// ExampleFile is one game-relative file published in the diagnostic reference.
+// Encoding is empty for literal UTF-8 content or "base64" for a binary asset.
+// The generator and CLI reference tests consume the same bytes.
+type ExampleFile struct {
+	// Malformed marks intentionally invalid YAML. The CLI reproduction test,
+	// rather than the generic documentation syntax check, verifies this input.
+	Malformed bool
+	Name      string
+	Content   string
+	Encoding  string
+}
+
 // since is the version every code registered before the first release ships in.
 const since = "v0.1.0"
-
-// codeText matches a code in its published form anywhere in a string.
-var codeText = regexp.MustCompile(`\bGZN(\d{4})\b`)
 
 var (
 	registry []Entry
@@ -120,6 +137,7 @@ var (
 // mistake fails the first test that imports diag.
 func register(number int, name string, e Entry) Code {
 	c := Code(number)
+	e.Example = examples[number]
 	switch {
 	case number < 1 || number > 2999:
 		panic(fmt.Sprintf("diag: code %d is outside GZN0001-GZN2999", number))
@@ -129,11 +147,15 @@ func register(number int, name string, e Entry) Code {
 		panic(fmt.Sprintf("diag: %s is in no family", c))
 	case name == "":
 		panic(fmt.Sprintf("diag: %s has no identifier name", c))
-	case e.Summary == "":
+	case strings.TrimSpace(e.Summary) == "":
 		panic(fmt.Sprintf("diag: %s has no summary", c))
-	case e.Detail == "":
+	case strings.TrimSpace(e.Detail) == "":
 		panic(fmt.Sprintf("diag: %s has no detail", c))
-	case e.Fix == "":
+	case len(e.Example) == 0 && strings.TrimSpace(e.NotYAML) == "":
+		panic(fmt.Sprintf("diag: %s needs a reproducible example or a non-YAML reason", c))
+	case len(e.Example) > 0 && e.NotYAML != "":
+		panic(fmt.Sprintf("diag: %s has both an example and a non-YAML reason", c))
+	case strings.TrimSpace(e.Fix) == "":
 		panic(fmt.Sprintf("diag: %s has no fix", c))
 	}
 	if prev, dup := byCode[c]; dup {
@@ -201,23 +223,6 @@ func Near(c Code) []Entry {
 	for _, e := range All() {
 		if int(e.Code)/100 == int(c)/100 {
 			out = append(out, e)
-		}
-	}
-	return out
-}
-
-// Codes returns every registered code mentioned in text, in order of
-// appearance and without repeats.
-func Codes(text string) []Code {
-	var out []Code
-	for _, m := range codeText.FindAllStringSubmatch(text, -1) {
-		n, err := strconv.Atoi(m[1])
-		if err != nil {
-			continue
-		}
-		c := Code(n)
-		if _, ok := byCode[c]; ok && !slices.Contains(out, c) {
-			out = append(out, c)
 		}
 	}
 	return out

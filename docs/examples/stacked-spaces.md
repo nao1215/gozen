@@ -18,7 +18,7 @@ This is a technical demonstration of bounded geometry, not a finished town.
 
 ## Authoring
 
-Set `schema_version: 8` in game.yaml. See the complete [example world](../../examples/space/game/data/world.yaml).
+Set `schema_version: 11` in game.yaml. See the complete [example world](../../examples/space/game/data/world.yaml).
 `space.levels` holds equally sized rectangular maps from bottom to top. A period
 is floor, `#` is a full-height wall, and `_` or a blank cell is open air. Prefer
 underscores because YAML block indentation can make leading blank rows ambiguous.
@@ -89,6 +89,7 @@ Flat/floor decals, wall/door-mounted tile pictures and `away` pictures are not s
 
 Opt in per space; omitting `free_move` keeps the existing grid controls:
 
+<!-- verify: parse movement fragment; keep the existing space levels and stairs -->
 ```yaml
 space:
   free_move:

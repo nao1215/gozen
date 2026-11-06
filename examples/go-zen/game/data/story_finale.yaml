@@ -42,7 +42,7 @@ events:
               - say: {who: vance, face: pained, text: "...Nothing. It never had one. I'm told that's why it was precious."}
               - say: "The Magistrate drops a brass seal on the stone and walks out of the hall without looking back."
               - say: "The valve has two locks left. Maren takes Hobb's key out of her pocket and slots it into the second."
-              - take: {item: hobb_key}
+              - take: hobb_key
               - say: {who: maren, face: smile, text: "Thank you, Hobb. That's the one you left me."}
               - say: "The last lock needs a hand on the wheel, and one more person willing to trust it."
               - say: {who: maren, face: smile, text: "Who turns the last lock?"}
@@ -66,41 +66,38 @@ events:
               - set: {flag.finale_done: true}
               - move: plaza_end
   memory_backs:
-    do:
-      - set: {flag.seen_cg3: true}
-      - say: "The brass wall looms. Shoulder to shoulder, the four of them hold the line, and Maren grips a page in each hand."
-      - say: {who: ox, face: determined, text: "Behind me."}
-      - say: {who: tilly, face: determined, text: "I'll bet on you."}
-      - say: {who: kes, face: determined, text: "Statistically— we win."}
-      - say: {who: maren, face: determined, text: "Every line, walked."}
+    - set: {flag.seen_cg3: true}
+    - say: "The brass wall looms. Shoulder to shoulder, the four of them hold the line, and Maren grips a page in each hand."
+    - say: {who: ox, face: determined, text: "Behind me."}
+    - say: {who: tilly, face: determined, text: "I'll bet on you."}
+    - say: {who: kes, face: determined, text: "Statistically— we win."}
+    - say: {who: maren, face: determined, text: "Every line, walked."}
   # Beat 15. Final Image.
   final_image:
-    do:
-      - music: town
-      - say: "Pellmere Plaza. Noon. The fountain runs, and the whole square is wet and shouting."
-      - say: {who: Mayor, text: "Maren Quill! The town's thanks. And a thousand gold, as promised."}
-      - gold: 1000
-      - gold: -200
-      - set: {var.debt: 0}
-      - say: "Maren pays off her debt on the spot. The purse is still heavy, and she feels lighter than she has in years."
-      - say: {who: Pomm, face: pomm/normal.png, text: "A map you haven't walked is a rumor with ink on it. A map you have walked is a promise."}
-      - say: {who: maren, face: smile, text: "Auntie. You said that to me the first day."}
-      - say: {who: Pomm, face: pomm/normal.png, text: "And I'll say it again tomorrow. Eat."}
-      - if: "var.lock_by == 1"
-        then: [{say: {who: ox, face: smile, text: "The new gate watch pays by the hour. No one needs saving. Quiet work, finally."}}]
-      - if: "var.lock_by == 2"
-        then: [{say: {who: tilly, face: laugh, text: "The chapel fund is up to twelve silver. I'll bet it lasts a week. I'll be right."}}]
-      - if: "var.lock_by == 3"
-        then: [{say: {who: kes, face: smile, text: "I've got a workshop with a window. Statistically— okay, no statistic. Sunshine."}}]
-      - say: {who: Ansel, face: ansel/normal.png, text: "Water remembers, girl. So does everyone who walked."}
-      - say: {who: Ansel, face: ansel/normal.png, text: "I think I'll stop fishing."}
-      - call: memory_sign
-      - say: {who: maren, face: smile, text: "Maps. Every line walked."}
-      - clear: true
+    - music: town
+    - say: "Pellmere Plaza. Noon. The fountain runs, and the whole square is wet and shouting."
+    - say: {who: Mayor, text: "Maren Quill! The town's thanks. And a thousand gold, as promised."}
+    - gold: 1000
+    - gold: -200
+    - set: {var.debt: 0}
+    - say: "Maren pays off her debt on the spot. The purse is still heavy, and she feels lighter than she has in years."
+    - say: {who: Pomm, face: pomm/normal.png, text: "A map you haven't walked is a rumor with ink on it. A map you have walked is a promise."}
+    - say: {who: maren, face: smile, text: "Auntie. You said that to me the first day."}
+    - say: {who: Pomm, face: pomm/normal.png, text: "And I'll say it again tomorrow. Eat."}
+    - if: "var.lock_by == 1"
+      then: [{say: {who: ox, face: smile, text: "The new gate watch pays by the hour. No one needs saving. Quiet work, finally."}}]
+    - if: "var.lock_by == 2"
+      then: [{say: {who: tilly, face: laugh, text: "The chapel fund is up to twelve silver. I'll bet it lasts a week. I'll be right."}}]
+    - if: "var.lock_by == 3"
+      then: [{say: {who: kes, face: smile, text: "I've got a workshop with a window. Statistically— okay, no statistic. Sunshine."}}]
+    - say: {who: Ansel, face: ansel/normal.png, text: "Water remembers, girl. So does everyone who walked."}
+    - say: {who: Ansel, face: ansel/normal.png, text: "I think I'll stop fishing."}
+    - call: memory_sign
+    - say: {who: maren, face: smile, text: "Maps. Every line walked."}
+    - clear: true
   memory_sign:
-    do:
-      - set: {flag.seen_cg4: true}
-      - say: "Above the shop door, a new sign swings in the spray. MAPS. EVERY LINE WALKED."
-      - say: "Under it, a small drawing of a bird. Maren decided to keep it."
-      - say: {who: maren, face: smile, text: "A map you haven't walked is a rumor with ink on it. So I walk first."}
-      - image: ""
+    - set: {flag.seen_cg4: true}
+    - say: "Above the shop door, a new sign swings in the spray. MAPS. EVERY LINE WALKED."
+    - say: "Under it, a small drawing of a bird. Maren decided to keep it."
+    - say: {who: maren, face: smile, text: "A map you haven't walked is a rumor with ink on it. So I walk first."}
+    - image: ""

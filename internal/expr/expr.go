@@ -317,7 +317,7 @@ func (e *Expr) Eval(env Env) (any, error) {
 		return nil, errors.New("empty expression")
 	}
 	if e.collections {
-		env = Chain{Map{"\x00collectionBudget": new(int)}, env}
+		env = &collectionBudget{Env: env}
 	}
 	v, err := e.root.eval(env)
 	if err != nil {
@@ -391,6 +391,8 @@ func Truthy(v any) bool {
 	case float64:
 		return x != 0
 	case int:
+		return x != 0
+	case int64:
 		return x != 0
 	case string:
 		return x != ""

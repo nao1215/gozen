@@ -4,6 +4,8 @@ Gozen is a YAML-and-assets game toolkit. Describe the behavior you need in an is
 
 Read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture/overview.md), [API rules](docs/architecture/api-guidelines.md), and relevant [ADRs](docs/decisions/index.md). Application packages belong under internal with an assigned layer. Keep dependencies directed downward and graphics outside the core. Explain the consumer and contract of each new export and run `make boundary`.
 
+Before v1.0.0 the YAML and save formats may change between versions without migration tools. Do not add migration commands or YAML upgraders.
+
 Use Go 1.26.10 or later. Install the pinned development tools listed in the [testing guide](docs/development/testing.md), then run:
 
 ```sh

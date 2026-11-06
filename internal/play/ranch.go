@@ -86,7 +86,7 @@ func (r *ranch) show(g *Game, step string) {
 			if a.Monster == "" {
 				continue
 			}
-			if step == "breed_second" && r.validSecond(g, id) || step == "breed_first" && r.hasPartner(g, id) || step == "release_id" {
+			if step == "breed_second" && r.canPair(g, r.first, id) || step == "breed_first" && r.hasPartner(g, id) || step == "release_id" {
 				ids = append(ids, id)
 			}
 		}
@@ -140,13 +140,6 @@ func (r *ranch) hasPartner(g *Game, id string) bool {
 func (r *ranch) canPair(g *Game, first, second string) bool {
 	a, b := g.st.Actors[first], g.st.Actors[second]
 	return first != second && a != nil && b != nil &&
-		(a.Sex == "male" && b.Sex == "female" || a.Sex == "female" && b.Sex == "male") &&
-		g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus) != ""
-}
-
-func (r *ranch) validSecond(g *Game, id string) bool {
-	a, b := g.st.Actors[r.first], g.st.Actors[id]
-	return id != r.first && a != nil && b != nil &&
 		(a.Sex == "male" && b.Sex == "female" || a.Sex == "female" && b.Sex == "male") &&
 		g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus) != ""
 }

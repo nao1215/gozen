@@ -15,6 +15,8 @@ import (
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
 
+// tableResidents sorts only displayed observations. Equal values retain the
+// authored order, missing values stay last, and zero restores the authored order.
 func (s *authorScreen) tableResidents(g *Game) []string {
 	v := g.db.Game.Screens[s.name].View
 	ids := g.visibleResidents(v)

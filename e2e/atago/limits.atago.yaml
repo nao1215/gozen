@@ -55,7 +55,7 @@ scenarios:
         classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
         actors: {scout: {class: walker}}
         skills: {attack: {}, guard: {}}
-        locations: {camp: {}}
+        locations: {camp: {encounters: {troops: [{troop: crowd}]}}}
         enemies: {mote: {image: x.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
         troops: {crowd: {members: [mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote]}}
   - run: {command: 'gozen check --only structure --format json g'}
@@ -69,7 +69,7 @@ scenarios:
         classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
         actors: {scout: {class: walker}}
         skills: {attack: {}, guard: {}}
-        locations: {camp: {}}
+        locations: {camp: {encounters: {troops: [{troop: crowd}]}}}
         enemies: {mote: {image: x.png, stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}}}
         troops: {crowd: {members: [mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote,mote]}}
   - run: {command: 'gozen check --only structure --format json g'}

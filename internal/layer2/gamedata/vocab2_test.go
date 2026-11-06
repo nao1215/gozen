@@ -30,6 +30,14 @@ func loadV2(head, events string) (*data.DB, error) {
 	})
 }
 
+// Null definitions must reach the schema diagnostic, even while resolving commands.
+func TestNullAuthoredScreenReportsDiagnostic(t *testing.T) {
+	_, err := loadV2(v2Head+"screens: {album: null}\n", "")
+	if err == nil || !strings.Contains(err.Error(), "expected a definition map (not null)") {
+		t.Fatalf("null authored screen: %v", err)
+	}
+}
+
 // Checks of the spec version 2 vocabulary (ADR 0021): the error messages, and that they cannot be used in version 1.
 func TestVersion2Checks(t *testing.T) {
 	for _, tc := range []struct{ name, head, events, want string }{

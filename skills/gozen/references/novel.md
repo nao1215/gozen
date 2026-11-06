@@ -1,6 +1,6 @@
 # Novel games
 
-A novel game (ADV) sets `schema_version: 4` and `ui.message: novel` in game.yaml; its places mostly run events. Start from `gozen new GAME --template novel`: speakers are classless and the party may be empty, so no combat rules are needed. The player can roll back, skip read lines, save in a scene and change the language without any YAML of yours.
+A novel game (ADV) sets `schema_version: 11` and `ui.message: novel` in game.yaml; its places mostly run events. Start from `gozen new GAME --template novel`: speakers are classless and the party may be empty, so no combat rules are needed. The player can roll back, skip read lines, save in a scene and change the language without any YAML of yours.
 
 - Give a `choice` an `id` to read the option taken as `chose.<id>`. Keep other facts in flags with `set`. `gozen check` warns of a flag set but never read (GZN0112) and read but never set (GZN0113).
 - Stage a scene with `stand` (who stands where, how they come and go), `effect` (shake one portrait, fade through a color), `music` with `fade` and `wait` with `skip: false`. A line's `face` still changes the expression of a portrait standing.
@@ -40,6 +40,70 @@ ui:
 ```
 
 The head's horizontal center follows `stand.at` or automatic placement. `stage_scale` multiplies size around the head; `stage_drop` shifts the head top. It does not apply to moving puppets, battle cut-ins or the `box` window.
+
+## A phone on the screen
+
+`phone` shows a phone over the scene and waits until the player puts it down (ADR 0057). Skip passes it. `app` is `chat`, `feed`, `video`, `page`, `lock` or `banner`, each with its own list; `hold: landscape` turns the phone on its side.
+
+<!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
+```yaml
+- phone:
+    app: chat
+    title: Team
+    messages:
+    - {from: Ann, icon: icons/ann.png, text: Are you up?}
+    - {mine: true, text: Now I am.}
+    - {from: Ann, icon: icons/ann.png, picture: photos/cake.png}
+    - {from: Ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml, text: Look, seconds: 8, bounce: [2, 5]}}
+- phone:
+    app: feed
+    title: Photos
+    posts:
+    - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
+    - {who: ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml}, likes: 300, text: Dance.}
+- phone:
+    app: video
+    hold: landscape
+    video: {picture: bg/stage.png, puppet: ann/puppet.yaml, zoom: 1.6, text: Live clip, seconds: 30, bounce: [4, 9.5]}
+```
+
+- A chat shows its first message when the phone comes up; a press brings the next, another's after typing dots. A press on the newest video turns the phone on its side and plays it; Cancel goes back to the chat. A message is exactly one of `text`, `picture` and `video`.
+- A feed stacks its posts top to bottom: the wheel, up and down (a post at a time) or a drag scroll them, a click on a picture likes it, OK at the bottom puts the phone down. A post is a `picture` or a `video` (it plays in place, looping, while on the screen).
+- A video is made of a `picture` (pushed in slowly) and an optional `puppet` in front, `zoom` times the frame's height (1.5 by default: the upper body), jiggling at each second in `bounce`. `seconds` is 30 by default.
+- Footage: `frames: [clips/battle/*.jpg]` (pictures or patterns under assets/, sorted) plays them at `fps` (12 by default) over the `picture`, the poster; a feed loops them, the video app and a chat's video stop on the last; `seconds` defaults to the frames' length. Cut a video into JPEGs with ffmpeg; the engine decodes no video files.
+- A `page` (a browser bar with `url`, or `title` with `color`) scrolls `rows`: `text` (`size`, `bold`), `picture` (whole, `caption`), `pictures` (grid, `columns` 2 or 3), `item` (icon, title, text, value), `button` (puts the phone down). `locked: '!flag.x'` darkens a picture or grid with a lock and `label`.
+- A `lock` screen shows `time`/`date` and `notices` one a press (`auto` by themselves); `call: true` is an incoming call (OK answers, Cancel declines; list the call twice to ring again).
+- `var: var.x` keeps a button's `id` (or label), `answer` or `decline`; a button's or call's `set` is the `set` command's map. Branch on it after the phone.
+- A page's buttons take the keys and the pad (left, right, Tab ring one; OK presses it). `qr: text` draws a crisp QR code with `caption`.
+- Chat: `time`, `read: true` (owner's), `day` (a separator; a message of only `day` is the separator). Pictures keep their shape and open full screen on a press or a click. Posts: `time`. No `icon`: a circle with the name's first letter.
+- Footage: `fade: 0.3` cross-fades frames, `pan: true` pushes in on each, so a few pictures at a low `fps` look smooth.
+- A feed post with only `text` is a timeline card (`replies`, `reposts`). `app: banner` does not wait: a push banner at the top over any scene; a click opens the notice's `event`.
+
+<!-- verify: parse a fragment of an event; the pictures are the author's files; ann_chat is the author's event -->
+```yaml
+- phone:
+    app: page
+    title: Harbor Bank
+    color: '#1f5fbf'
+    var: var.transfer
+    rows:
+    - {text: Confirm the transfer, size: large, bold: true}
+    - {item: {icon: icons/bank.png, title: Blue Tide Ltd., text: Invoice 0420, value: '-3,000,000'}}
+    - {pictures: [shop/1.png, shop/2.png, shop/3.png], locked: '!flag.supported', label: Supporters only}
+    - {button: Confirm, set: {flag.paid: true}}
+    - {button: Cancel, id: cancel}
+- phone:
+    app: lock
+    date: Tuesday
+    notices:
+    - {app: Monitor, icon: icons/alert.png, title: API error rate 6%, text: Over the 5% threshold}
+    - {app: On-call, icon: icons/alert.png, title: On-call · API error rate, text: Incoming call, call: true, set: {flag.woke: true}}
+- phone:
+    app: banner
+    notices: [{app: Chat, icon: icons/ann.png, title: Ann, text: Are you coming?, event: ann_chat}]
+```
+
+- Use a portrait's face or bust for `icon`; tall standing pictures are cropped from their top. The status bar shows `var.clock_minutes` (minutes since midnight) when the game sets it.
 
 ## Picture limits
 

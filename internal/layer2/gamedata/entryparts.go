@@ -142,7 +142,7 @@ func (c *checker) entryDrag(ew string, screen *AuthorScreen, i int) {
 			c.errorf(diag.Shape, ew+".bust", "a bust needs a bounded entry")
 		case b.Picture == "":
 			c.errorf(diag.Shape, ew+".bust.picture", "a bust needs a picture")
-		case b.Width < 0 || b.Width > 1 || b.Height < 0 || b.Height > 1 || b.Top < 0 || b.Top >= 1 || b.Face < 0 || b.Face >= 1:
+		case !finiteNumber(b.Width) || !finiteNumber(b.Height) || !finiteNumber(b.Top) || !finiteNumber(b.Face) || b.Width < 0 || b.Width > 1 || b.Height < 0 || b.Height > 1 || b.Top < 0 || b.Top >= 1 || b.Face < 0 || b.Face >= 1:
 			c.errorf(diag.OutOfRange, ew+".bust", "width and height are fractions up to 1, top and face below 1")
 		}
 		if b.Fit != "" && b.Fit != "contain" {

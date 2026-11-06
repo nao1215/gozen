@@ -8,6 +8,7 @@ import (
 	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/layer1/safeint"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -339,7 +340,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if t.Def != nil && t.Def.Hard > 0 && !isCrit && use != nil && b.isAttack(use) {
 			v = min(v, float64(t.Def.Hard)) // a hard shell: the plain attack only scratches it
 		}
-		for st := range t.States {
+		for _, st := range slices.Sorted(maps.Keys(t.States)) {
 			if d := b.DB.States[st]; d != nil && (d.DamageRate > 0 || b.DB.Game.SchemaVersion >= data.SchemaVersion1) {
 				v *= d.DamageRate
 			}
@@ -347,7 +348,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if t.Guard {
 			v *= b.DB.Game.Battle.GuardRate
 		}
-		n := max(0, int(math.Round(v)))
+		n := max(0, safeint.From(math.Round(v)))
 		var lost int // Actual amount removed, used for drain.
 		endured := false
 		if stat == "mp" {
@@ -426,7 +427,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if err != nil {
 			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
 		}
-		n := max(0, int(math.Round(vary(v))))
+		n := max(0, safeint.From(math.Round(vary(v))))
 		if stat == "mp" {
 			n = min(n, t.MMP()-t.MP)
 			t.MP += n
@@ -467,7 +468,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if err != nil {
 			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
 		}
-		t.HP = max(1, min(t.MHP(), int(math.Round(v))))
+		t.HP = max(1, min(t.MHP(), safeint.From(math.Round(v))))
 		text := e.Message
 		if text == "" {
 			text = lang.T("{target}は いきかえった！")

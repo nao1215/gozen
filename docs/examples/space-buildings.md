@@ -11,6 +11,7 @@ Up/Down walk, Left/Right turn, Shift+Left/Right strafe, and Z interacts. The sam
 
 ## Facades
 
+<!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
 ```yaml
 space:
   materials:
@@ -30,6 +31,7 @@ The sample's windows are painted, opaque decoration. Doorways are genuinely walk
 
 ## Roofs and canopies
 
+<!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
 ```yaml
 space:
   roofs:

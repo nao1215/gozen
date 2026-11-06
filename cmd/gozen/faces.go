@@ -157,13 +157,18 @@ func bestFace(boxes []detect.Box, b image.Rectangle) (detect.Box, bool) {
 	return best, ok
 }
 
-// faceCheck is the picture's top third, 480 high, with the face box (red) and the circle
-// the balloon face is cut from (green).
+// faceCheck is the picture's top third, at most 480 high and 4096 wide, with
+// the face box (red) and the circle the balloon face is cut from (green).
 func faceCheck(img image.Image, box *[4]int) image.Image {
 	b := img.Bounds()
-	top := image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+b.Dy()/3)
-	k := 480 / float64(top.Dy())
-	out := image.NewRGBA(image.Rect(0, 0, int(float64(top.Dx())*k), 480))
+	if b.Empty() {
+		return image.NewRGBA(image.Rectangle{})
+	}
+	top := image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+max(1, b.Dy()/3))
+	// A very wide source must not turn a small inspection into an unbounded
+	// allocation. Preserve its aspect ratio while fitting the preview budget.
+	k := min(480/float64(top.Dy()), 4096/float64(top.Dx()))
+	out := image.NewRGBA(image.Rect(0, 0, max(1, int(float64(top.Dx())*k)), max(1, int(math.Round(float64(top.Dy())*k)))))
 	for i := range out.Pix {
 		out.Pix[i] = 200
 	}

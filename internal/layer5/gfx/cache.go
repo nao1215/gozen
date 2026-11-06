@@ -4,6 +4,7 @@ package gfx
 import (
 	"image/color"
 	"math"
+	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -63,6 +64,7 @@ type textKey struct {
 	s             string
 	size          float64
 	fill, outline color.NRGBA
+	pop           bool
 }
 
 type textImage struct {
@@ -73,7 +75,8 @@ type textImage struct {
 var textCache = map[textKey]textImage{}
 
 func outlinedText(s string, size float64, fill, outline color.NRGBA) textImage {
-	k := textKey{s, size, fill, outline}
+	// ASCII already selects the pop face outside Pop; mixed text changes face.
+	k := textKey{s, size, fill, outline, popOn && popSource != nil && !isASCII(s)}
 	if t, ok := textCache[k]; ok {
 		return t
 	}
@@ -83,6 +86,10 @@ func outlinedText(s string, size float64, fill, outline color.NRGBA) textImage {
 			delete(textCache, key)
 		}
 	}
+	// Labels can be substrings of a much larger dialogue source. Own only the
+	// label before either this cache or the font shaper retains its text.
+	s = strings.Clone(s)
+	k.s = s
 	ow := math.Max(2, size/12)
 	pad := math.Ceil(ow) + 4
 	w := textWidthRaw(s, size)

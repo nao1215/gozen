@@ -91,6 +91,8 @@ scenarios:
       content: |
         events:
           level_probe:
+            trigger: auto
+            when: pos.level == 1
             do:
               - if: pos.level == 1
                 then:
@@ -330,7 +332,7 @@ scenarios:
   - fixture:
       file: garden/data/world.yaml
       content: |
-        locations: {garden: {name: Garden}}
+        locations: {garden: {name: Garden, actions: [{label: Inspect, do: [{call: inspect_1}, {call: inspect_2}, {call: inspect_3}, {call: inspect_4}, {call: inspect_5}, {call: inspect_6}, {call: inspect_7}, {call: inspect_8}]}]}}
         events:
           inspect_1: {do: [{call: inspect}]}
           inspect_2: {do: [{call: inspect}]}

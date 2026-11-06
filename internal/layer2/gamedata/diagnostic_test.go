@@ -123,3 +123,39 @@ func TestDuplicateDefinitionLocations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) { wantDiagnostics(t, tc.files, tc.want...) })
 	}
 }
+
+func TestLoadRejectsMultipleDocuments(t *testing.T) {
+	for _, name := range []string{"game.yaml", "data/base.yaml"} {
+		t.Run(name, func(t *testing.T) {
+			fsys := diagnosticFS(nil)
+			fsys[name].Data = append(fsys[name].Data, []byte("\n---\nunknown_section: ignored\n")...)
+			if _, err := Load(fsys); err == nil {
+				t.Fatal("accepted an extra YAML document without checking it")
+			} else if !strings.Contains(err.Error(), name) {
+				t.Fatalf("missing file name: %v", err)
+			}
+		})
+	}
+}
+
+func TestReferenceSuggestionKeepsLocationAndCode(t *testing.T) {
+	_, err := Load(diagnosticFS(map[string]string{"data/typo.yaml": "locations:\n  trail:\n    exits: [{to: capm}]\n"}))
+	if err == nil {
+		t.Fatal("accepted unknown reference")
+	}
+	for _, want := range []string{"data/typo.yaml:3:", `unknown location "capm"`, `"camp"`, "GZN1101"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in %v", want, err)
+		}
+	}
+}
+
+func TestCompactPhoneDiagnosticLocation(t *testing.T) {
+	files := map[string]string{
+		"game.yaml":       "schema_version: 11\nid: phone-diagnostic\n" + definitionGame,
+		"data/phone.yaml": "events:\n  phone_demo:\n    - phone:\n        app: video\n        video:\n          picture: absent.png\n          seconds: .nan\n",
+	}
+	wantDiagnostics(t, files,
+		"data/phone.yaml:6:", "events.phone_demo.do[0].phone.video.picture",
+		"data/phone.yaml:7:", "events.phone_demo.do[0].phone.video.seconds", "GZN1105", "GZN1106")
+}

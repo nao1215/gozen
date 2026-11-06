@@ -79,7 +79,8 @@ type complexityScan struct {
 // between Load and this call. Results are not proof of dead code or a runtime
 // cost estimate. Aliases are counted
 // where written and are not expanded. Only events, screens and planning rules
-// participate in duplicate and unused-definition checks.
+// participate in duplicate checks. Only planning rules retain heuristic unused
+// checks; exact definition references are reported by DefinitionWarnings.
 func (db *DB) ComplexityWarnings(cfg ComplexityConfig) ([]error, error) {
 	s := complexityScan{cfg: cfg.defaults(), values: map[string]bool{}, keys: map[string]map[string]bool{}, keySites: map[string]complexityBlock{}}
 	if p := db.Game.Planning; p != nil {
@@ -113,7 +114,7 @@ func (db *DB) ComplexityWarnings(cfg ComplexityConfig) ([]error, error) {
 		s.limit(doc, "", "file lines", lines, s.cfg.FileLines, "separate content from repeated rules; splitting files alone does not remove duplication")
 		doc.root, doc.tokenPaths, doc.bareKeys = nil, nil, nil
 	}
-	s.definitions(db)
+	s.definitions()
 	s.indexedKeys()
 	return sortedDiagnostics(s.warnings), nil
 }
@@ -178,6 +179,9 @@ func (s *complexityScan) walk(doc *sourceDocument, node ast.Node, p string, typ 
 			}
 		}
 	case *ast.SequenceNode:
+		if typ == reflect.TypeFor[Event]() {
+			typ = reflect.TypeFor[[]Command]()
+		}
 		var elem reflect.Type
 		if typ != nil && (typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array) {
 			elem = typ.Elem()
@@ -300,7 +304,7 @@ func (s *complexityScan) complexityShape(node ast.Node) (shape [32]byte, nodes, 
 	return shape, nodes, last, operations
 }
 
-func (s *complexityScan) definitions(db *DB) {
+func (s *complexityScan) definitions() {
 	groups := map[string][]complexityBlock{}
 	unused := map[string][]complexityBlock{}
 	for _, b := range s.blocks {
@@ -317,7 +321,7 @@ func (s *complexityScan) definitions(db *DB) {
 		if s.values[b.name] {
 			continue
 		}
-		if b.section == "events" && db.Events[b.name] != nil && db.Events[b.name].Trigger != "" {
+		if b.section != "planning.rules" {
 			continue
 		}
 		unused[b.section] = append(unused[b.section], b)

@@ -666,3 +666,30 @@ func TestOutcomeSnapshotBeforeRecovery(t *testing.T) {
 		})
 	}
 }
+
+func TestDamageStateMultipliersAreDeterministic(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":             "schema_version: 1\nid: deterministic_damage\n" + testgame.Game,
+		"data/multipliers.yaml": "states: {alpha: {damage_rate: 0.1}, beta: {damage_rate: 0.3}, gamma: {damage_rate: 2.5}}\nskills: {fixed: {effects: [{damage: '180', variance: 0}], crit: '0'}}",
+	})
+	want := -1
+	for attempt := range 128 {
+		b := battle.New(db, testgame.State(db, 1), "one")
+		foe := b.Foes[0]
+		foe.States = map[string]int{"alpha": 10, "beta": 10, "gamma": 10}
+		got := -1
+		for _, step := range run(b, battle.Action{User: b.Party[0], Skill: "fixed", Target: foe}) {
+			if step.Kind == battle.Damage && step.Target == foe {
+				got = step.Amount
+			}
+		}
+		if got < 0 {
+			t.Fatal("fixture did not deal damage")
+		}
+		if attempt == 0 {
+			want = got
+		} else if got != want {
+			t.Fatalf("same seed and states dealt %d then %d damage", want, got)
+		}
+	}
+}

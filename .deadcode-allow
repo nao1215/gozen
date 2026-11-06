@@ -1,0 +1,16 @@
+# Functions `make deadcode` (golang.org/x/tools/cmd/deadcode -test=false on Linux)
+# reports as unreachable but that are kept, one extended regular expression per
+# line, matched against its output. Keep it short: a function listed here is
+# either built for another platform or a test-support API of the engine.
+# Test-support packages: the screenless engine and the test games.
+^internal/session/
+^internal/testgame/
+# headless.Driver.Walk drives dungeon tests.
+^internal/headless/headless\.go:[0-9]+:[0-9]+: unreachable func: Driver\.Walk$
+# Built only for the browser (js/wasm): local storage and picture decoding.
+^internal/play/store\.go:
+^internal/layer5/picdecode/picdecode\.go:[0-9]+:[0-9]+: unreachable func: browserKind$
+# Built only for macOS: the system language.
+^internal/play/locale\.go:[0-9]+:[0-9]+: unreachable func: appleLanguages$
+# Built only with cgo: the ONNX face detector.
+^internal/mosaic/detect/inference_cgo\.go:

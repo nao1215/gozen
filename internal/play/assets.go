@@ -480,6 +480,20 @@ func (p *pictures) foundFace(path string, size image.Point) (image.Rectangle, bo
 	return image.Rect(int(cx-half), int(cy-half), int(cx+half), int(cy+half)), true
 }
 
+// portraitFace shares the exact metadata box used to frame standing pictures in
+// planning and calls. Unlike head's square icon crop, it preserves the box's
+// aspect ratio and scales it to the displayed variant's dimensions.
+func (p *pictures) portraitFace(path string, size image.Point) image.Rectangle {
+	face := p.head(path)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if f, ok := p.found[path]; ok && f.Box != nil && f.Size[0] > 0 && f.Size[1] > 0 {
+		sx, sy := float64(size.X)/float64(f.Size[0]), float64(size.Y)/float64(f.Size[1])
+		return image.Rect(int(float64(f.Box[0])*sx), int(float64(f.Box[1])*sy), int(float64(f.Box[2])*sx), int(float64(f.Box[3])*sy))
+	}
+	return face
+}
+
 func (p *pictures) foundHead(path string) image.Rectangle {
 	img := p.get(path)
 	p.mu.Lock()

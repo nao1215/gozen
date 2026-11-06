@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // simulateScript is a script over the camp of gameFiles: a line said, a battle fought on
@@ -183,4 +185,26 @@ func TestSimulatePicturesHaveTheirSize(t *testing.T) {
 	if g.pics.get("none.png") != missing {
 		t.Error("a missing picture is not the missing image")
 	}
+}
+
+func TestSimulateStopsInputWorkerOnQuit(t *testing.T) {
+	workers := func() int {
+		stack := make([]byte, 1<<20)
+		n := runtime.Stack(stack, true)
+		return bytes.Count(stack[:n], []byte(".simulateLines.func1("))
+	}
+	before := workers()
+	ctx := t.Context()
+	_, err := Simulate(ctx, Options{FS: gameFiles(t), Seed: 3, Script: "quit"}, SimulateConfig{Lines: strings.NewReader("wait 1\nwait 2\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if workers() <= before {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("input worker remains blocked after simulation quits")
 }

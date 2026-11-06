@@ -172,7 +172,7 @@ func (g *Game) onEventStart(cmds []data.Command, args map[string]any) {
 	g.evArgs = args
 	g.evCmds, g.evLog, g.evNoBack, g.evHist = cmds, slices.Clip(g.backlog), false, nil
 	g.evArrival = g.arriving
-	g.evLines, g.evAnswers = 0, nil
+	g.evLines, g.evAnswers, g.evOpened = 0, nil, nil
 	g.evName = g.commandsName(cmds)
 	g.evSnap, g.evRand = nil, nil
 	if g.st == nil {

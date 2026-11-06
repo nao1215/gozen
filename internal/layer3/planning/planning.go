@@ -39,7 +39,7 @@ func apply(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Command, err
 	}
 	out, err := applyCommand(s, c, args)
 	if err == nil && c.Op != "rule" {
-		reconcileParts(s, before, c.Op)
+		err = reconcileParts(s, before, c.Op)
 	}
 	return out, err
 }
@@ -474,7 +474,7 @@ func childIDs(s *rpg.State, parent string) []string {
 
 // Parent commands preserve old authored hooks; child work rolls up without adding
 // a second budget. Root rework is spread in proportion to existing completed work.
-func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string) {
+func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string) error {
 	for _, id := range slices.Sorted(maps.Keys(s.Planning.Activities)) {
 		a := s.Planning.Activities[id]
 		old := before[id]
@@ -486,66 +486,87 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 		if oldEffort == 0 {
 			oldEffort = s.DB.Game.Planning.Activities[id].Effort
 		}
-		delta := a.Progress - old.Progress
 		for _, child := range children {
-			ch := s.Planning.Activities[child]
-			childEffort := before[child].Effort
-			if childEffort == 0 {
-				childEffort = s.DB.Game.Planning.Activities[child].Effort
-			}
-			ratio := childEffort / oldEffort
-			if a.Effort != old.Effort {
-				ch.Effort = s.ActivityEffort(id) * ratio
-			}
-			if a.Cancelled != old.Cancelled {
-				ch.Cancelled = a.Cancelled
-			}
-			if a.Deadline != old.Deadline {
-				ch.Deadline = a.Deadline
-			}
-			if delta != 0 {
-				weight := ratio
-				if delta < 0 && old.Progress > 0 {
-					weight = before[child].Progress / old.Progress
-				}
-				if delta > 0 && oldEffort > old.Progress {
-					weight = (childEffort - before[child].Progress) / (oldEffort - old.Progress)
-				}
-				ch.Progress = max(0, min(s.ActivityEffort(child), ch.Progress+delta*weight))
-			}
-			ch.Progress = min(ch.Progress, s.ActivityEffort(child))
-			ch.Observed = min(ch.Observed, s.ActivityEffort(child))
-			if ch.Progress < s.ActivityEffort(child)-1e-9 {
-				ch.Completed = ""
-			} else {
-				// Completion and saved work must agree exactly, even when a
-				// proportional budget introduces floating-point roundoff.
-				ch.Progress = s.ActivityEffort(child)
-				if ch.Completed == "" {
-					ch.Completed = s.Planning.Date
-				}
-			}
+			reconcileChild(s, id, child, a, old, before[child], oldEffort)
 		}
-		a.Progress, a.Observed = 0, 0
-		totalEffort := 0.0
-		for _, child := range children {
-			totalEffort += s.ActivityEffort(child)
-			a.Progress += s.Planning.Activities[child].Progress
-			a.Observed += s.Planning.Activities[child].Observed
-		}
-		if totalEffort != s.ActivityEffort(id) {
-			a.Effort = totalEffort
-		}
-		if a.Progress < s.ActivityEffort(id)-1e-9 {
-			a.Completed = ""
-		} else {
-			a.Progress = s.ActivityEffort(id)
-			if a.Completed == "" {
-				a.Completed = s.Planning.Date
-			}
+		if err := sumParts(s, id, a, children); err != nil {
+			return err
 		}
 	}
 	if op == "observe" {
 		s.RecordWorkSample()
+	}
+	return nil
+}
+
+// reconcileChild carries a change of the split parent (effort, cancellation,
+// deadline, progress) to one child, in proportion to the child's share.
+func reconcileChild(s *rpg.State, id, child string, a *rpg.ActivityState, old, was rpg.ActivityState, oldEffort float64) {
+	ch := s.Planning.Activities[child]
+	childEffort := was.Effort
+	if childEffort == 0 {
+		childEffort = s.DB.Game.Planning.Activities[child].Effort
+	}
+	ratio := childEffort / oldEffort
+	if a.Effort != old.Effort {
+		ch.Effort = s.ActivityEffort(id) * ratio
+	}
+	if a.Cancelled != old.Cancelled {
+		ch.Cancelled = a.Cancelled
+	}
+	if a.Deadline != old.Deadline {
+		ch.Deadline = a.Deadline
+	}
+	if delta := a.Progress - old.Progress; delta != 0 {
+		weight := ratio
+		if delta < 0 && old.Progress > 0 {
+			weight = was.Progress / old.Progress
+		}
+		if delta > 0 && oldEffort > old.Progress {
+			weight = (childEffort - was.Progress) / (oldEffort - old.Progress)
+		}
+		ch.Progress = max(0, min(s.ActivityEffort(child), ch.Progress+delta*weight))
+	}
+	effort := s.ActivityEffort(child)
+	ch.Progress = min(ch.Progress, effort)
+	ch.Observed = min(ch.Observed, effort)
+	settleCompletion(s, ch, effort)
+	if !s.DB.Game.Planning.Activities[child].Observation.Set() {
+		ch.Observed = ch.Progress
+	}
+}
+
+// sumParts makes the split parent the sum of its children.
+func sumParts(s *rpg.State, id string, a *rpg.ActivityState, children []string) error {
+	a.Progress, a.Observed = 0, 0
+	totalEffort := 0.0
+	for _, child := range children {
+		totalEffort += s.ActivityEffort(child)
+		a.Progress += s.Planning.Activities[child].Progress
+		a.Observed += s.Planning.Activities[child].Observed
+	}
+	for _, v := range []float64{totalEffort, a.Progress, a.Observed} {
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			return errors.New("activity totals must remain finite")
+		}
+	}
+	if totalEffort != s.ActivityEffort(id) {
+		a.Effort = totalEffort
+	}
+	settleCompletion(s, a, s.ActivityEffort(id))
+	return nil
+}
+
+// settleCompletion marks an activity done when its progress reaches its effort,
+// and open again when it falls below. Completion and saved work agree exactly,
+// even when a proportional budget introduces floating-point roundoff.
+func settleCompletion(s *rpg.State, a *rpg.ActivityState, effort float64) {
+	if a.Progress < effort-min(1e-9, effort*1e-9) {
+		a.Completed = ""
+		return
+	}
+	a.Progress = effort
+	if a.Completed == "" {
+		a.Completed = s.Planning.Date
 	}
 }

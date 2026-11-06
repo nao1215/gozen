@@ -171,11 +171,10 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
 	if f := s.FreeMove; f != nil {
-		finite := func(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
-		if !finite(f.Speed) || f.Speed <= 0 || f.Speed > 12 || !finite(f.TurnSpeed) || f.TurnSpeed <= 0 || f.TurnSpeed > 360 {
+		if !finiteNumber(f.Speed) || f.Speed <= 0 || f.Speed > 12 || !finiteNumber(f.TurnSpeed) || f.TurnSpeed <= 0 || f.TurnSpeed > 360 {
 			c.errorf(diag.OutOfRange, w+".free_move", "speed must be in (0,12] cells/s and turn_speed in (0,360] degrees/s")
 		}
-		if f.Acceleration == nil || !finite(*f.Acceleration) || *f.Acceleration < 0 || *f.Acceleration > 5 {
+		if f.Acceleration == nil || !finiteNumber(*f.Acceleration) || *f.Acceleration < 0 || *f.Acceleration > 5 {
 			c.errorf(diag.OutOfRange, w+".free_move.acceleration", "want finite seconds in [0,5]")
 		}
 		last := 0.0
@@ -183,7 +182,7 @@ func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 			c.errorf(diag.OutOfRange, w+".free_move.stages", "want at most 16 stages")
 		}
 		for i, stage := range f.Stages {
-			if !finite(stage.After) || stage.After <= last || stage.After > 3600 || !finite(stage.Speed) || stage.Speed <= 0 || stage.Speed > 12 {
+			if !finiteNumber(stage.After) || stage.After <= last || stage.After > 3600 || !finiteNumber(stage.Speed) || stage.Speed <= 0 || stage.Speed > 12 {
 				c.errorf(diag.OutOfRange, fmt.Sprintf("%s.free_move.stages[%d]", w, i), "want increasing finite after times in (0,3600] and speeds in (0,12]")
 			}
 			last = stage.After

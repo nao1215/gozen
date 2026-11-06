@@ -100,7 +100,14 @@ func runCase(line []byte, games *gameCache) batchResult {
 	if err := dec.Decode(&bc); err != nil {
 		return batchResult{ID: bc.ID, Exit: 2, Stderr: fmt.Sprintf("gozen sim batch: case %q: %v\n", line, err)}
 	}
-	if slices.Contains(bc.Args, "-") {
+	// A JSON Lines record contains exactly one value. Do not execute a partial
+	// record when a producer accidentally concatenates cases or appends garbage.
+	if err := dec.Decode(new(json.RawMessage)); err != io.EOF {
+		return batchResult{ID: bc.ID, Exit: 2, Stderr: "gozen sim batch: expected exactly one JSON value per case\n"}
+	}
+	if slices.ContainsFunc(bc.Args, func(arg string) bool {
+		return arg == "-" || arg == "--script=-" || arg == "--trace=-"
+	}) {
 		return batchResult{ID: bc.ID, Exit: 2, Stderr: "gozen sim batch: a case reads no script or trace on the standard streams (-)\n"}
 	}
 	var stdout bytes.Buffer

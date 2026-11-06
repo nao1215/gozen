@@ -3,9 +3,11 @@ package gamedata
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -109,9 +111,13 @@ type Command struct {
 	// CallView changes only how a video call looks (no state changes): for
 	// example a participant's camera turning on in the middle of a call.
 	CallView *CallViewCue `yaml:"call_view" command:"verb" json:",omitempty"`
-	SFX      SFXCue       `yaml:"sfx" command:"verb"`
-	Exp      Expr         `yaml:"exp" command:"verb"`
-	Learn    *Learn       `yaml:"learn" command:"verb"`
+	// Phone shows a phone over the scene, held upright or on its side, with one app
+	// on it: a chat, a photo feed or a video (ADR 0057). It changes no state; the
+	// event waits until the player puts the phone down.
+	Phone *PhoneCue `yaml:"phone" command:"verb" json:",omitempty"`
+	SFX   SFXCue    `yaml:"sfx" command:"verb"`
+	Exp   Expr      `yaml:"exp" command:"verb"`
+	Learn *Learn    `yaml:"learn" command:"verb"`
 	// ResetTree gives back the skill points put into the skill tree of an actor (an id, or
 	// "all" for everyone who has joined): to raise it again another way.
 	ResetTree string `yaml:"reset_tree" command:"verb"`
@@ -279,8 +285,20 @@ type ChoiceOption struct {
 
 // ItemCount is an item and how many.
 type ItemCount struct {
+	short bool   // A single item written as its ID (schema 11).
 	Item  string `yaml:"item"`
 	Count *int   `yaml:"count,omitempty"` // omitted means 1. In spec version 1, 0 means no change.
+}
+
+// UnmarshalYAML accepts an item ID for one item, or an explicit item/count map.
+func (i *ItemCount) UnmarshalYAML(unmarshal func(any) error) error {
+	var id string
+	if err := unmarshal(&id); err == nil {
+		*i = ItemCount{Item: id, short: true}
+		return nil
+	}
+	type plain ItemCount
+	return unmarshal((*plain)(i))
 }
 
 // N is the count. It returns 1 only when omitted. Load turns the legacy 0 back into omitted.
@@ -469,6 +487,227 @@ type MessageCue struct {
 	// Tag is a short interpolated mark on the notification and the bubble, such
 	// as DM for a one-to-one message (empty shows none).
 	Tag string `yaml:"tag"`
+}
+
+// PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
+// default) or landscape; App is chat, feed, video, page or lock and names the
+// one list the phone shows: Messages, Posts, Video, Rows or Notices; banner
+// shows its Notices as banners at the top of the screen without waiting. Title is
+// the app's header (interpolated). A page has either a URL in a browser's
+// address bar or a Title on an app bar of Color (#rrggbb). A lock screen shows
+// Time (the phone's clock when empty) and Date over its notices, which arrive
+// on a press or, with Auto, by themselves. Var receives the result the phone
+// was put down with: a page button's id (its label by default), answer or
+// decline for a call.
+type PhoneCue struct {
+	Hold     string         `yaml:"hold"`
+	App      string         `yaml:"app"`
+	Title    string         `yaml:"title"`
+	URL      string         `yaml:"url"`
+	Color    string         `yaml:"color"`
+	Time     string         `yaml:"time"`
+	Date     string         `yaml:"date"`
+	Auto     bool           `yaml:"auto"`
+	Var      string         `yaml:"var"`
+	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
+	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
+	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`
+	Rows     []PhoneRow     `yaml:"rows" json:",omitempty"`
+	Notices  []PhoneNotice  `yaml:"notices" json:",omitempty"`
+}
+
+// PhoneRow is one row of a page, stacked top to bottom: Text (paragraphs, of
+// Size large or small, Bold), a Picture shown whole with its Caption,
+// Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, a
+// QR code of a text (a link, a contact) with its Caption, or
+// a Button that puts the phone down when pressed, setting Set and the phone's
+// Var to its ID. A row is one of them. A picture or a grid is Locked (blurred,
+// with a lock and its Label) while the condition holds when the phone comes up.
+type PhoneRow struct {
+	Text     string      `yaml:"text"`
+	Size     string      `yaml:"size"`
+	Bold     bool        `yaml:"bold"`
+	Picture  string      `yaml:"picture"`
+	Caption  string      `yaml:"caption"`
+	Pictures []string    `yaml:"pictures" json:",omitempty"`
+	Columns  int         `yaml:"columns"`
+	Item     *PhoneItem  `yaml:"item" json:",omitempty"`
+	Button   string      `yaml:"button"`
+	QR       string      `yaml:"qr"`
+	ID       string      `yaml:"id"`
+	Set      Assignments `yaml:"set" json:",omitempty"`
+	Locked   Expr        `yaml:"locked"`
+	Label    string      `yaml:"label"`
+	// Shut is Locked worked out when the phone came up.
+	Shut bool `yaml:"-" json:"-"`
+}
+
+// PhoneItem is a row of a list on a page: a round Icon under assets/, a Title,
+// a Text under it and a Value on the right (a sum, a time).
+type PhoneItem struct {
+	Icon  string `yaml:"icon"`
+	Title string `yaml:"title"`
+	Text  string `yaml:"text"`
+	Value string `yaml:"value"`
+}
+
+// PhoneNotice is a notification on the lock screen: the App's short name, its
+// Icon under assets/, a Title and a Text. Call makes it an incoming call that
+// fills the screen: Title is the caller; OK answers (setting Set) and Cancel
+// declines. A banner's Event is the parameterless event a click on it opens.
+type PhoneNotice struct {
+	App   string      `yaml:"app"`
+	Icon  string      `yaml:"icon"`
+	Title string      `yaml:"title"`
+	Text  string      `yaml:"text"`
+	Call  bool        `yaml:"call"`
+	Set   Assignments `yaml:"set" json:",omitempty"`
+	Event string      `yaml:"event"`
+}
+
+// PhoneResult is one way the phone can be put down that the story keeps: a
+// page's button (Row), a call answered (Notice) or the last call declined
+// (both -1). ID is what the phone's Var receives and Set what it sets.
+type PhoneResult struct {
+	Row, Notice int
+	ID          string
+	Set         Assignments
+}
+
+// Results are the phone's results in order, when it keeps any (it has a Var
+// or one of them sets something); nil otherwise.
+func (p PhoneCue) Results() []PhoneResult {
+	var out []PhoneResult
+	keeps := p.Var != ""
+	for i, r := range p.Rows {
+		if r.Button == "" {
+			continue
+		}
+		id := r.ID
+		if id == "" {
+			id = r.Button
+		}
+		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set})
+		keeps = keeps || len(r.Set) > 0
+	}
+	calls := false
+	for i, n := range p.Notices {
+		if n.Call && p.App == "lock" {
+			out = append(out, PhoneResult{Row: -1, Notice: i, ID: "answer", Set: n.Set})
+			keeps, calls = keeps || len(n.Set) > 0, true
+		}
+	}
+	if calls {
+		out = append(out, PhoneResult{Row: -1, Notice: -1, ID: "decline"})
+	}
+	if !keeps {
+		return nil
+	}
+	return out
+}
+
+// Do are the commands a result runs: its sets and the phone's Var.
+func (p PhoneCue) Do(r PhoneResult) []Command {
+	var out []Command
+	if len(r.Set) > 0 {
+		out = append(out, Command{SetV: r.Set})
+	}
+	if p.Var != "" {
+		out = append(out, Command{SetV: Assignments{p.Var: MustExpr(strconv.Quote(r.ID))}})
+	}
+	return out
+}
+
+// PhoneMessage is one bubble of a chat. Mine puts it on the right, as sent by
+// the phone's owner; From names the sender of the others (interpolated) and Icon
+// is their round picture under assets/. Text, Picture (under assets/) or Video
+// is the bubble's content; a video plays on the phone turned on its side when
+// the player opens it.
+//
+// Time shows small beside the bubble, Read marks the owner's message as read,
+// and Day puts a day's separator over the message (a message of only Day is
+// the separator alone). All are interpolated.
+type PhoneMessage struct {
+	Time    string      `yaml:"time"`
+	Read    bool        `yaml:"read"`
+	Day     string      `yaml:"day"`
+	From    string      `yaml:"from"`
+	Icon    string      `yaml:"icon"`
+	Mine    bool        `yaml:"mine"`
+	Text    string      `yaml:"text"`
+	Picture string      `yaml:"picture"`
+	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
+}
+
+// PhonePost is one post of a photo feed: who posted it (interpolated) with their
+// round Icon, the Picture under assets/ or a Video playing in its place, its
+// caption Text and the number of Likes.
+//
+// A post with only Text is a card of text, as a timeline shows it; Replies and
+// Reposts are counted next to its likes.
+type PhonePost struct {
+	Who     string      `yaml:"who"`
+	Icon    string      `yaml:"icon"`
+	Picture string      `yaml:"picture"`
+	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
+	Text    string      `yaml:"text"`
+	Likes   int         `yaml:"likes"`
+	Time    string      `yaml:"time"`
+	Replies int         `yaml:"replies"`
+	Reposts int         `yaml:"reposts"`
+}
+
+// PhoneVideo is a clip: its Picture under assets/ fills the frame (pushed in
+// slowly, so a still plays as a clip), or Frames, pictures under assets/ (a
+// pattern such as clips/battle/*.jpg stands for the files it matches, sorted),
+// play as footage at FPS frames a second (0 is 12) over the Picture, which is
+// then its poster. Fade cross-fades each frame into the next over its last
+// seconds, and Pan pushes in slowly on each frame, so a few pictures at a low
+// FPS play smoothly. Puppet, a puppet file under assets/, stands in front and
+// moves as it does on the stage: breathing, swaying and, at each second in
+// Bounce, a jiggle. Zoom is how many times the frame's height the puppet is
+// drawn (0 is 1.5: its upper body). Text is the title (interpolated) and
+// Seconds its length on the seek bar (0 is the frames' length, or 30).
+type PhoneVideo struct {
+	Picture string    `yaml:"picture"`
+	Frames  []string  `yaml:"frames" json:",omitempty"`
+	FPS     float64   `yaml:"fps"`
+	Fade    float64   `yaml:"fade"`
+	Pan     bool      `yaml:"pan"`
+	Puppet  string    `yaml:"puppet"`
+	Zoom    float64   `yaml:"zoom"`
+	Bounce  []float64 `yaml:"bounce" json:",omitempty"`
+	Text    string    `yaml:"text"`
+	Seconds float64   `yaml:"seconds"`
+}
+
+// FrameRate is the frames the clip shows a second (0 is 12).
+func (v PhoneVideo) FrameRate() float64 {
+	if v.FPS > 0 {
+		return v.FPS
+	}
+	return 12
+}
+
+// Length is the clip's length in seconds when it has frames pictures: Seconds,
+// else the frames' length, else 30.
+func (v PhoneVideo) Length(frames int) float64 {
+	switch {
+	case v.Seconds > 0:
+		return v.Seconds
+	case frames > 0:
+		return float64(frames) / v.FrameRate()
+	}
+	return 30
+}
+
+// FramePictures are the pictures of Frames, the patterns matched in fsys under
+// assets/ as an image's files are (CG.Pages). With no fsys, Frames as written.
+func (v PhoneVideo) FramePictures(fsys fs.FS) []string {
+	if len(v.Frames) == 0 || fsys == nil {
+		return v.Frames
+	}
+	return CG{Files: v.Frames}.Pages(fsys)
 }
 
 // CallViewCue is a presentation-only change of the call on screen.

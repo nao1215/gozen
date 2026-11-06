@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/nao1215/gozen/internal/diag"
+	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/goccy/go-yaml"
 
@@ -88,6 +89,11 @@ func walkNumberDefinitions(v reflect.Value, raw any, where string, visit func(re
 	if v.Type() == reflect.TypeFor[AIRef]() {
 		walkNumberDefinitions(v.FieldByName("Rules"), raw, where, visit)
 		return
+	}
+	if v.Type() == reflect.TypeFor[Event]() {
+		if list, ok := raw.([]any); ok {
+			raw = yaml.MapSlice{{Key: "do", Value: list}}
+		}
 	}
 	switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.
 	case reflect.Struct:
@@ -231,6 +237,24 @@ func numberEntry(m yaml.MapSlice, name string) (any, bool) {
 func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 	var errs []error
 	walkNumberDefinitions(reflect.ValueOf(into), raw, source, func(v reflect.Value, m yaml.MapSlice, where string) {
+		short := false
+		switch v.Type() {
+		case reflect.TypeFor[Event]():
+			if event, ok := reflect.TypeAssert[Event](v); ok {
+				short = event.short
+			}
+		case reflect.TypeFor[ItemCount]():
+			if item, ok := reflect.TypeAssert[ItemCount](v); ok {
+				short = item.short
+			}
+		case reflect.TypeFor[TacticRow]():
+			if _, given := numberEntry(m, "enabled"); !given && db.Game.SchemaVersion >= SchemaVersion11 {
+				v.FieldByName("Enabled").SetBool(true)
+			}
+		}
+		if short && db.Game.SchemaVersion < SchemaVersion11 {
+			errs = append(errs, fmt.Errorf(lang.T("%s: 短縮形には game.yaml の schema_version: 11 が必要です"), where))
+		}
 		if db.Game.SchemaVersion == LegacySchemaVersion {
 			if v.Type() == reflect.TypeFor[ItemCount]() {
 				if i, ok := reflect.TypeAssert[*ItemCount](v.Addr()); ok && i.Count != nil && *i.Count == 0 {

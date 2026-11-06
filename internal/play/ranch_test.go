@@ -1,7 +1,9 @@
 package play
 
 import (
+	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -137,102 +139,6 @@ func TestRanchActionsUseTalkWindow(t *testing.T) {
 	}
 }
 
-func TestBirthTimelineSkipAndPositions(t *testing.T) {
-	g := ranchGame(t)
-	for tier, duration := range []int{348, 384, 420} {
-		g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Boss ♀", Tier: tier})
-		b := g.birth
-		if b.duration() != duration {
-			t.Fatalf("tier %d duration %d", tier, b.duration())
-		}
-		if b.silhouetteEnd() != 204+24*tier || b.viewEnd()-b.revealEnd() != 36+12*min(1, tier) {
-			t.Fatalf("tier %d pause and afterglow: silhouette=%d afterglow=%d", tier, b.silhouetteEnd(), b.viewEnd()-b.revealEnd())
-		}
-		for _, tc := range []struct {
-			age   int
-			phase birthPhase
-		}{
-			{0, birthParents},
-			{44, birthParents},
-			{45, birthYornFade},
-			{80, birthYornFade},
-			{81, birthFade},
-			{134, birthFade},
-			{135, birthMerge},
-			{179, birthMerge},
-			{180, birthSilhouette},
-			{b.silhouetteEnd() - 1, birthSilhouette},
-			{b.silhouetteEnd(), birthReveal},
-			{b.revealEnd() - 1, birthReveal},
-			{b.revealEnd(), birthView},
-			{b.viewEnd() - 1, birthView},
-			{b.viewEnd(), birthResult},
-			{b.duration(), birthResult},
-		} {
-			b.age = tc.age
-			if got := b.phase(); got != tc.phase {
-				t.Fatalf("tier %d age %d: %d != %d", tier, tc.age, got, tc.phase)
-			}
-		}
-	}
-	for _, size := range [][2]float64{{1280, 720}, {1920, 1080}} {
-		sw, sh := size[0], size[1]
-		parents, crystal := birthPositions(sw, sh)
-		if parents[0] != (birthPoint{sw * 0.22, sh * 0.78}) || parents[1] != (birthPoint{sw * 0.78, sh * 0.78}) || crystal != (birthPoint{sw * 0.5, sh * 0.52}) {
-			t.Fatalf("positions at %v: %v %v", size, parents, crystal)
-		}
-		x, feet, h, w := birthChildFrame(sw, sh)
-		if x != sw*0.5 || feet != sh*0.82 || h != sh*0.62 || w != sw*0.58 {
-			t.Fatalf("child frame at %v: %v %v %v %v", size, x, feet, h, w)
-		}
-		for i, p := range parents {
-			start := birthOrbPosition(sw, sh, i, 135, 180)
-			end := birthOrbPosition(sw, sh, i, 180, 180)
-			if math.Abs(start.x-p.x) > 0.01 || math.Abs(start.y-(p.y-sh*0.23)) > 0.01 || math.Abs(end.x-crystal.x) > 0.01 || math.Abs(end.y-crystal.y) > 0.01 {
-				t.Fatalf("orb %d at %v: %v %v", i, size, start, end)
-			}
-		}
-	}
-	g.Handle(event.BreedEffect{})
-	g.req = event.Wait{Seconds: float64(birthDuration) / 60}
-	g.waitT = birthDuration
-	g.in.held[btnOK] = true
-	g.in.pressed[btnOK] = true
-	g.pump()
-	if g.birth.skipT != 0 || g.req == nil {
-		t.Fatal("confirming breed must not skip or dismiss")
-	}
-	g.in.held[btnOK] = false
-	g.in.pressed[btnOK] = false
-	g.pump()
-	g.in.held[btnOK] = true
-	g.in.pressed[btnOK] = true
-	g.pump()
-	if g.birth.skipT != 1 || g.req == nil {
-		t.Fatal("fresh confirm did not start skip")
-	}
-	g.in.pressed[btnOK] = false
-	for range 12 {
-		g.birth.skipT++
-		if g.birth.skipT >= 12 {
-			g.birth.skipT = 0
-			g.birth.age = g.birth.duration()
-		}
-		g.pump()
-	}
-	if g.req == nil || g.waitT != 1 {
-		t.Fatalf("result was not held: wait=%d req=%T", g.waitT, g.req)
-	}
-	g.in.held[btnOK] = false
-	g.pump()
-	g.in.held[btnOK] = true
-	g.in.pressed[btnOK] = true
-	g.pump()
-	if g.req != nil {
-		t.Fatal("fresh result confirm did not continue")
-	}
-}
-
 func TestScriptedEventBattleReachesRecruitChoice(t *testing.T) {
 	fsys := gameFiles(t)
 	for path, body := range testgame.MonsterFiles() {
@@ -270,4 +176,70 @@ func TestScriptedEventBattleReachesRecruitChoice(t *testing.T) {
 		}
 	}
 	t.Fatal("script never reached the recruit choice")
+}
+
+func TestRanchSwapAndReleaseRequireConfirmation(t *testing.T) {
+	for _, release := range []bool{false, true} {
+		t.Run(fmt.Sprintf("release=%t", release), func(t *testing.T) {
+			g := ranchGame(t)
+			g.db.Game.MaxParty = len(g.st.Party)
+			id, ok := g.st.Recruit("mote", 2, 0, nil)
+			if !ok || !slices.Contains(g.st.ReserveIDs(), id) {
+				t.Fatal("fixture did not recruit into reserve")
+			}
+			out := g.st.Party[0]
+			closed := 0
+			r := newRanch(g, func() { closed++ })
+			g.push(r)
+			depth := len(g.stack)
+			r.draw(g, covScreen())
+			g.in = input{pressed: [numButtons]bool{btnOK: true}}
+			if release {
+				r.list.sel = 2
+			}
+			r.update(g)
+			if release && r.step != "release_id" || !release && r.step != "swap_in" {
+				t.Fatal("wrong action selected", r.step)
+			}
+			r.draw(g, covScreen())
+			r.update(g)
+			if !release {
+				if r.step != "swap_out" || r.first != id {
+					t.Fatal("reserve selection lost")
+				}
+				r.draw(g, covScreen())
+				r.update(g)
+			}
+			c, ok := g.stack[len(g.stack)-1].(*confirm)
+			if !ok || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
+				t.Fatal("selection applied before confirmation")
+			}
+			g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+			for range 6 {
+				c.update(g)
+			}
+			if len(g.stack) != depth || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
+				t.Fatal("cancel changed roster")
+			}
+			g.in = input{pressed: [numButtons]bool{btnOK: true}}
+			r.update(g)
+			c = sysAs[*confirm](t, g.stack[len(g.stack)-1])
+			for range 6 {
+				c.update(g)
+			}
+			if len(g.stack) != depth-1 || closed != 1 {
+				t.Fatal("confirmation did not close the ranch once")
+			}
+			for i := 0; g.events.Running() && i < 10; i++ {
+				g.events.Next()
+			}
+			if release {
+				if g.st.Actors[id] != nil || g.st.Party[0] != out {
+					t.Fatal("release changed the wrong actor")
+				}
+			} else if g.st.Party[0] != id || !slices.Contains(g.st.ReserveIDs(), out) {
+				t.Fatal("swap did not exchange party and reserve")
+			}
+		})
+	}
 }

@@ -32,25 +32,6 @@ Choose `novel` or `campaign` for a different starting point. Follow [Getting sta
 
 On Linux the window needs a graphics environment; see [Install](/install/).
 
-## The loop
-
-Making a game is mostly tuning: a line that reads wrong, a boss that is too hard, a dungeon that is too long, a war that one side always wins. Gozen shortens each round.
-
-| Step | What you do |
-|:--|:--|
-| Write | Put places, battles, skills, enemy tactics, events and dialogue in YAML. Text is easy to write, diff and review, for you and for an agent. |
-| Check | `gozen check game` reports broken references, wrong expressions, missing pictures and text that overflows its window, with file and line. |
-| Measure | `gozen sim battle` fights a battle hundreds of times and prints the win rate. `gozen sim dive` plays a whole dungeon dive. |
-| Play | Run the game with `--dev`: start anywhere, autoplay at high speed, record and replay a trace. |
-| Note | Press F9 to save a note with a screenshot and the game state. `--from-memo` starts the game again at that line. |
-| Fix | Edit the YAML and press F5. The game reloads its definitions and keeps your place. F7 shows the win rates of the battles here. |
-
-```text
-data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]
-```
-
-The rules are shared by the window, a headless driver and the command line, so a test in CI and a player see the same game.
-
 ## Screens
 
 All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at 1920x1080.
@@ -78,6 +59,26 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
+
+#### Phone apps
+
+`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)). All from the office sample.
+
+| Chat: a picture, times and a clip | Feed: scrolled, a clip post, likes |
+|:--|:--|
+| ![a team chat on a phone: messages arrive one by one with times and a read mark, a picture opens over the screen, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) | ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](/images/phone-feed.mp4) |
+| Video on its side: footage | Chat: a dance practice clip (a puppet) |
+| ![a video app: the phone turns on its side, nearly as wide as the screen, and plays footage of a battle from the Go Zen sample](/images/phone-video.mp4) | ![Mia says in the chat that she is practicing the launch party dance and sends the clip; it plays on the phone on its side, her puppet breathing, swaying and jiggling](/images/phone-puppet.mp4) |
+| Page: a shop site with a picture grid | Page: a bank transfer to confirm |
+| ![a browser page of a clothing shop: a grid of pictures, two list items with prices and a button pressed with the keys](/images/phone-shop.mp4) | ![a bank app: the balance, a transfer to confirm and recent items; the keys ring the buttons and press Confirm](/images/phone-bank.mp4) |
+| Lock screen: notices arriving | Lock screen: an incoming call answered |
+| ![the lock screen at 7:12: a bank notice, a chat preview and a calendar reminder arrive one a press](/images/phone-lock.mp4) | ![a night on-call: two monitoring notices, an incoming call from the on-call app declined, ringing again and answered](/images/phone-call.mp4) |
+| Page: a sign-in approval | Feed: a timeline of text posts |
+| ![a sign-in check asks to approve a sign-in to the production console; the keys ring Approve and Deny and press Approve](/images/phone-sso.mp4) | ![a timeline of text posts with avatars and times about the booking app being down, with likes, replies and reposts, scrolled](/images/phone-timeline.mp4) |
+| Banner: a push notification over a scene | Page: a supporter site with locked posts |
+| ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](/images/phone-banner.mp4) | ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](/images/phone-support.mp4) |
+| Page: a contact to add with a QR code |  |
+| ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](/images/phone-contact.mp4) |  |
 
 ### Management workspaces
 
@@ -148,6 +149,8 @@ Start the game with `--dev` and these keys work while you play.
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart with face icons and coloured connections](/images/go-zen-relations.jpg) |
 
 More on each key in [the edit–play loop](/edit-play-loop/).
+
+`gozen check`, `gozen sim battle`, `gozen sim dive` and the notes of F9 are in [the edit–play loop](/edit-play-loop/).
 
 ## Where to go
 

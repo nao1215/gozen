@@ -267,6 +267,11 @@ type Game struct {
 	// callCamera overrides participants' cameras for the call's lines
 	// (call_view; presentation only, cleared by a line outside a call).
 	callCamera map[string]bool
+	// phone is the phone over the scene (the phone command, ADR 0057), nil
+	// while none is up.
+	phone *phoneView
+	// banners are the phone banners waiting, the first on the screen.
+	banners []phoneBanner
 	// callShare is the screen shared on the call's stage (call_view.share;
 	// presentation only, cleared like callCamera); nil shares nothing.
 	callShare *event.CallShareEffect
@@ -436,10 +441,14 @@ type Game struct {
 	evLines     int
 	screenTrace screenTranscript
 	evAnswers   []int
-	fast        *fastTo
-	untilShot   bool
-	quick       []*memoBox
-	quickN      int
+	// evOpened are the events a phone banner's click opened while the event
+	// ran, each with the line it was clicked at (a save and a roll back queue
+	// them again).
+	evOpened  []bannerOpen
+	fast      *fastTo
+	untilShot bool
+	quick     []*memoBox
+	quickN    int
 
 	live liveState
 
@@ -954,6 +963,7 @@ func (g *Game) Update() error {
 	} else {
 		g.in.update()
 	}
+	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
 	if g.opts.Development && g.in.pressed[btnPanel] && g.memo == nil {
@@ -1162,6 +1172,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		s.draw(g, dst)
 	}
 	// Over the modal screen on top: the chat notification belongs to the surface.
+	g.drawPhone(dst)
+	g.drawBanners(dst)
 	g.drawInboxToast(dst)
 	g.drawGuide(dst)
 	if shaken != nil {
@@ -1443,6 +1455,8 @@ func (g *Game) newEventRunner() *event.Runner {
 }
 
 func (g *Game) startState() {
+	g.closePhone()
+	g.banners = nil
 	g.screenTrace = screenTranscript{}
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
@@ -1866,7 +1880,7 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Tap:
-		if g.updateTap() {
+		if g.updateTapOrPhone(r, g.answerPhone) {
 			g.req = nil
 		}
 	}
@@ -1888,6 +1902,37 @@ func (g *Game) beginTap(r event.Tap) {
 	g.tapT = g.cg.FadeTicks()
 	g.tapAuto = r.Auto
 	g.talk.hidden = false
+}
+
+// updateTapOrPhone runs a Tap wait one tick: the phone on screen until it is
+// put down (answering the event with its result when it has results), else
+// the plain tap. Both the field and a battle's events wait here.
+func (g *Game) updateTapOrPhone(r event.Tap, answer func(int)) bool {
+	if g.phone == nil {
+		return g.updateTap()
+	}
+	if !g.updatePhone() {
+		return false
+	}
+	result := g.phone.result
+	g.closePhone()
+	if r.Results > 0 {
+		answer(result)
+	}
+	return true
+}
+
+// answerPhone answers the field's event with the result the phone was put
+// down with; a replay reads on with the saved result.
+func (g *Game) answerPhone(result int) {
+	if f := g.fast; f != nil {
+		if k := len(g.evAnswers); k < len(f.answers) {
+			result = f.answers[k]
+		}
+	}
+	g.emit("answer", traceLine{"index": result})
+	g.evAnswers = append(g.evAnswers, result)
+	g.events.Answer(result)
 }
 
 func (g *Game) updateTap() bool {
@@ -2233,6 +2278,19 @@ func (g *Game) Handle(e event.Effect) {
 		g.Mood(e.Name)
 	case event.ImageEffect:
 		g.Image(e.Picture)
+	case event.PhoneEffect:
+		g.pics.warm(phonePictures(e.Phone)...)
+		if e.Phone.App == "banner" {
+			if g.fast != nil {
+				break // a replay reads on: the click it had is in the cursor
+			}
+			for _, n := range e.Phone.Notices {
+				g.banners = append(g.banners, phoneBanner{n: n})
+			}
+			break
+		}
+		g.closePhone()
+		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)
 	case event.CallCameraEffect:
@@ -2282,6 +2340,7 @@ func (g *Game) Close() error {
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
+	g.closePhone()
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })

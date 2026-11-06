@@ -19,6 +19,7 @@ The users are authors who write YAML and check it with `gozen check`, `gozen.Ses
 
 `data/` gains two sections and `game.yaml` one:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 # data/war.yaml
 factions:

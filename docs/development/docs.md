@@ -5,13 +5,13 @@ The README.md and the GitHub Pages site (`website/`) show only what works with t
 After changing the README or the site, pass the following before committing.
 
 ```sh
-go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links (no display)
-make docs-images              # remake the pictures (rewrites only those that changed)
+go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links, picture inputs (no display)
+make docs-images              # remake the pictures (rewrites only those that changed) and docs/images/inputs.sum
 make docs-steps               # run the steps of the README and site
 make website website-check    # build the site and look for broken link and image references
 ```
 
-`make docs` runs `docs-images-check`, `docs-steps`, `website` and `website-check` together. Pictures and steps use a display, so on Linux Make wraps them in `xvfb-run -a -s "-screen 0 1920x1080x24"` (no window appears on your screen). You need ffmpeg, python3 and the setup in [Graphics development](graphics.md#requirements). The site needs Hugo (the version in `website.yml`), Pillow with WebP support, and `go-licenses` v2.0.1. It builds one WASM player for all three sample games; the runtime notices are published under `play/runtime/`.
+`make docs` runs `docs-images-check`, `docs-steps`, `website` and `website-check` together. Pictures and steps use a display, so on Linux Make wraps them in `xvfb-run -a -s "-screen 0 1920x1080x24"` (no window appears on your screen). You need ffmpeg (with ffprobe), python3 and the setup in [Graphics development](graphics.md#requirements). The site needs Hugo (the version in `website.yml`), Pillow with WebP support, and `go-licenses` v2.0.1. It builds one WASM player for all three sample games; the runtime notices are published under `play/runtime/`.
 
 ## The picture ledger
 
@@ -35,18 +35,48 @@ To change the sample, change `samples` and `runs`; the names, references and che
 
 ## Remaking and the staleness check
 
-`make docs-images` builds the samples, plays the runs, encodes with ffmpeg (a GIF is then slimmed in Go: each frame keeps only the pixels that changed by more than a small tolerance) and writes to `build/docs-images/out/`. The runs play side by side, as many at once as there are CPUs (`GOZEN_DOCS_JOBS=N` sets another number): each is a process of its own with a fixed seed and script, so the frames do not depend on the order. `GOZEN_DOCS_IMAGES_ONLY=go-zen-battle.gif,novel*.gif` makes only the pictures it names (comma-separated names or patterns) and plays only the runs they take frames from, for trying one picture; `update` then writes only those. Images that cannot be told apart from the current ones (within the range allowed by the comparison below) are not rewritten, so images that do not change when remade leave no diff. Look at the changed images before committing.
+`make docs-images` builds the samples (each package once), plays the runs, encodes with ffmpeg (a GIF is then slimmed in Go: each frame keeps only the pixels that changed by more than a small tolerance) and writes to `build/docs-images/out/`. The runs play side by side, as many at once as there are CPUs (`GOZEN_DOCS_JOBS=N` sets another number): each is a process of its own with a fixed seed and script, so the frames do not depend on the order. The runs start longest first (estimated from the ticks their script waits and the shots it takes), and each picture is encoded and compared as soon as the runs it takes frames from have ended, while the others still play. `GOZEN_DOCS_IMAGES_ONLY=go-zen-battle.gif,novel*.gif` makes only the pictures it names (comma-separated names or patterns) and plays only the runs they take frames from, for trying one picture; `update` then writes only those. Images that cannot be told apart from the current ones (within the range allowed by the comparison below) are not rewritten, so images that do not change when remade leave no diff. Look at the changed images before committing.
 
 `make docs-images-check` (the images job of the Docs workflow in CI) builds the same way and compares with the committed images.
 
 - Still image: the size is the same, and the share of pixels where any color differs by more than 48/255 is at most `tolerance`
 - GIF and video: the number of frames is the same, and the first, 1/4, half, 3/4 and last frames meet the condition above (a GIF is compared as it looks with the difference rectangles composited; a video is split into frames with ffmpeg)
 
-If stale, it fails and points to `make docs-images`. In CI the generated images are kept as the artifact `docs-images`. The Go Zen images on the author's machine were remade and checked to show no difference (the whole remake takes about 10 minutes, most of it the F7 measurement).
+The comparison reads only what it looks at: the frame count and the five frames (ffprobe counts a video's frames and ffmpeg streams them as raw RGB; a GIF keeps 5 composed frames), and the pictures are compared side by side. If stale, it fails, names each stale picture and points to `make docs-images` (with `ONLY=` listing them). In CI the generated images are kept as the artifact `docs-images`. The Go Zen images on the author's machine were remade and checked to show no difference (the whole remake takes about 10 minutes, most of it the F7 measurement).
+
+## The fast check: the inputs of the pictures
+
+[docs/images/inputs.sum](../images/inputs.sum) records, for every picture, a SHA-256 of everything that makes it, and `make docs-images` rewrites it after a remake. `go test ./internal/dev/docs` (TestDocImageInputs, also `make docs-images-fresh`) hashes the same inputs without a display in under a second and fails while a hash differs, naming each picture and what changed. A picture whose hash matches was made from the same inputs, so it is current without playing anything. The inputs of a picture are:
+
+| Input | What is hashed |
+| --- | --- |
+| `package` | every package of this module the sample's binary imports (as Linux/amd64 with cgo builds it): its Go files without comments (the `//go:` directives kept), cgo, assembly and embedded files; the other files in the sample's own directory |
+| `go` | `go.mod`: the Go version and the version of every other module |
+| `game` | every file of the sample's game directory |
+| `run` | the run's recipe, its script, and the repository files its arguments, `check` and `edit` name |
+| `encoder` | the Go files of `internal/dev/docs` that make, encode and compare the pictures (all but the other documentation checks, listed in `notEncoder`) |
+| the picture | its own recipe in the manifest |
+
+A comment, a test file or another documentation check therefore changes no hash, and a change to any code that runs does, even if it draws the same: then `make docs-images` remakes the pictures, keeps the ones that still compare equal, and records the new hashes. What is not hashed is the environment: ffmpeg, Xvfb and Mesa, and the Go toolchain beyond the version in `go.mod`. The full remake covers those, and it also fails when the pictures are current but `inputs.sum` is not, so the two checks cannot disagree unnoticed.
+
+In CI, `docs-images-fresh` of the CI workflow runs the fast check on every push and pull request (also while private). The images jobs of the Docs workflow remake the pictures, in four shards, when a push or pull request changes `docs/images/` (a picture, the manifest or `inputs.sum`), `internal/dev/docs/` or `docs.yml`, and every night at 03:17 UTC; the nightly run catches a drift of the environment. Any change that can alter a picture changes its hash, so it reaches the full remake through `inputs.sum`.
+
+Measured on the author's machine (32 CPUs, shared with other jobs, so the times vary by about 20%):
+
+| Check | Before | After |
+| --- | --- | --- |
+| `make docs-images-check` (108 pictures, 45 runs) | 8 min 18 s, 4.7 GB peak memory (build 4 s, play 2 min 36 s, encode 1 min 3 s, compare 4 min 28 s one by one) | 2 min 50 s, 1.6 GB (play 2 min 34 s, then 12–15 s of encoding and comparing the last pictures) |
+| fast check (TestDocImageInputs) | none | 0.4–1 s |
+| `go test ./internal/dev/docs` | 4.3 s (TestDocumentLanguage 3.2 s, one file at a time) | 1.2 s (files read and checked side by side) |
+| `make docs-steps` | 38 s (README 16 s, with the build cache) | unchanged |
+
+The remake is now bound by its longest runs (office-tour and space, about 50 s alone and 2.5 minutes while every run plays at once on the same CPUs). Giving each run an Xvfb of its own was measured and did not help, so the runs share the one of xvfb-run.
 
 ## Verifying the steps
 
-The code snippets of README.md and `website/content/*.md` are read from the top.
+The code snippets of README.md, `website/content/*.md` and `skills/*/` are read
+from the top. YAML in `docs/**/*.md` is also checked during ordinary tests;
+maintenance shell commands under `docs/` are not run automatically.
 
 - Shell snippets (`sh`, `shell`, `bash`) without a mark are run as they are. The snippets of one page run one after another in the same directory, and `cd` carries over to the next snippet (the same as a reader going on in one terminal).
 - `go install`, `go run …@latest` and `go get` are not rewritten. A local module proxy that serves the local checkout as `v0.0.0-docs` is placed at the front of `GOPROXY`, so they run with the same content as the published module zip. Dependencies come from the module cache, then from the original `GOPROXY`. `HOME` and `GOPATH` are fresh every time, and `gozen` is built from the checkout and put on PATH.
@@ -61,7 +91,7 @@ A mark is written on the line just before the snippet (it is not shown on GitHub
 | `<!-- verify: build REASON -->` | Turn a `go run` that opens a window and waits for a person into `go install` (with `@`) or `go build`, and check only that it builds |
 | `<!-- verify: skip REASON -->` | Do not run. The reason is required |
 | `<!-- verify: output -->` | Each line of a `text` snippet appears, in this order, in the standard output of the snippet run just before (the number of spaces does not matter) |
-| `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory (such as `game/game.yaml` or `main.go`, used by later snippets) |
+| `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory for later steps. A set containing `game.yaml` is also loaded in ordinary tests without implicit fixture definitions or stub assets |
 | `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with the internal session loader, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
 | `<!-- verify: same PATH -->` | The YAML example has the same values as the file in the repository (comments and style do not matter) |
 | `<!-- verify: parse REASON -->` | Check only that it reads as YAML |
@@ -79,7 +109,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | `gozen mosaic auto --model`, `gozen faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |
 | `gozen <command> [OPTIONS] [ARGUMENTS]` | Explains the form of a command |
-| The YAML of the verb `roll_dice` and the screen `album`, and the 3 expression examples | Need registration in Go code / separate expressions, not one file |
+| The three separate expression examples | Illustrate fields from different contexts, not one game data file |
 | The shots list and the excerpt of the catalog YAML | parse only (shots for the same reason as above; the catalog is the full `docs/examples/production/catalog.yaml`, which the steps run) |
 
 ## Parallel image checks in CI
@@ -88,7 +118,7 @@ The Docs workflow partitions the full image ledger into four shards. Images conn
 
 `GOZEN_DOCS_SHARD=1/4 make docs-images-check` runs the first shard locally. `INDEX/COUNT` uses one-based indexes; malformed values or more shards than independent capture groups fail. An unset value runs everything. `ONLY` filtering is applied before sharding. Run shards in separate checkouts or sequentially: each invocation owns and recreates `build/docs-images`. The tests verify complete, non-overlapping image and capture coverage for the actual ledger.
 
-Each shard builds only the samples its captures need. Verbose output reports selection counts and build, play, encode and comparison durations, plus individual capture durations. Each runner retains CPU-limited local parallelism. Cache writes remain restricted to main; shard-specific keys restore compatible older image caches as a fallback. Splitting across runners targets elapsed time and may increase total runner minutes due to repeated setup and builds.
+Each shard builds only the samples its captures need, and checks the recorded inputs of its pictures as well. Verbose output reports selection counts and build, play, encode and comparison durations, plus individual capture durations. Each runner retains CPU-limited local parallelism. Cache writes remain restricted to main; shard-specific keys restore compatible older image caches as a fallback. Splitting across runners targets elapsed time and may increase total runner minutes due to repeated setup and builds.
 
 ## The Schema page
 
@@ -119,4 +149,38 @@ The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../d
 
 ## CI time estimates
 
-On the author's machine (Linux, Xvfb), remaking and comparing images takes about 3 minutes (most of it the Go Zen runs), running the steps about 40 seconds (with the build cache; the first time takes several minutes for fetching dependencies and building Ebitengine), and building the site and checking links a few seconds. The Docs workflow in CI runs images and steps side by side. While private, it follows the budget rule of [CI configuration](ci.md) and runs only after the repository is public and on manual runs. The checks that need no display (ledger and references, marks, YAML examples, README links) are part of the usual `go test ./...`.
+On the author's machine (Linux, Xvfb), remaking and comparing images takes about 3 minutes (most of it the longest runs; see the table above), the fast check under a second, running the steps about 40 seconds (with the build cache; the first time takes several minutes for fetching dependencies and building Ebitengine), and building the site and checking links a few seconds. The Docs workflow in CI runs images and steps side by side. While private, it follows the budget rule of [CI configuration](ci.md) and runs only after the repository is public and on manual runs; the fast check of the CI workflow runs regardless. The checks that need no display (ledger and references, marks, YAML examples, README links) are part of the usual `go test ./...`.
+
+## Keeping authoring contracts synchronized
+
+`go test ./internal/dev/docs` includes the following checks in ordinary
+`go test ./...`; none needs a display, network access, models or an installed CLI.
+The CLI check builds the local executable once and reads `gozen help --format json`.
+
+| Test | Compared contracts |
+| --- | --- |
+| `TestSyncEventVerbs` | `Command` registry tags, generated Schema descriptions, and the skill's event-verb table; command fields in website and skill YAML fragments and names in verb tables |
+| `TestSyncCLIHelp` | Every help command and its exact long/short option set against both command-index tables; inline and shell invocations and options in command-scoped tables are also checked for stale names |
+| `TestSyncDiagnosticCodes` | Every registered code has an errors-page heading; literal codes in documentation, skill and site source text belong to the registry |
+| `TestSyncSchemaSections` | Every root property reached by the game/data JSON Schemas has a purpose in the skill's section table; obsolete sections fail too |
+| `TestSyncADRIndex` | ADR filenames have unique numbers, every ADR has an index row, every indexed target exists, and link numbers match filenames |
+| `TestDocBlocks` | YAML blocks throughout docs, site and skills have a valid verification mark; complete file tutorials and load examples load, and parse-only fragments have valid YAML syntax |
+
+Inventories are visible Markdown tables with first columns named `Event verb`,
+`CLI command` and `Section`. Keep identifiers in backticks and give each a purpose.
+CLI rows list each accepted option in its own backticks. The tests report all
+missing and stale entries rather than stopping at the first mismatch.
+Local event aliases must be declared in the same page, in a YAML `verbs` map.
+A bare word in prose is not enough to document a verb or option: use the table
+and an example. Checks distinguish command contexts from unrelated YAML such as
+workflow steps or portrait geometry; they are not a natural-language proof of
+all prose. Historical ADR fragments may remain parse-only with a reason.
+Run `go test ./internal/dev/docs -run TestDocBlocks -v` to list every YAML
+block limited to parsing or explicitly skipped, with its file, line and reason.
+
+`parse` checks syntax only; `skip` checks neither YAML semantics nor runtime
+behavior. Prefer `load` or a complete `file` tutorial for author-ready examples.
+The marks make partial examples explicit; they must not be reported as gameplay
+verification. After a contract change, update the appropriate inventory, recipes
+and schema descriptions together. The separate diagnostic registry owns errors
+page generation; these tests do not rewrite it.

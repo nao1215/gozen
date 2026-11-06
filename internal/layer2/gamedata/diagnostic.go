@@ -112,6 +112,9 @@ func (db *DB) readSource(b []byte, name string) (*sourceDocument, error) {
 	if err != nil {
 		return nil, doc.yamlError(err)
 	}
+	if len(parsed.Docs) > 1 {
+		return nil, fmt.Errorf("%s: expected a single YAML document", name)
+	}
 	if len(parsed.Docs) > 0 {
 		doc.root = parsed.Docs[0].Body
 	}

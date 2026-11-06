@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"strings"
 	"testing"
 
@@ -298,4 +299,49 @@ func TestCampaignStateMadeOnceAFrame(t *testing.T) {
 	if again := g.campaignNow(); len(again.JoinedIDs) != len(first.JoinedIDs) {
 		t.Errorf("the next frame's state has %v, want %v", again.JoinedIDs, first.JoinedIDs)
 	}
+}
+
+func TestSettledLandmarkKeepsPremultipliedPixels(t *testing.T) {
+	for _, terrain := range [][3]float64{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 1}, {0, 0, 0}} {
+		for _, ground := range []float64{0, .5, 1} {
+			pixels := make([]byte, 4*16)
+			for i := 0; i+3 < len(pixels); i += 4 {
+				copy(pixels[i:i+4], []byte{128, 128, 128, 128})
+			}
+			settlePixels(pixels, image.Pt(1, 16), terrain[0], terrain[1], terrain[2], ground)
+			for i := 0; i+3 < len(pixels); i += 4 {
+				for channel := range 3 {
+					if pixels[i+channel] > pixels[i+3] {
+						t.Fatalf("terrain %v ground %v row %d: invalid premultiplied pixel %v", terrain, ground, i/4, pixels[i:i+4])
+					}
+				}
+			}
+			if pixels[3] != 128 || pixels[len(pixels)-1] >= pixels[3] {
+				t.Fatal("tint changed body alpha or failed to fade the foot")
+			}
+		}
+	}
+}
+
+func FuzzSettledLandmarkPremultiplication(f *testing.F) {
+	f.Add(uint8(128), uint8(128), uint8(128), uint8(128), uint8(255), uint8(0), uint8(0), uint8(255))
+	f.Add(uint8(0), uint8(0), uint8(0), uint8(0), uint8(0), uint8(0), uint8(0), uint8(0))
+	f.Fuzz(func(t *testing.T, r, g, b, a, tr, tg, tb, ground uint8) {
+		pixel := []byte{min(r, a), min(g, a), min(b, a), a}
+		pixels := make([]byte, 4*32)
+		for i := 0; i+3 < len(pixels); i += 4 {
+			copy(pixels[i:i+4], pixel)
+		}
+		settlePixels(pixels, image.Pt(2, 16), float64(tr)/255, float64(tg)/255, float64(tb)/255, float64(ground)/255)
+		for i := 0; i+3 < len(pixels); i += 4 {
+			if pixels[i+3] > a {
+				t.Fatalf("alpha increased: %v", pixels[i:i+4])
+			}
+			for channel := range 3 {
+				if pixels[i+channel] > pixels[i+3] {
+					t.Fatalf("invalid premultiplied pixel: %v", pixels[i:i+4])
+				}
+			}
+		}
+	})
 }

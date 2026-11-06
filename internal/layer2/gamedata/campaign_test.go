@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -33,6 +34,12 @@ func TestCampaignLoads(t *testing.T) {
 // TestCampaignErrors: gozen check reports a campaign's mistakes with where they are.
 func TestCampaignErrors(t *testing.T) {
 	for _, c := range []struct{ name, old, replacement, want string }{
+		{"invalid region id", "  hill:", "  hill-top:", "a region's id"},
+		{"reserved region id", "  hill:", "  target:", "target is the region of an order"},
+		{"repeated neighbor", "next: [field, keep]", "next: [field, keep, field]", "field is written twice"},
+		{"negative garrison", "troops: 150", "troops: -1", "troops are 0 or more"},
+		{"invalid faction id", "  blue:", "  blue-team:", "a faction's id"},
+		{"march fields on draft", `{draft: "50"}`, `{draft: "50", keep: 1}`, "where, by, pick, keep and send"},
 		{"a border written on one side", "field: {name: Field, next: [home, hill, keep]", "field: {name: Field, next: [hill, keep]", "home borders field, but field's next does not name home"},
 		{"an unknown neighbour", "keep: {name: Keep, next: [field, hill]", "keep: {name: Keep, next: [field, hill, nowhere]", `unknown region "nowhere"`},
 		{"overlapping areas", "troops: 150}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}}", "troops: 150, area: [[0, 0], [10, 0], [10, 10], [0, 10]]}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}, area: [[5, 5], [15, 5], [15, 15]]}", "the area overlaps hill's"},
@@ -67,6 +74,17 @@ func TestCampaignErrors(t *testing.T) {
 // TestCampaignGameErrors: the mistakes of game.yaml's campaign and of the names.
 func TestCampaignGameErrors(t *testing.T) {
 	for _, c := range []struct{ name, old, replacement, want string }{
+		{"missing campaign location", "  location: camp", "  location: ''", "campaign.location is the place"},
+		{"missing player", "player: blue", "player: ''", "campaign.player is the player's faction"},
+		{"negative turns", "turns: 6", "turns: -1", "turns are 0"},
+		{"negative general troops", "troops: 400", "troops: -1", "troops are 0 or more"},
+		{"order without generals", "generals: {scout: {troops: 400, might: 2}}", "generals: {}", "campaign.generals is empty"},
+		{"invalid order id", "    attack:", "    attack-now:", "an order's id"},
+		{"order id with whitespace", "    attack:", "    'attack now':", "an order's id"},
+		{"order id with punctuation", "    attack:", "    'attack!':", "an order's id"},
+		{"unknown general assignment", `general.troops: "general.troops + 100"`, `generals.missing.troops: "100"`, "not a general"},
+		{"readonly named general", `general.troops: "general.troops + 100"`, `generals.scout.might: "100"`, "troops only"},
+		{"readonly current general", `general.troops: "general.troops + 100"`, `general.might: "100"`, "general.troops only"},
 		{"an unknown player", "player: blue", "player: bleu", `unknown faction "bleu"`},
 		{"an unknown place", "location: camp", "location: tent", `unknown location "tent"`},
 		{"an unknown general", "generals: {scout: ", "generals: {ghost: ", `unknown actor "ghost"`},
@@ -264,4 +282,253 @@ func TestFactionWordsAndCallLoops(t *testing.T) {
 			t.Errorf("%s: %v", ok, err)
 		}
 	}
+}
+
+func TestCampaignConfigurationBoundaries(t *testing.T) {
+	for _, tc := range []struct{ name, field, want string }{
+		{"calendar", "calendar: month", "calendar is week"},
+		{"count", "count: units", "count is actions or orders"},
+		{"defeat", "defeat: {out: -1}", "out is turns, 0 or more"},
+		{"rounds", "clash: {rounds: -1}", "rounds are 0"},
+		{"capture below", "clash: {capture: -0.01}", "capture is a chance"},
+		{"capture above", "clash: {capture: 1.01}", "capture is a chance"},
+		{"garrison below", "clash: {garrison: -0.01}", "garrison is a share"},
+		{"garrison above", "clash: {garrison: 1.01}", "garrison is a share"},
+		{"soldier count", "clash: {per_soldier: -1}", "per_soldier is troops"},
+		{"soldier side", "clash: {soldiers: {ally: x.png}}", "soldiers are player and foe"},
+		{"tactic null", "clash: {tactics: {wait: null}}", "expected a definition map"},
+		{"tactic label", "clash: {tactics: {wait: {}}}", "a tactic needs a label"},
+		{"tactic ranking", "clash: {tactics: {wait: {label: Wait, pick: least}}}", "pick least needs by"},
+		{"tactic multiplier", "clash: {tactics: {wait: {label: Wait, deal: -1}}}", "deal and take are"},
+		{"skill null", "clash: {skills: {rally: null}}", "expected a definition map"},
+		{"skill label", "clash: {skills: {rally: {}}}", "a skill needs a label"},
+		{"skill charge", "clash: {skills: {rally: {label: Rally, charge: -1}}}", "charge is rounds"},
+		{"unknown label", "labels: {missing: Missing}", "no region has a value"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			game := strings.Replace(testgame.CampaignGame, "campaign:\n", "campaign:\n  "+tc.field+"\n", 1)
+			_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+			if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.Contains(err.Error(), "game.yaml") {
+				t.Fatalf("want localized %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestCampaignOrderBoundaries(t *testing.T) {
+	for _, tc := range []struct{ name, order, want string }{
+		{"null", "null", "expected a definition map"},
+		{"negative cost", "{cost: -1}", "cost is 0 or more"},
+		{"unknown general mode", "{general: idle}", "general is ready or any"},
+		{"predicate without target", "{where: true}", "where narrows the target"},
+		{"negative turn limit", "{per_turn: -1}", "per_turn and generals"},
+		{"negative general count", "{generals: -1}", "per_turn and generals"},
+		{"wrong counter", "{per_turn: 1}", "write count: orders"},
+		{"repeated nonmarch", "{until_taken: true}", "write march: true"},
+		{"multiple nonmarch generals", "{generals: 2}", "write march: true"},
+		{"nonmarch outcome", "{on_win: [{gold: 1}]}", "on_win, on_lose and on_draw"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			game := strings.Replace(testgame.CampaignGame, "  orders:\n", "  orders:\n    inspect: "+tc.order+"\n", 1)
+			_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game}))
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+	// Explicit zero is a free order, not the omitted cost of one.
+	for _, cost := range []int{0, 1, 2} {
+		game := strings.Replace(testgame.CampaignGame, "label: Attack,", fmt.Sprintf("label: Attack, cost: %d,", cost), 1)
+		db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game})
+		if got := db.Game.Campaign.Orders["attack"].CostOf(); got != cost {
+			t.Fatalf("explicit cost %d became %d", cost, got)
+		}
+	}
+}
+
+func TestCampaignFiniteParameters(t *testing.T) {
+	for _, field := range []string{"landmark_scale", "landmark_ground", "send", "capture", "garrison", "deal", "take", "wealth", "might", "keep"} {
+		for _, value := range []string{"0.5", ".nan", ".inf", "-.inf"} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				files := testgame.CampaignFiles(nil)
+				switch field {
+				case "landmark_scale", "landmark_ground":
+					files["data/campaign.yaml"] = strings.Replace(testgame.CampaignData, "home: {name: Home,", "home: {name: Home, "+field+": "+value+",", 1)
+				case "wealth":
+					files["data/campaign.yaml"] = strings.Replace(testgame.CampaignData, "wealth: 20", "wealth: "+value, 1)
+				case "keep":
+					files["data/campaign.yaml"] = strings.Replace(testgame.CampaignData, "keep: 300", "keep: "+value, 1)
+				case "might":
+					files["game.yaml"] = strings.Replace(testgame.CampaignGame, "might: 2", "might: "+value, 1)
+				case "send":
+					files["data/campaign.yaml"] = strings.Replace(testgame.CampaignData, "{march: true,", "{march: true, send: "+value+",", 1)
+				default:
+					clash := field + ": " + value
+					if field == "deal" || field == "take" {
+						clash = "tactics: {guard: {label: Guard, " + clash + "}}"
+					}
+					files["game.yaml"] = strings.Replace(testgame.CampaignGame, "campaign:\n", "campaign:\n  clash: {"+clash+"}\n", 1)
+				}
+				_, err := testgame.TryLoad(files)
+				if value == "0.5" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), field) {
+					t.Fatalf("nonfinite %s accepted or misdiagnosed: %v", field, err)
+				}
+			})
+		}
+	}
+}
+
+func TestCampaignConditionsQuoteNames(t *testing.T) {
+	for _, name := range []string{"", "plain", "team'\"\\foe", "with.dot", "line\nbreak", "null\x00byte", `x" || true || "y`} {
+		t.Run(name, func(t *testing.T) {
+			db := &data.DB{Factions: map[string]*data.Faction{name: {Capital: name}}, Regions: map[string]*data.Region{name: {Owner: name}}}
+			db.Game.Campaign = &data.Campaign{Player: name}
+			win := data.CampaignWin(db)
+			got, err := win.Eval(expr.Map{"faction": expr.Map{name: expr.Map{"regions": 1.0}}})
+			if err != nil || got != true {
+				t.Fatalf("win for literal name %q: %v, %v", name, got, err)
+			}
+			lose := data.CampaignLose(db)
+			if name == "" {
+				if lose.Set() {
+					t.Fatal("empty capital must not create a lose condition")
+				}
+				return
+			}
+			for _, owner := range []string{name, "other"} {
+				got, err = lose.Eval(expr.Map{"region": expr.Map{name: expr.Map{"owner": owner}}})
+				if err != nil || got != (owner != name) {
+					t.Fatalf("lose for literal name %q owner %q: %v, %v", name, owner, got, err)
+				}
+			}
+		})
+	}
+}
+
+// Campaign defaults build expressions before semantic diagnostics run. Arbitrary
+// edited names must be diagnosed without panicking in that construction path.
+func FuzzCampaignNames(f *testing.F) {
+	for _, name := range []string{"", "blue", "attack now", "team'\"\\foe", "with.dot", "line\nbreak", "null\x00byte"} {
+		for kind := range uint8(3) {
+			f.Add(kind, name)
+		}
+	}
+	f.Fuzz(func(t *testing.T, kind uint8, name string) {
+		if len(name) > 256 {
+			return
+		}
+		game, world := testgame.CampaignGame, testgame.CampaignData
+		switch kind % 3 {
+		case 0:
+			game = strings.Replace(game, "player: blue", "player: "+fmt.Sprintf("%q", name), 1)
+		case 1:
+			game = strings.Replace(game, "    attack:", "    "+fmt.Sprintf("%q", name)+":", 1)
+		case 2:
+			world = strings.Replace(world, "capital: home", "capital: "+fmt.Sprintf("%q", name), 1)
+		}
+		db, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game, "data/campaign.yaml": world}))
+		if err == nil {
+			if db == nil {
+				t.Fatal("successful load returned no definitions")
+			}
+			if problems := db.Check(); len(problems) > 0 {
+				t.Fatalf("loaded campaign fails recheck: %v", problems)
+			}
+		}
+	})
+}
+
+const armiesClash = "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {layout: below, armies: {men: [x.png, x.png, x.png]}}"
+
+func armiesGame(t *testing.T, replacement string) string {
+	t.Helper()
+	game := strings.Replace(testgame.CampaignGame, "generals: {scout: {troops: 400, might: 2}}", replacement, 1)
+	if game == testgame.CampaignGame {
+		t.Fatal("the generals are not in the game")
+	}
+	return game
+}
+
+// TestClashArmies: the soldier poses of an army, the layout and the kinds are read.
+func TestClashArmies(t *testing.T) {
+	db, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": armiesGame(t, armiesClash)}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := &db.Game.Campaign.Clash
+	if db.Game.Campaign.Generals["scout"].Army != "men" || cl.Layout != "below" {
+		t.Fatalf("army %q, layout %q", db.Game.Campaign.Generals["scout"].Army, cl.Layout)
+	}
+}
+
+func TestClashArmyErrors(t *testing.T) {
+	for _, c := range []struct{ name, generals, want string }{
+		{"a general without an army", "generals: {scout: {troops: 400, might: 2}}\n  clash: {armies: {men: [x.png, x.png]}}", "needs an army (men)"},
+		{"an unknown kind", "generals: {scout: {troops: 400, might: 2, army: elves}}\n  clash: {armies: {men: [x.png, x.png]}}", `army "elves" is not in clash.armies`},
+		{"a missing picture", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {armies: {men: [x.png, gone.png]}}", "no picture assets/gone.png"},
+		{"no pose", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {armies: {men: []}}", "at least one picture"},
+		{"too many soldiers", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {max_soldiers: 13, armies: {men: [x.png, x.png]}}", "max_soldiers is 0 (4) to 12"},
+		{"a layout", "generals: {scout: {troops: 400, might: 2, army: men}}\n  clash: {layout: over, armies: {men: [x.png, x.png]}}", `layout is front or below, not "over"`},
+		{"a kind with no armies", "generals: {scout: {troops: 400, might: 2, army: men}}", `army "men" is not in clash.armies (none are written)`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": armiesGame(t, c.generals)}))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("want %q, got %v", c.want, err)
+			}
+		})
+	}
+}
+
+func TestCampaignArmyDefaultsPreserveAuthoredValues(t *testing.T) {
+	for _, order := range [][]string{nil, {"rangers"}, {"rangers", "archers", "scouts"}, {"scouts", "archers", "rangers"}} {
+		clash := data.Clash{Armies: map[string][]string{}}
+		for _, name := range order {
+			clash.Armies[name] = []string{"x.png"}
+		}
+		want := ""
+		if len(order) == 1 {
+			want = "rangers"
+		} else if len(order) > 1 {
+			want = "archers"
+		}
+		for range 20 {
+			if got := clash.FirstArmy(); got != want {
+				t.Fatalf("order %v chose %q, want %q", order, got, want)
+			}
+		}
+		if len(clash.Armies) != len(order) {
+			t.Fatal("default selection mutated armies")
+		}
+		if clash.GarrisonShare() != .4 {
+			t.Fatal("omitted garrison lost its default")
+		}
+		for _, share := range []float64{0, .25, 1} {
+			clash.Garrison = &share
+			if clash.GarrisonShare() != share {
+				t.Fatalf("explicit share %v was replaced", share)
+			}
+		}
+	}
+}
+
+func TestCampaignInvalidReferencesDoNotPanic(t *testing.T) {
+	for _, player := range []string{"2", "bad-name", "\"[\""} {
+		t.Run("player_"+player, func(t *testing.T) {
+			game := strings.Replace(testgame.CampaignGame, "player: blue", "player: "+player, 1)
+			if _, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game})); err == nil {
+				t.Fatal("invalid player was accepted")
+			}
+		})
+	}
+	t.Run("capital", func(t *testing.T) {
+		fields := strings.Replace(testgame.CampaignData, "capital: home", "capital: '2'", 1)
+		if _, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"data/campaign.yaml": fields})); err == nil {
+			t.Fatal("invalid capital was accepted")
+		}
+	})
 }

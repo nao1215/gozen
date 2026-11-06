@@ -20,7 +20,9 @@ game/
 
 `game.yaml` is a [Game](/schema/#game). Each file in `data/` is a [DataFile](/schema/#datafile) and may hold any of its sections, so split by area (`town.yaml`, `cave.yaml`) or by kind (`enemies.yaml`, `skills.yaml`) as you like. Every ID lives in one namespace per section, and a duplicate is an error.
 
-Start a new `game.yaml` with `schema_version: 8`, as the bundled templates do. From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
+Start a new `game.yaml` with `schema_version: 11`, as the bundled templates do. To move an older game to schema 11, change the header and write `enabled: false` on every tactic row that omitted `enabled`, because an omitted switch changed from false to true. Before v1.0.0 the formats may change between versions and gozen has no migration command.
+
+From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
 
 ## What goes where
 
@@ -37,7 +39,7 @@ Start a new `game.yaml` with `schema_version: 8`, as the bundled templates do. F
 | `profiles` | the character book: a page per character | `mira: {title: Courier, text: ...}` |
 | `enemies` with `ui.bestiary` | the monster book: a page per enemy | `mote: {lore: "Lives near the river stones."}` |
 
-Two skills are required in every game: `attack` and `guard`, the battle commands. `game.yaml`'s `battle:` can point them elsewhere.
+Combat games need `attack` and `guard`, the battle commands; `game.yaml`'s `battle:` can point them elsewhere. A narrative game can use actors without classes and needs no dummy party or combat skills.
 
 ## Places
 
@@ -230,7 +232,20 @@ for a complete book.
 
 ## Events
 
-An event is a named list of commands. Call it with `call`, or give it a trigger:
+An event is a named list of commands. In schema 11, write the list directly when
+it needs no metadata, and call it with `call: greeting`:
+
+<!-- verify: parse schema-11 event fragment; ticket is defined by the game -->
+```yaml
+events:
+  greeting:
+    - say: Welcome back.
+    - give: ticket
+```
+
+`give: ticket` and `take: ticket` mean one item. For another quantity, use
+`give: {item: ticket, count: 2}`. Keep the event's mapping form when it needs
+metadata such as a trigger, condition or parameters:
 
 <!-- verify: load -->
 ```yaml
@@ -263,7 +278,7 @@ damage: a.atk * 2 - b.def
 - In battle formulas, `a` is the user and `b` the target; in stats, `level` is the actor's level.
 - Operators: `+ - * /`, comparisons, `&&` (`and`), `||` (`or`), `!`, and `cond ? x : y`.
 - Functions: `min`, `max`, `abs`, `floor`, `ceil`, `round`, `int`, `sqrt`, `pow`, `clamp`, `len`, `rand`, `chance`, `pages`.
-- There are no loops or user functions: a list is read with `len(menu)` or `menu[0].label`. Going through every entry is the job of Go code, not of YAML.
+- Use collection expressions such as `filter`, `count` and `sum` to select or summarize records. A bounded `call.each` applies one parameterized event to selected IDs; screen entries also accept `each`. Read [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) for scope and replay limits.
 
 A condition you leave out holds; a formula you leave out is 0. `gozen check` parses every expression and reports unknown names with file and line.
 
@@ -410,6 +425,61 @@ ui:
 Every standing figure breathes, blinks and sways its hair and swaying parts; only the speaker's mouth moves while the text is typing. A line's `face` or a `stand` with `face` fades the figure to that face over the puppet's `fade`, and `effect: nod` and the other reactions play on it. A face the puppet does not have, or a figure that is not an actor, shows the picture as before. Give the puppet's base the canvas of the face pictures, so `stage_framing`, `stage_scale` and `stage_drop`, written for the pictures, fit it. A large base is composed near the size it is drawn at, so a 4096 by 6144 portrait does not cost its full size every frame. Without the setting the stage shows the pictures as before.
 
 A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
+
+### A phone on the screen
+
+`phone` shows a phone over the scene and waits until the player puts it down. It changes no state, and Skip passes it. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+
+<!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
+```yaml
+- phone:
+    app: chat
+    title: Team
+    messages:
+    - {from: Ann, icon: icons/ann.png, text: Are you up?}
+    - {mine: true, text: Now I am.}
+    - {from: Ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml, text: Look, seconds: 8, bounce: [2, 5]}}
+- phone:
+    app: feed
+    title: Photos
+    posts:
+    - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
+- phone:
+    app: video
+    hold: landscape
+    video: {picture: bg/stage.png, puppet: ann/puppet.yaml, text: Live clip, seconds: 30, bounce: [4, 9.5]}
+```
+
+A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed stacks its posts top to bottom and scrolls with the wheel, the up and down keys or a drag; a click on a picture likes it, OK at the bottom puts the phone down, and a post's video plays in its place while it is on the screen. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+
+For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
+
+A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK answers it and Cancel declines, and the next notice rings again when it is a call too. `var` keeps what the phone was put down with (a button's `id` or label, `answer` or `decline`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
+
+<!-- verify: parse a fragment of an event; the pictures are the author's files -->
+```yaml
+- phone:
+    app: page
+    title: Harbor Bank
+    color: '#1f5fbf'
+    var: var.transfer
+    rows:
+    - {text: Confirm the transfer, size: large, bold: true}
+    - {item: {icon: icons/bank.png, title: Blue Tide Ltd., text: Invoice 0420, value: '-3,000,000'}}
+    - {pictures: [shop/1.png, shop/2.png, shop/3.png], locked: '!flag.supported', label: Supporters only}
+    - {qr: 'https://github.com/nao1215/gozen', caption: Scan to add Mia}
+    - {button: Confirm, set: {flag.paid: true}}
+    - {button: Cancel, id: cancel}
+- phone:
+    app: lock
+    date: Tuesday
+    notices:
+    - {app: Monitor, icon: icons/alert.png, title: API error rate 6%, text: Over the 5% threshold}
+    - {app: On-call, icon: icons/alert.png, title: On-call · API error rate, text: Incoming call, call: true, set: {flag.woke: true}}
+- phone:
+    app: banner
+    notices: [{app: Chat, icon: icons/ann.png, title: Ann, text: Are you coming?, event: ann_chat}]
+```
 
 ## Campaigns
 

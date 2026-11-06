@@ -310,3 +310,45 @@ func TestPartyWipeAndLoss(t *testing.T) {
 		t.Error("Result words")
 	}
 }
+
+func TestLargeEffectAmountsSaturate(t *testing.T) {
+	for _, kind := range []string{"damage", "heal", "revive"} {
+		t.Run(kind, func(t *testing.T) {
+			scope := "one_ally"
+			switch kind {
+			case "damage":
+				scope = "one_enemy"
+			case "revive":
+				scope = "dead_ally"
+			}
+			db := testgame.Load(t, map[string]string{
+				"game.yaml":       "schema_version: 1\nid: large_effect\n" + testgame.Game,
+				"data/large.yaml": "skills: {large: {scope: " + scope + ", crit: '0', effects: [{" + kind + ": 'pow(10, 30)', variance: 0}]}}",
+			})
+			st := testgame.State(db, 1)
+			st.Join("guide")
+			b := battle.New(db, st, "one")
+			target := b.Party[1]
+			target.HP = 1
+			want := target.MHP()
+			switch kind {
+			case "damage":
+				target, want = b.Foes[0], 0
+			case "revive":
+				target.HP = 0
+			}
+			found := false
+			for _, step := range run(b, battle.Action{User: b.Party[0], Skill: "large", Target: target}) {
+				if step.User == b.Party[0] && step.Target == target && (step.Kind == battle.Damage && kind == "damage" || step.Kind == battle.Heal && kind == "heal" || step.Kind == battle.Revive && kind == "revive") {
+					found = true
+					if step.HP != want {
+						t.Errorf("large %s left HP %d, want %d", kind, step.HP, want)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("fixture did not apply the effect")
+			}
+		})
+	}
+}

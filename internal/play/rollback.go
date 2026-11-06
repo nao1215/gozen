@@ -26,6 +26,7 @@ type backEvent struct {
 	name      string
 	lines     int
 	answers   []int
+	opened    []bannerOpen
 	log       []logLine
 }
 
@@ -46,7 +47,7 @@ func (g *Game) keepEvent() {
 	}
 	g.backRing = append(g.backRing, backEvent{
 		snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs,
-		lines: g.evLines, answers: slices.Clone(g.evAnswers), log: g.evLog,
+		lines: g.evLines, answers: slices.Clone(g.evAnswers), opened: slices.Clone(g.evOpened), log: g.evLog,
 	})
 	if len(g.backRing) > n {
 		g.backRing = slices.Delete(g.backRing, 0, len(g.backRing)-n)
@@ -89,7 +90,7 @@ func (g *Game) rollBack() {
 	var to backEvent
 	into := false
 	if from > 1 && !g.evNoBack && g.evSnap != nil && g.evCmds != nil && len(g.evHist) >= from-1 {
-		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), log: g.evLog}
+		to = backEvent{snap: g.evSnap, rnd: g.evRand, cmds: g.evCmds, name: g.evName, args: g.evArgs, lines: from - 1, answers: slices.Clone(g.evAnswers[:g.evHist[from-2]]), opened: openedBy(g.evOpened, from-1), log: g.evLog}
 	} else {
 		last := len(g.backRing) - 1
 		to, into = g.backRing[last], true
@@ -133,6 +134,7 @@ func (g *Game) replayEvent(e backEvent) bool {
 	} else {
 		g.events.Start(e.cmds)
 	}
+	g.reopen(e.opened)
 	g.rollingBack = false
 	g.backRing = ring
 	g.liveCatchUp(&fastTo{lines: e.lines, answers: e.answers}, g.evName, nil)
@@ -170,6 +172,9 @@ func (g *Game) cursor() (rpg.Cursor, []byte, []byte, bool) {
 	c := rpg.Cursor{Event: g.evName, Args: g.evArgs, Line: g.evLines, Answers: slices.Clone(g.evAnswers)}
 	switch {
 	case g.evName != "":
+		for _, o := range g.evOpened {
+			c.Opened = append(c.Opened, o.event)
+		}
 		return c, g.evSnap, g.evRand, true
 	case g.evArrival && g.arriveSnap != nil:
 		c.Arrival = true
@@ -226,6 +231,9 @@ func (g *Game) resume(r *rpg.Resume) {
 		} else {
 			g.events.Start(cmds)
 		}
+		for _, name := range c.Opened {
+			g.reopen([]bannerOpen{{event: name}})
+		}
 	}
 	checkpoint := !c.Arrival && c.Line == 0 // a checkpoint save: the event plays from its start
 	if !checkpoint {
@@ -249,6 +257,9 @@ func (g *Game) resume(r *rpg.Resume) {
 // after a battle, a shop, a screen or a move, a save cannot hold where the event goes on
 // (the event cannot be read again up to that line), so it would lose the event's rest.
 func (g *Game) saveBlocked() string {
+	if g.phone != nil {
+		return lang.T("この 画面を 閉じて、操作が 終わってから セーブ しよう。")
+	}
 	if g.screenContinuation() {
 		if g.screenSaveAllowed() || g.homeCheckpoint() {
 			return ""

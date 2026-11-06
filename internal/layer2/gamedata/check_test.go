@@ -402,3 +402,112 @@ func TestActorFacesPictureBudget(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckRejectsNonfinitePresentationValues(t *testing.T) {
+	cases := []struct{ name, field, format string }{
+		{"figure-x", "title_figures", "title_figures: [{file: x.png, x: %s}]"},
+		{"figure-bottom", "title_figures", "title_figures: [{file: x.png, bottom: %s}]"},
+		{"figure-height", "title_figures", "title_figures: [{file: x.png, height: %s}]"},
+		{"meter-max", "meters", "meters: [{value: '1', max: %s}]"},
+		{"meter-mark", "meters", "meters: [{value: '1', marks: [%s]}]"},
+		{"bubble-size", "card_bubbles", "card_bubbles: [{size: %s}]"},
+		{"bubble-speed", "card_bubbles", "card_bubbles: [{speed: %s}]"},
+		{"bubble-rise", "card_bubbles", "card_bubbles: [{rise: %s}]"},
+		{"material-refraction", "ui.material", "ui: {material: {kind: glass, refraction: %s}}"},
+		{"material-wallpaper", "ui.material", "ui: {material: {kind: glass, wallpaper_strength: %s}}"},
+		{"material-blur", "ui.material", "ui: {material: {kind: glass, blur: %s}}"},
+		{"material-opacity", "ui.material", "ui: {material: {kind: glass, opacity: %s}}"},
+		{"material-border", "ui.material", "ui: {material: {kind: glass, border: %s}}"},
+		{"material-shadow", "ui.material", "ui: {material: {kind: glass, shadow: %s}}"},
+		{"balloon", "ui.balloon", "ui: {balloon: %s}"},
+		{"portrait-x", "ui.talk_portrait", "ui: {talk_portrait: {x: %s}}"},
+		{"portrait-bottom", "ui.talk_portrait", "ui: {talk_portrait: {bottom: %s}}"},
+		{"portrait-height", "ui.talk_portrait", "ui: {talk_portrait: {height: %s}}"},
+		{"title-size", "title_text", "title_text: {size: %s}"},
+		{"title-subtitle-size", "title_text", "title_text: {subtitle_size: %s}"},
+		{"title-tracking", "title_text", "title_text: {tracking: %s}"},
+		{"title-subtitle-tracking", "title_text", "title_text: {subtitle_tracking: %s}"},
+	}
+	for _, tc := range cases {
+		for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {
+			t.Run(tc.name+"/"+value, func(t *testing.T) {
+				_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: finite-check\n" + testgame.Game + fmt.Sprintf(tc.format, value) + "\n"})
+				if value == "0.1" {
+					if err != nil {
+						t.Fatalf("valid setting: %v", err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.field) {
+					t.Fatalf("want %s diagnostic for %s, got %v", tc.field, value, err)
+				}
+			})
+		}
+	}
+}
+
+func TestCheckRejectsNonfiniteBattleValues(t *testing.T) {
+	for _, tc := range []struct{ name, field, format string }{
+		{"state-chance", "restrict_chance", "states: {probe: {name: Pause, restrict: skip, restrict_chance: %s}}"},
+		{"level-rate", "level_scale.rate", "troops: {probe: {members: [mote], level_scale: {level: 5, rate: %s, max: 0.2}}}"},
+		{"level-max", "level_scale.max", "troops: {probe: {members: [mote], level_scale: {level: 5, rate: 0.1, max: %s}}}"},
+		{"recoil", "recoil", "skills: {probe: {name: Strike, scope: one_enemy, effects: [{damage: '1', recoil: %s}]}}"},
+	} {
+		for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {
+			t.Run(tc.name+"/"+value, func(t *testing.T) {
+				_, err := testgame.TryLoad(map[string]string{"data/finite.yaml": fmt.Sprintf(tc.format, value)})
+				if value == "0.1" {
+					if err != nil {
+						t.Fatalf("valid setting: %v", err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tc.field) {
+					t.Fatalf("want %s diagnostic for %s, got %v", tc.field, value, err)
+				}
+			})
+		}
+	}
+}
+
+func TestImageTimingRejectsNonfiniteValues(t *testing.T) {
+	for _, field := range []string{"fade", "auto"} {
+		for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				_, err := testgame.TryLoad(map[string]string{"data/timing.yaml": fmt.Sprintf("events: {picture: {do: [{image: {files: [x.png], %s: %s}}]}}", field, value)})
+				if value == "0.1" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "image") {
+					t.Fatalf("nonfinite %s accepted: %v", field, err)
+				}
+			})
+		}
+	}
+}
+
+func TestActorFaceNumbersAreFinite(t *testing.T) {
+	for _, tc := range []struct{ name, format string }{
+		{"face_shade", "face_shade: %s"},
+		{"face_shade_top", "face_shade_top: %s"},
+		{"face_box x", "face_box: [%s, 0.1, 0.2]"},
+		{"face_box y", "face_box: [0.5, %s, 0.2]"},
+		{"face_box size", "face_box: [0.5, 0.1, %s]"},
+		{"cutin_box x", "cutin_box: [%s, 0.1, 0.2]"},
+		{"cutin_box y", "cutin_box: [0.5, %s, 0.2]"},
+		{"cutin_box size", "cutin_box: [0.5, 0.1, %s]"},
+	} {
+		for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {
+			t.Run(tc.name+"/"+value, func(t *testing.T) {
+				_, err := testgame.TryLoad(map[string]string{
+					"data/face.yaml":                    "actors: {probe: {name: Probe, class: ranger, faces: portraits/probe, " + fmt.Sprintf(tc.format, value) + "}}",
+					"assets/portraits/probe/normal.png": string(testgame.Picture(8, 8)),
+				})
+				if value == "0.1" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), strings.Fields(tc.name)[0]) {
+					t.Fatalf("nonfinite face value accepted or misdiagnosed: %v", err)
+				}
+			})
+		}
+	}
+}

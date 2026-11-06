@@ -390,6 +390,10 @@ func (c *checker) pictureSize(p string) (image.Point, bool) {
 
 // inPicture checks that a point is in a picture of the size (when the size is known).
 func (c *checker) inPicture(w string, p Point, size image.Point, known bool) {
+	if !finiteNumber(p[0]) || !finiteNumber(p[1]) {
+		c.errorf(diag.OutOfRange, w, "coordinates must be finite, got [%g, %g]", p[0], p[1])
+		return
+	}
 	if known && (p[0] < 0 || p[1] < 0 || p[0] > float64(size.X) || p[1] > float64(size.Y)) {
 		c.errorf(diag.OutOfRange, w, "[%g, %g] is outside the picture (%dx%d)", p[0], p[1], size.X, size.Y)
 	}
@@ -441,7 +445,7 @@ func (c *checker) doll(w string, d *Doll) {
 		c.errorf(diag.Shape, w+".face_at", "face_at is [middle, top, width]")
 	}
 	for i, v := range d.FaceAt {
-		if v < 0 || v > 1 {
+		if !finiteNumber(v) || v < 0 || v > 1 {
 			c.errorf(diag.OutOfRange, fmt.Sprintf("%s.face_at[%d]", w, i), "want a fraction in [0, 1], got %g", v)
 		}
 	}
@@ -481,10 +485,10 @@ func (c *checker) stage(w, _ string, l *Location) {
 			c.errorf(diag.Shape, w+".depth", "the depth is %dx%d, the background %dx%d (they must be the same size)", ds.X, ds.Y, size.X, size.Y)
 		}
 	}
-	if s.Camera < 0 || s.Camera >= 90 {
+	if !finiteNumber(s.Camera) || s.Camera < 0 || s.Camera >= 90 {
 		c.errorf(diag.OutOfRange, w+".camera", "want degrees in [0, 90), got %g", s.Camera)
 	}
-	if s.DepthBias < 0 || s.DepthBias >= 1 {
+	if !finiteNumber(s.DepthBias) || s.DepthBias < 0 || s.DepthBias >= 1 {
 		c.errorf(diag.OutOfRange, w+".depth_bias", "want a fraction in [0, 1), got %g", s.DepthBias)
 	}
 	switch {
@@ -494,7 +498,7 @@ func (c *checker) stage(w, _ string, l *Location) {
 		ys := map[float64]bool{}
 		for i, m := range s.Scale {
 			ww := fmt.Sprintf("%s.scale[%d]", w, i)
-			if m.Height <= 0 {
+			if !finiteNumber(m.Height) || m.Height <= 0 {
 				c.errorf(diag.OutOfRange, ww+".height", "want a height above 0, got %g", m.Height)
 			}
 			c.inPicture(ww+".at", m.At, size, known)
@@ -516,7 +520,7 @@ func (c *checker) stage(w, _ string, l *Location) {
 	for i, f := range s.Fronts {
 		ww := fmt.Sprintf("%s.fronts[%d]", w, i)
 		c.polygon(ww+".area", f.Area, size, known)
-		if f.Base <= 0 || known && f.Base > float64(size.Y) {
+		if !finiteNumber(f.Base) || f.Base <= 0 || known && f.Base > float64(size.Y) {
 			c.errorf(diag.OutOfRange, ww+".base", "base is the ground's y under the front, in the picture (got %g)", f.Base)
 		}
 	}
@@ -617,7 +621,7 @@ func (c *checker) stage(w, _ string, l *Location) {
 		for j, q := range p.Path {
 			free(fmt.Sprintf("%s.path[%d]", ww, j), q)
 		}
-		if p.Speed < 0 {
+		if !finiteNumber(p.Speed) || p.Speed < 0 {
 			c.errorf(diag.OutOfRange, ww+".speed", "want a speed of 0 or more, got %g", p.Speed)
 		}
 		c.facingWord(ww+".facing", p.Facing)

@@ -86,6 +86,7 @@ Assume planning entities `potter` and `weaver`, activities `prepare` and `pack`,
 actor `guide`, and a declared numeric entity attribute `vigor`. Event declarations
 belong in a data file; `screens` belongs in `game.yaml`.
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 events:
   encourage:
@@ -120,6 +121,7 @@ A candidate screen reuses a task argument; its entries may call a shared event.
 The two fixed candidates keep this example small. Collection-generated rows are a
 later feature, not a requirement to duplicate the screen for each task.
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 screens:
   candidates:
@@ -138,6 +140,7 @@ screens:
           args: {task: 'arg.task', resident: '"weaver"'}
 ```
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 events:
   assign_task:
@@ -353,6 +356,7 @@ for an idle location; this is a serialization guard, not a change to that schedu
 For example, this neutral screen can be used now, but the player must close it and
 finish `inspect` before saving:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 screens:
   stock:
@@ -360,6 +364,7 @@ screens:
     entries: [{label: Boards, text: 'Boards: {var.boards}'}]
 ```
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 events:
   inspect:
@@ -424,6 +429,7 @@ First-party integration tests use the existing `Next` and `Answer` interface:
 
 A neutral stock screen uses existing YAML syntax:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 screens:
   stock:
@@ -456,6 +462,7 @@ Visited event and screen sets terminate cycles independently.
 For example, these existing-schema fragments connect an event to a screen and
 then to another event:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 screens:
   stock:
@@ -465,6 +472,7 @@ screens:
       do: [{call: report}]
 ```
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 events:
   visit:
@@ -709,6 +717,7 @@ without separate screens or exposing hidden simulation attributes.
 
 A schema-10 call may supply one ID or string parameter through `each`:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 call:
   event: inspect

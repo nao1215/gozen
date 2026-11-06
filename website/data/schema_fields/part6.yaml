@@ -75,7 +75,7 @@ TacticRow:
   _: "One row of a simple tactics setting. It refers to catalog entries by ID rather than storing expressions."
   action: "An ID of the tactic action to perform."
   condition: "An ID of the tactic condition under which the row applies."
-  enabled: "Whether the row is active. It is off by default."
+  enabled: "Whether the row is active. Omitted means true in schema 11 and false in earlier schemas."
   percent: "The threshold percentage, needed only by conditions that use one."
   target: "An ID of the tactic target to aim at. It defaults to the `target` of the action, and cannot be set under simple tactics."
 TacticTarget:

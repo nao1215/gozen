@@ -59,6 +59,10 @@ type MoodEffect struct{ Name string }
 // ImageEffect sets the current picture; an empty file clears it.
 type ImageEffect struct{ Picture data.CG }
 
+// PhoneEffect shows a phone over the scene (the phone command, ADR 0057) with
+// its texts already filled; the event waits on a Tap while it is up.
+type PhoneEffect struct{ Phone data.PhoneCue }
+
 // CallCameraEffect turns a call participant's camera view on or off; it is
 // presentation only.
 type CallCameraEffect struct {
@@ -118,6 +122,7 @@ func (ImageEffect) isEffect()      {}
 func (SoundEffect) isEffect()      {}
 func (CallCameraEffect) isEffect() {}
 func (CallShareEffect) isEffect()  {}
+func (PhoneEffect) isEffect()      {}
 func (BreedEffect) isEffect()      {}
 func (VisualEffect) isEffect()     {}
 func (StandEffect) isEffect()      {}
@@ -418,7 +423,13 @@ type Notice struct{ Text string }
 
 // Tap waits for a tap with nothing to read (between the pictures of an image's files).
 // If Auto is greater than 0, advance to the next after that many seconds without a button press (image auto; slideshow).
-type Tap struct{ Auto float64 }
+type Tap struct {
+	Auto float64
+	// Results is how many results the phone shown can be put down with that
+	// the story keeps (the phone command); the screen answers one, or -1 for
+	// none, with Answer.
+	Results int
+}
 
 // Clear ends the game happily.
 type Clear struct{}
@@ -1264,6 +1275,20 @@ func (r *Runner) run(c *data.Command) Request {
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
+	case "phone":
+		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
+		if c.Phone.App == "banner" {
+			break
+		}
+		results := c.Phone.Results()
+		if len(results) > 0 {
+			r.asked, r.optionAt, r.pick = nil, nil, nil
+			r.options = make([]data.ChoiceOption, len(results))
+			for i, res := range results {
+				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
+			}
+		}
+		return Tap{Results: len(results)}
 	case "call_view":
 		if cam := c.CallView.Camera; cam != nil {
 			r.emit(CallCameraEffect{Who: cam.Who, On: cam.On})
@@ -1610,6 +1635,58 @@ func (r *Runner) asideInside(a data.Aside) bool {
 	return false
 }
 
+// fillPhone fills the phone's texts for the screen: every name, caption and
+// line is interpolated and translated as a line of dialogue is, and a clip's
+// frames patterns become the pictures they match.
+func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
+	fill := func(s string) string { return data.Render(r.db.Tr(s), env) }
+	p.Title = fill(p.Title)
+	p.Messages = append([]data.PhoneMessage(nil), p.Messages...)
+	video := func(v *data.PhoneVideo) *data.PhoneVideo {
+		if v == nil {
+			return nil
+		}
+		c := *v
+		c.Text = fill(c.Text)
+		c.Frames = c.FramePictures(r.db.FS)
+		return &c
+	}
+	for i := range p.Messages {
+		m := &p.Messages[i]
+		m.From, m.Text, m.Video = fill(m.From), fill(m.Text), video(m.Video)
+		m.Time, m.Day = fill(m.Time), fill(m.Day)
+	}
+	p.Posts = append([]data.PhonePost(nil), p.Posts...)
+	for i := range p.Posts {
+		post := &p.Posts[i]
+		post.Who, post.Text, post.Video, post.Time = fill(post.Who), fill(post.Text), video(post.Video), fill(post.Time)
+	}
+	p.Video = video(p.Video)
+	p.URL, p.Time, p.Date = fill(p.URL), fill(p.Time), fill(p.Date)
+	p.Rows = append([]data.PhoneRow(nil), p.Rows...)
+	for i := range p.Rows {
+		row := &p.Rows[i]
+		row.Text, row.Caption, row.Button, row.Label = fill(row.Text), fill(row.Caption), fill(row.Button), fill(row.Label)
+		row.QR = fill(row.QR)
+		if row.Locked.Set() {
+			shut, err := row.Locked.Bool(env)
+			r.logf(err)
+			row.Shut = shut
+		}
+		if row.Item != nil {
+			it := *row.Item
+			it.Title, it.Text, it.Value = fill(it.Title), fill(it.Text), fill(it.Value)
+			row.Item = &it
+		}
+	}
+	p.Notices = append([]data.PhoneNotice(nil), p.Notices...)
+	for i := range p.Notices {
+		n := &p.Notices[i]
+		n.App, n.Title, n.Text = fill(n.App), fill(n.Title), fill(n.Text)
+	}
+	return p
+}
+
 // show shows a picture (and remembers the last picture shown).
 func (r *Runner) show(c data.CG) {
 	// notify both the screen and the screenless run of the portrait display over a provisional background, with the same value.
@@ -1657,6 +1734,12 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 			return nil, fmt.Errorf("load: event ended before saved line %d", line)
 		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
+		case Tap:
+			if q.Results > 0 && answer < len(answers) {
+				r.Answer(answers[answer])
+				answer++
+			}
+			continue
 		case Say:
 			seen++
 		case Choice:

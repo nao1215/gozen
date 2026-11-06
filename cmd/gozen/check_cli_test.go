@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -180,7 +183,7 @@ func TestCheckWarnsOfCharactersTheBuiltInFontCannotDraw(t *testing.T) {
 		t.Fatalf("stderr: %q", stderr)
 	}
 	ps := checkJSONOut(t, 0, dir)
-	if len(ps) != 1 || ps[0].Path != "fonts.regular" || ps[0].Severity != "warning" || !strings.Contains(ps[0].Message, "no glyph for") {
+	if len(ps) != 2 || ps[1].Path != "fonts.regular" || ps[1].Severity != "warning" || !strings.Contains(ps[1].Message, "no glyph for") {
 		t.Fatalf("%+v", ps)
 	}
 	// More than 20 missing characters are counted, not all listed.
@@ -202,3 +205,62 @@ func TestCheckWarnsOfCharactersTheBuiltInFontCannotDraw(t *testing.T) {
 		t.Fatalf("stderr: %q", stderr)
 	}
 }
+
+// Read the actual published code blocks, not a separate set of test fixtures.
+// errgen's drift test ties these files and each non-YAML reason to the registry.
+func TestErrorReferenceExamplesProvokeTheirCode(t *testing.T) {
+	page := string(read(t, "../../website/content/errors.md"))
+	for _, entry := range diag.All() {
+		t.Run(entry.Code.String(), func(t *testing.T) {
+			marker := "### " + entry.Code.String() + "\n"
+			_, section, ok := strings.Cut(page, marker)
+			if !ok {
+				t.Fatal("code missing from the error reference")
+			}
+			if end := strings.Index(section, "\n##"); end >= 0 {
+				section = section[:end]
+			}
+			if strings.TrimSpace(entry.Detail) == "" || strings.TrimSpace(entry.Fix) == "" {
+				t.Fatal("missing cause or fix")
+			}
+			if entry.NotYAML != "" {
+				if !strings.Contains(section, "Not YAML-reproducible: "+entry.NotYAML) {
+					t.Fatal("missing non-YAML reason")
+				}
+				if strings.Contains(section, "```yaml") {
+					t.Fatal("unverified YAML example under a non-YAML exemption")
+				}
+				return
+			}
+			dir := t.TempDir()
+			blocks := referenceFiles.FindAllStringSubmatch(section, -1)
+			if len(blocks) == 0 || len(blocks) != len(entry.Example) {
+				t.Fatal("missing published example files")
+			}
+			for _, block := range blocks {
+				name, encoding, content := block[1], block[2], block[3]
+				if !fs.ValidPath(name) {
+					t.Fatalf("unsafe example path %q", name)
+				}
+				data := []byte(content + "\n")
+				if encoding == "base64" {
+					var err error
+					data, err = base64.StdEncoding.DecodeString(content)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				write(t, filepath.Join(dir, filepath.FromSlash(name)), string(data))
+			}
+			ds := diagnoseCheck(dir, "")
+			for _, d := range ds {
+				if d.Code == entry.Code.String() {
+					return
+				}
+			}
+			t.Fatalf("published example did not provoke %s: %+v", entry.Code, ds)
+		})
+	}
+}
+
+var referenceFiles = regexp.MustCompile("(?s)File: `([^`]+)`\\n+(?:<!-- verify: [^\\n]+ -->\\n+)?```(yaml|text|base64)\\n(.*?)\\n```")

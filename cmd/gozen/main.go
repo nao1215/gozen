@@ -30,7 +30,7 @@ type command struct {
 	games       *gameCache // the definitions kept between the runs of gozen sim batch; nil reads each game
 }
 
-// reporting registers structured result output for a migrated command.
+// reporting registers structured result output for a command.
 func (c *command) reporting(f *pflag.FlagSet) {
 	c.report.Command = strings.TrimPrefix(f.Name(), "gozen ")
 	f.StringVar(&c.report.Format, "format", "text", "result encoding: text, json, or jsonl")
@@ -352,6 +352,9 @@ func (c *command) notesCmd() clihelp.Operation {
 func (c *command) checkCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen check")
 	only := f.String("only", "", "check only `PART`: structure (definitions, references, expressions, and assets; the font is not read) or layout (the text layout)")
+	strict := f.Bool("strict", false, "fail with exit 1 when warnings exceed zero, or the baseline given")
+	baseline := f.String("baseline", "", "compare warning counts per code and file with baseline `FILE`; only growth fails")
+	writeBaseline := f.String("write-baseline", "", "write warning counts to a new `FILE` (an existing one is not overwritten)")
 	c.reporting(f)
 	clihelp.Choices(f.Lookup("only"), "", "structure", "layout")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
@@ -362,6 +365,9 @@ func (c *command) checkCmd() clihelp.Operation {
 		case "", "structure", "layout":
 		default:
 			return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
+		}
+		if *strict || *baseline != "" || *writeBaseline != "" {
+			return c.checkEnforced(f.Arg(0), *only, checkPolicy{*strict, *baseline, *writeBaseline})
 		}
 		if c.report.Machine() {
 			return c.checkJSON(f.Arg(0), *only)

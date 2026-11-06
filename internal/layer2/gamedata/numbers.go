@@ -35,8 +35,12 @@ func (db *DB) numberDefault(raw yaml.MapSlice, name string, value *float64, fall
 	*value = fallback
 }
 
+// finiteNumber is shared by schema validators before range comparisons, which
+// alone cannot reject NaN.
+func finiteNumber(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+
 func (c *checker) numberRange(where string, value, lower, upper float64) {
-	if math.IsNaN(value) || math.IsInf(value, 0) || value < lower || value > upper {
+	if !finiteNumber(value) || value < lower || value > upper {
 		c.errorf(diag.OutOfRange, where, "want a finite number in [%g, %g], got %g", lower, upper, value)
 	}
 }

@@ -50,7 +50,7 @@ locations: {camp: {}}
 	for _, tc := range []struct {
 		name, header, want string
 	}{
-		{"未来版", "schema_version: 11", "schema_version"},
+		{"未来版", "schema_version: 12", "schema_version"},
 		{"版 2 の ID なし", "schema_version: 2", "id"},
 		{"負の仕様版", "schema_version: -1", "schema_version"},
 		{"負のデータ版", "data_version: -1", "data_version"},
@@ -114,4 +114,23 @@ func (f *versionOnlyFS) Open(name string) (fs.File, error) {
 		return nil, fmt.Errorf("データ本体を先に開いた: %s", name)
 	}
 	return fstest.MapFS{"game.yaml": {Data: f.game}}.Open(name)
+}
+
+func TestGameIDRejectsUnsafeSaveNames(t *testing.T) {
+	for _, id := range []string{"CON", "nul", "Com1", "lpt9", "AUX", "PRN", strings.Repeat("a", 256)} {
+		t.Run(id, func(t *testing.T) {
+			if data.ValidGameID(id) {
+				t.Errorf("accepted unsafe save identity %q", id)
+			}
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 1\nid: " + id + "\n" + testgame.Game})
+			if err == nil {
+				t.Fatal("loaded a game whose default save directory is invalid")
+			}
+		})
+	}
+	for _, id := range []string{"COM10", "console", "auxiliary", "game_1", strings.Repeat("a", 255)} {
+		if !data.ValidGameID(id) {
+			t.Errorf("rejected ordinary identity %q", id)
+		}
+	}
 }

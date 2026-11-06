@@ -957,3 +957,103 @@ func TestScheduleDependenciesPresenceAndExclusion(t *testing.T) {
 func applyUnbound(s *rpg.State, c data.PlanCommand) ([]data.Command, error) {
 	return planning.ApplyIn(s, c, nil)
 }
+
+func TestChildBudgetOverflowIsAtomic(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	apply(t, s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "mix"}, Value: value(t, "pow(10, 308)")})
+	before := snapshot(t, s)
+	_, err := applyUnbound(s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "knead"}, Value: value(t, "pow(10, 308)")})
+	if err == nil {
+		t.Fatal("accepted child budgets whose total overflows")
+	}
+	if got := snapshot(t, s); string(got) != string(before) {
+		t.Fatal("failed budget change modified state")
+	}
+}
+
+func FuzzPlanningTransitions(f *testing.F) {
+	f.Add([]byte{0, 1, 2, 3, 4, 5, 6, 7})
+	f.Fuzz(func(t *testing.T, steps []byte) {
+		if len(steps) > 64 {
+			return
+		}
+		s := state(t)
+		s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+		s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+		s.Planning.Activities["mix"] = &rpg.ActivityState{}
+		s.Planning.Activities["knead"] = &rpg.ActivityState{}
+		amounts := []string{"0", "1", "-1", "0.1", "0.000000000001", "pow(10, 308)", "pow(10, -308)", "2", "3"}
+		ids := []string{"prepare", "mix", "knead"}
+		for i, step := range steps {
+			c := data.PlanCommand{Activity: data.IDRef{ID: ids[int(step)/7%len(ids)]}}
+			switch step % 7 {
+			case 0:
+				c.Op = "split"
+			case 1:
+				c.Op, c.Value = "progress", value(t, amounts[int(step)%len(amounts)])
+			case 2:
+				c.Op, c.Value = "effort", value(t, amounts[int(step)%len(amounts)])
+			case 3:
+				c.Op = "observe"
+			case 4:
+				c.Op, c.Value = "cancel", value(t, "true")
+			case 5:
+				c.Op, c.Value = "cancel", value(t, "false")
+			case 6:
+				c.Op, c.Activity = "advance", data.IDRef{}
+			}
+			before := snapshot(t, s)
+			_, applyErr := applyUnbound(s, c)
+			saved, err := s.Save()
+			if err != nil {
+				t.Fatalf("step %d (%+v) left unsavable state: %v", i, c, err)
+			}
+			if applyErr != nil && string(before) != string(saved) {
+				t.Fatalf("step %d failed but changed state: %v", i, applyErr)
+			}
+			if _, err := rpg.Parse(s.DB, saved, nil); err != nil {
+				t.Fatalf("step %d (%+v) cannot reload: %v", i, c, err)
+			}
+		}
+	})
+}
+
+func TestTinyActivityEffortDoesNotCompleteWithoutWork(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	apply(t, s, data.PlanCommand{Op: "effort", Activity: data.IDRef{ID: "prepare"}, Value: value(t, "0.000000000001")})
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	apply(t, s, data.PlanCommand{Op: "observe"})
+	for _, id := range []string{"prepare", "mix", "knead"} {
+		a := s.Planning.Activities[id]
+		if a.Progress != 0 || a.Completed != "" {
+			t.Errorf("%s completed without work: %+v", id, a)
+		}
+	}
+}
+
+func TestParentProgressUpdatesUnhiddenChildObservations(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	for _, amount := range []string{"1", "-.5", "2"} {
+		apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, amount)})
+		for _, id := range []string{"prepare", "mix", "knead"} {
+			a := s.Planning.Activities[id]
+			if a.Observed != a.Progress {
+				t.Errorf("%s after %s: observed %g differs from unhidden progress %g", id, amount, a.Observed, a.Progress)
+			}
+		}
+	}
+}

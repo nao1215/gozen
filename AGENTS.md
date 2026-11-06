@@ -17,6 +17,7 @@ Gozen is a no-code game creation toolkit for 2D RPGs, visual novels and strategy
 - Use a small `Config` struct consistently rather than functional options. Use `Load(fsys fs.FS, path string) (T, error)` for filesystem loading. See the API rules for context, errors, ownership, and extension interfaces.
 - Explain the consumer and purpose of every cross-package export. Document its contract and add meaningful usage coverage. Run `make boundary` to prevent public application packages.
 - Do not add architecture exceptions to silence a violation. Restructure the code; a necessary policy change needs a reasoned ADR first.
+- Before v1.0.0 the YAML and save formats may change between versions without migration tools. Do not add migration commands or YAML upgraders; keep loading older schema versions as they load today.
 
 ## File organization and maintenance
 

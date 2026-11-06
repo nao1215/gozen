@@ -139,6 +139,7 @@ func (c *checker) declarations() {
 			c.needsVersion(w+".back", "screen back and home", SchemaVersion10)
 		}
 		if screen.Back != "" {
+			c.useDefinition("screen", screen.Back)
 			if next := g.Screens[screen.Back]; next == nil || len(next.Params) > 0 || screen.Back == name {
 				c.errorf(diag.Shape, w+".back", "back requires another parameterless screen")
 			}
@@ -202,6 +203,7 @@ func (c *checker) declarations() {
 			c.expr(ew+".muted", e.Muted, FieldNames)
 			c.planningPure(ew+".muted", e.Muted)
 			if e.Destination != "" {
+				c.useDefinition("screen", e.Destination)
 				if next := g.Screens[e.Destination]; next == nil || len(next.Params) > 0 {
 					c.errorf(diag.Shape, ew+".destination", "destination requires a parameterless screen")
 				}

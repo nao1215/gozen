@@ -23,17 +23,6 @@ func TestLiteralAssignmentsQuoteHostileNames(t *testing.T) {
 	}
 }
 
-func TestCampaignLoseQuotesPlayer(t *testing.T) {
-	player := `team'"\foe`
-	db := &DB{Factions: map[string]*Faction{player: {Capital: "home"}}}
-	db.Game.Campaign = &Campaign{Player: player}
-	e := CampaignLose(db)
-	v, err := e.Eval(expr.Map{"region": expr.Map{"home": expr.Map{"owner": player}}})
-	if err != nil || v != false {
-		t.Fatalf("owner %q: %v, %v", player, v, err)
-	}
-}
-
 func TestEditDistanceBoundsLongNames(t *testing.T) {
 	if got := editDistance(strings.Repeat("x", 1_000_000), "say"); got != 3 {
 		t.Fatalf("distance = %d", got)

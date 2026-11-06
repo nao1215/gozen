@@ -4,6 +4,7 @@ A workspace can combine a directory, a data-authored calendar and a small burnup
 All availability conditions, date labels and choices belong to the game data.
 Browsing controls should only change view variables, not advance the calendar.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 screens:
   studio:
@@ -34,22 +35,24 @@ as the full chart. Bounds are logical pixels and must be at least 120 by 48.
 
 ## State-dependent conversations
 
+The compact event below uses schema 11; see [YAML authoring](authoring-yaml.md).
+
 Use ordinary event `if` branches to select a line from current authored state.
 Order overlapping conditions explicitly: a low-energy greeting can take priority
  over a return greeting. Keep relationship values in variables or hidden planning
 attributes; display observed replies and dates rather than the hidden value.
 Opening a profile should not call an event that changes that relationship.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 events:
   greeting:
-    do:
-      - if: var.energy < 20
-        then: [{say: {who: scout, text: "Let us take a break."}}]
-        else:
-          - if: flag.returned
-            then: [{say: {who: guide, text: "Welcome back."}}]
-            else: [{say: {who: scout, text: "Ready to explore?"}}]
+    - if: var.energy < 20
+      then: [{say: {who: scout, text: "Let us take a break."}}]
+      else:
+        - if: flag.returned
+          then: [{say: {who: guide, text: "Welcome back."}}]
+          else: [{say: {who: scout, text: "Ready to explore?"}}]
 ```
 
 Workspace entries use `ui.material.surfaces.card` when materials are enabled,
@@ -66,6 +69,7 @@ whose aspect matches the card. Use it for profile cards or a gallery of visitors
 keep the cropping itself in the authored assets. The bounds need a height of at
 least 120 so the caption keeps its own row.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 entries:
   - label: Visitor
@@ -91,6 +95,7 @@ and the bottom band for actions, so the player learns where pressing happens.
 `ticket` draws a bounded entry as a work ticket. The label is the title and
 `icon` the portrait of whoever holds it.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 entries:
   - label: '{activity.fire.name}'
@@ -124,6 +129,7 @@ middle box confirms. Up and down treat the whole carousel as one stop. Under the
 middle box are its label, `cost` as a chip, and its text. The middle box takes the
 band height less 86 for the caption, from 48 up to 180.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 entries:
   - label: Fire
@@ -160,6 +166,7 @@ carried value as a string. `accepts`, with that binding, refuses the drop while
 it is false, and `hint` is a short line shown on the place while something is
 carried.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 entries:
   - label: '{activity[arg.id].name}'
@@ -208,6 +215,7 @@ needs `do` and has no `destination`, `carousel`, `target` or `peek`.
 when it is pressed, without leaving the screen or running anything. A day plate
 of a calendar is the usual case:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - {label: '7/31', style: plate, peek: 'Kiln maintenance in the evening.', bounds: [800, 150, 160, 80]}
 ```
@@ -224,6 +232,7 @@ an interpolated `#rrggbb` (schema 10). Use it beside a word, such as a condition
 on a face card, never as the only sign of the meaning. An empty or unreadable
 color draws nothing.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - {label: Ann, style: plate, text: 'Tired', dot: '{var.ann_tired ? "#e8a07a" : "#7fc8a9"}', bounds: [32, 150, 200, 120]}
 ```
@@ -241,6 +250,7 @@ veils the crop in gray. The label and text move to the right of it.
 entry: `progress` fills it (0..1), `planned` marks where it should be, and
 `behind` colors it late.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - label: Ann
   style: plate
@@ -260,6 +270,7 @@ for a day off). It is an interpolated path (schema 10).
 
 The `message` command queues a chat message that asks for a decision:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - message: {who: ann, text: 'The kiln is late. Shall I stay tonight?', event: kiln_late}
 ```
@@ -283,6 +294,7 @@ screen shows no notification.
 `call_view` changes only how a video call looks, without changing any state,
 so an introduction that must leave the state alone can still show it:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - say: {text: (Ann turns her camera on.), ensemble: studio}
 - call_view: {camera: {who: ann, on: true}}
@@ -301,6 +313,7 @@ stays in the strip or the side column, the speaker's view glowing as usual. It
 shows only on a call the sharer is in. An empty picture ends the sharing, and so
 does the first line outside a call.
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - call_view: {share: {who: ann, picture: share/plan.png}}
 - say: {who: ann, text: This is the plan., ensemble: studio}
@@ -313,6 +326,7 @@ does the first line outside a call.
 A call can fill the screen and show its lines in the ordinary message window
 laid over it:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 view:
   call:
@@ -341,6 +355,7 @@ An event of lines shared by several calls names no `ensemble` in its lines;
 the call that calls it names the screen instead, and the lines of the called
 event, and of the events it calls, show over that call:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 - choice:
   - label: Talk about the scope
@@ -358,6 +373,7 @@ cuts them as rounded squares (the same face close-up), and a screen's
 `flows` in game.yaml puts full-screen surfaces in a fixed order, such as
 checking progress, then people, then choosing actions (schema 10).
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 flows:
   day:
@@ -398,6 +414,7 @@ only. Flows have 2 to 10 steps.
 Steps that time finishes, such as the parts of a day, are held, and steps that
 apply only on some days have a `when`:
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 flows:
   day:
@@ -425,6 +442,7 @@ flows:
 A screen's `guide` walks a new player through it once, in a character's voice,
 instead of permanent instructions on the screen (schema 10, ADR 0055).
 
+<!-- verify: parse workspace fragment; combine with the referenced game definitions and assets -->
 ```yaml
 screens:
   board_progress:

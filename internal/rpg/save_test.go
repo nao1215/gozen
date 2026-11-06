@@ -582,3 +582,92 @@ func TestSaveRejectsDamagedRandomState(t *testing.T) {
 		}
 	}
 }
+
+func TestLegacySaveCacheOwnsInput(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	st.Vars["cache_marker"] = "original"
+	envelope := map[string]json.RawMessage{}
+	if err := json.Unmarshal(saveBytes(t, st), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	input := envelope["state"]
+	original := bytes.Clone(input)
+	opt := rpg.Config{AllowLegacy: true}
+	if _, err := rpg.ParseWithConfig(db, input, nil, opt); err != nil {
+		t.Fatal(err)
+	}
+	pos := bytes.Index(input, []byte("original"))
+	if pos < 0 {
+		t.Fatal("missing marker")
+	}
+	copy(input[pos:], "modified")
+	restored, err := rpg.ParseWithConfig(db, original, nil, opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := restored.Vars["cache_marker"]; got != "original" {
+		t.Fatalf("cached save changed after caller reused input: got %v", got)
+	}
+}
+
+func FuzzSaveRoundTrip(f *testing.F) {
+	db := testgame.Load(f, nil)
+	seed, err := testgame.State(db, 1).Save()
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Add(seed)
+	f.Add([]byte(`{"actors":{},"party":[],"location":"camp"}`))
+	f.Fuzz(func(t *testing.T, input []byte) {
+		if len(input) > 64*1024 {
+			return
+		}
+		st, err := rpg.ParseWithConfig(db, input, nil, rpg.Config{AllowLegacy: true})
+		if err != nil {
+			return
+		}
+		first, err := st.Save()
+		if err != nil {
+			t.Fatalf("accepted save cannot be saved: %v", err)
+		}
+		again, err := rpg.Parse(db, first, nil)
+		if err != nil {
+			t.Fatalf("saved state cannot be loaded: %v", err)
+		}
+		second, err := again.Save()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(first, second) {
+			t.Fatalf("save normalization is not stable: %s\n%s", first, second)
+		}
+	})
+}
+
+func FuzzLoadedGameSave(f *testing.F) {
+	f.Add(true, []byte(testgame.Game))
+	f.Add(false, []byte(testgame.Data))
+	f.Add(true, []byte("schema_version: 10\nid: neutral\n"+testgame.Game))
+	f.Fuzz(func(t *testing.T, game bool, source []byte) {
+		if len(source) > 64*1024 {
+			return
+		}
+		name := "data/main.yaml"
+		if game {
+			name = "game.yaml"
+		}
+		db, err := testgame.TryLoad(map[string]string{name: string(source)})
+		if err != nil {
+			return
+		}
+		st := testgame.State(db, 17)
+		saved, err := st.Save()
+		if err != nil {
+			t.Fatalf("accepted game cannot save initial state: %v", err)
+		}
+		if _, err := rpg.Parse(db, saved, nil); err != nil {
+			t.Fatalf("accepted game cannot restore initial state: %v", err)
+		}
+	})
+}

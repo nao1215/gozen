@@ -82,3 +82,26 @@ func TestSkipPassesVoices(t *testing.T) {
 		t.Fatalf("at %q", at(g))
 	}
 }
+
+func TestScreenOnlyVoiceHasVolumeControl(t *testing.T) {
+	files := wldWorldFiles(t, `screens:
+  desk:
+    title: Desk
+    entries:
+    - label: Listen
+      do:
+      - say: {who: Narrator, text: Welcome., voice: welcome.wav}
+`, nil)
+	files["assets/welcome.wav"] = &fstest.MapFile{Data: testgame.Wav(0.1)}
+	g := wldOpenWith(t, Options{FS: files, Location: "camp"})
+	s := newConfigScreen(g)
+	if s.voiceRow < 0 {
+		t.Fatal("voice used only in a screen action has no volume control")
+	}
+	before := g.cfg.Voice
+	s.list.sel = s.voiceRow
+	s.change(g, -1, false)
+	if g.cfg.Voice != before-1 {
+		t.Fatal("screen voice volume control does not change the setting")
+	}
+}
