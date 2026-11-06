@@ -1,6 +1,5 @@
-# Office sample capture (run phone-chat): the team chat on a phone held upright; messages
-# arrive one by one, then a clip sent in the chat turns the phone on its side and plays its
-# footage (a recorded call) to the end before Cancel turns it back (pc###). A frame every 5 ticks.
+# Office sample capture (run phone-chat): the team chat with a day, times and a read mark; Nora's picture opens over the screen and closes, then Mia's clip turns the phone on its side and plays a recorded call before Cancel turns it back (pc###).
+# A frame every 5 ticks.
 gap 1
 wait 30
 press ok
@@ -20,11 +19,11 @@ shot pc006
 wait 2
 shot pc007
 wait 2
-press ok
 shot pc008
 wait 2
 shot pc009
 wait 2
+press ok
 shot pc010
 wait 2
 shot pc011
@@ -45,11 +44,11 @@ shot pc018
 wait 2
 shot pc019
 wait 2
-press ok
 shot pc020
 wait 2
 shot pc021
 wait 2
+press ok
 shot pc022
 wait 2
 shot pc023
@@ -58,7 +57,6 @@ shot pc024
 wait 2
 shot pc025
 wait 2
-press ok
 shot pc026
 wait 2
 shot pc027
@@ -75,6 +73,7 @@ shot pc032
 wait 2
 shot pc033
 wait 2
+press ok
 shot pc034
 wait 2
 shot pc035
@@ -83,7 +82,6 @@ shot pc036
 wait 2
 shot pc037
 wait 2
-press ok
 shot pc038
 wait 2
 shot pc039
@@ -100,6 +98,7 @@ shot pc044
 wait 2
 shot pc045
 wait 2
+press ok
 shot pc046
 wait 2
 shot pc047
@@ -108,7 +107,6 @@ shot pc048
 wait 2
 shot pc049
 wait 2
-press ok
 shot pc050
 wait 2
 shot pc051
@@ -125,6 +123,7 @@ shot pc056
 wait 2
 shot pc057
 wait 2
+press ok
 shot pc058
 wait 2
 shot pc059
@@ -133,7 +132,6 @@ shot pc060
 wait 2
 shot pc061
 wait 2
-press ok
 shot pc062
 wait 2
 shot pc063
@@ -150,6 +148,7 @@ shot pc068
 wait 2
 shot pc069
 wait 2
+press ok
 shot pc070
 wait 2
 shot pc071
@@ -162,7 +161,6 @@ shot pc074
 wait 2
 shot pc075
 wait 2
-press ok
 shot pc076
 wait 2
 shot pc077
@@ -175,6 +173,7 @@ shot pc080
 wait 2
 shot pc081
 wait 2
+press ok
 shot pc082
 wait 2
 shot pc083
@@ -199,6 +198,7 @@ shot pc092
 wait 2
 shot pc093
 wait 2
+press ok
 shot pc094
 wait 2
 shot pc095
@@ -223,6 +223,7 @@ shot pc104
 wait 2
 shot pc105
 wait 2
+press ok
 shot pc106
 wait 2
 shot pc107
@@ -247,6 +248,7 @@ shot pc116
 wait 2
 shot pc117
 wait 2
+press ok
 shot pc118
 wait 2
 shot pc119
@@ -339,7 +341,6 @@ shot pc162
 wait 2
 shot pc163
 wait 2
-press cancel
 shot pc164
 wait 2
 shot pc165
@@ -367,5 +368,86 @@ wait 2
 shot pc176
 wait 2
 shot pc177
+wait 2
+shot pc178
+wait 2
+shot pc179
+wait 2
+shot pc180
+wait 2
+shot pc181
+wait 2
+shot pc182
+wait 2
+shot pc183
+wait 2
+shot pc184
+wait 2
+shot pc185
+wait 2
+shot pc186
+wait 2
+shot pc187
+wait 2
+shot pc188
+wait 2
+shot pc189
+wait 2
+shot pc190
+wait 2
+shot pc191
+wait 2
+shot pc192
+wait 2
+shot pc193
+wait 2
+shot pc194
+wait 2
+shot pc195
+wait 2
+shot pc196
+wait 2
+shot pc197
+wait 2
+shot pc198
+wait 2
+shot pc199
+wait 2
+shot pc200
+wait 2
+shot pc201
+wait 2
+shot pc202
+wait 2
+shot pc203
+wait 2
+press cancel
+shot pc204
+wait 2
+shot pc205
+wait 2
+shot pc206
+wait 2
+shot pc207
+wait 2
+shot pc208
+wait 2
+shot pc209
+wait 2
+shot pc210
+wait 2
+shot pc211
+wait 2
+shot pc212
+wait 2
+shot pc213
+wait 2
+shot pc214
+wait 2
+shot pc215
+wait 2
+shot pc216
+wait 2
+shot pc217
 wait 2
 quit

@@ -90,6 +90,10 @@ runs:
     sample: office
     script: scripts/capture-phone-support.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_support, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-contact:
+    sample: office
+    script: scripts/capture-phone-contact.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_contact, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   office-tour:
     sample: office
     script: scripts/capture-office-tour.txt
@@ -449,6 +453,11 @@ images:
     frames:
       - {shots: pu*}
     mp4: {fps: 12, width: 1280, height: 720}
+  phone-contact.mp4:
+    run: phone-contact
+    frames:
+      - {shots: pq*}
+    mp4: {fps: 12, width: 1280, height: 720}
   office.mp4:
     run: office-tour
     frames:
@@ -750,6 +759,11 @@ images:
     run: phone-support
     frames:
       - {shots: "pu*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-contact.gif:
+    run: phone-contact
+    frames:
+      - {shots: "pq*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-stage.gif:
     run: novel-stage
