@@ -498,7 +498,7 @@ type MessageCue struct {
 // Time (the phone's clock when empty) and Date over its notices, which arrive
 // on a press or, with Auto, by themselves. Var receives the result the phone
 // was put down with: a page button's id (its label by default), answer or
-// decline for a call. A feed scrolls down (the default) or, with Scroll
+// decline for a call; a feed keeps its likes with its posts' set. A feed scrolls down (the default) or, with Scroll
 // across, shows a post a screen swiped sideways; Browse makes it only looked
 // at, a tap liking nothing.
 type PhoneCue struct {
@@ -648,7 +648,8 @@ type PhoneMessage struct {
 // caption Text and the number of Likes.
 //
 // A post with only Text is a card of text, as a timeline shows it; Replies and
-// Reposts are counted next to its likes.
+// Reposts are counted next to its likes. Set is what the story keeps when the
+// phone is put down with the post liked, as a page button's set is.
 type PhonePost struct {
 	Who     string      `yaml:"who"`
 	Icon    string      `yaml:"icon"`
@@ -659,6 +660,45 @@ type PhonePost struct {
 	Time    string      `yaml:"time"`
 	Replies int         `yaml:"replies"`
 	Reposts int         `yaml:"reposts"`
+	Set     Assignments `yaml:"set" json:",omitempty"`
+}
+
+// PhoneLikesMax is how many posts of one feed may keep a like (have a set). A
+// feed answers with one number, a bit for each of them, and 31 bits keep it
+// positive in every int and in a save's JSON.
+const PhoneLikesMax = 31
+
+// Liking are the indices of a feed's posts whose like the story keeps (those
+// with a set), in order; nil for another app, a feed only browsed or one
+// without sets. The phone answers a feed with bit k set for the k-th of them
+// liked when it was put down, so a save and a replay keep one number for it
+// as they keep a page button's index.
+func (p PhoneCue) Liking() []int {
+	if p.App != "feed" || p.Browse {
+		return nil
+	}
+	var out []int
+	for i, post := range p.Posts {
+		if len(post.Set) > 0 && len(out) < PhoneLikesMax {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// Liked are the commands a feed's answer runs: the sets of the posts it marks
+// liked, in the posts' order (none for a negative answer: put down unread).
+func (p PhoneCue) Liked(answer int) []Command {
+	if answer < 0 {
+		return nil
+	}
+	var out []Command
+	for k, i := range p.Liking() {
+		if answer&(1<<k) != 0 {
+			out = append(out, Command{SetV: p.Posts[i].Set})
+		}
+	}
+	return out
 }
 
 // PhoneVideo is a clip: its Picture under assets/ fills the frame (pushed in

@@ -123,3 +123,101 @@ func TestPhoneSaveReplays(t *testing.T) {
 		t.Fatalf("the banner's event did not run after the loaded event: at %q, vars %v", at(h), h.st.Vars)
 	}
 }
+
+const feedSaveData = `events:
+  fl:
+    do:
+      - say: "Start."
+      - phone:
+          app: feed
+          posts:
+            - {who: ann, picture: x.png, set: {var.ann: 1}}
+            - {who: bo, text: Lunch}
+            - {who: cy, text: Rain, set: {var.cy: 1}}
+      - say: "After."
+      - say: "End."
+`
+
+// TestPhoneFeedLikesSaveReplays: the likes a feed keeps are one saved answer,
+// so a save made after it and Back over it both come back with the same sets.
+func TestPhoneFeedLikesSaveReplays(t *testing.T) {
+	open := func() *Game {
+		fsys := gameFiles(t)
+		fsys["data/feed.yaml"] = &fstest.MapFile{Data: []byte(feedSaveData)}
+		g, err := New(Options{FS: fsys, NoSound: true, SaveDir: t.TempDir(), ShotDir: t.TempDir(), Location: "camp", Event: "fl"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return g
+	}
+	g := open()
+	for range 60 {
+		if g.phone != nil && g.phone.ready() {
+			break
+		}
+		if g.phone == nil && g.fast == nil && at(g) == "Start." {
+			btlKey(g, btnOK)
+		}
+		sysFrames(t, g, 1)
+	}
+	if g.phone == nil {
+		t.Fatalf("the feed did not come up: at %q", at(g))
+	}
+	g.phone.liked[2] = true
+	g.phone.closing = phoneRise
+	for range 60 {
+		if at(g) == "After." {
+			break
+		}
+		sysFrames(t, g, 1)
+	}
+	if at(g) != "After." || g.st.Vars["cy"] != float64(1) || g.st.Vars["ann"] != nil {
+		t.Fatalf("at %q, vars %v", at(g), g.st.Vars)
+	}
+	for range 6 {
+		btlKey(g, btnOK)
+		sysFrames(t, g, 3)
+		if at(g) == "End." {
+			break
+		}
+	}
+	if at(g) != "End." {
+		t.Fatalf("at %q", at(g))
+	}
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct{ Cursor rpg.Cursor }
+	if err := json.Unmarshal(saved, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Cursor.Answers) != 1 || doc.Cursor.Answers[0] != 2 {
+		t.Fatalf("cursor answers %v, want [2] (the second kept post)", doc.Cursor.Answers)
+	}
+	g.rollBack()
+	if at(g) != "After." || g.st.Vars["cy"] != float64(1) || g.st.Vars["ann"] != nil {
+		t.Fatalf("Back stopped at %q with vars %v", at(g), g.st.Vars)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	h := open()
+	t.Cleanup(func() {
+		if err := h.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	sysFrames(t, h, 2)
+	st, err := rpg.Parse(h.db, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.loadSavedGame(st)
+	if h.failure != nil {
+		t.Fatal(h.failure)
+	}
+	if at(h) != "End." || h.st.Vars["cy"] != float64(1) || h.st.Vars["ann"] != nil {
+		t.Fatalf("loaded at %q, vars %v", at(h), h.st.Vars)
+	}
+}

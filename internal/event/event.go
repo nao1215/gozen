@@ -427,7 +427,8 @@ type Tap struct {
 	Auto float64
 	// Results is how many results the phone shown can be put down with that
 	// the story keeps (the phone command); the screen answers one, or -1 for
-	// none, with Answer.
+	// none, with Answer. A feed's are the posts whose like it keeps, answered
+	// together: bit k of the answer for the k-th of them liked.
 	Results int
 }
 
@@ -504,8 +505,11 @@ type Runner struct {
 	options []data.ChoiceOption
 	offers  map[*data.Command]RecruitOffer // metadata for commands created after a won battle
 	// pick answers a choice made by the engine (stone_choose, stone_wearer) instead of options' do
-	pick   func(n int)
-	asked  *data.Command // the choice whose answer is waited for
+	pick  func(n int)
+	asked *data.Command // the choice whose answer is waited for
+	// likes is the feed whose answer is waited for: a number with a bit for
+	// each post it keeps liked (data.PhoneCue.Liking), not an option's index.
+	likes  *data.PhoneCue
 	battle *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
@@ -592,7 +596,7 @@ func (r *Runner) start(cmds []data.Command, args expr.Map) {
 
 // Running reports whether there is anything left to run.
 func (r *Runner) Running() bool {
-	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
+	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.likes != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
 }
 
 // Asking is the command whose answer is waited for: the choice or the battle just asked
@@ -610,6 +614,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
+	r.likes = nil
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -647,6 +652,10 @@ func (r *Runner) logf(err error) {
 // Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
 func (r *Runner) Answer(n int) {
 	switch {
+	case r.likes != nil:
+		feed := r.likes
+		r.likes = nil
+		r.push(feed.Liked(n))
 	case r.options != nil:
 		if n >= 0 && n < len(r.options) {
 			for i, option := range r.options {
@@ -1279,6 +1288,11 @@ func (r *Runner) run(c *data.Command) Request {
 		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
 		if c.Phone.App == "banner" {
 			break
+		}
+		if likes := c.Phone.Liking(); len(likes) > 0 {
+			r.asked, r.optionAt, r.pick, r.options = nil, nil, nil, nil
+			r.likes = c.Phone
+			return Tap{Results: len(likes)}
 		}
 		results := c.Phone.Results()
 		if len(results) > 0 {

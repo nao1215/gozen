@@ -186,13 +186,16 @@ events:
         posts:
         - {who: sam.travels, icon: avatars/sam.png, time: 2h, text: 'Trying to book a table for tonight and the app just spins. Anyone else?', likes: 48, replies: 12, reposts: 5}
         - {who: harbor.booking, icon: apps/timeline.png, time: 1h, text: 'We know some bookings fail right now. We are on it and will post here when it is fixed.', likes: 210, replies: 64, reposts: 88}
-        - {who: lena_k, icon: avatars/lena.png, time: 58m, text: 'Third time this month. I am calling the restaurant like it is 1999.', likes: 131, replies: 9, reposts: 20}
+        - {who: lena_k, icon: avatars/lena.png, time: 58m, text: 'Third time this month. I am calling the restaurant like it is 1999.', likes: 131, replies: 9, reposts: 20, set: {flag.liked_complaint: true}}
         - {who: dev.ops.dan, icon: avatars/dan.png, time: 45m, text: 'Whoever is on call at the booking team tonight: you have my sympathy.', likes: 302, replies: 15, reposts: 41}
         - {who: priya.eats, icon: avatars/priya.png, time: 40m, text: 'The booking app ate my reservation and my patience. Calling instead.', likes: 64, replies: 7, reposts: 3}
         - {who: harbor.booking, icon: apps/timeline.png, time: 20m, text: 'Update: payments are back. Table bookings are still slow, and we are fixing that next.', likes: 156, replies: 31, reposts: 40}
         - {who: tom_the_cook, icon: avatars/tom.png, time: 12m, text: 'Our kitchen got four walk-ins who said the app was down. Free advertising, I suppose.', likes: 89, replies: 6, reposts: 11}
         - {who: night.shift.nurse, icon: avatars/nurse.png, time: 5m, text: 'Booked a table for tomorrow at 2 a.m. because that is when I have time. Worked first try.', likes: 41, replies: 2}
         - {who: m.ortega, icon: avatars/maria.png, time: 1m, text: 'Booked fine five minutes ago. Back up?', likes: 17, replies: 3}
+    # A like is kept: a tap on the complaint (and no second tap) sets the flag.
+    - if: flag.liked_complaint
+      then: [{say: {who: martin, text: 'I just liked a complaint about our own app. From my own account.'}}]
     - say: {who: martin, text: Back up. Now the review of what broke.}
   phone_banner:
     - say: {who: martin, text: 'Back to the plan: payments first, then the form.'}

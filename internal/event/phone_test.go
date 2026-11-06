@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -106,6 +107,82 @@ events:
 	}
 	if _, ok := st.Vars["none"]; ok {
 		t.Fatal("a phone put down without a button kept a result")
+	}
+}
+
+// TestPhoneFeedLikes: a feed whose posts have a set waits with one result for
+// each of them and keeps the sets of the posts its answer marks liked, in the
+// posts' order; a feed only browsed, or one put down unread, keeps nothing.
+func TestPhoneFeedLikes(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - set: {var.mood: 5}
+      - phone:
+          app: feed
+          posts:
+            - {who: ann, picture: x.png, set: {var.mood: var.mood - 1, var.order: '"ann"'}}
+            - {who: bo, picture: x.png}
+            - {who: cy, text: Lunch, set: {flag.liked_cy: true, var.order: 'var.order + "cy"'}}
+            - {who: di, text: Rain, set: {flag.liked_di: true}}
+      - phone:
+          app: feed
+          posts: [{who: ann, picture: x.png, set: {flag.again: true}}]
+      - phone:
+          app: feed
+          posts: [{who: ann, picture: x.png}]
+      - say: next
+`})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &phoneHost{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
+		t.Fatalf("the feed did not wait with its three kept posts: %+v", tap)
+	}
+	if !r.Running() {
+		t.Fatal("the runner stopped while the feed waited for its likes")
+	}
+	r.Answer(1 | 2) // ann and cy liked, di not
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 1 {
+		t.Fatalf("the second feed did not wait: %+v", tap)
+	}
+	r.Answer(-1)
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 0 {
+		t.Fatalf("a feed without sets waited for a result: %+v", tap)
+	}
+	if say, ok := r.Next().(event.Say); !ok || say.Text != "next" {
+		t.Fatalf("the event did not go on: %+v", say)
+	}
+	if st.Vars["mood"] != float64(4) || st.Flags["liked_cy"] != true || st.Flags["liked_di"] == true {
+		t.Fatalf("likes kept: mood %v flags %v", st.Vars["mood"], st.Flags)
+	}
+	if st.Vars["order"] != "anncy" {
+		t.Fatalf("the sets ran out of the posts' order: %v", st.Vars["order"])
+	}
+	if st.Flags["again"] == true {
+		t.Fatal("a feed put down unread kept a like")
+	}
+}
+
+// TestPhoneFeedBrowsedKeepsNothing: browse turns likes off, so the feed waits
+// for no result even with a post's set (gozen check rejects the set).
+func TestPhoneFeedBrowsedKeepsNothing(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone: {app: feed, browse: true, posts: [{picture: x.png}]}
+`})
+	cue := *db.Events["e"].Do[0].Phone
+	cue.Posts[0].Set = map[string]data.Expr{"flag.x": data.MustExpr("true")}
+	if cue.Liking() != nil || cue.Liked(1) != nil {
+		t.Fatalf("a browsed feed keeps likes: %v %v", cue.Liking(), cue.Liked(1))
+	}
+	cue.Browse = false
+	if got := cue.Liking(); len(got) != 1 || len(cue.Liked(1)) != 1 || len(cue.Liked(2)) != 0 {
+		t.Fatalf("the feed's likes: %v %v", got, cue.Liked(2))
 	}
 }
 

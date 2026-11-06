@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A phone feed's post takes `set`, written as the `set` command, which runs when the phone is put down with the post liked, so the story can react to a like given by mistake. The like as the phone goes down counts: a second tap takes it back and keeps nothing, and Skip keeps only the likes given before it. A feed answers its event with one number, a bit for each post with a `set`, so a save made after the feed and Back over it come back with the same sets. `gozen check` rejects a `set` on a feed with `browse: true` (which likes nothing), more than 31 posts with `set` in one feed, and a `var` on a feed. The office example likes a complaint on its timeline.
+
 ## v0.18.0 - 2026-11-06
 
 A phone feed that pages sideways (`scroll: across`) or is only browsed without likes (`browse: true`), and long captions that no longer run past the phone's right edge.

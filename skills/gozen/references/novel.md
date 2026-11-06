@@ -61,6 +61,7 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
     posts:
     - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
     - {who: ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml}, likes: 300, text: Dance.}
+    - {who: bea, icon: icons/bea.png, picture: photos/ex.png, likes: 4, text: Old times., set: {flag.liked_ex: true, var.trust: var.trust - 1}}
 - phone:
     app: feed
     scroll: across
@@ -81,6 +82,7 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
 - A `page` (a browser bar with `url`, or `title` with `color`) scrolls `rows`: `text` (`size`, `bold`), `picture` (whole, `caption`), `pictures` (grid, `columns` 2 or 3), `item` (icon, title, text, value), `button` (puts the phone down). `locked: '!flag.x'` darkens a picture or grid with a lock and `label`.
 - A `lock` screen shows `time`/`date` and `notices` one a press (`auto` by themselves); `call: true` is an incoming call (OK answers, Cancel declines; list the call twice to ring again).
 - `var: var.x` keeps a button's `id` (or label), `answer` or `decline`; a button's or call's `set` is the `set` command's map. Branch on it after the phone.
+- A feed post's `set` runs when the phone is put down with the post liked (a second tap takes the like back and keeps nothing), so the story reacts to a like given by mistake. A feed has no `var`; `browse: true` rejects `set`; at most 31 posts of a feed have `set`.
 - A page's buttons take the keys and the pad (left, right, Tab ring one; OK presses it). `qr: text` draws a crisp QR code with `caption`.
 - Chat: `time`, `read: true` (owner's), `day` (a separator; a message of only `day` is the separator). Pictures keep their shape and open full screen on a press or a click. Posts: `time`. No `icon`: a circle with the name's first letter.
 - Footage: `fade: 0.3` cross-fades frames, `pan: true` pushes in on each, so a few pictures at a low `fps` look smooth.

@@ -1914,7 +1914,7 @@ func (g *Game) updateTapOrPhone(r event.Tap, answer func(int)) bool {
 	if !g.updatePhone() {
 		return false
 	}
-	result := g.phone.result
+	result := g.phone.answer()
 	g.closePhone()
 	if r.Results > 0 {
 		answer(result)

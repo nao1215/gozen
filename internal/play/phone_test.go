@@ -1399,3 +1399,53 @@ func TestPhoneFeedAcross(t *testing.T) {
 		t.Fatal("OK on the last page did not put the phone down")
 	}
 }
+
+// TestPhoneFeedLikesAnswer: a feed whose posts keep their likes answers its
+// event with a bit for each kept post liked as it goes down: a like taken back
+// by a second tap is not kept, a liked post without a set is not counted, and a
+// browsed feed answers with no result at all.
+func TestPhoneFeedLikesAnswer(t *testing.T) {
+	kept := data.Assignments{"flag.liked": data.MustExpr("true")}
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Picture: "x.png", Set: kept}, {Picture: "x.png"}, {Text: "Lunch", Set: kept}, {Text: "Rain", Set: kept},
+	}})
+	p := g.phone
+	if p.answer() != 0 {
+		t.Fatalf("a feed liked nothing answers %d, want 0", p.answer())
+	}
+	p.liked[0], p.liked[1], p.liked[3] = true, true, true
+	p.liked[3] = !p.liked[3] // taken back
+	p.liked[2] = true
+	if got := p.answer(); got != 1|2 {
+		t.Fatalf("answer %b, want %b (posts 0 and 2 kept)", got, 1|2)
+	}
+	g.closePhone()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	b := phoneGame(t, data.PhoneCue{App: "feed", Browse: true, Posts: []data.PhonePost{{Picture: "x.png", Set: kept}}})
+	b.phone.liked[0] = true
+	if got := b.phone.answer(); got != -1 {
+		t.Fatalf("a browsed feed answered %d, want -1", got)
+	}
+}
+
+// TestPhoneFeedLikeTapAnswers: the player's tap on a post's picture is what
+// the feed answers with when it is put down (the use the result is for: the
+// story reacts to the post liked by mistake).
+func TestPhoneFeedLikeTapAnswers(t *testing.T) {
+	kept := data.Assignments{"flag.liked": data.MustExpr("true")}
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{{Picture: "x.png"}, {Picture: "x.png", Set: kept}}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	posts, _, _, _ := g.feedView(p)
+	phonePress(g, btnDown)
+	phoneTicks(g, 40)
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	at := image.Pt(int(sx+w/2), int(sy+phoneFeedTop+posts[1].pic-p.scroll+20))
+	g.in = input{pdown: true, pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if !p.liked[1] || p.answer() != 1 {
+		t.Fatalf("a tap on the kept post: liked %v answer %d", p.liked, p.answer())
+	}
+}

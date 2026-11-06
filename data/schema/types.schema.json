@@ -15453,7 +15453,7 @@
           "x-type": "string"
         },
         "var": {
-          "description": "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call.",
+          "description": "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call. A feed has none: its posts keep their likes with set.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15868,6 +15868,57 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "set": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Assignments made when the phone is put down with the post liked (a like taken back is not kept), written as the set command's; not on a feed with browse: true, and on at most 31 posts of a feed.",
+          "patternProperties": {
+            "^actor\\.[^.]+\\.tactics$": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "location": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            },
+            "party": {
+              "anyOf": [
+                {
+                  "description": "A name as written, not an expression.",
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
         },
         "text": {
           "description": "Interpolated caption under the picture, after the poster's name.",

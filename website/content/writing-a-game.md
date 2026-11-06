@@ -428,7 +428,7 @@ A line counts as read by its source: the speaker and the text as written, before
 
 ### A phone on the screen
 
-`phone` shows a phone over the scene and waits until the player puts it down. It changes no state, and Skip passes it. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down. It changes no state of its own, only what its buttons, calls and liked posts keep, and Skip passes it (keeping nothing the player did not do). `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml
@@ -444,6 +444,7 @@ A line counts as read by its source: the speaker and the text as written, before
     title: Photos
     posts:
     - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
+    - {who: bea, icon: icons/bea.png, picture: photos/ex.png, likes: 4, text: Old times., set: {flag.liked_ex: true, var.trust: var.trust - 1}}
 - phone:
     app: feed
     scroll: across
@@ -457,7 +458,7 @@ A line counts as read by its source: the speaker and the text as written, before
     video: {picture: bg/stage.png, puppet: ann/puppet.yaml, text: Live clip, seconds: 30, bounce: [4, 9.5]}
 ```
 
-A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed stacks its posts top to bottom and scrolls with the wheel, the up and down keys or a drag; a click on a picture likes it, OK at the bottom puts the phone down, and a post's video plays in its place while it is on the screen. `scroll: across` shows one post a screen instead, swiped sideways as a carousel is: a drag follows the finger and settles on the nearest post or, flicked, the next; left and right, the wheel and OK step a post, and dots under it show where. `browse: true` makes a feed only looked at: a click likes nothing. A caption too long for its three lines is wrapped smaller and drawn at that size. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed stacks its posts top to bottom and scrolls with the wheel, the up and down keys or a drag; a click on a picture likes it, OK at the bottom puts the phone down, and a post's video plays in its place while it is on the screen. `scroll: across` shows one post a screen instead, swiped sideways as a carousel is: a drag follows the finger and settles on the nearest post or, flicked, the next; left and right, the wheel and OK step a post, and dots under it show where. A post's `set`, written as the `set` command, runs when the phone is put down with that post liked, so the story can answer a like given by mistake; a second tap takes the like back, and then nothing is kept. A feed has no `var`, at most 31 of its posts have `set`, and `browse: true` makes a feed only looked at: a click likes nothing, and `gozen check` rejects a `set` on its posts. A caption too long for its three lines is wrapped smaller and drawn at that size. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
 
 For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
 
