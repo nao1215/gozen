@@ -442,6 +442,8 @@ func sized(img *ebiten.Image, w, h int) *ebiten.Image {
 
 func (g *Game) phoneHint(p *phoneView) string {
 	switch {
+	case p.viewPic != "":
+		return lang.T("クリック・Esc: チャットに戻る")
 	case p.watchMsg >= 0:
 		return lang.T("クリック: 一時停止　Esc: チャットに戻る")
 	case p.watch != nil:
@@ -492,7 +494,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	if !p.side {
 		_, bar := p.pageAccent()
-		g.drawPhoneStatus(screen, scw, p.clock(g), p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
+		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))
 	op := &ebiten.DrawImageOptions{}
