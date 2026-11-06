@@ -14,6 +14,7 @@ Add a live-stream screen, opened from a location (`stream: lobby`) or with the c
 
 `game.yaml` names one file with `streams: data/streams.yaml` (schema version 9):
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 logo: logo.png                                            # under assets/, before the title in the bar (a colored square without it)
 timing: {say: 1.8, per_char: 0.11, chat: 1.6, ask: 12}   # seconds a beat lasts

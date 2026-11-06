@@ -10,6 +10,7 @@ An author who wants a first-person dungeon has to paint, or find, a wall, a floo
 
 ### YAML: `theme` in `dungeon` and in each of `looks`
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 dungeon:
   theme: cave            # walls, floor, ceiling, door and colors from the cave theme

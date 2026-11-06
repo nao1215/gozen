@@ -44,6 +44,7 @@ change saved party data, so that cleanup is not disguised as a syntax migration.
 
 Before:
 
+<!-- verify: parse before or after comparison; referenced items and tactics are supplied by the game -->
 ```yaml
 events:
   greeting:
@@ -54,6 +55,7 @@ events:
 
 After:
 
+<!-- verify: parse before or after comparison; referenced items and tactics are supplied by the game -->
 ```yaml
 events:
   greeting:
@@ -73,6 +75,7 @@ whole file for each compact event.
 
 Before:
 
+<!-- verify: parse before or after comparison; referenced items and tactics are supplied by the game -->
 ```yaml
 battle:
   auto_tactics:
@@ -82,6 +85,7 @@ battle:
 
 After:
 
+<!-- verify: parse before or after comparison; referenced items and tactics are supplied by the game -->
 ```yaml
 battle:
   auto_tactics:

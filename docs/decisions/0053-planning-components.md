@@ -34,6 +34,7 @@ can read full state. Diagnostic snapshots intentionally contain full state.
 For example, a workshop resident can expose a numeric estimate without changing
 the underlying attribute:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 entities:
   potter:
@@ -57,6 +58,7 @@ remain finite scalars and may still be boolean, string or nil.
 Authors can explicitly convert a boolean with `int(value)` when that is intended.
 For example, a workshop can record one inspection for an active resident:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 - plan: {op: record, ledger: inspections, value: 'int(self.active)'}
 - plan: {op: progress, activity: prepare, value: '2'}
@@ -72,6 +74,7 @@ Rule bodies can read only their own declared parameters through `arg`.
 The checker validates dotted names and literal string indexes against `params`,
 including references inside predicates. For example, a workshop can reuse:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 rules:
   work:
@@ -106,6 +109,7 @@ This does not change parameter evaluation order, rule results or saved state.
 
 For a neutral workshop, the author syntax is:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 # Existing syntax: refresh both collections.
 - plan: {op: observe}
@@ -354,6 +358,7 @@ or weighted selection.
 For example, a workshop, farm or training schedule can report remaining effort
 without enumerating activity IDs:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 - set:
     var.remaining: 'sum(filter(activities, !it.cancelled), it.effort-it.progress)'
@@ -409,6 +414,7 @@ A root activity may declare two or more authored children using `parent`. Only
 one level is supported. Their initial efforts must sum to the root's effort;
 children start unassigned and dormant. For example:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 activities:
   prepare: {name: Prepare clay, effort: 2, assignee: potter}
@@ -446,6 +452,7 @@ The destination must be parameterless. Unlike nested `open`, repeated navigation
 does not accumulate screens; closing resumes the original opener. Pending choices
 and destination changes survive session save/load. For example:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 screens:
   studio:

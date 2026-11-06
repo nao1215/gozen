@@ -13,6 +13,7 @@ configuration, outside `data/`, and is not loaded by the runtime. Unknown keys,
 wrong types and unreadable configuration fail the check. Missing configuration
 uses these defaults:
 
+<!-- verify: parse lint configuration, not a game data file -->
 ```yaml
 file_lines: 5000
 block_lines: 500

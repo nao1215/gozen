@@ -4,8 +4,7 @@ Start with the author-facing guides: `website/content/planning.md` (calendar,
 entities, activities, rules) and `website/content/workspaces.md` (screens).
 Copy from `examples/office/game`, a small app team's sprint that uses every
 workspace feature, or `examples/workshop/game` for planning state alone. Read
-ADR 0053 for state, ADR 0054 for typed bindings and ADR 0055 for guides. Use
-schema 10.
+ADR 0053 for state, ADR 0054 for typed bindings and ADR 0055 for guides. Start new games at schema 11; planning features require at least schema 10.
 
 - A day is a `flows.<name>` of full-screen steps (`hold` and `done` for a step
   that only time or an action finishes, `restart` for a new day).
@@ -31,3 +30,11 @@ schema 10.
 - Check a layout with `gozen sim script <game> --script - --save-dir DIR`:
   `look` lists the controls, `pick LABEL` presses one, and a trace shows
   `screen_drop`, `message_open` and `guide_done`.
+
+For repeated behavior, use typed `call.args` and bounded `call.each`; use
+`planning.rules` for shared planning operations and collection expressions for
+totals and eligibility. Plain screen entries accept `each` and expression
+targets. These bind existing definitions rather than generating YAML. Native
+planning surfaces still have argument and save-continuation limits; read
+[the binding guide](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md)
+before replacing a screen family.

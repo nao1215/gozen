@@ -4,6 +4,7 @@ Set `schema_version: 7` in game.yaml before using these fields.
 
 An enemy can change into another enemy with a self-scoped skill. Put that skill in an AI rule with an HP condition to make a second boss phase:
 
+<!-- verify: parse battle fragment; referenced forms, actors and pictures are supplied by the game -->
 ```yaml
 skills:
   open_shell:
@@ -21,6 +22,7 @@ enemies:
 
 For an immediate phase change after damage, put `hp_triggers` on the enemy instead:
 
+<!-- verify: parse battle fragment; referenced forms, actors and pictures are supplied by the game -->
 ```yaml
 enemies:
   guardian:
@@ -32,6 +34,7 @@ Thresholds descend from high to low. A crossing fires before the enemy falls, in
 
 To combine enemies, name the resulting enemy and the eligible source IDs. The user must be eligible:
 
+<!-- verify: parse battle fragment; referenced forms, actors and pictures are supplied by the game -->
 ```yaml
 skills:
   gather:
@@ -51,6 +54,7 @@ An enemy may select alternate picture files at HP thresholds; actors use face na
 
 Temporary hit and action reactions take priority over HP pictures. An actor's explicit `face_rules` take priority over its HP picture list.
 
+<!-- verify: parse battle fragment; referenced forms, actors and pictures are supplied by the game -->
 ```yaml
 enemies:
   mote:

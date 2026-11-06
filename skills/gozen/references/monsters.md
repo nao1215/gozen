@@ -1,6 +1,6 @@
 # Monster collection
 
-Use schema version 6. Define `monster_families`, then give each non-boss enemy a `family`, `rank` and `monster_class`; use `recruit: {chance, level}` for species that may ask to join after a won battle (`admission: party_only` keeps recruits out of the reserve; the `capture` command recruits directly, see battle.md). The class supplies growth, experience and skills learned by level.
+Start new games at schema 11; monster collection requires at least schema 6. Define `monster_families`, then give each non-boss enemy a `family`, `rank` and `monster_class`; use `recruit: {chance, level}` for species that may ask to join after a won battle (`admission: party_only` keeps recruits out of the reserve; the `capture` command recruits directly, see battle.md). The class supplies growth, experience and skills learned by level.
 
 Put `breeding: {min_level, skill_slots, pairs, families}` in data. Set `enemies.<id>.sex` to `any` (default), `male` or `female`; optional `sex_ratio` is the male probability for `any`. Captured and born instances keep their assigned sex. Breeding needs one male and one female, so check that every pair and family rule can produce both roles. Specific species pairs win over family rules. The child starts at level one, inherits chosen skills and a plus value; the parents leave.
 
