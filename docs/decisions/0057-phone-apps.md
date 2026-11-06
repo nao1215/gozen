@@ -37,7 +37,20 @@ the player's hand and cannot play anything.
      step a post. A post too tall for the screen across has its picture made
      shorter. `browse: true` makes the feed only looked at: a click likes
      nothing, for a story where the character scrolls past without reacting.
-     (Added in v0.18.0; the default stays the column with likes.) A caption
+     (Added in v0.18.0; the default stays the column with likes.) A post's
+     `set` is kept when the phone is put down with the post liked, as a page
+     button's `set` is when it is pressed: the like the player gave as the
+     phone goes down counts, so a second tap takes it back. Several posts can
+     be liked at once, so a feed answers its event with one number, a bit for
+     each post with a `set` (at most 31), and a save and a replay keep that one
+     number as they keep a button's index. A feed has no `var`: a per-post
+     `set` already says what each like means, and one var could not hold
+     several likes without a list type the expressions lack. Only the
+     pointer likes, as on a phone: the keys and the pad scroll and step, so
+     a like is the player's choice and a story should not need one.
+     `browse: true`
+     keeps nothing, and `gozen check` rejects a `set` under it. (Added in
+     v0.19.0.) A caption
      too long for its lines is wrapped smaller and drawn at that size.
    - `video` with `video`: a player with the title, a pause on a press and a
      seek bar.
@@ -67,5 +80,7 @@ The phone is drawn by the engine in fixed, neutral colors, so it reads as a
 phone in every game and needs no assets of its own; the apps are not copies of
 any one product. A game with a clock may keep `var.clock_minutes`, which the
 status bar shows. The phone is drawn from canvases it owns and frees when it is
-put down. The command does not record anything in a save: Back over it shows
-the phone again from its start.
+put down. The command records nothing in a save but the result it was put
+down with (a button's index, a call's answer, a feed's likes), kept among the
+event's answers as a choice's is: Back over it shows the phone again from its
+start, with no post liked.

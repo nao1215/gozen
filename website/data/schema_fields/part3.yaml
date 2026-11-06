@@ -311,7 +311,7 @@ PhoneCue:
   time: "Interpolated clock of the lock screen (the phone's clock when empty)."
   date: "Interpolated date under the lock screen's clock."
   auto: "True brings the lock screen's notices by themselves, one every second and a half."
-  var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call."
+  var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call. A feed has none: its posts keep their likes with set."
   scroll: "How a feed moves: down (the default), a column scrolled up and down, or across, a post a screen swiped sideways."
   browse: "True makes a feed only looked at: a tap or a click likes no post."
   messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."
@@ -377,6 +377,7 @@ PhonePost:
   time: "Interpolated age of the post beside the poster's name, such as 2h or Yesterday."
   replies: "Number of replies, next to the likes."
   reposts: "Number of reposts, next to the likes."
+  set: "Assignments made when the phone is put down with the post liked (a like taken back is not kept), written as the set command's; not on a feed with browse: true, and on at most 31 posts of a feed."
 
 PhoneVideo:
   _: "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front."

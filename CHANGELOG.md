@@ -4,6 +4,18 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A phone feed's post takes `set`, written as the `set` command, which runs when the phone is put down with the post liked, so the story can react to a like given by mistake. The like as the phone goes down counts: a second tap takes it back and keeps nothing, and Skip keeps only the likes given before it. A feed answers its event with one number, a bit for each post with a `set`, so a save made after the feed and Back over it come back with the same sets. `gozen check` rejects a `set` on a feed with `browse: true` (which likes nothing) and more than 31 posts with `set` in one feed, warns of a post's, a button's and a call's `set` as of a `set` command's, and the error for a `var` on a feed points at the posts' `set`. Likes are given with the pointer only. A trace marks a phone's result as one (`phone result N`) instead of a choice. The office example likes a complaint on its timeline.
+
+### Fixed
+
+- A phone with results that a headless run, a simulation or a session runs past without answering is put down unread: the event no longer keeps waiting for it ("the events do not end"), and a later choice's answer no longer goes to the phone.
+- A page button whose label fills to an empty text stays a button, so the buttons after it keep their own results and sets.
+- On a feed paged sideways, a tap mid-slide likes the post under the pointer, not the nearest page.
+- A save made after a page or a lock screen put down without a button or a call (Cancel) is no longer refused as an invalid cursor: a save keeps -1 for a phone that kept nothing. A session, which shows no phone, keeps the same -1, so a session save after a phone with results loads with the choices after it answered as they were.
+- A screen's event that shows a phone with results is no longer saved mid-screen, where its load would have lost the results; the save asks to finish the screen first.
+
 ## v0.18.0 - 2026-11-06
 
 A phone feed that pages sideways (`scroll: across`) or is only browsed without likes (`browse: true`), and long captions that no longer run past the phone's right edge.

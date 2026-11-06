@@ -226,13 +226,19 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		c.text(at+".text", post.Text, names)
 		c.picture(at+".picture", Picture{File: post.Picture})
 		c.picture(at+".icon", Picture{File: post.Icon})
+		c.assignments(at+".set", post.Set, names)
 	}
+	c.phoneLikes(where, p)
 	c.phoneVideo(where+".video", p.Video, names)
 	c.phonePage(where, p, names)
 	c.phoneLock(where, p, names)
 	if p.Var != "" {
 		if !hasPhoneResult(p) {
-			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep")
+			hint := ""
+			if p.App == "feed" {
+				hint = " (a feed keeps a like with the post's set)"
+			}
+			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep%s", hint)
 		}
 		c.assignments(where+".var", map[string]Expr{p.Var: MustExpr(`""`)}, names)
 	}
@@ -254,6 +260,25 @@ func (c *checker) phoneFeed(where string, p PhoneCue) {
 	}
 	if p.Browse {
 		c.errorf(diag.Shape, where+".browse", "browse is only for app feed (app is %s)", p.App)
+	}
+}
+
+// phoneLikes checks the sets a feed keeps its likes with: none on a feed only
+// browsed, whose likes are off, and no more than one answer holds.
+func (c *checker) phoneLikes(where string, p PhoneCue) {
+	kept := 0
+	for i, post := range p.Posts {
+		if len(post.Set) == 0 {
+			continue
+		}
+		kept++
+		at := fmt.Sprintf("%s.posts[%d].set", where, i)
+		switch {
+		case p.Browse:
+			c.errorf(diag.Shape, at, "a feed with browse: true likes nothing, so this set never runs (drop browse or the set)")
+		case kept == PhoneLikesMax+1:
+			c.errorf(diag.Shape, at, "a feed keeps the likes of at most %d posts with set (split the feed into two phones)", PhoneLikesMax)
+		}
 	}
 }
 

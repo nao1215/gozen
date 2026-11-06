@@ -3,6 +3,7 @@ package play
 import (
 	"testing"
 
+	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
@@ -104,5 +105,20 @@ func TestPhoneInBattleWaitsAndContinues(t *testing.T) {
 	}
 	if g.phone != nil || at(g) != "Battle continues" {
 		t.Fatalf("battle phone did not resume its event: phone=%v line=%q", g.phone != nil, at(g))
+	}
+}
+
+// TestPhoneResultBlocksScreenSave: a screen transcript keeps no phone results,
+// so a phone with results (a feed's likes) shown in a screen's root keeps the
+// root from being saved mid-screen instead of losing the likes on load.
+func TestPhoneResultBlocksScreenSave(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}}})
+	g.begin(event.Tap{})
+	if g.screenTrace.blocked {
+		t.Fatal("a phone without results blocked the screen transcript")
+	}
+	g.begin(event.Tap{Results: 2})
+	if !g.screenTrace.blocked {
+		t.Fatal("a phone with results left the screen transcript open to a save")
 	}
 }

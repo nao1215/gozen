@@ -317,6 +317,12 @@ func (db *DB) SetWarnings() []error {
 				check(w+".set", x.SetV)
 			case GalleryScene:
 				check(w+".set", x.Set)
+			case PhoneRow:
+				check(w+".set", x.Set)
+			case PhoneNotice:
+				check(w+".set", x.Set)
+			case PhonePost:
+				check(w+".set", x.Set)
 			}
 		}
 		switch v.Kind() { //nolint:exhaustive // Only schema container/scalar kinds need handling; other reflection kinds are intentionally ignored.

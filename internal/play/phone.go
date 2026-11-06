@@ -20,7 +20,8 @@ import (
 
 // phoneView is a phone shown over the scene by the phone command (ADR 0057):
 // held upright or on its side, with a chat, a photo feed or a video on it. It
-// changes no state; the event waits on a Tap until the player puts it down.
+// changes no state itself: the event waits on a Tap until the player puts it
+// down and keeps what answer says (a button, a call, the posts liked).
 type phoneView struct {
 	cue data.PhoneCue
 	// age counts ticks since the phone came up; closing counts down the ticks
@@ -129,6 +130,25 @@ func (p *phoneView) putDown(row, notice int) {
 			p.result = i
 		}
 	}
+}
+
+// answer is what the phone answers its event with: the result it was put
+// down with or, for a feed that keeps likes, bit k for the k-th post of
+// data.PhoneCue.Liking liked as the phone goes down (a like taken back by a
+// second tap is not kept). Skip, which puts the phone down at once, keeps the
+// likes given before it.
+func (p *phoneView) answer() int {
+	likes := p.cue.Liking()
+	if len(likes) == 0 {
+		return p.result
+	}
+	n := 0
+	for k, i := range likes {
+		if p.liked[i] {
+			n |= 1 << k
+		}
+	}
+	return n
 }
 
 func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {

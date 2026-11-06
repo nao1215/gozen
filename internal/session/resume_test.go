@@ -185,3 +185,78 @@ func stateNow(t *testing.T, s *gozen.Session) []byte {
 	}
 	return b
 }
+
+// TestSaveAfterAPhoneReplays: a session shows no phone, so a feed that keeps
+// likes is put down unread; a save after the choice that follows it loads with
+// the choice's answer on the choice, not on the feed.
+func TestSaveAfterAPhoneReplays(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":      {Data: []byte("schema_version: 4\nid: story\n" + testgame.Game)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+		"assets/x.png":   {Data: []byte("a stub")},
+		"data/story.yaml": {Data: []byte(`events:
+  story:
+    do:
+      - say: "Before."
+      - phone: {app: feed, posts: [{picture: x.png, set: {var.liked: 1}}, {picture: x.png, set: {var.liked: 2}}]}
+      - choice:
+          - {id: left, label: Left, do: [{set: {var.way: 1}}]}
+          - {id: right, label: Right, do: [{set: {var.way: 2}}]}
+        id: way
+      - say: "Went {chose.way}."
+      - say: "End."
+`)},
+	}
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: story"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Text != "Before." {
+		t.Fatalf("first %+v", q)
+	}
+	if q := s.Next(); q.Kind != "tap" {
+		t.Fatalf("the feed: %+v", q)
+	}
+	// A save at the phone itself loads at the line before it.
+	atPhone, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gozen.Restore(g, atPhone, gozen.Config{Seed: 3}); err != nil {
+		t.Fatalf("a save at the phone: %v", err)
+	}
+	for q := s.Next(); q.Kind != "say"; q = s.Next() {
+		if q.Kind == "choice" {
+			s.Answer(1)
+		}
+		if q.Kind == "" {
+			t.Fatal("the event ended before its line")
+		}
+	}
+	save, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, save, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"var.way", "var.liked"} {
+		var a, b any
+		errA, errB := s.Query(name, &a), r.Query(name, &b)
+		if errA != nil || errB != nil || a != b {
+			t.Fatalf("%s is %v (%v) and, loaded, %v (%v)", name, a, errA, b, errB)
+		}
+	}
+	var way any
+	if err := r.Query("var.way", &way); err != nil || way != float64(2) {
+		t.Fatalf("the loaded choice: %v %v", way, err)
+	}
+}

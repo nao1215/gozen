@@ -311,8 +311,10 @@ func (g *Game) phoneColumnAt(p *phoneView, at image.Point) (float64, bool) {
 
 // feedPictureAt is the post whose picture, or the row of its heart and likes
 // under it, is under at (a point on the game's screen), or -1: a tap there
-// likes the post, as one on the heart does in a photo app. Across, only the
-// page on the screen is under the pointer.
+// likes the post, as one on the heart does in a photo app. Across, the page
+// under the pointer's x is the one tapped: while two pages show in a slide,
+// the nearest page is not always the one under the finger, and a like now
+// changes the story.
 func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int {
 	y, ok := g.phoneColumnAt(p, at)
 	if !ok {
@@ -320,10 +322,13 @@ func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int
 	}
 	from, to := 0, len(posts)
 	if p.across() {
-		_, _, w, _ := g.phoneScreenRect(p.side)
+		sx, _, w, _ := g.phoneScreenRect(p.side)
 		y -= p.scroll
-		from = int(math.Round(p.scroll / w))
-		to = min(from+1, len(posts))
+		from = int(math.Floor((p.scroll + float64(at.X) - sx) / w))
+		if from < 0 || from >= len(posts) {
+			return -1
+		}
+		to = from + 1
 	}
 	for i := from; i < to; i++ {
 		if l := posts[i]; y >= l.pic && y < l.pic+l.picH+phoneFeedLikes {
