@@ -15272,6 +15272,19 @@
           },
           "x-type": "boolean"
         },
+        "browse": {
+          "description": "True makes a feed only looked at: a tap or a click likes no post.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "color": {
           "description": "A page's app bar and buttons color, #rrggbb.",
           "type": "string",
@@ -15386,6 +15399,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[PhoneRow](#phonerow)[]"
+        },
+        "scroll": {
+          "description": "How a feed moves: down (the default), a column scrolled up and down, or across, a post a screen swiped sideways.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "time": {
           "description": "Interpolated clock of the lock screen (the phone's clock when empty).",

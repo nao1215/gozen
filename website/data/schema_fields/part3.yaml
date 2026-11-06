@@ -312,6 +312,8 @@ PhoneCue:
   date: "Interpolated date under the lock screen's clock."
   auto: "True brings the lock screen's notices by themselves, one every second and a half."
   var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call."
+  scroll: "How a feed moves: down (the default), a column scrolled up and down, or across, a post a screen swiped sideways."
+  browse: "True makes a feed only looked at: a tap or a click likes no post."
   messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."
   posts: "The feed's posts, stacked top to bottom and scrolled."
   video: "The video app's clip."

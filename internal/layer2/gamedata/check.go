@@ -195,6 +195,7 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		}
 	}
 	c.text(where+".title", p.Title, names)
+	c.phoneFeed(where, p)
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
 		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n > 1 || n == 0 && m.Day == "" {
@@ -234,6 +235,25 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep")
 		}
 		c.assignments(where+".var", map[string]Expr{p.Var: MustExpr(`""`)}, names)
+	}
+}
+
+// phoneFeed checks the feed's own fields: scroll is down or across, and
+// neither scroll nor browse is set on another app, which would ignore them.
+func (c *checker) phoneFeed(where string, p PhoneCue) {
+	switch p.Scroll {
+	case "", "down", "across":
+	default:
+		c.errorf(diag.Shape, where+".scroll", "scroll must be down or across (got %q)", p.Scroll)
+	}
+	if p.App == "feed" {
+		return
+	}
+	if p.Scroll != "" {
+		c.errorf(diag.Shape, where+".scroll", "scroll is only for app feed (app is %s)", p.App)
+	}
+	if p.Browse {
+		c.errorf(diag.Shape, where+".browse", "browse is only for app feed (app is %s)", p.App)
 	}
 }
 

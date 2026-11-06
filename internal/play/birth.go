@@ -245,9 +245,9 @@ func (g *Game) drawBirth(dst *ebiten.Image) {
 		} else {
 			x, y, w, h := g.talkBox()
 			g.window(dst, x, y, w, h)
-			fit, _ := gfx.FitLines(b.effect.Summary, sizeM, w-100, 1)
+			fit, size := gfx.FitLines(b.effect.Summary, sizeM, w-100, 1)
 			for _, line := range fit {
-				g.text(dst, line, x+50, y+40, sizeM, g.th.text)
+				g.text(dst, line, x+50, y+40, size, g.th.text)
 			}
 			g.text(dst, "Continue  ·  X Details", x+w-280, y+h-45, sizeS, g.th.dim)
 		}

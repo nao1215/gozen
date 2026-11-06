@@ -62,13 +62,20 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
     - {who: ann, icon: icons/ann.png, picture: photos/beach.png, likes: 120, text: Day off.}
     - {who: ann, icon: icons/ann.png, video: {picture: bg/room.png, puppet: ann/puppet.yaml}, likes: 300, text: Dance.}
 - phone:
+    app: feed
+    scroll: across
+    browse: true
+    posts:
+    - {who: ann, icon: icons/ann.png, picture: photos/beach.png, text: Day off.}
+    - {who: bea, icon: icons/bea.png, picture: photos/cafe.png, text: Latte.}
+- phone:
     app: video
     hold: landscape
     video: {picture: bg/stage.png, puppet: ann/puppet.yaml, zoom: 1.6, text: Live clip, seconds: 30, bounce: [4, 9.5]}
 ```
 
 - A chat shows its first message when the phone comes up; a press brings the next, another's after typing dots. A press on the newest video turns the phone on its side and plays it; Cancel goes back to the chat. A message is exactly one of `text`, `picture` and `video`.
-- A feed stacks its posts top to bottom: the wheel, up and down (a post at a time) or a drag scroll them, a click on a picture likes it, OK at the bottom puts the phone down. A post is a `picture` or a `video` (it plays in place, looping, while on the screen).
+- A feed stacks its posts top to bottom: the wheel, up and down (a post at a time) or a drag scroll them, a click on a picture likes it, OK at the bottom puts the phone down. A post is a `picture` or a `video` (it plays in place, looping, while on the screen). `scroll: across` shows a post a screen, swiped sideways (a drag, left and right, the wheel or OK steps a post; dots show where). `browse: true` turns likes off: a click likes nothing.
 - A video is made of a `picture` (pushed in slowly) and an optional `puppet` in front, `zoom` times the frame's height (1.5 by default: the upper body), jiggling at each second in `bounce`. `seconds` is 30 by default.
 - Footage: `frames: [clips/battle/*.jpg]` (pictures or patterns under assets/, sorted) plays them at `fps` (12 by default) over the `picture`, the poster; a feed loops them, the video app and a chat's video stop on the last; `seconds` defaults to the frames' length. Cut a video into JPEGs with ffmpeg; the engine decodes no video files.
 - A `page` (a browser bar with `url`, or `title` with `color`) scrolls `rows`: `text` (`size`, `bold`), `picture` (whole, `caption`), `pictures` (grid, `columns` 2 or 3), `item` (icon, title, text, value), `button` (puts the phone down). `locked: '!flag.x'` darkens a picture or grid with a lock and `label`.
