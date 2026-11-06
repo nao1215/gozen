@@ -819,10 +819,10 @@ scenarios:
   steps:
   - fixture:
       file: g/game.yaml
-      content: "schema_version: 11\nid: budget\nstart: {event: intro}\n"
+      content: "schema_version: 11\nid: budget\nstart: {event: intro, location: camp}\n"
   - fixture:
       file: g/data/events.yaml
-      content: "events: {intro: {do: [{set: {flag.unused: true}}]}}\n"
+      content: "locations: {camp: {}}\nevents: {intro: {do: [{set: {flag.unused: true}}]}}\n"
   - run: {command: "gozen check g --only structure --strict"}
   - assert:
       exit_code: 1
@@ -840,3 +840,19 @@ scenarios:
   - assert:
       exit_code: 1
       stderr: {contains: '[GZN0112]'}
+- name: GZN0124 reports a single unused event
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 11\nid: unused\nstart: {location: camp, event: intro}\n"
+  - fixture:
+      file: g/data/world.yaml
+      content: "locations: {camp: {}}\nevents: {intro: [{say: Hello}], leftover: [{say: Unused}]}\n"
+  - run: {command: "gozen check g --only structure"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: ['[GZN0124]', 'data/world.yaml:2:', 'events.leftover']}
+  - run: {command: "gozen check g --only structure --strict"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN0124]'}

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strconv"
 
 	"github.com/nao1215/gozen/internal/cliio"
@@ -12,21 +13,26 @@ import (
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
-// checkJSON reports every problem of the game as structured diagnostics (file, line,
-// col, path, message, severity, code) on stdout, warnings included. It fails when one is
-// an error. only is "", "structure" or "layout" (check --only); with layout, the
-// warnings of the structure are left out (its errors stay: the layout needs a game).
-func diagnoseCheck(dir, only string) (*gamedata.DB, gamedata.Diagnostics) {
+// diagnoseCheck collects structured errors and warnings for the selected scope.
+// Layout checks load the game but do not run structural authoring checks or read
+// their complexity configuration, just like the text-only layout command.
+func diagnoseCheck(dir, only string) gamedata.Diagnostics {
 	var db *gamedata.DB
 	var diags gamedata.Diagnostics
 	fsys, err := gameFS(dir)
 	if err != nil {
 		diags = gamedata.Diagnose(err, "error")
+	} else if only == "layout" {
+		err = gamedata.UseWords(fsys)
+		if err == nil {
+			db, err = gamedata.LoadDir(fsys, ".")
+		}
+		if diag.Of(err) == 0 && (errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrPermission)) {
+			err = diag.GameUnreadable.Wrap(err)
+		}
+		diags = gamedata.Diagnose(err, "error")
 	} else {
 		db, diags = checkdata.Diagnose(fsys)
-	}
-	if db != nil && only == "layout" {
-		diags = nil
 	}
 	if db != nil && only != "structure" {
 		issues, err := checkMessages(db, fsys)
@@ -58,11 +64,11 @@ func diagnoseCheck(dir, only string) (*gamedata.DB, gamedata.Diagnostics) {
 	if diags == nil {
 		diags = gamedata.Diagnostics{}
 	}
-	return db, diags
+	return diags
 }
 
 func (c *command) checkJSON(dir, only string) error {
-	_, diags := diagnoseCheck(dir, only)
+	diags := diagnoseCheck(dir, only)
 	return c.reportCheck(diags, false)
 }
 

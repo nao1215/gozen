@@ -41,13 +41,12 @@ func warningCounts(only string, ds gamedata.Diagnostics) checkBaseline {
 	return b
 }
 
-func readCheckBaseline(name, only string) (checkBaseline, error) {
-	var b checkBaseline
+func readCheckBaseline(name, only string) (b checkBaseline, err error) {
 	f, err := os.Open(name) //nolint:gosec // Explicit CLI input.
 	if err != nil {
 		return b, err
 	}
-	defer f.Close()
+	defer func() { err = errors.Join(err, f.Close()) }()
 	dec := json.NewDecoder(f)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&b); err != nil {
@@ -63,7 +62,7 @@ func readCheckBaseline(name, only string) (checkBaseline, error) {
 	for code, files := range b.Counts {
 		if code != "" {
 			c, ok := diag.Parse(code)
-			if !ok || c.ExitCode() != 0 {
+			if !ok || c.String() != code || c.ExitCode() > 1 {
 				return b, fmt.Errorf(lang.T("基準ファイルの警告コードが不正です: %s"), code)
 			}
 		}
@@ -100,7 +99,10 @@ func writeCheckBaseline(name string, b checkBaseline) error {
 		return err
 	}
 	_, err = f.Write(append(data, '\n'))
-	return errors.Join(err, f.Close())
+	if err = errors.Join(err, f.Close()); err != nil {
+		return errors.Join(err, os.Remove(name))
+	}
+	return nil
 }
 
 func (c *command) checkEnforced(dir, only string, policy checkPolicy) error {
@@ -109,10 +111,10 @@ func (c *command) checkEnforced(dir, only string, policy checkPolicy) error {
 		var err error
 		previous, err = readCheckBaseline(policy.baseline, only)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s: %w", policy.baseline, err)
 		}
 	}
-	_, ds := diagnoseCheck(dir, only)
+	ds := diagnoseCheck(dir, only)
 	current := warningCounts(only, ds)
 	failed := false
 	for _, d := range ds {
@@ -147,6 +149,10 @@ func (c *command) checkEnforced(dir, only string, policy checkPolicy) error {
 			}
 		}
 		return cliio.ErrReported
+	}
+	if only == "structure" {
+		_, err := fmt.Fprintln(c.out, lang.T("check: 構造検査に合格しました。レイアウトは検査していません"))
+		return err
 	}
 	_, err := fmt.Fprintln(c.out, lang.T("check: 検査に合格しました"))
 	return err

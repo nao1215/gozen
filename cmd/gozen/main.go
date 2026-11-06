@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"errors"
-	lang "github.com/nao1215/gozen/internal/text"
 	"io"
 	"log"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 	mosaiccmd "github.com/nao1215/gozen/internal/mosaic/command"
 	promptcmd "github.com/nao1215/gozen/internal/promptgen/command"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 type command struct {
