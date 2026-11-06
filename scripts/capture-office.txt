@@ -69,7 +69,7 @@ wait 40
 shot workboard-timeline
 press x
 wait 30
-do open: materials
+pick Materials
 wait 40
 shot workboard-materials
 quit
