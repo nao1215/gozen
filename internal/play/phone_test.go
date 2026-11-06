@@ -486,6 +486,39 @@ func TestPhoneLockAuto(t *testing.T) {
 	}
 }
 
+// TestPhoneCallRingsOut: a call with a ring left alone stops ringing after
+// its seconds and puts the phone down with the missed result; one without a
+// ring rings on until it is answered or declined, and a press before the ring
+// runs out answers as before.
+func TestPhoneCallRingsOut(t *testing.T) {
+	call := data.PhoneNotice{Title: "Mia", Call: true, Ring: 2, Missed: data.Assignments{"flag.missed": data.MustExpr("true")}}
+	t.Run("left alone", func(t *testing.T) {
+		g := phoneGame(t, data.PhoneCue{App: "lock", Var: "var.call", Notices: []data.PhoneNotice{call}})
+		p := g.phone
+		if phoneTicks(g, 2*60-1) || p.closing != 0 {
+			t.Fatal("the call stopped ringing before its ring")
+		}
+		phoneTicks(g, 1)
+		if p.closing == 0 || p.cue.Results()[p.answer()].ID != "missed" {
+			t.Fatalf("the call did not ring out with missed: closing %d, result %d", p.closing, p.result)
+		}
+	})
+	t.Run("no ring", func(t *testing.T) {
+		g := phoneGame(t, data.PhoneCue{App: "lock", Var: "var.call", Notices: []data.PhoneNotice{{Title: "Mia", Call: true}}})
+		if phoneTicks(g, 10*60) || g.phone.closing != 0 {
+			t.Fatal("a call without a ring stopped ringing by itself")
+		}
+	})
+	t.Run("answered in time", func(t *testing.T) {
+		g := phoneGame(t, data.PhoneCue{App: "lock", Var: "var.call", Notices: []data.PhoneNotice{call}})
+		phoneTicks(g, phoneRise)
+		phonePress(g, btnOK)
+		if g.phone.closing == 0 || g.phone.cue.Results()[g.phone.answer()].ID != "answer" {
+			t.Fatalf("answering before the ring ran out kept result %d", g.phone.result)
+		}
+	})
+}
+
 // TestPhoneResultsPressed: the phone is put down with the result pressed: a
 // page's button, a call answered, or the last call declined.
 func TestPhoneResultsPressed(t *testing.T) {
@@ -511,11 +544,11 @@ func TestPhoneResultsPressed(t *testing.T) {
 	g.drawPhone(dst)
 
 	q := newPhoneView(data.PhoneCue{App: "lock", Var: "var.x", Notices: []data.PhoneNotice{{Title: "A", Call: true}, {Title: "B"}, {Title: "A", Call: true}}})
-	q.putDown(-1, 2)
+	q.putDown(-1, 2, false)
 	if q.result != 1 {
 		t.Fatalf("the second call answered is result %d, want 1", q.result)
 	}
-	q.putDown(-1, -1)
+	q.putDown(-1, -1, false)
 	if q.result != 2 {
 		t.Fatalf("the last call declined is result %d, want 2", q.result)
 	}

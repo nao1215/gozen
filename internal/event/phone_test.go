@@ -110,6 +110,42 @@ events:
 	}
 }
 
+// TestPhoneCallMissed: a call with a ring adds a missed result after the
+// others (so the places of answer and decline stay as they were), and that
+// result keeps missed in the var and runs the call's missed sets, not its set.
+func TestPhoneCallMissed(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone:
+          app: lock
+          var: var.call
+          notices: [{title: Mia, call: true, ring: 8, set: {var.answered: 1}, missed: {flag.missed: true}}]
+      - if: var.call == "missed"
+        then: [{say: missed it}]
+        else: [{say: picked up}]
+`})
+	results := db.Events["e"].Do[0].Phone.Results()
+	if len(results) != 3 || results[0].ID != "answer" || results[1].ID != "decline" || results[2].ID != "missed" || !results[2].Missed {
+		t.Fatalf("results %+v, want answer, decline, missed", results)
+	}
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &phoneHost{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
+		t.Fatalf("the call did not wait with answer, decline and missed: %+v", tap)
+	}
+	r.Answer(2)
+	if say, ok := r.Next().(event.Say); !ok || say.Text != "missed it" {
+		t.Fatalf("the story did not branch on the missed call: %+v", say)
+	}
+	if st.Flags["missed"] != true || st.Vars["answered"] != nil {
+		t.Fatalf("missed sets %v, answered %v", st.Flags, st.Vars["answered"])
+	}
+}
+
 // TestPhoneFeedLikes: a feed whose posts have a set waits with one result for
 // each of them and keeps the sets of the posts its answer marks liked, in the
 // posts' order; a feed only browsed, or one put down unread, keeps nothing.

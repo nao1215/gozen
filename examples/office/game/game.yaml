@@ -91,6 +91,8 @@ screens:
     - {label: Calendar, style: button, bounds: [300, 290, 220, 48], destination: calendar, do: [{open: calendar}]}
     - {label: Materials, style: button, bounds: [560, 290, 220, 48], destination: materials, do: [{open: materials}]}
     - {label: Phone apps, style: button, bounds: [820, 290, 220, 48], do: [{call: phone_tour}]}
+    - {label: Plan call, style: button, bounds: [40, 360, 220, 48], do: [{call: {event: review_floor, ensemble: team_call}}]}
+    - {label: Client calls, style: button, bounds: [300, 360, 220, 48], do: [{call: phone_missed}]}
   team_call:
     title: Team call
     kind: ensemble

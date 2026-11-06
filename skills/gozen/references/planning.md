@@ -16,7 +16,9 @@ ADR 0053 for state, ADR 0054 for typed bindings and ADR 0055 for guides. Start n
 - `message` queues a decision in the notification corner. A video call is a
   `kind: ensemble` screen with `view.call`; `layout: full` with
   `captions: overlay` needs `ui.message: novel`, and `call_view` changes the
-  camera or shares a picture without touching state. Give the call its people
+  camera or shares a picture without touching state. A `choice` with
+  `muted: {seconds, do}` after a call's line strikes the mic and waits for
+  Unmute; left muted, `do` runs (the player kept quiet). Give the call its people
   through planning attributes named by `view.portrait`, `icon`, `camera` and
   `backdrop`.
 - `screens.<name>.guide` walks a first visit once; scripted plays skip it

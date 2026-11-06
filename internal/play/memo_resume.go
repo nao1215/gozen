@@ -100,7 +100,7 @@ func (g *Game) fastStep() {
 		}
 		reached = f.seen >= max(1, f.lines) && g.evLines == f.seenAt
 	}
-	invalidAnswer := what == "choice" && (g.talk.choice == nil || len(g.evAnswers) >= len(f.answers) || f.answers[len(g.evAnswers)] < 0 || f.answers[len(g.evAnswers)] >= len(g.talk.choice.items))
+	invalidAnswer := what == "choice" && (g.talk.choice == nil || len(g.evAnswers) >= len(f.answers) || f.answers[len(g.evAnswers)] < 0 || f.answers[len(g.evAnswers)] >= g.talk.answers())
 	switch {
 	case f.strict && g.evNoBack:
 		stop("replay boundary")
@@ -144,9 +144,19 @@ func (g *Game) fastStep() {
 			in.pressed[btnOK] = true
 		}
 	case "choice":
-		if g.talk.active && g.talk.choice != nil {
-			if k := len(g.evAnswers); k < len(f.answers) && f.answers[k] >= 0 && f.answers[k] < len(g.talk.choice.items) {
-				g.talk.choice.sel = f.answers[k]
+		if t := &g.talk; t.active && t.choice != nil {
+			k := len(g.evAnswers)
+			if t.held != nil && k < len(f.answers) {
+				// A muted choice replays as it was answered: kept quiet, or
+				// unmuted for the option taken.
+				if f.answers[k] == len(t.held.items) {
+					t.muted = 1
+					break
+				}
+				t.choice, t.held = t.held, nil
+			}
+			if k < len(f.answers) && f.answers[k] >= 0 && f.answers[k] < len(t.choice.items) {
+				t.choice.sel = f.answers[k]
 			}
 		}
 		if f.ticks%4 == 0 {

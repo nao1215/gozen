@@ -32,6 +32,14 @@ func (p *phoneView) calling() bool {
 	return p.cue.App == "lock" && p.shown > 0 && p.cue.Notices[p.shown-1].Call
 }
 
+// rangOut tells that the call on the screen has rung its ring unanswered.
+// The ring counts from the call's coming (for a first notice, from the phone
+// coming up).
+func (p *phoneView) rangOut() bool {
+	ring := p.cue.Notices[p.shown-1].Ring
+	return ring > 0 && float64(p.since) >= ring*60
+}
+
 // declineCall declines the call on the screen: the next notice comes (another
 // call rings again) and true is returned, or, at the last one, false lets
 // Cancel put the phone down.
@@ -49,11 +57,13 @@ func (g *Game) updatePhoneLock(p *phoneView) {
 		answer, decline := g.callButtons(p)
 		switch {
 		case in.ok() || in.click && answer.Dist(in.mouse) <= 40:
-			p.putDown(-1, p.shown-1)
+			p.putDown(-1, p.shown-1, false)
 		case in.click && decline.Dist(in.mouse) <= 40:
 			if !p.declineCall() {
-				p.putDown(-1, -1)
+				p.putDown(-1, -1, false)
 			}
+		case p.rangOut():
+			p.putDown(-1, p.shown-1, true)
 		}
 		return
 	}

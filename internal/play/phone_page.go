@@ -126,7 +126,7 @@ func (g *Game) updatePhonePage(p *phoneView) {
 		y, ok := g.phoneColumnAt(p, at)
 		for i, l := range rows {
 			if ok && p.cue.Rows[i].Button != "" && y >= l.top && y < l.top+l.h {
-				p.putDown(i, -1)
+				p.putDown(i, -1, false)
 			}
 		}
 	})
@@ -194,7 +194,7 @@ func (g *Game) pageKeys(p *phoneView, rows []pageRow, end float64) bool {
 		g.focusInView(p, rows, false)
 		switch {
 		case p.focus >= 0 && p.keyed:
-			p.putDown(p.focus, -1)
+			p.putDown(p.focus, -1, false)
 			return true
 		case p.focus >= 0:
 			p.keyed = true

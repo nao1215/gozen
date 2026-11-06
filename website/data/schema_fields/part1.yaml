@@ -177,6 +177,10 @@ CardBubble:
   speed: "How fast the particles rise. Default 30."
   state: "A state ID. The particles appear while the actor has this state."
   when: "An expression. The particles appear while it holds."
+ChoiceMuted:
+  _: "Holds a choice behind a muted microphone, as the floor of a video call: only an unmute button shows (on a call, its mic control is struck through and a click on it unmutes too), and the options come when it is pressed."
+  seconds: "Seconds the choice waits muted; left that long, the player kept quiet and do runs instead of an option."
+  do: "The commands that run when the player keeps quiet."
 ChoiceOption:
   label_expr: Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.
   _: "One answer of a `choice` command."

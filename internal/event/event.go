@@ -208,10 +208,24 @@ type Choice struct {
 	// Keys are the keys of the options' sources (ChoiceKey of the prompt and the label as
 	// written), in the same order: the screen marks an option taken before (ADR 0026).
 	Keys []uint64
+	// Muted is how many seconds the choice waits behind a muted microphone
+	// (data.ChoiceMuted), 0 for none: the screen shows an unmute button that
+	// brings the options, and answers len(Options) when the time runs out
+	// with the player still muted.
+	Muted float64
 	// prompt and labels are what Prompt and Options were made from (labels is empty, or
 	// has one phrase per option), so Reword can ask again in another language.
 	prompt data.Phrase
 	labels []data.Phrase
+}
+
+// Answers is how many answers the choice takes: one an option, and staying
+// quiet (the index past the options) when it is muted.
+func (c Choice) Answers() int {
+	if c.Muted > 0 {
+		return len(c.Options) + 1
+	}
+	return len(c.Options)
 }
 
 // Question is the prompt as a line to read, which Reword shows again in another language.
@@ -677,6 +691,14 @@ func (r *Runner) Answer(n int) {
 				r.chose(n)
 				r.push(r.options[n].Do)
 			}
+		} else if quiet := r.asked; n == len(r.options) && r.pick == nil && quiet != nil && quiet.Muted != nil {
+			// The player stayed muted: no option was taken.
+			for _, option := range r.options {
+				for j := range option.Do {
+					delete(r.offers, &option.Do[j])
+				}
+			}
+			r.push(quiet.Muted.Do)
 		}
 		r.options, r.pick = nil, nil
 	case r.battle != nil:
@@ -972,7 +994,11 @@ func (r *Runner) run(c *data.Command) Request {
 		}
 		r.asked = c
 		prompt, p := data.Fill(r.db, c.Prompt, env)
-		return Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, Recruit: r.recruitOffer(c), prompt: p, labels: words}
+		q := Choice{Prompt: prompt, Options: labels, IDs: ids, Keys: keys, Recruit: r.recruitOffer(c), prompt: p, labels: words}
+		if c.Muted != nil {
+			q.Muted = c.Muted.Seconds
+		}
+		return q
 	case "ran":
 		r.st.MarkRan(c.Ran)
 	case "done":
@@ -1777,7 +1803,7 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 		case Choice:
 			seen++
 			if seen < line || len(answers) == answer+1 {
-				if answer >= len(answers) || answers[answer] < 0 || answers[answer] >= len(q.Options) {
+				if answer >= len(answers) || answers[answer] < 0 || answers[answer] >= q.Answers() {
 					return nil, fmt.Errorf("load: invalid saved answer at line %d", seen)
 				}
 				r.Answer(answers[answer])

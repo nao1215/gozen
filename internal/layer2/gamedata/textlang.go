@@ -354,6 +354,9 @@ func (db *DB) SourceTexts() []SourceText {
 				add(fmt.Sprintf("%s.choice[%d].label", cw, j), o.Label)
 				cmds(fmt.Sprintf("%s.choice[%d].do", cw, j), o.Do)
 			}
+			if c.Muted != nil {
+				cmds(cw+".muted.do", c.Muted.Do)
+			}
 			cmds(cw+".then", c.Then)
 			cmds(cw+".else", c.Else)
 			cmds(cw+".on_win", c.OnWin)

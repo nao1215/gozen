@@ -18,7 +18,7 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | `capture` | Recruit a permitted monster species and record the admission result. |
 | `carry` | Keep the values game.yaml carry names for the next new game (schema 10); written beside the saves, never in a save. |
 | `checkpoint` | Replace the retry point with current state, random stream and a restore-entry event. |
-| `choice` | Asks the player to pick one of several answers. Each answer has its own commands. |
+| `choice` | Asks the player to pick one of several answers. Each answer has its own commands. `muted: {seconds, do}` hides them behind Unmute; left muted, `do` runs. |
 | `clear` | If true, ends the game as cleared. |
 | `dive` | Starts a dive into a generated dungeon, an ID of locations whose dungeon has `generate`. `floor` chooses the floor. |
 | `effect` | Play a screen effect or a moving portrait reaction. |

@@ -198,3 +198,118 @@ scenarios:
       file:
         path: office.jsonl
         contains: ['"t":"screen_drop"', '"source":"payments"', '"t":"message_open"', 'It is a phone number field.', '"t":"screen_peek"']
+- name: skip stops at a phone that keeps a result instead of putting it down unanswered
+  steps:
+  - fixture: {file: saves/config.json, content: '{"skip_all": true}'}
+  - fixture:
+      file: skip.txt
+      content: |
+        wait 10
+        press skip
+        wait 120
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event phone_sso --save-dir saves --script skip.txt --trace skip.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: skip.jsonl
+        contains: ['"why":"phone"', '"vars":{}']
+- name: a call with a ring rings out with missed, and one answered in time keeps answer
+  steps:
+  - fixture:
+      file: ring.txt
+      content: |
+        wait 30
+        press ok
+        wait 600
+        snapshot
+        quit
+  - fixture:
+      file: answer.txt
+      content: |
+        wait 30
+        press ok
+        wait 60
+        press ok
+        wait 30
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event phone_missed --script ring.txt --trace ring.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: ring.jsonl
+        contains: ['"vars":{"callback":1,"client_call":"missed"}', 'Missed it. I will call them back after the review.']
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event phone_missed --script answer.txt --trace answer.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: answer.jsonl
+        contains: ['"vars":{"callback":0,"client_call":"answer"}']
+- name: a muted choice on a call keeps quiet when left alone and opens its answers when unmuted
+  steps:
+  - fixture:
+      file: quiet.txt
+      content: |
+        wait 30
+        press ok
+        wait 600
+        snapshot
+        quit
+  - fixture:
+      file: keys.txt
+      content: |
+        wait 30
+        press ok
+        wait 30
+        press ok
+        wait 5
+        press down
+        wait 5
+        press ok
+        wait 30
+        snapshot
+        quit
+  - fixture:
+      file: pick.txt
+      content: |
+        wait 30
+        press ok
+        wait 30
+        pick Unmute
+        wait 10
+        pick Friday is too tight for both.
+        wait 30
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event review_floor --script quiet.txt --trace quiet.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: quiet.jsonl
+        contains: ['"vars":{"floor":3}', 'Nobody? Payments first, then.']
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event review_floor --script keys.txt --trace keys.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: keys.jsonl
+        contains: ['"vars":{"floor":2}']
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event review_floor --script pick.txt --trace pick.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: pick.jsonl
+        contains: ['"vars":{"floor":1}']

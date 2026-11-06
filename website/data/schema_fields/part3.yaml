@@ -352,6 +352,8 @@ PhoneNotice:
   text: "Interpolated text of the notice, under its title."
   call: "True makes it an incoming call on the lock screen; OK answers and Cancel declines (a next notice rings again)."
   set: "Assignments made when the call is answered."
+  ring: "Seconds a call rings unanswered before it stops and puts the phone down with the result missed; 0 (the default) rings until it is answered or declined."
+  missed: "Assignments made when the call rings out (needs ring)."
   event: "The parameterless event a click on the banner opens, after the event running."
 
 PhoneMessage:

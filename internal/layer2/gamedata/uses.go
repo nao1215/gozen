@@ -30,6 +30,9 @@ func (db *DB) EachCommand(fn func(*Command)) {
 			for _, o := range c.Choice {
 				in(o.Do)
 			}
+			if c.Muted != nil {
+				in(c.Muted.Do)
+			}
 		}
 	}
 	for _, e := range db.Events {

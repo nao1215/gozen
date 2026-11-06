@@ -57,6 +57,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 	}{
 		{"prompt", "choice,stone_choose,stone_wearer", []string{`"Pick"`, `""`}},
 		{"id", "choice", []string{`""`}}, // a named choice needs schema_version 4 (TestChoiceID)
+		{"muted", "choice", []string{`{seconds: 5, do: [{gold: 1}]}`}},
 		{"then", "if", []string{`[{gold: 1}]`, `[]`, `null`}},
 		{"else", "if", []string{`[{gold: 1}]`, `[]`, `null`}},
 		{"on_win", "battle", []string{`[{gold: 1}]`, `[]`, `null`}},
@@ -260,6 +261,27 @@ func TestLiteralSayOmitsSelectedSourceFromReplayDefinition(t *testing.T) {
 	}
 	if strings.Contains(string(encoded), "TextExpr") {
 		t.Fatalf("literal replay definition gained a field: %s", encoded)
+	}
+}
+
+// TestChoiceMutedDiagnostics: a muted choice waits a time more than zero, and
+// the commands it runs when the player keeps quiet are checked as an option's.
+func TestChoiceMutedDiagnostics(t *testing.T) {
+	for _, tc := range []struct{ muted, want string }{
+		{`{seconds: 8, do: [{set: {flag.quiet: true}}]}`, ""},
+		{`{seconds: 8}`, ""},
+		{`{do: [{gold: 1}]}`, "muted.seconds"},
+		{`{seconds: -1}`, "muted.seconds"},
+		{`{seconds: .inf}`, "muted.seconds"},
+		{`{seconds: 8, do: [{set: {nope: 1}}]}`, "muted.do[0].set"},
+		{`{seconds: 8, label: Talk}`, "label"},
+	} {
+		t.Run(tc.muted, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{"data/z.yaml": "events: {e: {do: [{choice: [{label: Speak}], muted: " + tc.muted + "}]}}"})
+			if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
 	}
 }
 
