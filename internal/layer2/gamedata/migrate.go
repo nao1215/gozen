@@ -214,88 +214,134 @@ func (m *yamlMigration) walk(node ast.Node, typ reflect.Type, raw any) error {
 	if node == nil {
 		return nil
 	}
-	for typ.Kind() == reflect.Pointer {
-		typ = typ.Elem()
-	}
 	switch n := node.(type) {
 	case *ast.AnchorNode:
 		return m.walk(n.Value, typ, raw)
 	case *ast.TagNode:
 		return m.walk(n.Value, typ, raw)
 	}
-	if typ == reflect.TypeFor[Expr]() || typ == reflect.TypeFor[Color]() {
+	typ, walk := migrationType(node, typ)
+	if !walk {
 		return nil
-	}
-	if typ == reflect.TypeFor[AIRef]() {
-		typ = reflect.TypeFor[[]Rule]()
-	}
-	if typ == reflect.TypeFor[Event]() {
-		if _, ok := node.(*ast.SequenceNode); ok {
-			typ = reflect.TypeFor[[]Command]()
-		}
 	}
 	switch n := node.(type) {
 	case *ast.MappingNode:
-		fields := map[string]reflect.Type{}
-		if typ.Kind() == reflect.Struct {
-			fields = definitionFields(typ)
-		}
-		mapping := optional.Value[yaml.MapSlice](raw)
-		for _, entry := range n.Values {
-			key := sourceKey(entry.Key)
-			child, ok := fields[key]
-			if typ.Kind() == reflect.Map {
-				child, ok = typ.Elem(), true
-			}
-			if ok {
-				value, _ := numberEntry(mapping, key)
-				if err := m.walk(entry.Value, child, value); err != nil {
-					return err
-				}
-			}
-			if typ == reflect.TypeFor[Game]() && key == "schema_version" && m.version < SchemaVersion11 {
-				value, ok := entry.Value.(*ast.IntegerNode)
-				if !ok {
-					return errors.New(lang.T("schema_version はアンカーを使わず整数で指定してから移行してください"))
-				}
-				start := m.offset(value.GetToken())
-				m.edit(start, start+len(value.GetToken().Value), "11")
-			}
-		}
-		if typ == reflect.TypeFor[TacticRow]() {
-			m.tactic(n, mapping)
-		}
-		if !m.keepLong && typ == reflect.TypeFor[Event]() && len(n.Values) == 1 && sourceKey(n.Values[0].Key) == "do" && n.GetComment() == nil && n.Values[0].GetComment() == nil && n.Values[0].Key.GetComment() == nil && n.Values[0].FootComment == nil {
-			if seq, ok := n.Values[0].Value.(*ast.SequenceNode); ok {
-				m.event(n, seq)
-			}
-		}
-		if !m.keepLong && typ == reflect.TypeFor[ItemCount]() && len(n.Values) == 1 && sourceKey(n.Values[0].Key) == "item" && !migrationComment(n, n.Values[0]) {
-			// Keep explicit counts, including one, for saved replay fingerprints.
-			if item, ok := n.Values[0].Value.(*ast.StringNode); ok {
-				if n.IsFlowStyle {
-					m.edit(m.offset(n.Start), m.offset(item.GetToken()), "")
-					m.edit(m.offset(n.End), m.offset(n.End)+1, "")
-				} else {
-					m.edit(m.offset(n.Values[0].Key.GetToken()), m.offset(item.GetToken()), "")
-				}
-			}
-		}
+		return m.mapping(n, typ, optional.Value[yaml.MapSlice](raw))
 	case *ast.SequenceNode:
-		if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
-			list := optional.Value[[]any](raw)
-			for i, entry := range n.Values {
-				var value any
-				if i < len(list) {
-					value = list[i]
-				}
-				if err := m.walk(entry, typ.Elem(), value); err != nil {
-					return err
-				}
+		if typ.Kind() != reflect.Slice && typ.Kind() != reflect.Array {
+			return nil
+		}
+		list := optional.Value[[]any](raw)
+		for i, entry := range n.Values {
+			var value any
+			if i < len(list) {
+				value = list[i]
+			}
+			if err := m.walk(entry, typ.Elem(), value); err != nil {
+				return err
 			}
 		}
 	}
 	return nil
+}
+
+// migrationType is the definition type a node is read as, and whether its
+// contents are walked at all (expressions and colors are leaves).
+func migrationType(node ast.Node, typ reflect.Type) (reflect.Type, bool) {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	switch typ {
+	case reflect.TypeFor[Expr](), reflect.TypeFor[Color]():
+		return typ, false
+	case reflect.TypeFor[AIRef]():
+		return reflect.TypeFor[[]Rule](), true
+	case reflect.TypeFor[Event]():
+		if _, ok := node.(*ast.SequenceNode); ok {
+			return reflect.TypeFor[[]Command](), true
+		}
+	}
+	return typ, true
+}
+
+// mapping walks the entries of a mapping and rewrites the forms schema 11
+// changes: the version, tactic rows, do-only events and single-item counts.
+func (m *yamlMigration) mapping(n *ast.MappingNode, typ reflect.Type, mapping yaml.MapSlice) error {
+	fields := map[string]reflect.Type{}
+	if typ.Kind() == reflect.Struct {
+		fields = definitionFields(typ)
+	}
+	for _, entry := range n.Values {
+		key := sourceKey(entry.Key)
+		child, ok := fields[key]
+		if typ.Kind() == reflect.Map {
+			child, ok = typ.Elem(), true
+		}
+		if ok {
+			value, _ := numberEntry(mapping, key)
+			if err := m.walk(entry.Value, child, value); err != nil {
+				return err
+			}
+		}
+		if typ == reflect.TypeFor[Game]() && key == "schema_version" {
+			if err := m.version11(entry); err != nil {
+				return err
+			}
+		}
+	}
+	switch {
+	case typ == reflect.TypeFor[TacticRow]():
+		m.tactic(n, mapping)
+	case m.keepLong:
+	case typ == reflect.TypeFor[Event]():
+		m.shortEvent(n)
+	case typ == reflect.TypeFor[ItemCount]():
+		m.shortItem(n)
+	}
+	return nil
+}
+
+// version11 rewrites an older schema_version to 11.
+func (m *yamlMigration) version11(entry *ast.MappingValueNode) error {
+	if m.version >= SchemaVersion11 {
+		return nil
+	}
+	value, ok := entry.Value.(*ast.IntegerNode)
+	if !ok {
+		return errors.New(lang.T("schema_version はアンカーを使わず整数で指定してから移行してください"))
+	}
+	start := m.offset(value.GetToken())
+	m.edit(start, start+len(value.GetToken().Value), "11")
+	return nil
+}
+
+// shortEvent turns an event that has only do (and no comments on it) into its
+// command list.
+func (m *yamlMigration) shortEvent(n *ast.MappingNode) {
+	if len(n.Values) != 1 || sourceKey(n.Values[0].Key) != "do" || n.GetComment() != nil || n.Values[0].GetComment() != nil || n.Values[0].Key.GetComment() != nil || n.Values[0].FootComment != nil {
+		return
+	}
+	if seq, ok := n.Values[0].Value.(*ast.SequenceNode); ok {
+		m.event(n, seq)
+	}
+}
+
+// shortItem turns {item: key} into key. Explicit counts, including one, stay
+// for saved replay fingerprints.
+func (m *yamlMigration) shortItem(n *ast.MappingNode) {
+	if len(n.Values) != 1 || sourceKey(n.Values[0].Key) != "item" || migrationComment(n, n.Values[0]) {
+		return
+	}
+	item, ok := n.Values[0].Value.(*ast.StringNode)
+	if !ok {
+		return
+	}
+	if n.IsFlowStyle {
+		m.edit(m.offset(n.Start), m.offset(item.GetToken()), "")
+		m.edit(m.offset(n.End), m.offset(n.End)+1, "")
+		return
+	}
+	m.edit(m.offset(n.Values[0].Key.GetToken()), m.offset(item.GetToken()), "")
 }
 
 func migrationComment(n *ast.MappingNode, entry *ast.MappingValueNode) bool {
@@ -391,58 +437,68 @@ func (m *yamlMigration) tactic(n *ast.MappingNode, raw yaml.MapSlice) {
 	}
 	if given < 0 && m.version < SchemaVersion11 {
 		value, _ := numberEntry(raw, "enabled")
-		enabled := optional.Value[bool](value)
-		if !enabled {
-			if n.IsFlowStyle {
-				text := "enabled: false"
-				if len(n.Values) > 0 {
-					previous := m.offset(n.End) - 1
-					for previous >= 0 && strings.ContainsRune(" \t\r\n", rune(m.source[previous])) {
-						previous--
-					}
-					if previous < 0 || m.source[previous] != ',' {
-						text = ", " + text
-					}
-				}
-				m.edit(m.offset(n.End), m.offset(n.End), text)
-			} else if len(n.Values) > 0 {
-				first := n.Values[0].Key.GetToken()
-				line := m.source[m.lines[first.Position.Line-1]:m.lineEnd(first.Position.Line)]
-				ending := "\n"
-				if strings.HasSuffix(line, "\r\n") {
-					ending = "\r\n"
-				} else if strings.HasSuffix(line, "\r") {
-					ending = "\r"
-				}
-				m.edit(m.offset(first), m.offset(first), "enabled: false"+ending+strings.Repeat(" ", first.Position.Column-1))
-			}
+		if !optional.Value[bool](value) {
+			m.addDisabled(n)
 		}
 	}
 	if given < 0 || merged || m.keepLong {
 		return
 	}
+	m.dropEnabled(n, given)
+}
+
+// addDisabled writes enabled: false into a row that left it out, which schema
+// 11 would read as enabled.
+func (m *yamlMigration) addDisabled(n *ast.MappingNode) {
+	if n.IsFlowStyle {
+		text := "enabled: false"
+		if len(n.Values) > 0 {
+			previous := m.offset(n.End) - 1
+			for previous >= 0 && strings.ContainsRune(" \t\r\n", rune(m.source[previous])) {
+				previous--
+			}
+			if previous < 0 || m.source[previous] != ',' {
+				text = ", " + text
+			}
+		}
+		m.edit(m.offset(n.End), m.offset(n.End), text)
+		return
+	}
+	if len(n.Values) == 0 {
+		return
+	}
+	first := n.Values[0].Key.GetToken()
+	line := m.source[m.lines[first.Position.Line-1]:m.lineEnd(first.Position.Line)]
+	ending := "\n"
+	if strings.HasSuffix(line, "\r\n") {
+		ending = "\r\n"
+	} else if strings.HasSuffix(line, "\r") {
+		ending = "\r"
+	}
+	m.edit(m.offset(first), m.offset(first), "enabled: false"+ending+strings.Repeat(" ", first.Position.Column-1))
+}
+
+// dropEnabled removes an enabled: true that schema 11 makes the default.
+func (m *yamlMigration) dropEnabled(n *ast.MappingNode, given int) {
 	entry := n.Values[given]
 	value, ok := entry.Value.(*ast.BoolNode)
 	if !ok || !value.Value || migrationComment(n, entry) {
 		return
 	}
 	start, end := m.offset(entry.Key.GetToken()), m.offset(value.GetToken())+len(value.GetToken().Value)
-	if n.IsFlowStyle {
-		if given+1 < len(n.Values) {
-			end = m.offset(n.Values[given+1].Key.GetToken())
-		} else if given > 0 {
-			// The separator before the last field belongs to the removed field.
-			for start > m.offset(n.Start) && m.source[start-1] != ',' {
-				start--
-			}
+	switch {
+	case n.IsFlowStyle && given+1 < len(n.Values):
+		end = m.offset(n.Values[given+1].Key.GetToken())
+	case n.IsFlowStyle && given > 0:
+		// The separator before the last field belongs to the removed field.
+		for start > m.offset(n.Start) && m.source[start-1] != ',' {
 			start--
 		}
-	} else {
+		start--
+	case !n.IsFlowStyle:
 		line := entry.Key.GetToken().Position.Line
-		prefix := m.source[m.lines[line-1]:start]
-		if strings.TrimSpace(prefix) == "" {
-			start = m.lines[line-1]
-			end = m.lineEnd(line)
+		if strings.TrimSpace(m.source[m.lines[line-1]:start]) == "" {
+			start, end = m.lines[line-1], m.lineEnd(line)
 		}
 	}
 	m.edit(start, end, "")

@@ -1,7 +1,7 @@
 // Package chat keeps a flowing log of short messages from any sender: the player, bots,
 // or remote players. It does not judge messages (see package react) and does not
 // transport them: a Source is the plug for input, bots or a network. Messages from
-// people should pass a Filter such as Mask before they are shown.
+// people should pass a Filter before they are shown.
 // See docs/decisions/0015-reaction-and-chat.md.
 package chat
 

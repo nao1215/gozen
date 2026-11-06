@@ -79,6 +79,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # make complexity compares with the merge base of origin/main.
+          fetch-depth: 0
       # Not stable: gofmt's output differs between Go releases, so the
       # formatting check runs on one pinned Go. make lint builds and runs
       # golangci-lint with LINT_GO of the Makefile; keep this equal to it so no

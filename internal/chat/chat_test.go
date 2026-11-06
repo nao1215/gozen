@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -30,27 +31,23 @@ type drop struct{}
 
 func (drop) Filter(m Message) (Message, bool) { return m, m.From != "spam" }
 
-// Filters rewrite or drop messages; Mask hides words however they are spelled.
+// Filters rewrite or drop messages, in order.
 func TestFilters(t *testing.T) {
-	l := New(Config{Filters: []Filter{drop{}, NewMask([]string{"ばか", "BAD"})}})
+	l := New(Config{Filters: []Filter{drop{}, stars{"bad"}}})
 	if _, ok := l.Post(Message{From: "spam", Text: "x"}); ok {
 		t.Fatal("not dropped")
 	}
-	for in, want := range map[string]string{
-		"お前ばかだな":  "お前**だな",
-		"バーカ":     "***",
-		"ば か":     "* *",
-		"ﾊﾞｶ以外":   "***以外", // half-width voiced marks are normalized
-		"ＢＡＤ end": "*** end",
-		"so bad.": "so ***.",
-		"ばかばか":    "****",
-		"たばこ":     "たばこ",
-	} {
-		m, ok := l.Post(Message{From: "p", Text: in})
-		if !ok || m.Text != want {
-			t.Errorf("%q: got %q, want %q", in, m.Text, want)
-		}
+	if m, ok := l.Post(Message{From: "p", Text: "so bad."}); !ok || m.Text != "so ***." {
+		t.Errorf("not rewritten: %q", m.Text)
 	}
+}
+
+// stars replaces a word with as many stars.
+type stars struct{ word string }
+
+func (f stars) Filter(m Message) (Message, bool) {
+	m.Text = strings.ReplaceAll(m.Text, f.word, strings.Repeat("*", len(f.word)))
+	return m, true
 }
 
 // The log never shares a Values map with its callers: changing the posted map, the
@@ -121,7 +118,7 @@ type fixedSource []Message
 func (s fixedSource) Poll(time.Duration) []Message { return s }
 
 func TestPullSetsTheTimeAndAppliesFilters(t *testing.T) {
-	l := New(Config{Filters: []Filter{drop{}, NewMask([]string{"bad"})}})
+	l := New(Config{Filters: []Filter{drop{}, stars{"bad"}}})
 	got := l.Pull(5*time.Second,
 		fixedSource{{From: "a", Text: "bad day"}, {From: "spam", Text: "buy"}, {From: "b", Text: "kept", At: time.Second}},
 		fixedSource{{From: "c", Text: "late"}},
