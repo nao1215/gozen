@@ -73,7 +73,7 @@ Other commands currently retain the result shapes described in their sections.
 
 ## check
 
-Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr and do not fail the check.
+Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr. By default they do not fail the check. `--strict` fails with exit 1 when any warning is reported; diagnostic codes remain `GZN0xxx`.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -116,6 +116,30 @@ The `data` field contains diagnostics such as:
 ```shell
 gozen check --only layout game
 ```
+
+### Warning budgets
+
+```sh
+gozen check game --strict
+gozen check game --write-baseline warnings.json
+gozen check game --baseline warnings.json
+```
+
+`--baseline FILE` enables enforcement on its own. It allows the recorded warning
+counts for each diagnostic code and game-relative source file; only increased
+counts fail (exit 1). New codes and files start with zero allowance. Decreases
+pass, but do not rewrite the baseline. Combining `--strict` with `--baseline`
+uses these allowances instead of zero. All warnings remain visible in text,
+JSON and JSONL, including those within the budget. Errors always fail.
+
+`--write-baseline FILE` writes versioned JSON to a **new** file after a valid
+check, including zero counts when clean. It does not overwrite an existing file
+or record a game with validation errors. Review a newly written baseline before
+replacing an older one. It does not disable `--strict` or comparison when those
+options are also supplied. Paths are relative to the current working directory;
+warning file names inside the JSON are relative to the game. A baseline records
+the `--only` scope, which must match when it is used. It detects count growth,
+not replacement of one warning by another within the same code/file bucket.
 
 ## sim
 

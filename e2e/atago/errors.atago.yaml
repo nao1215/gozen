@@ -815,3 +815,28 @@ scenarios:
   - assert:
       exit_code: 0
       stderr: {contains: '[GZN0123]'}
+- name: strict warning budgets detect growth per file
+  steps:
+  - fixture:
+      file: g/game.yaml
+      content: "schema_version: 11\nid: budget\nstart: {event: intro}\n"
+  - fixture:
+      file: g/data/events.yaml
+      content: "events: {intro: {do: [{set: {flag.unused: true}}]}}\n"
+  - run: {command: "gozen check g --only structure --strict"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN0112]'}
+  - run: {command: "gozen check g --only structure --write-baseline baseline.json"}
+  - assert:
+      exit_code: 0
+      stderr: {contains: '[GZN0112]'}
+  - run: {command: "gozen check g --only structure --strict --baseline baseline.json"}
+  - assert: {exit_code: 0}
+  - fixture:
+      file: g/data/other.yaml
+      content: "events: {other: {trigger: auto, when: 'false', do: [{set: {flag.other: true}}]}}\n"
+  - run: {command: "gozen check g --only structure --baseline baseline.json"}
+  - assert:
+      exit_code: 1
+      stderr: {contains: '[GZN0112]'}

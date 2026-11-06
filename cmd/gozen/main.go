@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	lang "github.com/nao1215/gozen/internal/text"
 	"io"
 	"log"
 	"os"
@@ -353,6 +354,9 @@ func (c *command) notesCmd() clihelp.Operation {
 func (c *command) checkCmd() clihelp.Operation {
 	f := clihelp.NewFlagSet("gozen check")
 	only := f.String("only", "", "check only `PART`: structure (definitions, references, expressions, and assets; the font is not read) or layout (the text layout)")
+	strict := f.Bool("strict", false, lang.T("警告があれば検査を失敗にする"))
+	baseline := f.String("baseline", "", lang.T("警告件数の基準 `FILE` と比較する"))
+	writeBaseline := f.String("write-baseline", "", lang.T("警告件数を新規 `FILE` に保存する"))
 	c.reporting(f)
 	clihelp.Choices(f.Lookup("only"), "", "structure", "layout")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
@@ -363,6 +367,9 @@ func (c *command) checkCmd() clihelp.Operation {
 		case "", "structure", "layout":
 		default:
 			return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
+		}
+		if *strict || *baseline != "" || *writeBaseline != "" {
+			return c.checkEnforced(f.Arg(0), *only, checkPolicy{*strict, *baseline, *writeBaseline})
 		}
 		if c.report.Machine() {
 			return c.checkJSON(f.Arg(0), *only)

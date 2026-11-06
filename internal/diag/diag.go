@@ -10,6 +10,9 @@
 //	GZN1xxx  exit 1  processing failed: the game, a file, a simulation, a capture
 //	GZN2xxx  exit 2  the command line is invalid
 //
+// check --strict and --baseline budget growth make warnings fail with exit 1
+// without changing their code.
+//
 // The hundreds digit is the family: what the reader has to fix. One code per
 // fix, never one per call site, so the published list reads as problems a
 // person can act on. Messages may be reworded; codes do not change.

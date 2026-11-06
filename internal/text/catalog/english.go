@@ -5,6 +5,16 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"警告があれば検査を失敗にする":                    "fail the check when warnings exceed the baseline (zero by default)",
+	"警告件数の基準 `FILE` と比較する":              "compare warning counts with baseline `FILE`",
+	"警告件数を新規 `FILE` に保存する":              "write warning counts to a new `FILE`",
+	"基準ファイルには JSON オブジェクトを一つだけ指定してください": "baseline must contain exactly one JSON object",
+	"基準ファイルの版または --only の範囲が一致しません":     "baseline version or --only scope does not match",
+	"基準ファイルの警告コードが不正です: %s":             "invalid warning code in baseline: %s",
+	"基準ファイルの件数または相対パスが不正です: %s":         "invalid count or relative path in baseline: %s",
+	"check: 警告件数が基準を超えています":             "check: warning counts exceed the baseline",
+	"check: 検査に合格しました":                  "check: passed",
+
 	"定義のキーに null は使えません。文字列の ID を指定してください":         "definition keys cannot be null; use a string ID",
 	"移行でゲームの定義が変わるため中止しました。元のゲームは変更していません":         "migration would change the game definitions; source unchanged",
 	"YAML の移行範囲が重なっています。元のゲームは変更していません":            "overlapping YAML migration edits; source unchanged",

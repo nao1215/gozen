@@ -16,7 +16,7 @@ import (
 // col, path, message, severity, code) on stdout, warnings included. It fails when one is
 // an error. only is "", "structure" or "layout" (check --only); with layout, the
 // warnings of the structure are left out (its errors stay: the layout needs a game).
-func (c *command) checkJSON(dir, only string) error {
+func diagnoseCheck(dir, only string) (*gamedata.DB, gamedata.Diagnostics) {
 	var db *gamedata.DB
 	var diags gamedata.Diagnostics
 	fsys, err := gameFS(dir)
@@ -58,6 +58,15 @@ func (c *command) checkJSON(dir, only string) error {
 	if diags == nil {
 		diags = gamedata.Diagnostics{}
 	}
+	return db, diags
+}
+
+func (c *command) checkJSON(dir, only string) error {
+	_, diags := diagnoseCheck(dir, only)
+	return c.reportCheck(diags, false)
+}
+
+func (c *command) reportCheck(diags gamedata.Diagnostics, rejected bool) error {
 	failed := 0
 	for _, d := range diags {
 		if d.Severity == "error" {
@@ -65,7 +74,7 @@ func (c *command) checkJSON(dir, only string) error {
 		}
 	}
 	status := "ok"
-	if failed > 0 {
+	if failed > 0 || rejected {
 		status = "failed"
 	}
 	for i, d := range diags {
@@ -79,7 +88,7 @@ func (c *command) checkJSON(dir, only string) error {
 	if err := c.report.Result(c.out, status, diags); err != nil {
 		return err
 	}
-	if failed > 0 {
+	if failed > 0 || rejected {
 		return cliio.ErrReported
 	}
 	return nil
