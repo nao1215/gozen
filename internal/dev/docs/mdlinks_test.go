@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"unicode"
 )
@@ -54,10 +55,15 @@ func anchors(doc string) map[string]bool {
 // (outside website/, whose links are site paths) that lead to no file or no heading.
 func checkMarkdownLinks(fsys fs.FS) []string {
 	docs := map[string]string{}
-	var bad []string
+	var (
+		bad []string
+		mu  sync.Mutex
+	)
 	if err := repositoryText(fsys, func(name string, b []byte) {
 		if strings.HasSuffix(name, ".md") && !strings.Contains(name, "/testdata/") {
+			mu.Lock()
 			docs[name] = string(b)
+			mu.Unlock()
 		}
 	}); err != nil {
 		return []string{err.Error()}
