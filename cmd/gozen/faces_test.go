@@ -153,6 +153,7 @@ func BenchmarkFaceCheck(b *testing.B) {
 		})
 	}
 }
+
 func TestFaceCheckExtremeAspectRatios(t *testing.T) {
 	for _, height := range []int{1, 2, 3, 6000} {
 		img := solid(2, height, color.NRGBA{255, 255, 255, 255})

@@ -149,3 +149,13 @@ func TestReferenceSuggestionKeepsLocationAndCode(t *testing.T) {
 		}
 	}
 }
+
+func TestCompactPhoneDiagnosticLocation(t *testing.T) {
+	files := map[string]string{
+		"game.yaml":       "schema_version: 11\nid: phone-diagnostic\n" + definitionGame,
+		"data/phone.yaml": "events:\n  phone_demo:\n    - phone:\n        app: video\n        video:\n          picture: absent.png\n          seconds: .nan\n",
+	}
+	wantDiagnostics(t, files,
+		"data/phone.yaml:6:", "events.phone_demo.do[0].phone.video.picture",
+		"data/phone.yaml:7:", "events.phone_demo.do[0].phone.video.seconds", "GZN1105", "GZN1106")
+}

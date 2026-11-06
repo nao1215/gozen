@@ -315,9 +315,10 @@ func TestLargeEffectAmountsSaturate(t *testing.T) {
 	for _, kind := range []string{"damage", "heal", "revive"} {
 		t.Run(kind, func(t *testing.T) {
 			scope := "one_ally"
-			if kind == "damage" {
+			switch kind {
+			case "damage":
 				scope = "one_enemy"
-			} else if kind == "revive" {
+			case "revive":
 				scope = "dead_ally"
 			}
 			db := testgame.Load(t, map[string]string{
@@ -330,9 +331,10 @@ func TestLargeEffectAmountsSaturate(t *testing.T) {
 			target := b.Party[1]
 			target.HP = 1
 			want := target.MHP()
-			if kind == "damage" {
+			switch kind {
+			case "damage":
 				target, want = b.Foes[0], 0
-			} else if kind == "revive" {
+			case "revive":
 				target.HP = 0
 			}
 			found := false

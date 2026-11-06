@@ -1618,7 +1618,6 @@ func (r *Runner) asideInside(a data.Aside) bool {
 	return false
 }
 
-// show shows a picture (and remembers the last picture shown).
 // fillPhone fills the phone's texts for the screen: every name, caption and
 // line is interpolated and translated as a line of dialogue is.
 func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
@@ -1646,6 +1645,7 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	return p
 }
 
+// show shows a picture (and remembers the last picture shown).
 func (r *Runner) show(c data.CG) {
 	// notify both the screen and the screenless run of the portrait display over a provisional background, with the same value.
 	if r.db.StandIn(c.File) {
