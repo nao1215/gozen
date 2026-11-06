@@ -59,6 +59,7 @@ Names usable in condition expressions (`expr`): `tag.T` (confidence, 0 if absent
 
 A character YAML (a shortened form of the example in `react/react_test.go`, with its Japanese dictionary words and lines given in English here):
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 lexicon:
   cat: [cat, kitten, {meow: 0.4}]

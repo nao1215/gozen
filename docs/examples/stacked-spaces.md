@@ -89,6 +89,7 @@ Flat/floor decals, wall/door-mounted tile pictures and `away` pictures are not s
 
 Opt in per space; omitting `free_move` keeps the existing grid controls:
 
+<!-- verify: parse movement fragment; keep the existing space levels and stairs -->
 ```yaml
 space:
   free_move:

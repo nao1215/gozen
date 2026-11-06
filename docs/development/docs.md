@@ -46,7 +46,9 @@ If stale, it fails and points to `make docs-images`. In CI the generated images 
 
 ## Verifying the steps
 
-The code snippets of README.md and `website/content/*.md` are read from the top.
+The code snippets of README.md, `website/content/*.md` and `skills/*/` are read
+from the top. YAML in `docs/**/*.md` is also checked during ordinary tests;
+maintenance shell commands under `docs/` are not run automatically.
 
 - Shell snippets (`sh`, `shell`, `bash`) without a mark are run as they are. The snippets of one page run one after another in the same directory, and `cd` carries over to the next snippet (the same as a reader going on in one terminal).
 - `go install`, `go run …@latest` and `go get` are not rewritten. A local module proxy that serves the local checkout as `v0.0.0-docs` is placed at the front of `GOPROXY`, so they run with the same content as the published module zip. Dependencies come from the module cache, then from the original `GOPROXY`. `HOME` and `GOPATH` are fresh every time, and `gozen` is built from the checkout and put on PATH.
@@ -61,7 +63,7 @@ A mark is written on the line just before the snippet (it is not shown on GitHub
 | `<!-- verify: build REASON -->` | Turn a `go run` that opens a window and waits for a person into `go install` (with `@`) or `go build`, and check only that it builds |
 | `<!-- verify: skip REASON -->` | Do not run. The reason is required |
 | `<!-- verify: output -->` | Each line of a `text` snippet appears, in this order, in the standard output of the snippet run just before (the number of spaces does not matter) |
-| `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory (such as `game/game.yaml` or `main.go`, used by later snippets) |
+| `<!-- verify: file PATH -->` | Write the snippet's content to PATH in the page's directory for later steps. A set containing `game.yaml` is also loaded in ordinary tests without implicit fixture definitions or stub assets |
 | `<!-- verify: load [group=NAME] [under=KEY] [as=game.yaml\|as=assets/PATH] -->` | Overlay a YAML example as a data file on `internal/dev/docs/testdata/docgame` and read it with the internal session loader, together with the other load examples of the page, or of the same `group` (each recipe of the cookbook is its own game). Picture and sound names in the example are placed as stub files. `under` puts an indented fragment under `KEY:`; `as=game.yaml` merges the example's keys into the docgame's `game.yaml` instead, and `as=assets/PATH` places the example as that file (such as a moving portrait), its pictures stubbed beside it |
 | `<!-- verify: same PATH -->` | The YAML example has the same values as the file in the repository (comments and style do not matter) |
 | `<!-- verify: parse REASON -->` | Check only that it reads as YAML |
@@ -79,7 +81,7 @@ The current exclusions (shown in the log of `docs-steps`):
 | `gozen mosaic auto --model`, `gozen faces` | Need a detection model and ONNX Runtime (and cgo) |
 | `sudo apt-get install xvfb xauth` | Installs system packages. The capture inside Xvfb that follows is run |
 | `gozen <command> [OPTIONS] [ARGUMENTS]` | Explains the form of a command |
-| The YAML of the verb `roll_dice` and the screen `album`, and the 3 expression examples | Need registration in Go code / separate expressions, not one file |
+| The three separate expression examples | Illustrate fields from different contexts, not one game data file |
 | The shots list and the excerpt of the catalog YAML | parse only (shots for the same reason as above; the catalog is the full `docs/examples/production/catalog.yaml`, which the steps run) |
 
 ## Parallel image checks in CI
@@ -120,3 +122,37 @@ The vocabulary of adult content belongs only to the mosaic tool ([ADR 0004](../d
 ## CI time estimates
 
 On the author's machine (Linux, Xvfb), remaking and comparing images takes about 3 minutes (most of it the Go Zen runs), running the steps about 40 seconds (with the build cache; the first time takes several minutes for fetching dependencies and building Ebitengine), and building the site and checking links a few seconds. The Docs workflow in CI runs images and steps side by side. While private, it follows the budget rule of [CI configuration](ci.md) and runs only after the repository is public and on manual runs. The checks that need no display (ledger and references, marks, YAML examples, README links) are part of the usual `go test ./...`.
+
+## Keeping authoring contracts synchronized
+
+`go test ./internal/dev/docs` includes the following checks in ordinary
+`go test ./...`; none needs a display, network access, models or an installed CLI.
+The CLI check builds the local executable once and reads `gozen help --format json`.
+
+| Test | Compared contracts |
+| --- | --- |
+| `TestSyncEventVerbs` | `Command` registry tags, generated Schema descriptions, and the skill's event-verb table; command fields in website and skill YAML fragments and names in verb tables |
+| `TestSyncCLIHelp` | Every help command and its exact long/short option set against both command-index tables; inline and shell invocations and options in command-scoped tables are also checked for stale names |
+| `TestSyncDiagnosticCodes` | Every registered code has an errors-page heading; literal codes in documentation, skill and site source text belong to the registry |
+| `TestSyncSchemaSections` | Every root property reached by the game/data JSON Schemas has a purpose in the skill's section table; obsolete sections fail too |
+| `TestSyncADRIndex` | ADR filenames have unique numbers, every ADR has an index row, every indexed target exists, and link numbers match filenames |
+| `TestDocBlocks` | YAML blocks throughout docs, site and skills have a valid verification mark; complete file tutorials and load examples load, and parse-only fragments have valid YAML syntax |
+
+Inventories are visible Markdown tables with first columns named `Event verb`,
+`CLI command` and `Section`. Keep identifiers in backticks and give each a purpose.
+CLI rows list each accepted option in its own backticks. The tests report all
+missing and stale entries rather than stopping at the first mismatch.
+Local event aliases must be declared in the same page, in a YAML `verbs` map.
+A bare word in prose is not enough to document a verb or option: use the table
+and an example. Checks distinguish command contexts from unrelated YAML such as
+workflow steps or portrait geometry; they are not a natural-language proof of
+all prose. Historical ADR fragments may remain parse-only with a reason.
+Run `go test ./internal/dev/docs -run TestDocBlocks -v` to list every YAML
+block limited to parsing or explicitly skipped, with its file, line and reason.
+
+`parse` checks syntax only; `skip` checks neither YAML semantics nor runtime
+behavior. Prefer `load` or a complete `file` tutorial for author-ready examples.
+The marks make partial examples explicit; they must not be reported as gameplay
+verification. After a contract change, update the appropriate inventory, recipes
+and schema descriptions together. The separate diagnostic registry owns errors
+page generation; these tests do not rewrite it.

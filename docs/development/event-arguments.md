@@ -10,6 +10,7 @@ The argument-bearing events retain their full mapping.
 The runnable [workshop example](../examples/event-arguments/game.yaml) calls
 `encourage` twice from [one entry event](../examples/event-arguments/data/story.yaml):
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 - call: {event: encourage, args: {resident: '"potter"', amount: '2'}}
 - call: {event: encourage, args: {resident: '"weaver"', amount: '3'}}
@@ -61,6 +62,7 @@ files; the CLI E2E runs both residents and checks their resulting attributes.
 
 Use `call.each` to reuse one event for a bounded list of residents or activities:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 - call:
     event: each_visit
@@ -97,11 +99,11 @@ a named event or nested screen receives only explicitly passed values. Closing
 resumes the original caller once. A malformed dynamic argument logs an execution
 error and skips opening the screen before any entry effect or random draw.
 
-Parameterized planning surfaces, implicit tab destinations and
-expression-form screen entry target IDs are not supported yet. Use a parameterless wrapper
-screen with an explicit `open` action when a literal-only destination is required.
-Plain portrait lists can still use fixed entity targets. Parameters do not expand
-screens or generate YAML.
+Parameterized native planning surfaces and implicit tab destinations remain
+unsupported. Use a parameterless wrapper with an explicit `open` action where
+a literal-only destination is required. Plain entries support expression targets
+and bounded `each` rows, described below. Parameters bind values; they do not
+generate YAML.
 
 The player and session can save these plain screens, including confirmation and
 entry dialogue, when opened from a schema-10 named root. Unsupported boundaries,
@@ -126,6 +128,7 @@ The [workshop example](../examples/event-arguments/game.yaml) defines a single
 Call `assign_visit` with `task: '"prepare"'` or `task: '"shape"'` and
 `resident: '"weaver"'` to reuse its confirmation flow. Its confirmed action is:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 - plan:
     op: assign
@@ -219,6 +222,7 @@ same visible-row contract during restoration.
 Schema 10 calendar and timeline date markers can pass `args` to one ordinary
 screen. The workshop example uses two dates with one `day_detail` definition:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 markers:
 - date: '2030-01-01'
@@ -415,6 +419,7 @@ it does not require scratch values in saved state for the frozen inputs.
 Schema 10 permits a computed variable or flag name in `set`. The workshop's
 `counter_demo` records stock by resident and slot with one shared event:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 params: {resident: entity, slot: number, amount: number}
 do:
@@ -522,6 +527,7 @@ for conservative scene-skip summaries and remaining repeated-row work.
 Choice labels can interpolate the name of a bound planning entity. Write one
 option for the action instead of copying the same option for every resident:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 offer_visit:
   params: {resident: entity}
@@ -548,6 +554,7 @@ return a string. The runner evaluates it once, then uses that selected source
 for the read key, translation lookup and ordinary `{expression}` interpolation.
 For example, the workshop's `selected_text_demo` calls this event twice:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 report_resident:
   params: {name: string}
@@ -597,6 +604,7 @@ original action, including threshold equality and overlapping topic conditions.
 
 The workshop's `speaker_demo` uses one ordered call instead of a call per actor:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 - call:
     event: greet
@@ -627,6 +635,7 @@ scalars (up to 4096 elements). Keys must be identifiers. Nested maps, nested
 lists and null values are rejected. Types are inferred from the YAML values;
 quote numeric-looking text. Empty lists are allowed; guard indexing them.
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 planning:
   entities:
@@ -657,6 +666,7 @@ Schema 10 accepts `each` on a screen entry, using the same bounded ID selection
 as repeated calls. This works on plain lists and contextual planning actions.
 For example, the runnable workshop's `roster` screen has one entry:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 - each: {param: resident, in: 'filter(entities, it.vigor < 2)'}
   target: {expr: arg.resident}
@@ -702,6 +712,7 @@ source key. Literal choices retain their existing fingerprint representation.
 Calendar and timeline views can share one typed destination, without a marker
 for every day. The neutral event-arguments example uses:
 
+<!-- verify: parse binding fragment; the surrounding guide supplies the caller and referenced definitions -->
 ```yaml
 view:
   date_link:

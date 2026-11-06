@@ -106,6 +106,7 @@ The stage 3 map screen (`internal/play/atlas.go`): fit the picture to the screen
 
 A large connected world can opt into a camera while retaining the same map rules:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 map:
   picture: world.png
@@ -177,6 +178,7 @@ Omitting activation, or using `travel`, preserves road travel and arrival behavi
 The panel and activation are independent opt-ins; neither selection nor the camera
 is part of a saved game. For example:
 
+<!-- verify: parse ADR syntax fragment; surrounding definitions and historical implementation limits are described in this decision -->
 ```yaml
 map:
   picture: maps/valley.png

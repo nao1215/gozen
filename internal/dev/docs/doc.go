@@ -1,5 +1,5 @@
-// Package docs holds the checks that keep README.md, the website and their
-// pictures true to the code. Everything is in the tests:
+// Package docs holds the checks that keep authoring documentation, the website,
+// skills and their pictures true to the code. Everything is in the tests:
 //
 //   - The pictures in docs/images are made from the sample games as listed in
 //     docs/images/manifest.yaml. go test checks the manifest against the
@@ -10,6 +10,10 @@
 //     <!-- verify: ... --> mark when they are not simply run. go test checks
 //     the marks and loads the YAML examples; GOZEN_DOCS_STEPS=1 runs the shell
 //     steps in temporary directories against this checkout (make docs-steps).
+//     Skills follow the same rules; YAML in docs/ is checked without running
+//     maintenance scripts. Complete file tutorials load without fixture data.
+//   - Event verbs, CLI help, diagnostic codes, schema sections and the ADR
+//     index are compared with their registries by the sync integration tests.
 //   - GOZEN_SITE_DIR=website/public checks the built site for broken internal
 //     links and pictures (make website-check).
 //

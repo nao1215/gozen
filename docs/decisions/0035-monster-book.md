@@ -12,6 +12,7 @@ A game author wants a player to recognize the creatures met in play and learn th
 
 `enemies.<id>.lore` is an optional short description. `ui.bestiary: true` offers Monsters in the title and field menu. The menu labels and book heading follow `language` and share one engine text key. Authors can override all three through `text` in game.yaml; this YAML example uses Unicode escapes for the Japanese source key:
 
+<!-- verify: load as=game.yaml -->
 ```yaml
 text:
   "\u307e\u3082\u306e\u306e\u307b\u3093": Creature guide
