@@ -284,7 +284,6 @@ var english = map[string]string{
 	"左右・スワイプ: 投稿を送る　クリック: いいね　Esc: 閉じる":                                                   "Left, right or swipe: next post   Click: like   Esc: close",
 	"クリック: 次のメッセージ　Esc: 閉じる":                                                              "Click: next message   Esc: close",
 	"いいね！ %s 件": "%s likes",
-	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください": "game.yaml id: schema %d needs a game ID that starts with a letter or digit and uses only letters, digits, _ and -",
 	// screens: battle
 	"CRITICAL!":     "CRITICAL!",
 	"WEAK!":         "WEAK!",
