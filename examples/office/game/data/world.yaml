@@ -30,6 +30,21 @@ events:
     - say: {who: daniel, text: I can add it after the payments work. Not before., ensemble: team_call}
     - say: {who: nora, text: Then I test both on the same day., ensemble: team_call}
     - set: {var.reviewed: 1}
+  # The phone command: every app one after another (the captures start each
+  # with --event). Each waits until the phone is put down, but a banner.
+  phone_tour:
+    - call: {event: phone_chat}
+    - call: {event: phone_feed}
+    - call: {event: phone_video}
+    - call: {event: phone_puppet}
+    - call: {event: phone_shop}
+    - call: {event: phone_bank}
+    - call: {event: phone_lock}
+    - call: {event: phone_call}
+    - call: {event: phone_sso}
+    - call: {event: phone_timeline}
+    - call: {event: phone_banner}
+    - call: {event: phone_support}
   # The phone command (ADR 0057): a chat held upright, a photo feed and a video
   # turned on its side. Each waits until the phone is put down.
   phone_chat:
@@ -72,6 +87,132 @@ events:
         hold: landscape
         video: {frames: [clips/battle/*.jpg], fps: 12, text: 'Game night: the Brass Warden fight'}
     - say: {who: martin, text: Three seconds of a boss fight. Back to the booking form.}
+  # The same phone with a puppet clip, pages, the lock screen and a banner.
+  phone_puppet:
+    - say: {who: martin, text: Mia sent the pantry clip after all.}
+    - phone:
+        app: video
+        hold: landscape
+        video: {picture: bg/pantry.jpg, puppet: clip3/puppet.yaml, zoom: 1.6, text: 'Pantry dance break', seconds: 8, bounce: [1, 3.5, 6]}
+    - say: {who: martin, text: I did not see that. Officially.}
+  phone_shop:
+    - say: {who: martin, text: Mia wants a second opinion on the team shirts.}
+    - phone:
+        app: page
+        url: harbor-outfitters.example/team
+        rows:
+        - {text: Harbor Outfitters, size: large, bold: true}
+        - {text: 'Team wear, autumn line. Free delivery over $100.', size: small}
+        - {pictures: [phone/photo1.jpg, phone/photo2.jpg, phone/photo3.jpg, phone/photo4.jpg, phone/photo6.jpg, phone/photo7.jpg]}
+        - {item: {icon: apps/shop.png, title: Team hoodie, text: 'Navy · S to XL', value: '$58'}}
+        - {item: {icon: apps/shop.png, title: Denim jacket, text: 'Washed blue · M, L', value: '$89'}}
+        - {button: Add six hoodies to the cart}
+    - say: {who: martin, text: Six hoodies. The budget line says merchandise. Close enough.}
+  phone_bank:
+    - say: {who: martin, text: The contractor invoice is due today.}
+    - phone:
+        app: page
+        title: Harbor Bank
+        color: '#1f5fbf'
+        var: var.transfer
+        rows:
+        - {text: Business account balance, size: small}
+        - {text: '12,480,000', size: large, bold: true}
+        - {text: Transfer to confirm, bold: true}
+        - {item: {icon: apps/bank.png, title: Blue Tide Ltd., text: 'Invoice 0420 · today', value: '-3,000,000'}}
+        - {text: Recent, bold: true}
+        - {item: {icon: apps/bank.png, title: Harbor Travel, text: 'Client deposit · yesterday', value: '+8,000,000'}}
+        - {item: {icon: apps/bank.png, title: Office rent, text: 'Standing order · Mar 1', value: '-1,200,000'}}
+        - {text: 'The transfer leaves at 15:00 and cannot be undone after that.', size: small}
+        - {button: Confirm transfer, id: confirm}
+        - {button: Not now, id: later}
+    - if: 'var.transfer == "confirm"'
+      then: [{say: {who: martin, text: Paid. Blue Tide gets their money on time.}}]
+      else: [{say: {who: martin, text: Later. Elena will ask about it at three.}}]
+  phone_lock:
+    - say: {who: martin, text: Morning. The lock screen is already busy.}
+    - phone:
+        app: lock
+        time: '7:12'
+        date: Tuesday, March 14
+        notices:
+        - {app: Harbor Bank, icon: apps/bank.png, title: Deposit received, text: '+8,000,000 from Harbor Travel'}
+        - {app: Team chat, icon: icons/elena.png, title: Elena Ruiz, text: Can we move the standup to ten? The client call ran over.}
+        - {app: Calendar, icon: apps/calendar.png, title: Client demo in one hour, text: 'Meeting room B · 9:30'}
+    - say: {who: martin, text: 'Standup at ten, then.'}
+  phone_call:
+    - say: {who: martin, text: '2:14 at night. The phone lights up on the desk.'}
+    - phone:
+        app: lock
+        time: '2:14'
+        date: Wednesday, March 15
+        var: var.oncall
+        notices:
+        - {app: Monitor, icon: apps/monitor.png, title: API error rate 6%, text: 'booking-api is over the 5% threshold for five minutes.'}
+        - {app: Monitor, icon: apps/monitor.png, title: API error rate 9%, text: 'booking-api: still rising.'}
+        - {app: On-call, icon: apps/oncall.png, title: On-call · API error rate, text: Incoming call, call: true}
+        - {app: On-call, icon: apps/oncall.png, title: On-call · API error rate, text: 'Incoming call, second try', call: true, set: {var.woke_twice: 1}}
+    - if: 'var.oncall == "answer"'
+      then: [{say: {who: martin, text: I am up. Opening the dashboard.}}]
+      else: [{say: {who: martin, text: Daniel is on call too. He will take it.}}]
+  phone_sso:
+    - say: {who: martin, text: 'A sign-in request. Who works on production at this hour?'}
+    - phone:
+        app: page
+        title: Sign-in check
+        color: '#2c3e50'
+        var: var.sso
+        rows:
+        - {item: {icon: apps/signin.png, title: Harbor ID, text: Production console}}
+        - {text: Approve sign-in to the production console?, size: large, bold: true}
+        - {text: 'Daniel Cho · laptop · Lisbon · 23:48', size: small}
+        - {text: Approve only a sign-in you started or expected., size: small}
+        - {button: Approve, id: approve}
+        - {button: Deny, id: deny}
+    - if: 'var.sso == "approve"'
+      then: [{say: {who: martin, text: Approved. Daniel said he would fix the payment job tonight.}}]
+      else: [{say: {who: martin, text: Denied. I message Daniel to ask first.}}]
+  phone_timeline:
+    - say: {who: martin, text: The booking app is down. People notice before we do.}
+    - phone:
+        app: feed
+        title: Timeline
+        posts:
+        - {who: sam.travels, text: 'Trying to book a table for tonight and the app just spins. Anyone else?', likes: 48, replies: 12, reposts: 5}
+        - {who: harbor.booking, icon: apps/timeline.png, text: 'We know some bookings fail right now. We are on it and will post here when it is fixed.', likes: 210, replies: 64, reposts: 88}
+        - {who: lena_k, text: 'Third time this month. I am calling the restaurant like it is 1999.', likes: 131, replies: 9, reposts: 20}
+        - {who: dev.ops.dan, text: 'Whoever is on call at the booking team tonight: you have my sympathy.', likes: 302, replies: 15, reposts: 41}
+        - {who: priya.eats, text: 'The booking app ate my reservation and my patience. Calling instead.', likes: 64, replies: 7, reposts: 3}
+        - {who: harbor.booking, icon: apps/timeline.png, text: 'Update: payments are back. Table bookings are still slow, and we are fixing that next.', likes: 156, replies: 31, reposts: 40}
+        - {who: tom_the_cook, text: 'Our kitchen got four walk-ins who said the app was down. Free advertising, I suppose.', likes: 89, replies: 6, reposts: 11}
+        - {who: night.shift.nurse, text: 'Booked a table for tomorrow at 2 a.m. because that is when I have time. Worked first try.', likes: 41, replies: 2}
+        - {who: m.ortega, text: 'Booked fine five minutes ago. Back up?', likes: 17, replies: 3}
+    - say: {who: martin, text: Back up. Now the review of what broke.}
+  phone_banner:
+    - say: {who: martin, text: 'Back to the plan: payments first, then the form.'}
+    - phone: {app: banner, notices: [{app: Team chat, icon: icons/nora.png, title: Nora Quinn, text: 'Acceptance tests are green. Ship it?', event: banner_reply}]}
+    - say: {who: martin, text: A notification slides in while I talk. The scene goes on.}
+    - say: {who: martin, text: 'I can read it later, or tap it now.'}
+  banner_reply:
+    - say: {who: martin, text: Nora's tests are green. Good news for once.}
+  phone_support:
+    - say: {who: martin, text: Iris draws at night. Her supporter page is new.}
+    - phone: &iris_page
+        app: page
+        url: sketchboard.example/iris
+        rows:
+        - {picture: bg/meeting.jpg}
+        - {item: {icon: icons/iris.png, title: Iris Vale, text: 'Illustration, office life, small comics', value: 320 supporters}}
+        - {text: 'Monthly sketches of a small app team. Supporters see the full pages.', size: small}
+        - {item: {icon: apps/studio.png, title: Coffee tier, text: 'A sketch a month, early posts', value: '$3 / mo'}}
+        - {item: {icon: apps/studio.png, title: Studio tier, text: 'Full comic pages and process files', value: '$8 / mo'}}
+        - {button: Support Iris, set: {flag.iris_supported: true}}
+        - {text: Posts, bold: true}
+        - {pictures: [phone/photo1.jpg, phone/photo5.jpg, phone/photo9.jpg]}
+        - {pictures: [phone/photo2.jpg, phone/photo8.jpg, phone/photo10.jpg], locked: '!flag.iris_supported', label: Supporters only}
+    - say: {who: martin, text: Coffee tier. The full pages open.}
+    - phone: *iris_page
+    - say: {who: martin, text: She drew the standup. Daniel is asleep in it.}
 profiles:
   martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
   elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}

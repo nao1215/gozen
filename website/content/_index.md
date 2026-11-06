@@ -69,17 +69,33 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 ### Novel games
 
-`ui.message: novel` makes a visual novel. All from [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, at 1920x1080 ([Novel games](/writing-a-game/#novel-games)). `phone` shows a phone over the scene, with a chat, a photo feed or a video playing footage ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)), from the office sample.
+`ui.message: novel` makes a visual novel. All from [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, at 1920x1080 ([Novel games](/writing-a-game/#novel-games)).
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
 | ![Back goes over two lines and a choice, with the state](/images/novel-back.mp4) | ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4) |
 | Two languages | Staging (`stand`, `effect`) |
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
-| Event picture with its line | Phone: a video turned on its side |
-| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | ![a video app: the phone comes up upright, turns on its side and plays footage of a battle from the Go Zen sample](/images/phone-video.mp4) |
-| Phone: chat, a clip sent in it | Phone: feed, scrolled |
-| ![a team chat on a phone: messages arrive one by one, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) | ![a photo feed scrolled down a post at a time, a clip of a battle cut-in looping in its post](/images/phone-feed.mp4) |
+| Event picture with its line | Phone: a chat |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | ![a team chat on a phone: messages arrive one by one with a picture, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) |
+
+#### Phone apps
+
+`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)). All from the office sample.
+
+| Chat: a picture and a clip sent in it | Feed: scrolled, a clip post, likes |
+|:--|:--|
+| ![a team chat on a phone: messages arrive one by one with a picture, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) | ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](/images/phone-feed.mp4) |
+| Video on its side: footage | Video: a puppet clip |
+| ![a video app: the phone turns on its side and plays footage of a battle from the Go Zen sample, letterboxed](/images/phone-video.mp4) | ![a video app playing Mia's clip: a picture with a puppet in front that breathes, sways and jiggles](/images/phone-puppet.mp4) |
+| Page: a shop site with a picture grid | Page: a bank transfer to confirm |
+| ![a browser page of a clothing shop: a grid of pictures, two list items with prices and a button tapped](/images/phone-shop.mp4) | ![a bank app: the balance, a transfer to confirm and recent items; Confirm is tapped and the story goes on from it](/images/phone-bank.mp4) |
+| Lock screen: notices arriving | Lock screen: an incoming call answered |
+| ![the lock screen at 7:12: a bank notice, a chat preview and a calendar reminder arrive one a press](/images/phone-lock.mp4) | ![a night on-call: two monitoring notices, an incoming call from the on-call app declined, ringing again and answered](/images/phone-call.mp4) |
+| Page: a sign-in approval | Feed: a timeline of text posts |
+| ![a sign-in check asks to approve a sign-in to the production console; Approve is tapped and the story branches on it](/images/phone-sso.mp4) | ![a timeline of text posts about the booking app being down, with likes, replies and reposts, scrolled](/images/phone-timeline.mp4) |
+| Banner: a push notification over a scene | Page: a supporter site with locked posts |
+| ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](/images/phone-banner.mp4) | ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](/images/phone-support.mp4) |
 
 ### Management workspaces
 
