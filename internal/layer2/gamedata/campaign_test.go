@@ -265,3 +265,20 @@ func TestFactionWordsAndCallLoops(t *testing.T) {
 		}
 	}
 }
+
+func TestCampaignInvalidReferencesDoNotPanic(t *testing.T) {
+	for _, player := range []string{"2", "bad-name", "\"[\""} {
+		t.Run("player_"+player, func(t *testing.T) {
+			game := strings.Replace(testgame.CampaignGame, "player: blue", "player: "+player, 1)
+			if _, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"game.yaml": game})); err == nil {
+				t.Fatal("invalid player was accepted")
+			}
+		})
+	}
+	t.Run("capital", func(t *testing.T) {
+		fields := strings.Replace(testgame.CampaignData, "capital: home", "capital: '2'", 1)
+		if _, err := testgame.TryLoad(testgame.CampaignFiles(map[string]string{"data/campaign.yaml": fields})); err == nil {
+			t.Fatal("invalid capital was accepted")
+		}
+	})
+}

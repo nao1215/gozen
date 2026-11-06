@@ -1001,7 +1001,7 @@ func CampaignWin(db *DB) Expr {
 	if cp == nil {
 		return Expr{}
 	}
-	return MustExpr(fmt.Sprintf("faction.%s.regions == %d", cp.Player, len(db.Regions)))
+	return MustExpr(fmt.Sprintf("faction[%s].regions == %d", quoteExprString(cp.Player), len(db.Regions)))
 }
 
 // CampaignLose is the condition that loses the campaign (its default when unset; none
@@ -1018,7 +1018,7 @@ func CampaignLose(db *DB) Expr {
 	if f == nil || f.Capital == "" {
 		return Expr{}
 	}
-	return MustExpr(fmt.Sprintf("region.%s.owner != %s", f.Capital, quoteExprString(cp.Player)))
+	return MustExpr(fmt.Sprintf("region[%s].owner != %s", quoteExprString(f.Capital), quoteExprString(cp.Player)))
 }
 
 // campaignSetKey checks a left-hand side of set that names the campaign's state:
