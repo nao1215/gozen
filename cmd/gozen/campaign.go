@@ -134,10 +134,11 @@ func factionCounts(counts map[string]int) string {
 	sort.Strings(ids)
 	parts := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id == "" {
-			id = "none"
+		label := id
+		if label == "" {
+			label = "none"
 		}
-		parts = append(parts, fmt.Sprintf("%s=%d", id, counts[id]))
+		parts = append(parts, fmt.Sprintf("%s=%d", label, counts[id]))
 	}
 	return strings.Join(parts, ",")
 }
