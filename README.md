@@ -50,19 +50,6 @@ Choose `novel` or `campaign` for another template. Edit `game.yaml` and `data/wo
 
 Play the larger samples in your browser: https://nao1215.github.io/gozen/play/
 
-## The loop
-
-| Step | Tool |
-|:--|:--|
-| Write | YAML: places, battles, skills, enemy tactics, events, dialogue. |
-| Check | `gozen check` prints file and line: `data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]`. |
-| Measure | `gozen sim battle` prints a win rate. `gozen sim dive` plays a dungeon dive. F7 shows the same numbers in the game. |
-| Play | `--dev` starts anywhere, autoplays, records and replays a trace. |
-| Note | F9 saves the moment. `--from-memo` starts at that line. |
-| Fix | Edit the YAML under `--dir` and press F5. The game keeps your place. |
-
-The window, a headless session and the command line share the rules. The keys are in [Playtesting](#playtesting).
-
 ## Screens
 
 All from [Go Zen](examples/go-zen) at 1920x1080.
@@ -193,6 +180,10 @@ Start the game with `--dev` and these keys work while you play.
 | ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg) |
+
+Outside the window, `gozen check game` reports a broken reference, a wrong expression, a missing picture or a line too long for its window with its file and line, such as `data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]`. `gozen sim battle` fights a battle many times and prints the win rate (the numbers F7 shows), and `gozen sim dive` plays a whole dungeon dive. A note written with F9 can be opened again with `gozen run game --dev --from-memo` on its `.json`, at the same line. The window, a headless session and the command line follow the same rules.
+
+All the tools: [the edit–play loop](https://nao1215.github.io/gozen/edit-play-loop/).
 
 ## Install
 

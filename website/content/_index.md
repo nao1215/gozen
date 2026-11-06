@@ -32,25 +32,6 @@ Choose `novel` or `campaign` for a different starting point. Follow [Getting sta
 
 On Linux the window needs a graphics environment; see [Install](/install/).
 
-## The loop
-
-Making a game is mostly tuning: a line that reads wrong, a boss that is too hard, a dungeon that is too long, a war that one side always wins. Gozen shortens each round.
-
-| Step | What you do |
-|:--|:--|
-| Write | Put places, battles, skills, enemy tactics, events and dialogue in YAML. Text is easy to write, diff and review, for you and for an agent. |
-| Check | `gozen check game` reports broken references, wrong expressions, missing pictures and text that overflows its window, with file and line. |
-| Measure | `gozen sim battle` fights a battle hundreds of times and prints the win rate. `gozen sim dive` plays a whole dungeon dive. |
-| Play | Run the game with `--dev`: start anywhere, autoplay at high speed, record and replay a trace. |
-| Note | Press F9 to save a note with a screenshot and the game state. `--from-memo` starts the game again at that line. |
-| Fix | Edit the YAML and press F5. The game reloads its definitions and keeps your place. F7 shows the win rates of the battles here. |
-
-```text
-data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]
-```
-
-The rules are shared by the window, a headless driver and the command line, so a test in CI and a player see the same game.
-
 ## Screens
 
 All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at 1920x1080.
@@ -168,6 +149,8 @@ Start the game with `--dev` and these keys work while you play.
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart with face icons and coloured connections](/images/go-zen-relations.jpg) |
 
 More on each key in [the edit–play loop](/edit-play-loop/).
+
+`gozen check`, `gozen sim battle`, `gozen sim dive` and the notes of F9 are in [the edit–play loop](/edit-play-loop/).
 
 ## Where to go
 
