@@ -423,7 +423,13 @@ type Notice struct{ Text string }
 
 // Tap waits for a tap with nothing to read (between the pictures of an image's files).
 // If Auto is greater than 0, advance to the next after that many seconds without a button press (image auto; slideshow).
-type Tap struct{ Auto float64 }
+type Tap struct {
+	Auto float64
+	// Results is how many results the phone shown can be put down with that
+	// the story keeps (the phone command); the screen answers one, or -1 for
+	// none, with Answer.
+	Results int
+}
 
 // Clear ends the game happily.
 type Clear struct{}
@@ -1271,7 +1277,18 @@ func (r *Runner) run(c *data.Command) Request {
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
 		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
-		return Tap{}
+		if c.Phone.App == "banner" {
+			break
+		}
+		results := c.Phone.Results()
+		if len(results) > 0 {
+			r.asked, r.optionAt, r.pick = nil, nil, nil
+			r.options = make([]data.ChoiceOption, len(results))
+			for i, res := range results {
+				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
+			}
+		}
+		return Tap{Results: len(results)}
 	case "call_view":
 		if cam := c.CallView.Camera; cam != nil {
 			r.emit(CallCameraEffect{Who: cam.Who, On: cam.On})
@@ -1644,6 +1661,27 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 		post.Who, post.Text, post.Video = fill(post.Who), fill(post.Text), video(post.Video)
 	}
 	p.Video = video(p.Video)
+	p.URL, p.Time, p.Date = fill(p.URL), fill(p.Time), fill(p.Date)
+	p.Rows = append([]data.PhoneRow(nil), p.Rows...)
+	for i := range p.Rows {
+		row := &p.Rows[i]
+		row.Text, row.Caption, row.Button, row.Label = fill(row.Text), fill(row.Caption), fill(row.Button), fill(row.Label)
+		if row.Locked.Set() {
+			shut, err := row.Locked.Bool(env)
+			r.logf(err)
+			row.Shut = shut
+		}
+		if row.Item != nil {
+			it := *row.Item
+			it.Title, it.Text, it.Value = fill(it.Title), fill(it.Text), fill(it.Value)
+			row.Item = &it
+		}
+	}
+	p.Notices = append([]data.PhoneNotice(nil), p.Notices...)
+	for i := range p.Notices {
+		n := &p.Notices[i]
+		n.App, n.Title, n.Text = fill(n.App), fill(n.Title), fill(n.Text)
+	}
 	return p
 }
 
@@ -1694,6 +1732,12 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 			return nil, fmt.Errorf("load: event ended before saved line %d", line)
 		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
+		case Tap:
+			if q.Results > 0 && answer < len(answers) {
+				r.Answer(answers[answer])
+				answer++
+			}
+			continue
 		case Say:
 			seen++
 		case Choice:

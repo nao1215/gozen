@@ -179,7 +179,7 @@ func TestPhoneFeed(t *testing.T) {
 	at := image.Pt(int(sx+w/2), int(sy+phoneFeedTop+posts[0].pic+40))
 	g.in = input{pdown: true, pup: true, click: true, mouse: at}
 	g.updatePhone()
-	if !p.liked[0] || g.feedPictureAt(p, posts, w, at) != 0 {
+	if !p.liked[0] || g.feedPictureAt(p, posts, at) != 0 {
 		t.Fatal("a click on the picture did not like the post")
 	}
 	phonePress(g, btnOK)
@@ -377,4 +377,185 @@ func TestPhoneFeedAspect(t *testing.T) {
 	dst := ebiten.NewImage(400, 300)
 	defer dst.Deallocate()
 	g.drawPhoneMedia(dst, g.phone, "test", &phoneClip{v: &data.PhoneVideo{Frames: []string{"wide.png"}}}, 0, 0, 400, 300, 0)
+}
+
+// TestPhonePage: a page scrolls with the down key and the wheel no farther
+// than its bottom, and a tap on its button puts the phone down.
+func TestPhonePage(t *testing.T) {
+	rows := []data.PhoneRow{{Text: "Transfer", Size: "large", Bold: true}}
+	for range 8 {
+		rows = append(rows, data.PhoneRow{Item: &data.PhoneItem{Title: "Rent", Text: "Nov 1", Value: "-1,000"}})
+	}
+	rows = append(rows, data.PhoneRow{Pictures: []string{"x.png", "x.png", "x.png", "x.png"}}, data.PhoneRow{Button: "Confirm"})
+	g := phoneGame(t, data.PhoneCue{App: "page", Title: "Bank", Color: "#1a73e8", Rows: rows})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	laid, _, end := g.pageView(p)
+	if end <= 0 {
+		t.Fatal("the long page does not scroll")
+	}
+	phonePress(g, btnDown)
+	phoneTicks(g, 40)
+	if p.scroll != laid[1].top-phonePageGap {
+		t.Fatalf("down scrolled to %v, want the second row at %v", p.scroll, laid[1].top-phonePageGap)
+	}
+	g.in = input{wheel: -50}
+	g.updatePhone()
+	if p.scroll != end {
+		t.Fatalf("the wheel scrolled to %v, want the bottom %v", p.scroll, end)
+	}
+	// A tap on a row that is no button keeps the phone up; one on the button puts it down.
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	tap := func(row int) {
+		y := sy + phoneFeedTop + laid[row].top - p.scroll + laid[row].h/2
+		g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+w/2), int(y))}
+		g.updatePhone()
+	}
+	tap(len(rows) - 2)
+	if p.closing != 0 {
+		t.Fatal("a tap on the grid put the phone down")
+	}
+	tap(len(rows) - 1)
+	if p.closing == 0 {
+		t.Fatal("a tap on the button did not put the phone down")
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+}
+
+// TestPhoneLock: the notices come one a press (or by themselves with auto),
+// declining a call brings the next one, and answering puts the phone down.
+func TestPhoneLock(t *testing.T) {
+	alert := data.PhoneNotice{App: "On-call", Title: "API error rate", Call: true}
+	g := phoneGame(t, data.PhoneCue{App: "lock", Date: "Tuesday", Notices: []data.PhoneNotice{
+		{App: "Monitor", Title: "Error rate 4%"}, alert, alert,
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	if p.shown != 1 || p.calling() {
+		t.Fatalf("the lock screen came up with %d notices", p.shown)
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	phonePress(g, btnOK)
+	if p.shown != 2 || !p.calling() {
+		t.Fatal("a press did not bring the call")
+	}
+	g.drawPhone(dst)
+	phonePress(g, btnCancel)
+	if p.shown != 3 || !p.calling() || p.closing != 0 {
+		t.Fatalf("declining did not ring again: shown %d closing %d", p.shown, p.closing)
+	}
+	answer, _ := g.callButtons(p)
+	g.in = input{click: true, mouse: image.Pt(int(answer.x), int(answer.y))}
+	g.updatePhone()
+	if p.closing == 0 {
+		t.Fatal("answering did not put the phone down")
+	}
+}
+
+// TestPhoneLockAuto: with auto the notices arrive by themselves, and the last
+// call declined puts the phone down.
+func TestPhoneLockAuto(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "lock", Auto: true, Notices: []data.PhoneNotice{
+		{Title: "One"}, {Title: "Two"}, {Title: "Call", Call: true},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise+phoneLockAuto*2+2)
+	if p.shown != 3 {
+		t.Fatalf("auto brought %d notices, want 3", p.shown)
+	}
+	phonePress(g, btnCancel)
+	if p.closing == 0 {
+		t.Fatal("declining the last call did not put the phone down")
+	}
+}
+
+// TestPhoneResultsPressed: the phone is put down with the result pressed: a
+// page's button, a call answered, or the last call declined.
+func TestPhoneResultsPressed(t *testing.T) {
+	cue := data.PhoneCue{App: "page", Var: "var.mfa", Rows: []data.PhoneRow{
+		{Text: "Approve?"}, {Button: "Approve"}, {Button: "Deny"},
+		{Pictures: []string{"x.png", "x.png"}, Shut: true, Label: "Supporters only"},
+	}}
+	g := phoneGame(t, cue)
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	rows, _, _ := g.pageView(p)
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	y := sy + phoneFeedTop + rows[2].top - p.scroll + rows[2].h/2
+	g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+w/2), int(y))}
+	g.updatePhone()
+	if p.closing == 0 || p.result != 1 {
+		t.Fatalf("Deny put the phone down with result %d (closing %d), want 1", p.result, p.closing)
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+
+	q := newPhoneView(data.PhoneCue{App: "lock", Var: "var.x", Notices: []data.PhoneNotice{{Title: "A", Call: true}, {Title: "B"}, {Title: "A", Call: true}}})
+	q.putDown(-1, 2)
+	if q.result != 1 {
+		t.Fatalf("the second call answered is result %d, want 1", q.result)
+	}
+	q.putDown(-1, -1)
+	if q.result != 2 {
+		t.Fatalf("the last call declined is result %d, want 2", q.result)
+	}
+}
+
+// TestPhoneTextPost: a post of text only is laid out as a card of its lines.
+func TestPhoneTextPost(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Who: "ann", Text: "The booking app is down again. Third time this week.", Likes: 12, Replies: 3, Reposts: 4},
+		{Picture: "x.png"},
+	}})
+	posts, w, _, _ := g.feedView(g.phone)
+	if !posts[0].text || len(posts[0].lines) == 0 || posts[0].picH >= w*0.5 || posts[1].text {
+		t.Fatalf("the text post: %+v", posts[0])
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	phoneTicks(g, phoneRise)
+	g.drawPhone(dst)
+}
+
+// TestPhoneBanner: a banner slides down without stopping anything, a click on
+// it opens its event, and it goes away by itself.
+func TestPhoneBanner(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "camp"}, "ui: {message: novel}\n", "")
+	g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "banner", Notices: []data.PhoneNotice{
+		{App: "Chat", Title: "Ann", Text: "Lunch?", Event: "nope"}, {App: "Mail", Title: "Bob"},
+	}}})
+	if g.phone != nil || len(g.banners) != 2 {
+		t.Fatalf("the banner brought a phone up or was not queued: %d", len(g.banners))
+	}
+	for range bannerSlide + 5 {
+		g.in = input{}
+		g.updateBanners()
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawBanners(dst)
+	sw, _ := g.screen()
+	g.in = input{click: true, mouse: image.Pt(int(sw/2), int(g.banners[0].top()+20))}
+	g.updateBanners()
+	if g.in.click || g.banners[0].n.Event != "" {
+		t.Fatal("a click on the banner was not taken to open its event")
+	}
+	for range bannerSlide * 2 {
+		g.in = input{}
+		g.updateBanners()
+	}
+	if len(g.banners) != 1 || g.banners[0].n.Title != "Bob" {
+		t.Fatalf("the clicked banner did not go up for the next: %d left", len(g.banners))
+	}
+	for range bannerSlide*2 + bannerStay {
+		g.updateBanners()
+	}
+	if len(g.banners) != 0 {
+		t.Fatal("the last banner did not go away by itself")
+	}
 }

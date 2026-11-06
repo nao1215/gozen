@@ -31,6 +31,11 @@ type phoneView struct {
 	// shown is the number of chat messages on the screen; typing counts the
 	// ticks the dots show before the next message from someone else.
 	shown, typing int
+	// since counts the ticks since the newest notice of a lock screen came.
+	since int
+	// result is the index in the cue's Results the phone was put down with
+	// (a page's button, a call answered or declined), -1 for none.
+	result int
 	// watch is the clip playing on the phone turned on its side: the video app's
 	// own, or a chat message's opened by the player (watchMsg is its index).
 	watch    *phoneClip
@@ -44,6 +49,9 @@ type phoneView struct {
 	liked                           map[int]bool
 	layout                          []feedPost
 	layoutW                         float64
+	// rows are a page's rows laid out for a screen rowsW wide.
+	rows  []pageRow
+	rowsW float64
 	// clips are the clips the phone has played, by where they are (so a feed's
 	// post keeps its place when it comes back), each with its own puppet.
 	clips map[string]*phoneClip
@@ -71,14 +79,25 @@ const (
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
-		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1}
+		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1}
 	switch cue.App {
-	case "chat":
+	case "chat", "lock":
 		p.shown = 1
 	case "video":
 		p.watch = p.clip("video", cue.Video)
 	}
 	return p
+}
+
+// putDown puts the phone down with the result of a page's row or a notice
+// (-1 for neither: the last call declined), when the story keeps it.
+func (p *phoneView) putDown(row, notice int) {
+	p.closing = phoneRise
+	for i, r := range p.cue.Results() {
+		if r.Row == row && r.Notice == notice {
+			p.result = i
+		}
+	}
 }
 
 func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
@@ -130,6 +149,15 @@ func phonePictures(cue data.PhoneCue) []string {
 		video(post.Video)
 	}
 	video(cue.Video)
+	for _, r := range cue.Rows {
+		out = append(append(out, r.Picture), r.Pictures...)
+		if r.Item != nil {
+			out = append(out, r.Item.Icon)
+		}
+	}
+	for _, n := range cue.Notices {
+		out = append(out, n.Icon)
+	}
 	return out
 }
 
@@ -181,6 +209,7 @@ func (g *Game) updatePhone() bool {
 	p := g.phone
 	p.age++
 	p.turned++
+	p.since++
 	if p.age == phoneRise && p.cue.Hold == "landscape" {
 		p.turn(true)
 	}
@@ -207,6 +236,13 @@ func (g *Game) updatePhone() bool {
 			g.stopWatching(p)
 			return false
 		}
+		if p.declineCall() {
+			return false
+		}
+		if p.calling() {
+			p.putDown(-1, -1)
+			return false
+		}
 		p.closing = phoneRise
 		return false
 	}
@@ -217,6 +253,10 @@ func (g *Game) updatePhone() bool {
 		g.updatePhoneChat(p)
 	case p.cue.App == "feed":
 		g.updatePhoneFeed(p)
+	case p.cue.App == "page":
+		g.updatePhonePage(p)
+	case p.cue.App == "lock":
+		g.updatePhoneLock(p)
 	}
 	return false
 }
@@ -395,6 +435,12 @@ func (g *Game) phoneHint(p *phoneView) string {
 		return lang.T("クリック: 一時停止　Esc: 閉じる")
 	case p.cue.App == "feed":
 		return lang.T("上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる")
+	case p.calling():
+		return lang.T("Enter: 応答　Esc: 拒否")
+	case p.cue.App == "lock":
+		return lang.T("クリック: 次の通知　Esc: 閉じる")
+	case p.cue.App == "page":
+		return lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる")
 	}
 	return lang.T("クリック: 次のメッセージ　Esc: 閉じる")
 }
@@ -420,11 +466,16 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneChat(p, screen, scw, sch)
 	case p.cue.App == "feed":
 		g.drawPhoneFeed(p, screen, scw, sch)
+	case p.cue.App == "page":
+		g.drawPhonePage(p, screen, scw, sch)
+	case p.cue.App == "lock":
+		g.drawPhoneLock(p, screen, scw, sch)
 	case p.watch != nil:
 		g.drawPhoneMedia(screen, p, "rising", p.watch, 0, 0, scw, sch, 0)
 	}
 	if !p.side {
-		g.drawPhoneStatus(screen, scw, p.cue.App == "video")
+		_, bar := p.pageAccent()
+		g.drawPhoneStatus(screen, scw, p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))
 	op := &ebiten.DrawImageOptions{}

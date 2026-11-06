@@ -270,6 +270,8 @@ type Game struct {
 	// phone is the phone over the scene (the phone command, ADR 0057), nil
 	// while none is up.
 	phone *phoneView
+	// banners are the phone banners waiting, the first on the screen.
+	banners []phoneBanner
 	// callShare is the screen shared on the call's stage (call_view.share;
 	// presentation only, cleared like callCamera); nil shares nothing.
 	callShare *event.CallShareEffect
@@ -957,6 +959,7 @@ func (g *Game) Update() error {
 	} else {
 		g.in.update()
 	}
+	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
 	if g.opts.Development && g.in.pressed[btnPanel] && g.memo == nil {
@@ -1166,6 +1169,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	// Over the modal screen on top: the chat notification belongs to the surface.
 	g.drawPhone(dst)
+	g.drawBanners(dst)
 	g.drawInboxToast(dst)
 	g.drawGuide(dst)
 	if shaken != nil {
@@ -1872,8 +1876,14 @@ func (g *Game) pump() bool {
 	case event.Tap:
 		if g.phone != nil {
 			if g.updatePhone() {
+				result := g.phone.result
 				g.phone.close()
 				g.phone, g.req = nil, nil
+				if r.Results > 0 {
+					g.emit("answer", traceLine{"index": result})
+					g.evAnswers = append(g.evAnswers, result)
+					g.events.Answer(result)
+				}
 			}
 		} else if g.updateTap() {
 			g.req = nil
@@ -2243,10 +2253,16 @@ func (g *Game) Handle(e event.Effect) {
 	case event.ImageEffect:
 		g.Image(e.Picture)
 	case event.PhoneEffect:
+		g.pics.warm(phonePictures(e.Phone)...)
+		if e.Phone.App == "banner" {
+			for _, n := range e.Phone.Notices {
+				g.banners = append(g.banners, phoneBanner{n: n})
+			}
+			break
+		}
 		if g.phone != nil {
 			g.phone.close()
 		}
-		g.pics.warm(phonePictures(e.Phone)...)
 		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)

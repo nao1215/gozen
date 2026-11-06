@@ -1,0 +1,237 @@
+package play
+
+import (
+	"image"
+	"image/color"
+	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
+)
+
+// The page of the phone (ADR 0057) is any app or web page: a browser's
+// address bar or an app bar over rows of text, pictures, a list and buttons,
+// scrolled as the feed is.
+const (
+	phonePagePad  = 16.0 // the rows' margin at the sides
+	phonePageGap  = 12.0 // between two rows
+	phonePageCell = 6.0  // between the pictures of a grid
+	phonePageItem = 62.0 // a list row's height
+	phonePageBtn  = 50.0 // a button's height
+)
+
+// pageRow is a row laid out on the page, from the page's top unscrolled: its
+// top, its height and the lines of its text or its caption.
+type pageRow struct {
+	top, h float64
+	lines  []string
+}
+
+func pageTextSize(r data.PhoneRow) float64 {
+	switch r.Size {
+	case "large":
+		return 22
+	case "small":
+		return 13
+	}
+	return 16
+}
+
+// pageColumns is how many pictures a grid row puts on a line.
+func pageColumns(r data.PhoneRow) int {
+	if r.Columns == 2 {
+		return 2
+	}
+	return 3
+}
+
+// pageLayout lays the rows out top to bottom on a screen w wide (once per width).
+func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
+	if p.rows != nil && p.rowsW == w {
+		return p.rows
+	}
+	out := make([]pageRow, len(p.cue.Rows))
+	y, iw := phonePageGap, w-phonePagePad*2
+	for i, r := range p.cue.Rows {
+		l := pageRow{top: y}
+		switch {
+		case r.Text != "":
+			size := pageTextSize(r)
+			l.lines = gfx.Wrap(r.Text, size, iw)
+			l.h = float64(len(l.lines)) * gfx.LineHeight(size)
+		case r.Picture != "":
+			l.h = iw * g.pictureAspect(r.Picture)
+			if r.Caption != "" {
+				l.lines = gfx.Wrap(r.Caption, 13, iw)
+				l.h += 6 + float64(len(l.lines))*gfx.LineHeight(13)
+			}
+		case len(r.Pictures) > 0:
+			cols := pageColumns(r)
+			cell := (iw - phonePageCell*float64(cols-1)) / float64(cols)
+			lines := (len(r.Pictures) + cols - 1) / cols
+			l.h = float64(lines)*cell*1.25 + float64(lines-1)*phonePageCell
+		case r.Item != nil:
+			l.h = phonePageItem
+		default:
+			l.h = phonePageBtn
+		}
+		out[i] = l
+		y += l.h + phonePageGap
+	}
+	p.rows, p.rowsW = out, w
+	return out
+}
+
+// pictureAspect is a picture's height over its width (3:4 when it is not loaded).
+func (g *Game) pictureAspect(path string) float64 {
+	img := g.pics.get(path)
+	if img == nil || img == missing || img.Bounds().Dx() == 0 {
+		return 0.75
+	}
+	return float64(img.Bounds().Dy()) / float64(img.Bounds().Dx())
+}
+
+// pageView is the page's screen: the rows laid out and the farthest they scroll.
+func (g *Game) pageView(p *phoneView) (rows []pageRow, w, end float64) {
+	_, _, w, h := g.phoneScreenRect(p.side)
+	rows = p.pageLayout(g, w)
+	if n := len(rows); n > 0 {
+		end = math.Max(0, rows[n-1].top+rows[n-1].h+phonePageGap-(h-phoneFeedTop))
+	}
+	return rows, w, end
+}
+
+func (g *Game) updatePhonePage(p *phoneView) {
+	rows, _, end := g.pageView(p)
+	stops := make([]float64, len(rows))
+	for i, l := range rows {
+		stops[i] = l.top - phonePageGap
+	}
+	g.scrollPhone(p, stops, end, func(at image.Point) {
+		y, ok := g.phoneColumnAt(p, at)
+		for i, l := range rows {
+			if ok && p.cue.Rows[i].Button != "" && y >= l.top && y < l.top+l.h {
+				p.putDown(i, -1)
+			}
+		}
+	})
+}
+
+// pageAccent is the page's color: its app bar's, or the phone's blue.
+func (p *phoneView) pageAccent() (color.NRGBA, bool) {
+	if c, ok := parseDotColor(p.cue.Color); ok {
+		c.A = 0xff
+		return c, true
+	}
+	return phoneMine, false
+}
+
+func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
+	gfx.FillRect(dst, 0, 0, float32(w), float32(h), phoneBubble, false)
+	for i, l := range p.pageLayout(g, w) {
+		y := phoneFeedTop + l.top - p.scroll
+		if y+l.h <= phoneFeedTop || y >= h {
+			continue
+		}
+		g.drawPageRow(dst, p, p.cue.Rows[i], l, y, w)
+	}
+	// The bar goes over the rows that scroll up under it.
+	switch accent, ok := p.pageAccent(); {
+	case p.cue.URL != "":
+		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), phoneBubble, false)
+		gfx.FillRoundRect(dst, 12, 40, float32(w-24), 34, 17, phoneScreen)
+		gfx.DrawText(dst, gfx.Ellipsis(p.cue.URL, 14, w-60), w/2, 48, 14, phoneMuted)
+		gfx.FillRect(dst, 0, float32(phoneFeedTop-1), float32(w), 1, phoneLine, false)
+	case ok:
+		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), accent, false)
+		gfx.DrawText(dst, gfx.Ellipsis(p.cue.Title, 19, w-60), w/2, 46, 19, phoneOnVideo)
+	default:
+		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
+	}
+}
+
+func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, r data.PhoneRow, l pageRow, y, w float64) {
+	x, iw := phonePagePad, w-phonePagePad*2
+	switch {
+	case r.Text != "":
+		size := pageTextSize(r)
+		for k, line := range l.lines {
+			ly := y + float64(k)*gfx.LineHeight(size)
+			gfx.DrawTextLeft(dst, line, x, ly, size, phoneInk)
+			if r.Bold {
+				gfx.DrawTextLeft(dst, line, x+0.7, ly, size, phoneInk)
+			}
+		}
+	case r.Picture != "":
+		ph := iw * g.pictureAspect(r.Picture)
+		if img := g.pics.get(r.Picture); img != nil {
+			drawContain(dst, img, x, y, iw, ph)
+		}
+		if r.Shut {
+			drawLocked(dst, x, y, iw, ph, r.Label)
+		}
+		for k, line := range l.lines {
+			gfx.DrawTextLeft(dst, line, x, y+ph+6+float64(k)*gfx.LineHeight(13), 13, phoneMuted)
+		}
+	case len(r.Pictures) > 0:
+		g.drawPageGrid(dst, r, x, y, iw)
+	case r.Item != nil:
+		g.drawPageItem(dst, p, r.Item, x, y, iw)
+	default:
+		accent, _ := p.pageAccent()
+		gfx.FillRoundRect(dst, float32(x), float32(y), float32(iw), phonePageBtn, 12, accent)
+		gfx.DrawText(dst, gfx.Ellipsis(r.Button, 17, iw-24), w/2, y+13, 17, phoneOnVideo)
+	}
+}
+
+func (g *Game) drawPageGrid(dst *ebiten.Image, r data.PhoneRow, x, y, iw float64) {
+	cols := pageColumns(r)
+	cell := (iw - phonePageCell*float64(cols-1)) / float64(cols)
+	for k, path := range r.Pictures {
+		cx := x + float64(k%cols)*(cell+phonePageCell)
+		cy := y + float64(k/cols)*(cell*1.25+phonePageCell)
+		gfx.FillRect(dst, float32(cx), float32(cy), float32(cell), float32(cell*1.25), phoneScreen, false)
+		if img := g.pics.get(path); img != nil {
+			drawCoverTop(dst, img, cx, cy, cell, cell*1.25)
+		}
+		if r.Shut {
+			drawLocked(dst, cx, cy, cell, cell*1.25, r.Label)
+		}
+	}
+}
+
+// phoneLockVeil darkens a locked picture.
+var phoneLockVeil = color.NRGBA{0x18, 0x1a, 0x22, 0xe0}
+
+// drawLocked covers a locked picture in x, y, w, h: darkened, with a padlock
+// and its label in the middle.
+func drawLocked(dst *ebiten.Image, x, y, w, h float64, label string) {
+	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(h), phoneLockVeil, false)
+	cx, cy := x+w/2, y+h/2
+	if label != "" {
+		cy -= 10
+	}
+	k := math.Min(1, w/120)
+	gfx.StrokeCircle(dst, float32(cx), float32(cy-8*k), float32(9*k), float32(3*k), phoneOnVideo, true)
+	gfx.FillRoundRect(dst, float32(cx-13*k), float32(cy-6*k), float32(26*k), float32(20*k), float32(4*k), phoneOnVideo)
+	if label != "" {
+		size := math.Max(10, 13*k)
+		gfx.DrawText(dst, gfx.Ellipsis(label, size, w-8), cx, cy+20*k, size, phoneOnVideo)
+	}
+}
+
+func (g *Game) drawPageItem(dst *ebiten.Image, p *phoneView, it *data.PhoneItem, x, y, iw float64) {
+	tx := x
+	if it.Icon != "" {
+		g.drawPhoneIcon(dst, p, it.Icon, x, y+10, 42)
+		tx += 54
+	}
+	vw := gfx.TextWidth(it.Value, 16)
+	room := x + iw - tx - vw - 10
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(it.Title, 16, room), tx, y+10, 16, phoneInk)
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(it.Text, 13, room), tx, y+34, 13, phoneMuted)
+	gfx.DrawTextRight(dst, it.Value, x+iw, y+20, 16, phoneInk)
+	gfx.FillRect(dst, float32(tx), float32(y+phonePageItem+phonePageGap/2), float32(x+iw-tx), 1, phoneLine, false)
+}

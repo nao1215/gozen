@@ -159,14 +159,19 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	default:
 		c.errorf(diag.Shape, where+".hold", "hold must be portrait or landscape, not %q", p.Hold)
 	}
-	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil}
-	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video"}
+	apps := []string{"chat", "feed", "video", "page", "lock", "banner"}
+	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
+		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0}
+	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "lock": "notices", "banner": "notices"}
 	if _, ok := lists[p.App]; !ok {
-		c.errorf(diag.Shape, where+".app", "app must be chat, feed or video, not %q", p.App)
+		c.errorf(diag.Shape, where+".app", "app must be chat, feed, video, page, lock or banner, not %q", p.App)
 		return
 	}
-	for _, app := range []string{"chat", "feed", "video"} {
+	for _, app := range apps {
 		has := lists[app]
+		if app != p.App && keys[app] == keys[p.App] {
+			continue
+		}
 		if app == p.App && !has {
 			c.errorf(diag.Shape, where+"."+keys[app], "app %s needs %s", app, keys[app])
 		}
@@ -188,8 +193,11 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	}
 	for i, post := range p.Posts {
 		at := fmt.Sprintf("%s.posts[%d]", where, i)
-		if (post.Picture == "") == (post.Video == nil) {
-			c.errorf(diag.Shape, at, "a post needs picture or video (one of them)")
+		if post.Picture != "" && post.Video != nil || post.Picture == "" && post.Video == nil && post.Text == "" {
+			c.errorf(diag.Shape, at, "a post needs a picture, a video or only text (one of them)")
+		}
+		if post.Replies < 0 || post.Reposts < 0 {
+			c.errorf(diag.Shape, at, "replies and reposts must not be negative")
 		}
 		c.phoneVideo(at+".video", post.Video, names)
 		if post.Likes < 0 {
@@ -201,6 +209,114 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		c.picture(at+".icon", Picture{File: post.Icon})
 	}
 	c.phoneVideo(where+".video", p.Video, names)
+	c.phonePage(where, p, names)
+	c.phoneLock(where, p, names)
+	if p.Var != "" {
+		if !hasPhoneResult(p) {
+			c.errorf(diag.Shape, where+".var", "var needs a page button or a call to keep")
+		}
+		c.assignments(where+".var", map[string]Expr{p.Var: MustExpr(`""`)}, names)
+	}
+}
+
+// hasPhoneResult tells that the phone has something to keep: a page's button or a lock screen's call.
+func hasPhoneResult(p PhoneCue) bool {
+	for _, r := range p.Rows {
+		if r.Button != "" {
+			return true
+		}
+	}
+	for _, n := range p.Notices {
+		if n.Call && p.App == "lock" {
+			return true
+		}
+	}
+	return false
+}
+
+var phoneColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// phonePage checks a page: one header (a url or a title), its color, and rows
+// of exactly one kind each with the pictures they name.
+func (c *checker) phonePage(where string, p PhoneCue, names []string) {
+	if p.URL != "" && p.App != "page" {
+		c.errorf(diag.Shape, where+".url", "only a page has a url")
+	}
+	if p.App == "page" && p.URL != "" && p.Title != "" {
+		c.errorf(diag.Shape, where, "a page has a url or a title, not both")
+	}
+	if p.Color != "" && !phoneColor.MatchString(p.Color) {
+		c.errorf(diag.Shape, where+".color", "color must be #rrggbb, not %q", p.Color)
+	}
+	c.text(where+".url", p.URL, names)
+	for i, r := range p.Rows {
+		at := fmt.Sprintf("%s.rows[%d]", where, i)
+		if n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != ""); n != 1 {
+			c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item or button (one of them)")
+		}
+		switch r.Size {
+		case "", "large", "small":
+		default:
+			c.errorf(diag.Shape, at+".size", "size must be large or small, not %q", r.Size)
+		}
+		if r.Columns != 0 && r.Columns != 2 && r.Columns != 3 {
+			c.errorf(diag.Shape, at+".columns", "columns must be 2 or 3, not %d", r.Columns)
+		}
+		if r.Button == "" && (len(r.Set) > 0 || r.ID != "") {
+			c.errorf(diag.Shape, at, "only a button has set or id")
+		}
+		if r.Picture == "" && len(r.Pictures) == 0 && (r.Locked.Set() || r.Label != "") {
+			c.errorf(diag.Shape, at, "only a picture or pictures are locked")
+		}
+		c.assignments(at+".set", r.Set, names)
+		c.expr(at+".locked", r.Locked, names)
+		c.text(at+".label", r.Label, names)
+		c.text(at+".text", r.Text, names)
+		c.text(at+".caption", r.Caption, names)
+		c.text(at+".button", r.Button, names)
+		c.picture(at+".picture", Picture{File: r.Picture})
+		for k, f := range r.Pictures {
+			c.picture(fmt.Sprintf("%s.pictures[%d]", at, k), Picture{File: f})
+		}
+		if it := r.Item; it != nil {
+			if it.Title == "" && it.Text == "" {
+				c.errorf(diag.Shape, at+".item", "an item needs a title or a text")
+			}
+			c.picture(at+".item.icon", Picture{File: it.Icon})
+			for _, s := range []string{it.Title, it.Text, it.Value} {
+				c.text(at+".item", s, names)
+			}
+		}
+	}
+}
+
+// phoneLock checks a lock screen's texts and its notices.
+func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
+	c.text(where+".time", p.Time, names)
+	c.text(where+".date", p.Date, names)
+	for i, n := range p.Notices {
+		at := fmt.Sprintf("%s.notices[%d]", where, i)
+		if n.Title == "" && n.Text == "" {
+			c.errorf(diag.Shape, at, "a notice needs a title or a text")
+		}
+		if len(n.Set) > 0 && !(n.Call && p.App == "lock") {
+			c.errorf(diag.Shape, at+".set", "only a call on the lock screen has set (when it is answered)")
+		}
+		if n.Event != "" && p.App != "banner" {
+			c.errorf(diag.Shape, at+".event", "only a banner opens an event")
+		}
+		if n.Call && p.App != "lock" {
+			c.errorf(diag.Shape, at+".call", "only the lock screen takes calls")
+		}
+		if ev, ok := c.db.Events[n.Event]; n.Event != "" && (!ok || ev == nil || len(ev.Params) > 0) {
+			c.errorf(diag.UnknownReference, at+".event", "no parameterless event %q", n.Event)
+		}
+		c.assignments(at+".set", n.Set, names)
+		c.picture(at+".icon", Picture{File: n.Icon})
+		for _, s := range []string{n.App, n.Title, n.Text} {
+			c.text(at, s, names)
+		}
+	}
 }
 
 // phoneVideo checks a clip on the phone: a picture, frames or a puppet to

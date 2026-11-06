@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // The feed of the phone (ADR 0057) is a column of posts scrolled up and down:
@@ -28,6 +30,8 @@ const (
 type feedPost struct {
 	top, pic, picH, h float64
 	lines             []string
+	// text tells a post of text only: its lines fill the picture's place.
+	text bool
 }
 
 // feedLayout lays the posts out top to bottom on a screen w wide (once per
@@ -39,6 +43,14 @@ func (p *phoneView) feedLayout(g *Game, w float64) []feedPost {
 	out := make([]feedPost, len(p.cue.Posts))
 	y := 0.0
 	for i, post := range p.cue.Posts {
+		if post.Picture == "" && post.Video == nil {
+			lines, _ := gfx.FitLines(post.Text, 16, w-28, 8)
+			textH := float64(len(lines)) * gfx.LineHeight(16)
+			h := phoneFeedHead + textH + 44
+			out[i] = feedPost{top: y, pic: y + phoneFeedHead, picH: textH, h: h, lines: lines, text: true}
+			y += h + phoneFeedGap
+			continue
+		}
 		caption := post.Text
 		if post.Who != "" {
 			caption = post.Who + "  " + caption
@@ -105,20 +117,36 @@ func (g *Game) stepFeedClips(p *phoneView) {
 }
 
 func (g *Game) updatePhoneFeed(p *phoneView) {
+	posts, _, _, end := g.feedView(p)
+	stops := make([]float64, len(posts))
+	for i, l := range posts {
+		stops[i] = l.top
+	}
+	g.scrollPhone(p, stops, end, func(at image.Point) {
+		if i := g.feedPictureAt(p, posts, at); i >= 0 {
+			p.liked[i] = !p.liked[i]
+		}
+	})
+}
+
+// scrollPhone scrolls a column of the phone (a feed's posts, a page's rows):
+// the wheel, a drag gliding on after it, and the up and down keys stepping
+// between the stops, no farther than end; OK steps down and, at the bottom,
+// puts the phone down. A tap (a press that did not drag) goes to tap.
+func (g *Game) scrollPhone(p *phoneView, stops []float64, end float64, tap func(image.Point)) {
 	in := &g.in
-	posts, w, _, end := g.feedView(p)
-	g.dragPhoneFeed(p, posts, w)
+	g.dragPhone(p, tap)
 	switch {
 	case in.pressed[btnDown]:
-		p.aim = p.feedNext(posts, 1)
+		p.aim = p.scrollNext(stops, 1)
 	case in.pressed[btnUp]:
-		p.aim = p.feedNext(posts, -1)
+		p.aim = p.scrollNext(stops, -1)
 	case in.ok():
 		if p.scroll >= end-1 {
 			p.closing = phoneRise
 			return
 		}
-		p.aim = p.feedNext(posts, 1)
+		p.aim = p.scrollNext(stops, 1)
 	}
 	if in.wheel != 0 {
 		p.aim, p.glide = -1, 0
@@ -135,33 +163,33 @@ func (g *Game) updatePhoneFeed(p *phoneView) {
 	}
 }
 
-// feedNext is the scroll that brings the next post's top (d 1) or the
-// previous one's (d -1) under the header.
-func (p *phoneView) feedNext(posts []feedPost, d int) float64 {
+// scrollNext is the scroll that brings the next stop (d 1) or the previous
+// one (d -1) under the header.
+func (p *phoneView) scrollNext(stops []float64, d int) float64 {
 	at := p.scroll
 	if p.aim >= 0 {
 		at = p.aim
 	}
 	if d > 0 {
-		for _, l := range posts {
-			if l.top > at+1 {
-				return l.top
+		for _, top := range stops {
+			if top > at+1 {
+				return top
 			}
 		}
 		return at
 	}
 	to := 0.0
-	for _, l := range posts {
-		if l.top < at-1 {
-			to = l.top
+	for _, top := range stops {
+		if top < at-1 {
+			to = top
 		}
 	}
 	return to
 }
 
-// dragPhoneFeed follows a finger or the mouse dragged up and down, gliding on
-// when it lets go; a tap on a post's picture likes it (or takes the like back).
-func (g *Game) dragPhoneFeed(p *phoneView, posts []feedPost, w float64) {
+// dragPhone follows a finger or the mouse dragged up and down, gliding on
+// when it lets go; a press that hardly moved is a tap.
+func (g *Game) dragPhone(p *phoneView, tap func(image.Point)) {
 	in := &g.in
 	y := float64(in.mouse.Y)
 	switch {
@@ -176,9 +204,7 @@ func (g *Game) dragPhoneFeed(p *phoneView, posts []feedPost, w float64) {
 		p.grab = -1
 		if p.moved < phoneFeedTap {
 			p.glide = 0
-			if i := g.feedPictureAt(p, posts, w, in.mouse); i >= 0 {
-				p.liked[i] = !p.liked[i]
-			}
+			tap(in.mouse)
 		}
 		return
 	}
@@ -190,15 +216,24 @@ func (g *Game) dragPhoneFeed(p *phoneView, posts []feedPost, w float64) {
 	}
 }
 
-// feedPictureAt is the post whose picture is under at (a point on the game's
-// screen), or -1.
-func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, w float64, at image.Point) int {
-	sx, sy, _, sh := g.phoneScreenRect(p.side)
+// phoneColumnAt is how far down the scrolled column a point on the game's
+// screen is, and whether it is on the column at all (under the header).
+func (g *Game) phoneColumnAt(p *phoneView, at image.Point) (float64, bool) {
+	sx, sy, w, sh := g.phoneScreenRect(p.side)
 	x, y := float64(at.X)-sx, float64(at.Y)-sy
 	if x < 0 || x >= w || y < phoneFeedTop || y >= sh {
+		return 0, false
+	}
+	return y + p.scroll - phoneFeedTop, true
+}
+
+// feedPictureAt is the post whose picture is under at (a point on the game's
+// screen), or -1.
+func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int {
+	y, ok := g.phoneColumnAt(p, at)
+	if !ok {
 		return -1
 	}
-	y += p.scroll - phoneFeedTop
 	for i, l := range posts {
 		if y >= l.pic && y < l.pic+l.picH {
 			return i
@@ -225,12 +260,19 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	g.drawPhoneIcon(dst, p, post.Icon, 12, y+10, 38)
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80), 60, y+18, 16, phoneInk)
 	py := y + phoneFeedHead
-	if post.Video != nil {
+	switch {
+	case l.text:
+		for k, line := range l.lines {
+			gfx.DrawTextLeft(dst, line, 14, py+float64(k)*gfx.LineHeight(16), 16, phoneInk)
+		}
+	case post.Video != nil:
 		key := fmt.Sprintf("post%d", i)
 		g.drawPhoneMedia(dst, p, key, p.clip(key, post.Video), 0, py, w, l.picH, 0)
 		drawPlay(dst, w-24, py+22, 9)
-	} else if img := g.pics.get(post.Picture); img != nil {
-		drawCoverTop(dst, img, 0, py, w, l.picH)
+	default:
+		if img := g.pics.get(post.Picture); img != nil {
+			drawCoverTop(dst, img, 0, py, w, l.picH)
+		}
 	}
 	// The heart, the likes and the caption under the picture.
 	ly := py + l.picH + 14
@@ -241,7 +283,17 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	} else {
 		drawHeart(dst, 26, ly+11, 12, phoneInk, false)
 	}
-	gfx.DrawTextLeft(dst, likeCount(likes), 48, ly, 16, phoneInk)
+	counts := likeCount(likes)
+	if post.Replies > 0 {
+		counts += "　" + fmt.Sprintf(lang.T("返信 %s 件"), strconv.Itoa(post.Replies))
+	}
+	if post.Reposts > 0 {
+		counts += "　" + fmt.Sprintf(lang.T("リポスト %s 件"), strconv.Itoa(post.Reposts))
+	}
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(counts, 16, w-60), 48, ly, 16, phoneInk)
+	if l.text {
+		return
+	}
 	for k, line := range l.lines {
 		gfx.DrawTextLeft(dst, line, 14, ly+30+float64(k)*gfx.LineHeight(15), 15, phoneInk)
 	}

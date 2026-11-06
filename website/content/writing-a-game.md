@@ -454,6 +454,32 @@ A chat shows its first message when the phone comes up, and each press brings th
 
 For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
 
+A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK answers it and Cancel declines, and the next notice rings again when it is a call too. `var` keeps what the phone was put down with (a button's `id` or label, `answer` or `decline`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. `app: banner` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
+
+<!-- verify: parse a fragment of an event; the pictures are the author's files -->
+```yaml
+- phone:
+    app: page
+    title: Harbor Bank
+    color: '#1f5fbf'
+    var: var.transfer
+    rows:
+    - {text: Confirm the transfer, size: large, bold: true}
+    - {item: {icon: icons/bank.png, title: Blue Tide Ltd., text: Invoice 0420, value: '-3,000,000'}}
+    - {pictures: [shop/1.png, shop/2.png, shop/3.png], locked: '!flag.supported', label: Supporters only}
+    - {button: Confirm, set: {flag.paid: true}}
+    - {button: Cancel, id: cancel}
+- phone:
+    app: lock
+    date: Tuesday
+    notices:
+    - {app: Monitor, icon: icons/alert.png, title: API error rate 6%, text: Over the 5% threshold}
+    - {app: On-call, icon: icons/alert.png, title: On-call · API error rate, text: Incoming call, call: true, set: {flag.woke: true}}
+- phone:
+    app: banner
+    notices: [{app: Chat, icon: icons/ann.png, title: Ann, text: Are you coming?, event: ann_chat}]
+```
+
 ## Campaigns
 
 A campaign (`schema_version: 5`) is a war of regions over turns in the same game as its towns and dungeons. `regions` are the land (who borders whom, the owner, the garrison, the values such as wealth, the terrain, the troop that defends it), `factions` the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` the player's side, the turns, the generals (actors, with their troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).

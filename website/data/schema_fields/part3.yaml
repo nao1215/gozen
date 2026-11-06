@@ -302,13 +302,54 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
-  _: "A phone over the scene (ADR 0057); the event waits until it is put down."
+  _: "A phone over the scene; the event waits until it is put down (a banner does not wait)."
   hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
-  app: "chat, feed or video; names the one list the phone shows."
-  title: "Interpolated header of the app."
+  app: "chat, feed, video, page, lock or banner; names the one list the phone shows."
+  title: "Interpolated header of the app (a page's app bar)."
+  url: "Interpolated address shown in a page's browser bar, instead of a title."
+  color: "A page's app bar and buttons color, #rrggbb."
+  time: "Interpolated clock of the lock screen (the phone's clock when empty)."
+  date: "Interpolated date under the lock screen's clock."
+  auto: "True brings the lock screen's notices by themselves, one every second and a half."
+  var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call."
   messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."
-  posts: "The feed's posts, one on the screen at a time."
+  posts: "The feed's posts, stacked top to bottom and scrolled."
   video: "The video app's clip."
+  rows: "The page's rows, stacked top to bottom and scrolled."
+  notices: "The lock screen's notices, arriving one by one, or the banners shown at the top of the screen."
+
+PhoneRow:
+  _: "One row of a page: exactly one of text, picture, pictures, item and button."
+  text: "Interpolated paragraphs of the row, wrapped to the page's width."
+  size: "large or small text (the default is between)."
+  bold: "True draws the text bold."
+  picture: "Path of a picture under assets/, shown whole in its own shape."
+  caption: "Interpolated line under the picture."
+  pictures: "Paths of pictures under assets/ in a grid."
+  columns: "Pictures a line in the grid: 2 or 3 (0 is 3)."
+  item: "A list row: icon, title, text and a value on the right."
+  button: "Interpolated label of a button; a tap on it puts the phone down."
+  id: "What the phone's var receives for the button (its label when empty)."
+  set: "Assignments made when the button is pressed, written as the set command's."
+  locked: "A condition (or true) that, holding when the phone comes up, shows the picture or the grid darkened with a lock."
+  label: "Interpolated short label on a locked picture, such as Supporters only."
+
+PhoneItem:
+  _: "A row of a list on a page."
+  icon: "Path of the item's round picture under assets/."
+  title: "Interpolated title of the list row, such as a payee."
+  text: "Interpolated text under the title."
+  value: "Interpolated value on the right, such as a sum or a time."
+
+PhoneNotice:
+  _: "A notification on the lock screen or a banner."
+  app: "Interpolated short name of the app."
+  icon: "Path of the app's picture under assets/."
+  title: "Interpolated title (a call's caller)."
+  text: "Interpolated text of the notice, under its title."
+  call: "True makes it an incoming call on the lock screen; OK answers and Cancel declines (a next notice rings again)."
+  set: "Assignments made when the call is answered."
+  event: "The parameterless event a click on the banner opens, after the event running."
 
 PhoneMessage:
   _: "One bubble of a chat: exactly one of text, picture and video."
@@ -320,13 +361,15 @@ PhoneMessage:
   video: "A clip sent in the chat; a press on it while it is the newest turns the phone on its side and plays it."
 
 PhonePost:
-  _: "One post of a photo feed."
+  _: "One post of a feed: a picture, a video, or only text (a timeline's card)."
   who: "Interpolated name of who posted it."
   icon: "Path of the poster's round picture under assets/."
   picture: "Path of the post's picture under assets/; a tall picture is cropped from its top."
   video: "A clip playing in the post's place, looping, instead of a picture."
   text: "Interpolated caption under the picture, after the poster's name."
   likes: "Number of likes; a click on the post adds the player's."
+  replies: "Number of replies, next to the likes."
+  reposts: "Number of reposts, next to the likes."
 
 PhoneVideo:
   _: "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front."

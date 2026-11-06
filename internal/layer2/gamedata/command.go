@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -489,15 +490,130 @@ type MessageCue struct {
 }
 
 // PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
-// default) or landscape; App is chat, feed or video and names the one list the
-// phone shows: Messages, Posts or Video. Title is the app's header (interpolated).
+// default) or landscape; App is chat, feed, video, page or lock and names the
+// one list the phone shows: Messages, Posts, Video, Rows or Notices; banner
+// shows its Notices as banners at the top of the screen without waiting. Title is
+// the app's header (interpolated). A page has either a URL in a browser's
+// address bar or a Title on an app bar of Color (#rrggbb). A lock screen shows
+// Time (the phone's clock when empty) and Date over its notices, which arrive
+// on a press or, with Auto, by themselves. Var receives the result the phone
+// was put down with: a page button's id (its label by default), answer or
+// decline for a call.
 type PhoneCue struct {
 	Hold     string         `yaml:"hold"`
 	App      string         `yaml:"app"`
 	Title    string         `yaml:"title"`
+	URL      string         `yaml:"url"`
+	Color    string         `yaml:"color"`
+	Time     string         `yaml:"time"`
+	Date     string         `yaml:"date"`
+	Auto     bool           `yaml:"auto"`
+	Var      string         `yaml:"var"`
 	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
 	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
 	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`
+	Rows     []PhoneRow     `yaml:"rows" json:",omitempty"`
+	Notices  []PhoneNotice  `yaml:"notices" json:",omitempty"`
+}
+
+// PhoneRow is one row of a page, stacked top to bottom: Text (paragraphs, of
+// Size large or small, Bold), a Picture shown whole with its Caption,
+// Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, or
+// a Button that puts the phone down when pressed, setting Set and the phone's
+// Var to its ID. A row is one of them. A picture or a grid is Locked (blurred,
+// with a lock and its Label) while the condition holds when the phone comes up.
+type PhoneRow struct {
+	Text     string      `yaml:"text"`
+	Size     string      `yaml:"size"`
+	Bold     bool        `yaml:"bold"`
+	Picture  string      `yaml:"picture"`
+	Caption  string      `yaml:"caption"`
+	Pictures []string    `yaml:"pictures" json:",omitempty"`
+	Columns  int         `yaml:"columns"`
+	Item     *PhoneItem  `yaml:"item" json:",omitempty"`
+	Button   string      `yaml:"button"`
+	ID       string      `yaml:"id"`
+	Set      Assignments `yaml:"set" json:",omitempty"`
+	Locked   Expr        `yaml:"locked"`
+	Label    string      `yaml:"label"`
+	// Shut is Locked worked out when the phone came up.
+	Shut bool `yaml:"-" json:"-"`
+}
+
+// PhoneItem is a row of a list on a page: a round Icon under assets/, a Title,
+// a Text under it and a Value on the right (a sum, a time).
+type PhoneItem struct {
+	Icon  string `yaml:"icon"`
+	Title string `yaml:"title"`
+	Text  string `yaml:"text"`
+	Value string `yaml:"value"`
+}
+
+// PhoneNotice is a notification on the lock screen: the App's short name, its
+// Icon under assets/, a Title and a Text. Call makes it an incoming call that
+// fills the screen: Title is the caller; OK answers (setting Set) and Cancel
+// declines. A banner's Event is the parameterless event a click on it opens.
+type PhoneNotice struct {
+	App   string      `yaml:"app"`
+	Icon  string      `yaml:"icon"`
+	Title string      `yaml:"title"`
+	Text  string      `yaml:"text"`
+	Call  bool        `yaml:"call"`
+	Set   Assignments `yaml:"set" json:",omitempty"`
+	Event string      `yaml:"event"`
+}
+
+// PhoneResult is one way the phone can be put down that the story keeps: a
+// page's button (Row), a call answered (Notice) or the last call declined
+// (both -1). ID is what the phone's Var receives and Set what it sets.
+type PhoneResult struct {
+	Row, Notice int
+	ID          string
+	Set         Assignments
+}
+
+// Results are the phone's results in order, when it keeps any (it has a Var
+// or one of them sets something); nil otherwise.
+func (p PhoneCue) Results() []PhoneResult {
+	var out []PhoneResult
+	keeps := p.Var != ""
+	for i, r := range p.Rows {
+		if r.Button == "" {
+			continue
+		}
+		id := r.ID
+		if id == "" {
+			id = r.Button
+		}
+		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set})
+		keeps = keeps || len(r.Set) > 0
+	}
+	calls := false
+	for i, n := range p.Notices {
+		if n.Call && p.App == "lock" {
+			out = append(out, PhoneResult{Row: -1, Notice: i, ID: "answer", Set: n.Set})
+			keeps, calls = keeps || len(n.Set) > 0, true
+		}
+	}
+	if calls {
+		out = append(out, PhoneResult{Row: -1, Notice: -1, ID: "decline"})
+	}
+	if !keeps {
+		return nil
+	}
+	return out
+}
+
+// Do are the commands a result runs: its sets and the phone's Var.
+func (p PhoneCue) Do(r PhoneResult) []Command {
+	var out []Command
+	if len(r.Set) > 0 {
+		out = append(out, Command{SetV: r.Set})
+	}
+	if p.Var != "" {
+		out = append(out, Command{SetV: Assignments{p.Var: MustExpr(strconv.Quote(r.ID))}})
+	}
+	return out
 }
 
 // PhoneMessage is one bubble of a chat. Mine puts it on the right, as sent by
@@ -517,6 +633,9 @@ type PhoneMessage struct {
 // PhonePost is one post of a photo feed: who posted it (interpolated) with their
 // round Icon, the Picture under assets/ or a Video playing in its place, its
 // caption Text and the number of Likes.
+//
+// A post with only Text is a card of text, as a timeline shows it; Replies and
+// Reposts are counted next to its likes.
 type PhonePost struct {
 	Who     string      `yaml:"who"`
 	Icon    string      `yaml:"icon"`
@@ -524,6 +643,8 @@ type PhonePost struct {
 	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
 	Text    string      `yaml:"text"`
 	Likes   int         `yaml:"likes"`
+	Replies int         `yaml:"replies"`
+	Reposts int         `yaml:"reposts"`
 }
 
 // PhoneVideo is a clip: its Picture under assets/ fills the frame (pushed in
