@@ -225,6 +225,11 @@ func commandsHaveClear(cs []gamedata.Command) bool {
 		if c.Clear || commandsHaveClear(c.Then) || commandsHaveClear(c.Else) || commandsHaveClear(c.OnWin) || commandsHaveClear(c.OnLose) || commandsHaveClear(c.OnRun) {
 			return true
 		}
+		for _, option := range c.Choice {
+			if commandsHaveClear(option.Do) {
+				return true
+			}
+		}
 	}
 	return false
 }

@@ -145,3 +145,22 @@ events:
 		})
 	}
 }
+
+func TestSimRoutesFindsClearInsideUnreachableChoice(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "game")
+	files := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 10\nid: choice-ending\nstart: {location: camp, party: []}\n")},
+		"data/world.yaml": {Data: []byte("locations: {camp: {name: Camp}}\nevents:\n  ending:\n    do: [{choice: [{label: Finish, do: [{clear: true}]}]}]\n")},
+	}
+	if err := os.CopyFS(dir, files); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := invoke(t, 0, "sim", "routes", dir, "--format", "json")
+	var report routesReport
+	if err := json.Unmarshal(resultData(t, out, "sim routes"), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(report.UnreachableEndings, "clear") {
+		t.Fatalf("missing nested clear: %+v", report)
+	}
+}
