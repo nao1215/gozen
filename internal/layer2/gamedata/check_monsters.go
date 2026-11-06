@@ -100,6 +100,7 @@ func (c *checker) monsters() {
 			if r.Bonus < 0 {
 				c.errorf(diag.MonsterRules, w+".recruit.bonus", "bonus cannot be negative")
 			}
+			c.useDefinition("item", r.BonusItem)
 			if r.BonusItem != "" && db.Items[r.BonusItem] == nil {
 				c.errorf(diag.MonsterRules, w+".recruit.bonus_item", "unknown item %q", r.BonusItem)
 			}

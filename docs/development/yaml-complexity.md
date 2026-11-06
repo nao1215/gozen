@@ -2,8 +2,9 @@
 
 `gozen check GAME` and `gozen check GAME --only structure` report `GZN0122`
 when authored YAML becomes difficult to maintain. These warnings suggest a design
-review; they do not reject a playable game or change simulation, saves or random
-numbers. Text diagnostics contain the source file, line, column, measured value,
+review; by default they do not reject a playable game. `--strict` or a growing
+`--baseline` budget makes the check fail, without changing simulation, saves or
+random numbers. Text diagnostics contain the source file, line, column, measured value,
 budget and a possible improvement. `--format json` returns the same warnings as
 structured diagnostics. `--only layout` does not perform structural checks.
 
@@ -41,7 +42,7 @@ need, rather than concealing generated copies.
 | Expression length/depth | Unicode character count and maximum parenthesis/bracket nesting in schema-typed expressions. Quoted delimiters do not add depth. This is syntactic nesting, not execution cost or binary-operator AST depth. Long prose is not an expression. |
 | Screen operations | Number of authored `set` and `plan` command keys within a screen, including branches. Called event bodies are not expanded. |
 | Indexed names | Sibling keys whose numeric runs become the same name, such as `plot_1` through `plot_8`. Dates and ID fragments can indicate a manually expanded collection. One warning represents each family. Expression reads and assignment targets also group `var`/`flag` keys by numeric runs and underscore-delimited declared entity/activity IDs. Literal keys count once across reads and writes. Concatenated indexes preserve literal fragments and replace unknown operands with `*`; each distinct source site counts once. Plain dynamic lookups without a literal fragment are ignored. |
-| Unused definitions | Events, screens and planning rules without an exact scalar-value reference anywhere in loaded source. Events with triggers are excluded. One warning lists each section's candidates once it reaches the budget. |
+| Unused definitions | Planning rules without an exact scalar-value reference anywhere in loaded source. One warning lists the candidates once they reach the budget. Other supported kinds use the exact per-definition check described below. |
 
 The checker rereads source files after validation; keep the game unchanged during
 a check. Parse trees remain temporary and are not retained by the runtime.
@@ -50,8 +51,8 @@ These are conservative authoring heuristics. Matching shapes are not necessarily
 identical behavior: inspect differing values before merging. An alias is counted
 where written, never recursively expanded; anchors retain their explicit wrapper.
 Duplicate detection currently compares whole definitions, not arbitrary repeated
-subtrees. A scalar reference does not prove reachability: self-references, cycles
-and a text equal to an ID can hide unused definitions. Conversely, external
+subtrees. For the planning-rule heuristic, a scalar reference does not prove reachability:
+self-references, cycles and text equal to an ID can hide unused definitions. Conversely, external
 scripts may deliberately call otherwise unused events. This check is not a
 safe-delete tool. It does not diagnose all unused attributes, variables or assets.
 The engine's existing flag warnings still cover unread flag writes.
@@ -71,7 +72,8 @@ go test ./internal/layer2/gamedata -run TestComplexity -count=1 -v
 `make test` runs the budget contracts and loads every `examples/**/game.yaml`,
 including games in nested modules. The default budgets currently produce no
 complexity warnings for those examples. The example test fails on a new budget
-overrun, so CI detects growth without changing the warning-only CLI exit status.
+overrun. The CLI tests also require every game under `examples/` and
+`docs/examples/` to pass `gozen check --strict` with no warnings.
 The atago check suite verifies plain and JSON warnings, threshold changes,
 configuration errors and unchanged source files. The workshop scenario checks
 that simulation and month closing retain their existing results.
@@ -83,3 +85,22 @@ typed resident attribute or a dated reservation over encoding identity in a key.
 Quoted prose that merely mentions these expressions is ignored. Dynamic index
 patterns are syntactic hints, not an enumeration of runtime keys. Existing
 `indexed_names` and `repetitions` budgets and negative disabling options apply.
+
+## Unused definitions
+
+`GZN0124` reports each unreferenced event, authored screen (including ensembles),
+location, item, troop, shop and AI set at its definition. It reuses the loader's
+semantic references, including starts, automatic triggers, calls inside branches
+and repeated calls, screen entries, navigation, flows, and literal expression
+lookups. Dynamic collection lookups retain all definitions of that kind to avoid
+false positives. Views supplying global phase/date formatting are retained
+because the runtime reads them without an explicit screen-open command. Prose
+containing an ID is not a reference.
+
+This checks incoming references, not reachability from a particular playthrough.
+An external script can intentionally use an otherwise unreferenced definition;
+review it and record a warning baseline when appropriate. Planning rules retain
+the older aggregate heuristic because their exact consumers are not tracked.
+The `unused_definitions` complexity limit applies only to that heuristic and
+cannot disable the exact `GZN0124` check. See the commands page for `--strict`,
+`--baseline` and `--write-baseline`.

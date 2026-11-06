@@ -41,11 +41,14 @@ var (
 )
 
 type checker struct {
-	params        map[string]string
-	stateNames    map[string]StateName
-	pictureErrors map[string]error
-	db            *DB
-	errs          []error
+	// definitionUses records resolved IDs during a full Check, never script validation.
+	definitionUses    map[string]map[string]bool
+	definitionDynamic map[string]bool
+	params            map[string]string
+	stateNames        map[string]StateName
+	pictureErrors     map[string]error
+	db                *DB
+	errs              []error
 	// script checks the command list fed from Go (gozen's Session.Do). The spec version is a data contract, so it is not checked.
 	script bool
 	// noDev makes setting a party member's stats or level an error in script (a non-dev Session; author decision 5).
@@ -107,6 +110,11 @@ func (c *checker) exprIn(where string, e Expr, names []string, over map[string]*
 		}
 	}
 	c.factionWords(where, e)
+	for _, comparison := range e.Comparisons() {
+		if comparison.Ref.Name == "location" && len(comparison.Ref.Path) == 0 {
+			c.useDefinition("location", comparison.Text)
+		}
+	}
 	for _, r := range e.Refs() {
 		if r.Name == "chose" && len(r.Path) > 0 && r.Path[0].Name != "" {
 			c.choseReads = append(c.choseReads, [2]string{where, r.Path[0].Name})
@@ -138,6 +146,9 @@ func (c *checker) functionValues(where string, e Expr, names []string, over map[
 }
 
 func (c *checker) ref(where, kind, id string, ok bool) {
+	if ok {
+		c.useDefinition(kind, id)
+	}
 	if kind == "event" && id != "" && ok && len(c.db.Events[id].Params) > 0 {
 		c.errorf(diag.Shape, where, "event %q requires arguments; use a parameterless wrapper here", id)
 	}
@@ -369,7 +380,8 @@ func (c *checker) requiredDefinitions() {
 // Check reports every problem of the data: unknown ids, missing pictures, expressions
 // using names unknown where they are written, commands without a verb.
 func (db *DB) Check() []error {
-	c := &checker{db: db}
+	db.definitionWarns = nil
+	c := &checker{db: db, definitionUses: map[string]map[string]bool{}, definitionDynamic: map[string]bool{}}
 	for _, err := range gameVersionErrors(db.Game) {
 		c.errs = append(c.errs, db.locateReported(err))
 	}
@@ -1206,6 +1218,7 @@ func (db *DB) Check() []error {
 	c.monsters()
 	c.mergeReachability()
 	c.streams()
+	db.definitionWarns = c.unusedDefinitions()
 	db.sceneWarns, db.sceneWarned = sortedDiagnostics(c.warns), true
 	return sortedDiagnostics(c.errs)
 }
@@ -1525,6 +1538,7 @@ func (c *checker) effect(where string, e *Effect) {
 }
 
 func (c *checker) ai(where string, ref AIRef) {
+	c.useDefinition("ai", ref.Name)
 	if ref.Name != "" {
 		if _, ok := c.db.AI[ref.Name]; !ok {
 			c.errorf(diag.UnknownReference, where, "unknown ai %q", ref.Name)
@@ -1582,6 +1596,7 @@ func (c *checker) say(w string, s *Say, names []string) {
 		c.needsVersion(w+".instant", "instant lines", SchemaVersion10)
 	}
 	if s.Ensemble != "" {
+		c.useDefinition("screen", s.Ensemble)
 		c.needsVersion(w+".ensemble", "ensemble lines", SchemaVersion10)
 		screen := db.Game.Screens[s.Ensemble]
 		if screen == nil || screen.Kind != "ensemble" {
@@ -1748,6 +1763,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			if cmd.Message.Text == "" {
 				c.errorf(diag.Shape, w+".message.text", "a message needs text")
 			}
+			c.useDefinition("event", cmd.Message.Event)
 			if ev := db.Events[cmd.Message.Event]; ev == nil || len(ev.Params) > 0 {
 				c.errorf(diag.UnknownReference, w+".message.event", "a message needs a parameterless event that asks for the decision")
 			}
@@ -1966,6 +1982,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.errorf(diag.NotAWord, w+".open", "want one of %s (or a screen declared in game.yaml screens), not %q", strings.Join(OpenScreens, ", "), cmd.Open.Screen)
 			}
 		case "dive":
+			c.useDefinition("location", cmd.Dive)
 			if l, ok := db.Locations[cmd.Dive]; !ok {
 				c.ref(w+".dive", "location", cmd.Dive, false)
 			} else if l.Dungeon == nil || l.Dungeon.Generate == nil {
@@ -2129,6 +2146,7 @@ func groupOf(member *vtype) *vtype {
 			return tNum, ""
 		}
 		if it, ok := strings.CutPrefix(name, "wearing_"); ok {
+			c.useDefinition("item", it)
 			if _, ok := c.db.Items[it]; !ok {
 				return nil, fmt.Sprintf("unknown item %q", it)
 			}
@@ -2274,6 +2292,7 @@ func (c *checker) step(t *vtype, st expr.Step) (*vtype, string) {
 		return nil, t.desc + " is a list: index it with a number"
 	case vDyn:
 		if st.Name == "" { // expression index: the name is unknown
+			c.dynamicDefinition(t.key)
 			return t.elem, ""
 		}
 		if t.key != "" && !c.known(t.key, st.Name) {
@@ -2291,6 +2310,7 @@ func (c *checker) step(t *vtype, st expr.Step) (*vtype, string) {
 
 // known reports whether an ID of kind exists.
 func (c *checker) known(kind, id string) bool {
+	c.useDefinition(kind, id)
 	switch kind {
 	case "item":
 		return c.db.Items[id] != nil
@@ -2332,6 +2352,9 @@ func (c *checker) fields(where string, e Expr, names []string, over map[string]*
 				c.errorf(diag.Expression, where, lang.T("%s の参照は宣言名を直接指定する必要がある"), r.Name)
 				continue
 			}
+		}
+		if len(r.Path) == 0 {
+			c.dynamicDefinition(t.key)
 		}
 		path := r.Name
 		for _, st := range r.Path {

@@ -64,7 +64,8 @@ type DB struct {
 	sceneWarns  []error
 	sceneWarned bool
 	// flagWarns are the warnings of flags that Check found (FlagWarnings).
-	flagWarns []error
+	flagWarns       []error
+	definitionWarns []error // Unreferenced definitions found by Check.
 
 	// Words are the translations of lang/<code>.yaml by language, source to translation
 	// (ADR 0027). shown is the language shown, names the sources of the names Show translates.
