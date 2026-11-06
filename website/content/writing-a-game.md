@@ -20,7 +20,9 @@ game/
 
 `game.yaml` is a [Game](/schema/#game). Each file in `data/` is a [DataFile](/schema/#datafile) and may hold any of its sections, so split by area (`town.yaml`, `cave.yaml`) or by kind (`enemies.yaml`, `skills.yaml`) as you like. Every ID lives in one namespace per section, and a duplicate is an error.
 
-Start a new `game.yaml` with `schema_version: 8`, as the bundled templates do. From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
+Start a new `game.yaml` with `schema_version: 11`, as the bundled templates do. Upgrade an existing versioned game with `gozen migrate game --out game-v11`, then check the copy with `gozen check game-v11`; do not change only the header, because omitted tactic switches changed from false to true.
+
+From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
 
 ## What goes where
 
@@ -37,7 +39,7 @@ Start a new `game.yaml` with `schema_version: 8`, as the bundled templates do. F
 | `profiles` | the character book: a page per character | `mira: {title: Courier, text: ...}` |
 | `enemies` with `ui.bestiary` | the monster book: a page per enemy | `mote: {lore: "Lives near the river stones."}` |
 
-Two skills are required in every game: `attack` and `guard`, the battle commands. `game.yaml`'s `battle:` can point them elsewhere.
+Combat games need `attack` and `guard`, the battle commands; `game.yaml`'s `battle:` can point them elsewhere. A narrative game can use actors without classes and needs no dummy party or combat skills.
 
 ## Places
 
@@ -230,7 +232,20 @@ for a complete book.
 
 ## Events
 
-An event is a named list of commands. Call it with `call`, or give it a trigger:
+An event is a named list of commands. In schema 11, write the list directly when
+it needs no metadata, and call it with `call: greeting`:
+
+<!-- verify: parse schema-11 event fragment; ticket is defined by the game -->
+```yaml
+events:
+  greeting:
+    - say: Welcome back.
+    - give: ticket
+```
+
+`give: ticket` and `take: ticket` mean one item. For another quantity, use
+`give: {item: ticket, count: 2}`. Keep the event's mapping form when it needs
+metadata such as a trigger, condition or parameters:
 
 <!-- verify: load -->
 ```yaml

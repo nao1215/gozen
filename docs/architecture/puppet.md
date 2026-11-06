@@ -34,7 +34,7 @@ actors:
 With `ui.message: novel`, the stage shows the face pictures of the figures that `stand` places or that come on with their lines. `ui.stage_puppets: true` in game.yaml (schema version 8) draws an actor's puppet there instead ([ADR 0046](../decisions/0046-moving-portraits-on-the-novel-stage.md)):
 
 ```yaml
-schema_version: 8
+schema_version: 11
 ui:
   message: novel
   stage_puppets: true

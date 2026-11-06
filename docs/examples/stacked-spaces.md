@@ -18,7 +18,7 @@ This is a technical demonstration of bounded geometry, not a finished town.
 
 ## Authoring
 
-Set `schema_version: 8` in game.yaml. See the complete [example world](../../examples/space/game/data/world.yaml).
+Set `schema_version: 11` in game.yaml. See the complete [example world](../../examples/space/game/data/world.yaml).
 `space.levels` holds equally sized rectangular maps from bottom to top. A period
 is floor, `#` is a full-height wall, and `_` or a blank cell is open air. Prefer
 underscores because YAML block indentation can make leading blank rows ambiguous.

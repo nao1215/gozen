@@ -1,4 +1,4 @@
-schema_version: 7
+schema_version: 11
 id: go-zen
 title: Go Zen
 subtitle: Every Line Walked
@@ -43,85 +43,85 @@ battle:
   boss_win_music: fanfare
   auto_tactics:
     maren_ai:
-      - {enabled: true, condition: boss_fight, action: forged_map}
-      - {enabled: true, condition: unmarked, action: chart}
-      - {enabled: true, condition: low_mp, action: guard}
-      - {enabled: true, condition: any, action: ink_burst}
-      - {enabled: true, condition: any, action: attack}
+      - {condition: boss_fight, action: forged_map}
+      - {condition: unmarked, action: chart}
+      - {condition: low_mp, action: guard}
+      - {condition: any, action: ink_burst}
+      - {condition: any, action: attack}
     ox_ai:
-      - {enabled: true, condition: unwarded, action: hold_line}
-      - {enabled: true, condition: any, action: shield_rush}
-      - {enabled: true, condition: any, action: attack}
+      - {condition: unwarded, action: hold_line}
+      - {condition: any, action: shield_rush}
+      - {condition: any, action: attack}
     tilly_ai:
-      - {enabled: true, condition: ally_hurt, action: mend}
-      - {enabled: true, condition: any, action: blessing}
-      - {enabled: true, condition: any, action: lucky_toss}
-      - {enabled: true, condition: any, action: attack}
+      - {condition: ally_hurt, action: mend}
+      - {condition: any, action: blessing}
+      - {condition: any, action: lucky_toss}
+      - {condition: any, action: attack}
     kes_ai:
-      - {enabled: true, condition: crowd, action: storm_coil}
-      - {enabled: true, condition: ally_hurt, action: overclock}
-      - {enabled: true, condition: any, action: arc_bolt}
-      - {enabled: true, condition: any, action: attack}
+      - {condition: crowd, action: storm_coil}
+      - {condition: ally_hurt, action: overclock}
+      - {condition: any, action: arc_bolt}
+      - {condition: any, action: attack}
   tactic_presets:
     balanced:
       name: Balanced
       description: "Mark the weak one, mend the hurt, hit hard."
       rows:
         maren_ai:
-          - {enabled: true, condition: boss_fight, action: forged_map}
-          - {enabled: true, condition: unmarked, action: chart}
-          - {enabled: true, condition: any, action: ink_burst}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: boss_fight, action: forged_map}
+          - {condition: unmarked, action: chart}
+          - {condition: any, action: ink_burst}
+          - {condition: any, action: attack}
         ox_ai:
-          - {enabled: true, condition: unwarded, action: hold_line}
-          - {enabled: true, condition: any, action: shield_rush}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: unwarded, action: hold_line}
+          - {condition: any, action: shield_rush}
+          - {condition: any, action: attack}
         tilly_ai:
-          - {enabled: true, condition: ally_hurt, action: mend}
-          - {enabled: true, condition: any, action: blessing}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: ally_hurt, action: mend}
+          - {condition: any, action: blessing}
+          - {condition: any, action: attack}
         kes_ai:
-          - {enabled: true, condition: crowd, action: storm_coil}
-          - {enabled: true, condition: any, action: arc_bolt}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: crowd, action: storm_coil}
+          - {condition: any, action: arc_bolt}
+          - {condition: any, action: attack}
     cautious:
       name: Cautious
       description: "Mend early, brace when the ink runs low, and let Ox stand in front."
       rows:
         maren_ai:
-          - {enabled: true, condition: low_mp, action: guard}
-          - {enabled: true, condition: boss_fight, action: forged_map}
-          - {enabled: true, condition: unmarked, action: chart}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: low_mp, action: guard}
+          - {condition: boss_fight, action: forged_map}
+          - {condition: unmarked, action: chart}
+          - {condition: any, action: attack}
         ox_ai:
-          - {enabled: true, condition: unwarded, action: hold_line}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: unwarded, action: hold_line}
+          - {condition: any, action: attack}
         tilly_ai:
-          - {enabled: true, condition: ally_hurt, action: mend}
-          - {enabled: true, condition: any, action: blessing}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: ally_hurt, action: mend}
+          - {condition: any, action: blessing}
+          - {condition: any, action: attack}
         kes_ai:
-          - {enabled: true, condition: ally_hurt, action: overclock}
-          - {enabled: true, condition: any, action: arc_bolt}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: ally_hurt, action: overclock}
+          - {condition: any, action: arc_bolt}
+          - {condition: any, action: attack}
     all_out:
       name: All out
       description: "Throw everything at it and get home for supper."
       rows:
         maren_ai:
-          - {enabled: true, condition: boss_fight, action: forged_map}
-          - {enabled: true, condition: any, action: ink_burst}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: boss_fight, action: forged_map}
+          - {condition: any, action: ink_burst}
+          - {condition: any, action: attack}
         ox_ai:
-          - {enabled: true, condition: any, action: shield_rush}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: any, action: shield_rush}
+          - {condition: any, action: attack}
         tilly_ai:
-          - {enabled: true, condition: any, action: lucky_toss}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: any, action: lucky_toss}
+          - {condition: any, action: attack}
         kes_ai:
-          - {enabled: true, condition: crowd, action: storm_coil}
-          - {enabled: true, condition: any, action: arc_bolt}
-          - {enabled: true, condition: any, action: attack}
+          - {condition: crowd, action: storm_coil}
+          - {condition: any, action: arc_bolt}
+          - {condition: any, action: attack}
 gallery:
   music: town
   cgs:

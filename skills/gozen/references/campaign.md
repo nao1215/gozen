@@ -1,6 +1,6 @@
 # Campaigns
 
-A campaign (SLG, a war of regions) sets `schema_version: 5`, `regions` and `factions` in data, and `campaign` in game.yaml; its place is a map whose points are named like the regions (see atlas.md).
+A campaign (SLG, a war of regions) sets `schema_version: 11`, `regions` and `factions` in data, and `campaign` in game.yaml; its place is a map whose points are named like the regions (see atlas.md).
 
 - Generals are actors: list them in `campaign.generals` with their troops. Give each order a `label`, and `general`, `target` and `march: true` for an attack. `count: orders` with `per_turn` lets each order be given once a turn.
 - `fight: clash_view` shows a march as a clash of units with a sortie screen. Set `clash.units` (1 to 4), `clash.tactics` and `clash.skills`, and `defend` troops and `terrain` on the regions. Leave `fight` out to decide by the numbers of `clash`, or use `fight: battle` for a battle of the game.

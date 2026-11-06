@@ -224,7 +224,7 @@ locations:
           do:
             - if: item.brass_key > 0
               then:
-                - take: {item: brass_key}
+                - take: brass_key
                 - set: {flag.gate1: true}
                 - say: "The brass key turns. The gate swings open."
               else:
@@ -239,7 +239,7 @@ locations:
           do:
             - if: item.brass_key > 0
               then:
-                - take: {item: brass_key}
+                - take: brass_key
                 - set: {flag.gate2: true}
                 - say: "Another turn of the key. Another gate swings open."
               else:
@@ -254,7 +254,7 @@ locations:
           do:
             - if: item.brass_key > 0
               then:
-                - take: {item: brass_key}
+                - take: brass_key
                 - set: {flag.gate3: true}
                 - say: "The last gate opens with a long sigh."
               else:
@@ -268,7 +268,7 @@ locations:
           mark: "#e7b66b"
           symbol: k
           do:
-            - give: {item: brass_key}
+            - give: brass_key
             - say: "A brass key hangs from a hook. You take it."
         s:
           name: Loose brick
@@ -325,7 +325,7 @@ locations:
           do:
             - sfx: treasure
             - say: "A stiff leather coat in a waxed bag. It fits somebody."
-            - give: {item: coat_leather}
+            - give: coat_leather
         U:
           name: Hidden chest
           picture: tiles/chest.png
@@ -338,7 +338,7 @@ locations:
           do:
             - sfx: treasure
             - say: "Tucked behind the wall, a pair of goggles with one cracked lens. They still work."
-            - give: {item: charm_goggles}
+            - give: charm_goggles
         t: {name: Open chest, picture: tiles/chest_open.png, size: 0.45, solid: "true"}
         W:
           name: Brass Warden
@@ -476,7 +476,7 @@ locations:
           do:
             - say: "Spare parts and loose coins. The crate was nailed shut once."
             - gold: 20
-            - give: {item: old_gear}
+            - give: old_gear
         t: {name: Open crate, picture: tiles/crate_open.png, size: 0.45, solid: "true"}
         R:
           name: Steam vent

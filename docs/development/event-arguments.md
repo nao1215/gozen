@@ -4,6 +4,9 @@ Authors can reuse one event for several residents without storing a global
 selection or copying the body. Schema version 10 adds `params` and the mapping
 form of `call`. The original `call: name` remains valid for parameterless events.
 
+The runnable example now uses schema 11 and compact metadata-free events.
+The argument-bearing events retain their full mapping.
+
 The runnable [workshop example](../examples/event-arguments/game.yaml) calls
 `encourage` twice from [one entry event](../examples/event-arguments/data/story.yaml):
 

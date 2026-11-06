@@ -211,6 +211,7 @@ cells:
   "２": "2"
   "３": "3"
   "旧版 0, or at least 1 when size has an expression／新版 0": "v0: 0, or at least 1 when size has an expression / v1: 0"
+  "旧版 false／新版 true in schema 11": "schemas 0–10: false / schema 11: true"
   "旧版 0 (learnable from the start)／新版 1": "v0: 0 (learnable from the start) / v1: 1"
   "旧版 720 when width is 0, else 0／新版 720": "v0: 720 when width is 0, else 0 / v1: 720"
 types:

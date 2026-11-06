@@ -6,7 +6,7 @@ uses the actor's default face. `face` and `face_expr` are mutually exclusive.
 The author supplies the images in the actor's `faces` directory.
 
 ```yaml
-schema_version: 10
+schema_version: 11
 # In an event:
 do:
   - say:

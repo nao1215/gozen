@@ -79,7 +79,7 @@ EventCall:
   ensemble: "Optional ensemble screen (a call) that the lines of the called event, and of the events it calls in turn, show over when they name no ensemble of their own (schema 10), so one shared event of lines can be said in whichever call calls it. Lines after the call returns are not affected."
 Event:
   params: "Required parameter names and types: number, bool, string, entity, activity, actor or date (schema 10)."
-  _: "A named list of commands, run from another event with `call` or by itself when its trigger fires."
+  _: "A named list of commands, run from another event with `call` or by itself when its trigger fires. In schema 11, an event without metadata can be written directly as a command list."
   do: "The commands the event runs."
   location: "The ID of the location (an ID of locations) where a triggered event fires. For `auto`, empty means anywhere. An `enter` event needs a location."
   once: "If `true`, a triggered event fires only once and is then marked as done."

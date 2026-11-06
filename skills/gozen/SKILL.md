@@ -38,13 +38,24 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 
 ## What every game needs
 
-- `game.yaml` with `schema_version: 3` (4 for a novel, 5 for a campaign, 6 for monster collection, 7 for battle forms, 8 for stacked spaces), an `id`, and `start` with a `location` and a `party`.
-- A class for each party member, with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`.
-- The two skills `attack` and `guard`, even in a game without battles.
+- `game.yaml` with `schema_version: 11`, a stable `id`, and `start.location`. Add `start.party` only for a combat game.
+- Combat party members need a class with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`. Narrative speakers use `actors` with a `name` and optional portraits; omit `class`.
+- Combat games need their attack and guard skills. A narrative game needs neither skills, classes nor a dummy party.
 - Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
 - No `fonts` is needed: the built-in Go font has Latin letters only. For Japanese or other scripts, put a font under `assets/` and name it in `fonts.regular`.
 
-A complete small game is in references/minimal.md.
+A complete small game is in references/minimal.md. For schema 11, write an event
+without metadata as `opening: [{say: Welcome}]` under `events`, and one-item
+transfers as `give: key` or `take: key`. Keep the full event mapping for `when`,
+`trigger`, `once`, `location` or `params`. An authored tactic row is enabled
+unless it says `enabled: false`.
+
+Upgrade existing games with `gozen migrate GAME --out NEW`, then check and play
+the copy. Do not upgrade by editing only `schema_version`: old omitted tactic
+switches must become explicit false. The command preserves identity and assets;
+it supports schema 1–11 and refuses schema 0 for separate numeric-default review.
+Old engines cannot read schema 11. Record source-hashed traces again after a
+rewrite. See references/yaml.md for the full forms and migration checks.
 
 Battle forms, HP pictures and moving enemies need schema version 7 (references/battle.md, references/puppet.md).
 
