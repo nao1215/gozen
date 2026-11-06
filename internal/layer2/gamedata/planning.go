@@ -241,7 +241,7 @@ func (c *checker) planning() {
 		if !seen[name] && name != "closed" {
 			c.errorf(diag.Shape, lw, "a look names a phase of the calendar or closed")
 		}
-		if look.Wash < 0 || look.Wash > MaxPhaseWash {
+		if !finiteNumber(look.Wash) || look.Wash < 0 || look.Wash > MaxPhaseWash {
 			c.errorf(diag.OutOfRange, lw+".wash", "wash must be 0 through %g", MaxPhaseWash)
 		}
 		if look.Wash > 0 && !look.Color.Valid {
@@ -363,7 +363,8 @@ func (c *checker) planning() {
 		}
 		colors[id] = 2
 	}
-	for _, id := range slices.Sorted(maps.Keys(p.Activities)) {
+	activityIDs := slices.Sorted(maps.Keys(p.Activities))
+	for _, id := range activityIDs {
 		a := p.Activities[id]
 		at := w + ".activities." + id
 		if !declaredName.MatchString(id) {
@@ -405,15 +406,25 @@ func (c *checker) planning() {
 		visit(id)
 	}
 
-	for id, parent := range p.Activities {
-		total, count := 0.0, 0
-		for _, child := range p.Activities {
-			if child.Parent == id {
-				total += child.Effort
-				count++
-			}
+	// Accumulate each split once, in stable order, instead of scanning every
+	// activity again for every possible parent.
+	type splitTotal struct {
+		effort float64
+		count  int
+	}
+	splits := make(map[string]splitTotal)
+	for _, id := range activityIDs {
+		child := p.Activities[id]
+		if child.Parent != "" {
+			total := splits[child.Parent]
+			total.effort += child.Effort
+			total.count++
+			splits[child.Parent] = total
 		}
-		if count > 0 && (count < 2 || math.Abs(total-parent.Effort) > 1e-8) {
+	}
+	for _, id := range activityIDs {
+		total := splits[id]
+		if total.count > 0 && (total.count < 2 || math.Abs(total.effort-p.Activities[id].Effort) > 1e-8) {
 			c.errorf(diag.Shape, w+".activities."+id, "children must conserve parent effort and number at least two")
 		}
 	}
@@ -831,7 +842,7 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 			c.errorf(diag.OutOfRange, w+".call.others", "want side, got %q", v.Call.Others)
 		}
 		c.text(w+".call.others_title", v.Call.OthersTitle, FieldNames)
-		if v.Call.WindowOpacity < 0 || v.Call.WindowOpacity > 1 {
+		if !finiteNumber(v.Call.WindowOpacity) || v.Call.WindowOpacity < 0 || v.Call.WindowOpacity > 1 {
 			c.errorf(diag.OutOfRange, w+".call.window_opacity", "want 0 to 1, got %v", v.Call.WindowOpacity)
 		}
 		if v.Call.WindowOpacity != 0 && v.Call.Captions != "overlay" {
