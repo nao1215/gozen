@@ -5,6 +5,20 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"hold は portrait または landscape を指定してください（指定値 %q）": "hold must be portrait or landscape, not %q",
+	"app は chat・feed・video のいずれかを指定してください（指定値 %q）":    "app must be chat, feed or video, not %q",
+	"app %s には %s が必要です":                           "app %s needs %s",
+	"app %s は %s を表示しません":                          "app %s does not show %s",
+	"メッセージには text・picture・video のいずれか１つが必要です":      "a message needs text, picture or video (one of them)",
+	"投稿には picture または video のどちらか１つが必要です":          "a post needs picture or video (one of them)",
+	"likes は０以上を指定してください":                          "likes must not be negative",
+	"動画には picture または puppet が必要です":                "a video needs a picture or a puppet",
+	"seconds は０以上を指定してください":                        "seconds must not be negative",
+	"zoom は０以上を指定してください":                           "zoom must not be negative",
+	"bounce %g は動画の範囲外です（０〜%g 秒）":                  "bounce %g is outside the video (0 to %g seconds)",
+	"puppet assets/%s がありません":                      "no puppet assets/%s",
+	"seconds は有限の数で %g 以下を指定してください":                "seconds must be finite and at most %g",
+	"zoom は有限の数を指定してください":                          "zoom must be finite",
 	"定義のキーに null は使えません。文字列の ID を指定してください":         "definition keys cannot be null; use a string ID",
 	"移行でゲームの定義が変わるため中止しました。元のゲームは変更していません":         "migration would change the game definitions; source unchanged",
 	"YAML の移行範囲が重なっています。元のゲームは変更していません":            "overlapping YAML migration edits; source unchanged",

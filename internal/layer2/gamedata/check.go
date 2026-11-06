@@ -157,28 +157,28 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	switch p.Hold {
 	case "", "portrait", "landscape":
 	default:
-		c.errorf(diag.Shape, where+".hold", "hold must be portrait or landscape, not %q", p.Hold)
+		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
 	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil}
 	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video"}
 	if _, ok := lists[p.App]; !ok {
-		c.errorf(diag.Shape, where+".app", "app must be chat, feed or video, not %q", p.App)
+		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video のいずれかを指定してください（指定値 %q）"), p.App)
 		return
 	}
 	for _, app := range []string{"chat", "feed", "video"} {
 		has := lists[app]
 		if app == p.App && !has {
-			c.errorf(diag.Shape, where+"."+keys[app], "app %s needs %s", app, keys[app])
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s には %s が必要です"), app, keys[app])
 		}
 		if app != p.App && has {
-			c.errorf(diag.Shape, where+"."+keys[app], "app %s does not show %s", p.App, keys[app])
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s は %s を表示しません"), p.App, keys[app])
 		}
 	}
 	c.text(where+".title", p.Title, names)
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
 		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n != 1 {
-			c.errorf(diag.Shape, at, "a message needs text, picture or video (one of them)")
+			c.errorf(diag.Shape, at, "%s", lang.T("メッセージには text・picture・video のいずれか１つが必要です"))
 		}
 		c.phoneVideo(at+".video", m.Video, names)
 		c.text(at+".from", m.From, names)
@@ -189,11 +189,11 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	for i, post := range p.Posts {
 		at := fmt.Sprintf("%s.posts[%d]", where, i)
 		if (post.Picture == "") == (post.Video == nil) {
-			c.errorf(diag.Shape, at, "a post needs picture or video (one of them)")
+			c.errorf(diag.Shape, at, "%s", lang.T("投稿には picture または video のどちらか１つが必要です"))
 		}
 		c.phoneVideo(at+".video", post.Video, names)
 		if post.Likes < 0 {
-			c.errorf(diag.Shape, at+".likes", "likes must not be negative")
+			c.errorf(diag.Shape, at+".likes", "%s", lang.T("likes は０以上を指定してください"))
 		}
 		c.text(at+".who", post.Who, names)
 		c.text(at+".text", post.Text, names)
@@ -210,25 +210,33 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 		return
 	}
 	if v.Picture == "" && v.Puppet == "" {
-		c.errorf(diag.Shape, where, "a video needs a picture or a puppet")
+		c.errorf(diag.Shape, where, "%s", lang.T("動画には picture または puppet が必要です"))
+	}
+	if !finiteNumber(v.Seconds) || v.Seconds > float64(math.MaxInt32)/60 {
+		c.errorf(diag.OutOfRange, where+".seconds", lang.T("seconds は有限の数で %g 以下を指定してください"), float64(math.MaxInt32)/60)
+	}
+	if !finiteNumber(v.Zoom) {
+		c.errorf(diag.OutOfRange, where+".zoom", "%s", lang.T("zoom は有限の数を指定してください"))
 	}
 	if v.Seconds < 0 {
-		c.errorf(diag.Shape, where+".seconds", "seconds must not be negative")
+		c.errorf(diag.Shape, where+".seconds", "%s", lang.T("seconds は０以上を指定してください"))
 	}
 	if v.Zoom < 0 {
-		c.errorf(diag.Shape, where+".zoom", "zoom must not be negative")
+		c.errorf(diag.Shape, where+".zoom", "%s", lang.T("zoom は０以上を指定してください"))
 	}
 	length := v.Seconds
 	if length == 0 {
 		length = 30
 	}
 	for i, at := range v.Bounce {
-		if at < 0 || at > length {
-			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), "bounce %g is outside the video (0 to %g seconds)", at, length)
+		if !finiteNumber(at) || at < 0 || at > length {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), lang.T("bounce %g は動画の範囲外です（０〜%g 秒）"), at, length)
 		}
 	}
 	if v.Puppet != "" && !c.db.Exists("assets/"+v.Puppet) {
-		c.errorf(diag.MissingAsset, where+".puppet", "no puppet assets/%s", v.Puppet)
+		c.errorf(diag.MissingAsset, where+".puppet", lang.T("puppet assets/%s がありません"), v.Puppet)
+	} else {
+		c.puppet(where+".puppet", v.Puppet, "")
 	}
 	c.text(where+".text", v.Text, names)
 	c.picture(where+".picture", Picture{File: v.Picture})
@@ -281,25 +289,25 @@ func (c *checker) pictureLimit(where, p string) {
 
 // puppet checks a moving portrait's YAML and that its pictures exist. Picture sizes
 // and positions are checked when the game loads it (and by gozen art puppet).
-func (c *checker) puppet(where string, a *Actor) {
-	if a.Puppet == "" {
+func (c *checker) puppet(where string, file, face string) {
+	if file == "" {
 		return
 	}
-	b, err := fs.ReadFile(c.db.FS, "assets/"+a.Puppet)
+	b, err := fs.ReadFile(c.db.FS, "assets/"+file)
 	if err != nil {
-		c.errorf(diag.MissingAsset, where, "no file assets/%s", a.Puppet)
+		c.errorf(diag.MissingAsset, where, "no file assets/%s", file)
 		return
 	}
 	spec, err := puppetdef.Parse(b)
 	if err != nil {
-		c.errorf(diag.Shape, where, "%s: %v", a.Puppet, err)
+		c.errorf(diag.Shape, where, "%s: %v", file, err)
 		return
 	}
 	for _, p := range spec.Pictures() {
-		c.file(where, path.Join(path.Dir(a.Puppet), p))
+		c.file(where, path.Join(path.Dir(file), p))
 	}
-	if face := a.Face; face != "" && !slices.Contains(spec.FaceNames(), face) {
-		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", a.Puppet, face)
+	if face != "" && !slices.Contains(spec.FaceNames(), face) {
+		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", file, face)
 	}
 }
 
@@ -797,7 +805,7 @@ func (db *DB) Check() []error {
 		if a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+a.Face+".png") {
 			c.errorf(diag.MissingAsset, w, "no face assets/%s/%s.png", a.Faces, a.Face)
 		}
-		c.puppet(w+".puppet", a)
+		c.puppet(w+".puppet", a.Puppet, a.Face)
 		c.voices(w+".voices", a)
 		c.doll(w+".doll", a.Doll)
 		for s, it := range a.Equip {
@@ -959,7 +967,7 @@ func (db *DB) Check() []error {
 			c.errorf(diag.NotAWord, w+".motion", "want none, breathe, sway, or bob")
 		}
 		if e.Puppet != "" {
-			c.puppet(w+".puppet", &Actor{Puppet: e.Puppet})
+			c.puppet(w+".puppet", e.Puppet, "")
 		}
 		for _, d := range e.Drops {
 			_, ok := db.Items[d.Item]
