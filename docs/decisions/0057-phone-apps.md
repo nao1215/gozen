@@ -30,6 +30,15 @@ the player's hand and cannot play anything.
      stopping at the top and the bottom; a click on a post's picture likes it;
      OK scrolls a post down and, at the bottom, puts the phone down; a post's
      video plays in its place, looping, while it is on the screen.
+     `scroll: across` lays the posts side by side instead, a post a screen
+     with a row of dots under it, as a photo app's carousel pages: a drag
+     sideways follows the finger and settles on the nearest post or, flicked,
+     on the next; left and right (and up, down, a notch of the wheel and OK)
+     step a post. A post too tall for the screen across has its picture made
+     shorter. `browse: true` makes the feed only looked at: a click likes
+     nothing, for a story where the character scrolls past without reacting.
+     (Added in v0.18.0; the default stays the column with likes.) A caption
+     too long for its lines is wrapped smaller and drawn at that size.
    - `video` with `video`: a player with the title, a pause on a press and a
      seek bar.
 4. A `video` is a clip made of what a game already has: a `picture` pushed in

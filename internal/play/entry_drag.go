@@ -385,13 +385,13 @@ func (s *authorScreen) drawGhost(g *Game, dst *ebiten.Image, i int, at image.Poi
 	}
 }
 
-// peekRect places the peek panel of entry i beside it, inside the screen.
-func (s *authorScreen) peekRect(g *Game, i int) (image.Rectangle, []string) {
-	const size = 16.0
+// peekRect places the peek panel of entry i beside it, inside the screen, with
+// its lines and the size they were wrapped at (smaller when long).
+func (s *authorScreen) peekRect(g *Game, i int) (image.Rectangle, []string, float64) {
 	r := entryBounds(s.entries[i])
 	sw, sh := g.screen()
 	width := min(360.0, sw-32)
-	lines, _ := gfx.FitLines(s.entries[i].Peek, size, width-28, 10)
+	lines, size := gfx.FitLines(s.entries[i].Peek, 16, width-28, 10)
 	h := float64(len(lines))*gfx.LineHeight(size) + 24
 	x := float64(r.Max.X) + 10
 	if x+width > sw-12 {
@@ -401,16 +401,16 @@ func (s *authorScreen) peekRect(g *Game, i int) (image.Rectangle, []string) {
 		x = max(12, min(float64(r.Min.X), sw-width-12))
 	}
 	y := max(12, min(float64(r.Min.Y), sh-h-12))
-	return image.Rect(int(x), int(y), int(x+width), int(y+h)), lines
+	return image.Rect(int(x), int(y), int(x+width), int(y+h)), lines, size
 }
 
 // drawPeek draws an open peek: frosted glass without an edge, only text.
 func (s *authorScreen) drawPeek(g *Game, dst *ebiten.Image, i int) {
-	r, lines := s.peekRect(g, i)
+	r, lines, size := s.peekRect(g, i)
 	x, y, w, h := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 	gfx.FillRoundRect(dst, float32(x)+2, float32(y)+4, float32(w), float32(h), 12, color.NRGBA{0, 0, 0, 28})
 	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 12, color.NRGBA{248, 250, 253, 246})
 	for n, line := range lines {
-		g.text(dst, line, x+14, y+12+float64(n)*gfx.LineHeight(16), 16, g.lightPalette().text)
+		g.text(dst, line, x+14, y+12+float64(n)*gfx.LineHeight(size), size, g.lightPalette().text)
 	}
 }

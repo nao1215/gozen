@@ -125,8 +125,8 @@ func (g *Game) drawPhoneLock(p *phoneView, dst *ebiten.Image, w, h float64) {
 // tells its height.
 func (g *Game) drawLockNotice(p *phoneView, dst *ebiten.Image, i int, x, y, w, alpha float64) float64 {
 	n := p.cue.Notices[i]
-	lines, _ := gfx.FitLines(n.Text, 14, w-28, 2)
-	ch := 58 + float64(len(lines))*gfx.LineHeight(14)
+	lines, size := gfx.FitLines(n.Text, 14, w-28, 2)
+	ch := 58 + float64(len(lines))*gfx.LineHeight(size)
 	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(ch), 18, alphaColor(phoneCard, alpha))
 	ink, muted := alphaColor(phoneInk, alpha), alphaColor(phoneMuted, alpha)
 	g.drawPhoneIcon(dst, p, n.Icon, n.App, x+12, y+11, 24)
@@ -135,7 +135,7 @@ func (g *Game) drawLockNotice(p *phoneView, dst *ebiten.Image, i int, x, y, w, a
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14, y+36, 15, ink)
 	gfx.DrawTextLeft(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14.6, y+36, 15, ink)
 	for k, line := range lines {
-		gfx.DrawTextLeft(dst, line, x+14, y+56+float64(k)*gfx.LineHeight(14), 14, ink)
+		gfx.DrawTextLeft(dst, line, x+14, y+56+float64(k)*gfx.LineHeight(size), size, ink)
 	}
 	return ch
 }
@@ -152,9 +152,9 @@ func (g *Game) drawPhoneCall(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	g.drawPhoneIcon(dst, p, n.Icon, n.Title, w/2-56, cy-56, 112)
 	gfx.DrawText(dst, gfx.Ellipsis(n.Title, 26, w-32), w/2, cy+80, 26, phoneOnVideo)
-	lines, _ := gfx.FitLines(n.Text, 15, w-48, 2)
+	lines, size := gfx.FitLines(n.Text, 15, w-48, 2)
 	for k, line := range lines {
-		gfx.DrawText(dst, line, w/2, cy+124+float64(k)*gfx.LineHeight(15), 15, alphaColor(phoneOnVideo, 0.75))
+		gfx.DrawText(dst, line, w/2, cy+124+float64(k)*gfx.LineHeight(size), size, alphaColor(phoneOnVideo, 0.75))
 	}
 	ax, dx, by := callButtonsAt(w, h)
 	for _, b := range []struct {

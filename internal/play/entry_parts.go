@@ -407,9 +407,9 @@ func (s *authorScreen) drawCarousel(g *Game, dst *ebiten.Image, focused bool) {
 	}
 	lines := max(1, int((float64(band.Max.Y)-(ty+30)-4)/gfx.LineHeight(15)))
 	if detail != "" {
-		wrapped, _ := gfx.FitLines(detail, 15, width, lines)
+		wrapped, size := gfx.FitLines(detail, 15, width, lines)
 		for n, line := range wrapped {
-			g.text(dst, line, cx-gfx.TextWidth(line, 15)/2, ty+30+float64(n)*gfx.LineHeight(15), 15, tint)
+			g.text(dst, line, cx-gfx.TextWidth(line, size)/2, ty+30+float64(n)*gfx.LineHeight(size), size, tint)
 		}
 	}
 	// Small dots show how many there are and where the middle is.

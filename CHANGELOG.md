@@ -4,6 +4,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A phone feed takes `scroll: across`: a post a screen, swiped sideways as a photo carousel pages (a drag that settles on the nearest post or, flicked, the next; left and right, the wheel and OK step a post; dots show the place). `browse: true` turns a feed's likes off, so a click on a post likes nothing. Both default to today's feed (a column scrolled up and down, with likes) and are checked: `scroll` is `down` or `across`, and neither is set on another app.
+
+### Fixed
+
+- Feed captions longer than three lines, and text posts longer than eight, are drawn at the smaller size they were wrapped at instead of running past the phone's right edge. Lock-screen notices, incoming calls, workspace peeks, carousel details and birth summaries had the same mismatch; a hygiene test now rejects dropping the size `FitLines` returns.
+
 ## v0.17.0 - 2026-11-06
 
 A phone over any scene (chat, feed, video, page, lock screen and banner apps, held upright or on its side), YAML schema 11 with shorter authoring forms, about fifty bug fixes from a quality pass, and checks that keep the engine, the YAML and the docs from drifting: `gozen check --strict` and `--baseline`, per-definition unused warnings, error codes with causes and fixes, whole-program dead code and complexity checks, and documentation pictures verified by their inputs.

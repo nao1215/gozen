@@ -17,6 +17,7 @@ import (
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/testgame"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // frame is the picture of the clip's footage on the screen now: the frames go
@@ -1249,4 +1250,152 @@ func FuzzPhoneInputs(f *testing.F) {
 			t.Fatal("Cancel left the phone open")
 		}
 	})
+}
+
+// TestPhoneFeedLongTextFits: a caption longer than its three lines, and a text
+// post longer than its eight, are wrapped smaller, and the size they were
+// wrapped at is the size they are drawn at, so no line runs past the screen's
+// right edge (drawn at 15, the lines wrapped smaller were cut).
+func TestPhoneFeedLongTextFits(t *testing.T) {
+	long := strings.Repeat("A long day at the workshop again and the coffee is cold. ", 6)
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Who: "Ann", Picture: "x.png", Text: long}, {Who: "Ann", Text: strings.Repeat(long, 3)},
+	}})
+	posts, w, _, _ := g.feedView(g.phone)
+	for i, l := range posts {
+		want := 15.0
+		if l.text {
+			want = 16
+		}
+		if l.size >= want {
+			t.Fatalf("post %d: the long text was not wrapped smaller (size %v)", i, l.size)
+		}
+		cut := false
+		for _, line := range l.lines {
+			if gfx.TextWidth(line, l.size) > w-28 {
+				t.Errorf("post %d: %q is %v wide at its size %v, over %v", i, line, gfx.TextWidth(line, l.size), l.size, w-28)
+			}
+			cut = cut || gfx.TextWidth(line, want) > w-28
+		}
+		if !cut {
+			t.Errorf("post %d: no line would run past the edge at %v; the text is too short to test the fix", i, want)
+		}
+	}
+}
+
+// TestPhoneFeedBrowse: a feed with browse: true scrolls as any feed, and a
+// click on a post's picture or heart likes nothing.
+func TestPhoneFeedBrowse(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "feed", Browse: true, Posts: []data.PhonePost{{Picture: "x.png", Likes: 3}, {Picture: "x.png"}}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	posts, _, _, end := g.feedView(p)
+	sx, sy, w, _ := g.phoneScreenRect(false)
+	at := image.Pt(int(sx+w/2), int(sy+phoneFeedTop+posts[0].pic+40))
+	g.in = input{pdown: true, pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if p.liked[0] {
+		t.Fatal("a click on a browsed feed's picture liked the post")
+	}
+	phonePress(g, btnDown)
+	phoneTicks(g, 40)
+	if want := math.Min(posts[1].top, end); p.scroll != want {
+		t.Fatalf("down did not scroll the browsed feed: %v, want %v", p.scroll, want)
+	}
+	if g.phoneHint(p) != lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる") {
+		t.Fatalf("the browsed feed's hint offers a like: %q", g.phoneHint(p))
+	}
+}
+
+// TestPhoneFeedAcross: with scroll: across the posts are pages side by side:
+// right and left (and down, up, the wheel and OK) step a page, a drag sideways
+// follows the finger and settles on the nearest page or, flicked, on the next,
+// a tap likes the post on the screen, and OK on the last page puts it down.
+func TestPhoneFeedAcross(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "feed", Scroll: "across", Posts: []data.PhonePost{
+		{Who: "Ann", Picture: "x.png", Text: "One"}, {Who: "Ben", Picture: "x.png", Text: "Two"}, {Who: "Cy", Text: "Three"},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	posts, w, view, end := g.feedView(p)
+	if end != 2*w {
+		t.Fatalf("the last page is at %v, want %v", end, 2*w)
+	}
+	for i, l := range posts {
+		if l.top != 0 || l.h > view {
+			t.Errorf("page %d: top %v height %v, want 0 and at most the screen's %v", i, l.top, l.h, view)
+		}
+	}
+	page := func() float64 { return p.scroll / w }
+	phonePress(g, btnRight)
+	phoneTicks(g, 40)
+	if page() != 1 {
+		t.Fatalf("right went to page %v, want 1", page())
+	}
+	phonePress(g, btnLeft)
+	phoneTicks(g, 40)
+	if page() != 0 {
+		t.Fatalf("left went to page %v, want 0", page())
+	}
+	g.in = input{wheel: -1}
+	g.updatePhone()
+	phoneTicks(g, 40)
+	if page() != 1 {
+		t.Fatalf("a notch of the wheel down went to page %v, want 1", page())
+	}
+
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	y := int(sy + phoneFeedTop + posts[1].pic + 40)
+	swipe := func(from, to, steps int) {
+		g.in = input{pdown: true, pheld: true, mouse: image.Pt(from, y)}
+		g.updatePhone()
+		for k := 1; k <= steps; k++ {
+			g.in = input{pheld: true, mouse: image.Pt(from+(to-from)*k/steps, y)}
+			g.updatePhone()
+		}
+		g.in = input{pup: true, mouse: image.Pt(to, y)}
+		g.updatePhone()
+		phoneTicks(g, 60)
+	}
+	mid := int(sx + w/2)
+	swipe(mid, mid-60, 30) // slow and short: back to the page it left
+	if page() != 1 {
+		t.Fatalf("a slow short drag settled on page %v, want 1", page())
+	}
+	swipe(mid, mid-60, 3) // flicked left: the next page
+	if page() != 2 {
+		t.Fatalf("a flick left settled on page %v, want 2", page())
+	}
+	swipe(mid, mid+60, 3) // flicked right: the page before
+	if page() != 1 {
+		t.Fatalf("a flick right settled on page %v, want 1", page())
+	}
+	swipe(mid, mid-int(w*0.7), 40) // slow but past the half: the next page
+	if page() != 2 {
+		t.Fatalf("a slow drag past the half settled on page %v, want 2", page())
+	}
+	if p.liked[0] || p.liked[1] || p.liked[2] {
+		t.Fatalf("a swipe liked a post: %v", p.liked)
+	}
+
+	phonePress(g, btnLeft)
+	phoneTicks(g, 40)
+	at := image.Pt(mid, y)
+	if got := g.feedPictureAt(p, posts, at); got != 1 {
+		t.Fatalf("the picture under the pointer is post %d, want the page on the screen 1", got)
+	}
+	g.in = input{pdown: true, pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if !p.liked[1] || p.liked[0] {
+		t.Fatalf("a tap on page 1 liked %v", p.liked)
+	}
+	phonePress(g, btnOK)
+	phoneTicks(g, 40)
+	if p.closing != 0 || page() != 2 {
+		t.Fatalf("OK did not step to the last page: page %v closing %d", page(), p.closing)
+	}
+	phonePress(g, btnOK)
+	if p.closing == 0 {
+		t.Fatal("OK on the last page did not put the phone down")
+	}
 }

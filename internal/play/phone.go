@@ -62,7 +62,7 @@ type phoneView struct {
 	scroll, aim, glide, grab, moved float64
 	liked                           map[int]bool
 	layout                          []feedPost
-	layoutW                         float64
+	layoutW, layoutH                float64
 	// rows are a page's rows laid out for a screen rowsW wide.
 	rows  []pageRow
 	rowsW float64
@@ -482,6 +482,12 @@ func (g *Game) phoneHint(p *phoneView) string {
 		return lang.T("クリック: 一時停止　Esc: チャットに戻る")
 	case p.watch != nil:
 		return lang.T("クリック: 一時停止　Esc: 閉じる")
+	case p.cue.App == "feed" && p.across() && p.cue.Browse:
+		return lang.T("左右・ホイール・横にドラッグ: 送る　Esc: 閉じる")
+	case p.cue.App == "feed" && p.across():
+		return lang.T("左右・ホイール・横にドラッグ: 送る　写真をクリック: いいね　Esc: 閉じる")
+	case p.cue.App == "feed" && p.cue.Browse:
+		return lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる")
 	case p.cue.App == "feed":
 		return lang.T("上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる")
 	case p.calling():

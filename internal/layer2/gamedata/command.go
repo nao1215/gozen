@@ -498,7 +498,9 @@ type MessageCue struct {
 // Time (the phone's clock when empty) and Date over its notices, which arrive
 // on a press or, with Auto, by themselves. Var receives the result the phone
 // was put down with: a page button's id (its label by default), answer or
-// decline for a call.
+// decline for a call. A feed scrolls down (the default) or, with Scroll
+// across, shows a post a screen swiped sideways; Browse makes it only looked
+// at, a tap liking nothing.
 type PhoneCue struct {
 	Hold     string         `yaml:"hold"`
 	App      string         `yaml:"app"`
@@ -509,6 +511,8 @@ type PhoneCue struct {
 	Date     string         `yaml:"date"`
 	Auto     bool           `yaml:"auto"`
 	Var      string         `yaml:"var"`
+	Scroll   string         `yaml:"scroll"`
+	Browse   bool           `yaml:"browse"`
 	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
 	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
 	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`

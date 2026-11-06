@@ -301,6 +301,8 @@ var english = map[string]string{
 	"応答": "Answer",
 	"拒否": "Decline",
 	"上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる": "Up, down, wheel or drag: scroll   Click a photo: like   Esc: close",
+	"左右・ホイール・横にドラッグ: 送る　写真をクリック: いいね　Esc: 閉じる":  "Left, right, wheel or swipe: next post   Click a photo: like   Esc: close",
+	"左右・ホイール・横にドラッグ: 送る　Esc: 閉じる":               "Left, right, wheel or swipe: next post   Esc: close",
 	"クリック: 次のメッセージ　Esc: 閉じる":                    "Click: next message   Esc: close",
 	"いいね！ %s 件": "%s likes",
 	// screens: battle
