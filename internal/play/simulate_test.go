@@ -194,8 +194,7 @@ func TestSimulateStopsInputWorkerOnQuit(t *testing.T) {
 		return bytes.Count(stack[:n], []byte(".simulateLines.func1("))
 	}
 	before := workers()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	_, err := Simulate(ctx, Options{FS: gameFiles(t), Seed: 3, Script: "quit"}, SimulateConfig{Lines: strings.NewReader("wait 1\nwait 2\n")})
 	if err != nil {
 		t.Fatal(err)

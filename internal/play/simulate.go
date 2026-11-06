@@ -57,7 +57,8 @@ func Simulate(ctx context.Context, opts Options, cfg SimulateConfig) (res Simula
 		return res, errors.Join(err, flush())
 	}
 	g.cancel()
-	g.context, g.cancel = context.WithCancel(ctx)
+	runctx, cancel := context.WithCancel(ctx)
+	g.context, g.cancel = runctx, cancel
 	defer func() {
 		if g.tr != nil {
 			res.Lines = g.tr.lines
@@ -66,7 +67,7 @@ func Simulate(ctx context.Context, opts Options, cfg SimulateConfig) (res Simula
 		err = errors.Join(err, g.Close(), flush())
 	}()
 	if cfg.Lines != nil {
-		g.in.script.next = g.simulateLines(g.context, cfg.Lines, flush)
+		g.in.script.next = g.simulateLines(runctx, cfg.Lines, flush)
 		g.in.script.rejected = func(line string, err error) {
 			g.emit("script_error", traceLine{"line": line, "error": err.Error()})
 		}
