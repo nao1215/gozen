@@ -135,7 +135,7 @@ func (db *DB) ExpandCall(call EventCall, env expr.Env) ([]Command, error) {
 		}
 		// The expression lexer only escapes the next byte; Go string escapes
 		// would change control characters into letters. Preserve their bytes.
-		args[each.Param] = MustExpr(`"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"`)
+		args[each.Param] = MustExpr(quoteExprString(id))
 		commands = append(commands, Command{Call: EventCall{Event: call.Event, Args: args, Ensemble: call.Ensemble}})
 	}
 	return commands, nil
