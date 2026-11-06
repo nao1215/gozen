@@ -596,7 +596,8 @@ func (c *checker) streams() {
 	t := s.Timing
 	// a beat of less than minBeat would have a stream that ends at once start again so
 	// often that catching the streams up would not end
-	if !(t.Say >= minBeat) || !(t.PerChar >= 0) || !(t.Chat >= minBeat) || !(t.Ask >= minBeat) {
+	if !finiteNumber(t.Say) || !finiteNumber(t.PerChar) || !finiteNumber(t.Chat) || !finiteNumber(t.Ask) ||
+		t.Say < minBeat || t.PerChar < 0 || t.Chat < minBeat || t.Ask < minBeat {
 		c.errorf(diag.OutOfRange, at("timing"), "say, chat and ask need at least 0.1 seconds, per_char 0 or more")
 	}
 	if m := s.Slot.Minutes; !(m > 0 && m <= 24*60) {
@@ -612,14 +613,16 @@ func (c *checker) streams() {
 			break
 		}
 	}
-	if a := s.Away; !(a.PerHour >= 0) || !(a.CapHours >= 0) || !(a.StarBonus >= 0) {
+	if a := s.Away; !finiteNumber(a.PerHour) || !finiteNumber(a.CapHours) || !finiteNumber(a.StarBonus) || a.PerHour < 0 || a.CapHours < 0 || a.StarBonus < 0 {
 		c.errorf(diag.OutOfRange, at("away"), "per_hour, cap_hours and star_bonus are 0 or more")
 	}
 	if len(s.Tips) == 0 || s.Tips[0] <= 0 || !slices.IsSorted(s.Tips) || len(slices.Compact(slices.Clone(s.Tips))) != len(s.Tips) {
 		c.errorf(diag.OutOfRange, at("tips"), "want one or more amounts above 0, smallest first, each once")
 	}
 	af := s.Affection
-	if af.Steps[0] != 0 || !slices.IsSorted(af.Steps) || len(slices.Compact(slices.Clone(af.Steps))) != len(af.Steps) || af.Comment < 0 || af.Reply < 0 || af.Answer < 0 || af.TipPer <= 0 || af.Stayed < 0 {
+	if slices.ContainsFunc(af.Steps, func(v float64) bool { return !finiteNumber(v) }) ||
+		!finiteNumber(af.Comment) || !finiteNumber(af.Reply) || !finiteNumber(af.Answer) || !finiteNumber(af.TipPer) || !finiteNumber(af.Stayed) ||
+		af.Steps[0] != 0 || !slices.IsSorted(af.Steps) || len(slices.Compact(slices.Clone(af.Steps))) != len(af.Steps) || af.Comment < 0 || af.Reply < 0 || af.Answer < 0 || af.TipPer <= 0 || af.Stayed < 0 {
 		c.errorf(diag.OutOfRange, at("affection"), "steps start at 0 and increase; the points are 0 or more and tip_per above 0")
 	}
 	if len(s.AnswerChance) != len(af.Steps) || slices.ContainsFunc(s.AnswerChance, func(v float64) bool { return !(v >= 0 && v <= 1) }) {
@@ -628,7 +631,7 @@ func (c *checker) streams() {
 	if s.Echo.MaxRunes < 0 || !(s.Echo.Chance >= 0 && s.Echo.Chance <= 1) {
 		c.errorf(diag.OutOfRange, at("echo"), "max_runes is 0 or more and chance from 0 to 1")
 	}
-	if s.Bounce.Amount < 0 || s.Bounce.Amount > 10 {
+	if !finiteNumber(s.Bounce.Amount) || s.Bounce.Amount < 0 || s.Bounce.Amount > 10 {
 		c.errorf(diag.OutOfRange, at("bounce.amount"), "want 0 to 10")
 	}
 	cr := s.Crowd
@@ -657,10 +660,10 @@ func (c *checker) streams() {
 		if !ch.Guest || ch.Room != "" {
 			c.file(w+".room", ch.Room)
 		}
-		if !(ch.Frame.Bottom > ch.Frame.Top) || ch.Frame.Top < 0 {
+		if !finiteNumber(ch.Frame.CX) || !finiteNumber(ch.Frame.Top) || !finiteNumber(ch.Frame.Bottom) || ch.Frame.Bottom <= ch.Frame.Top || ch.Frame.Top < 0 {
 			c.errorf(diag.OutOfRange, w+".frame", "bottom must be below top, and top 0 or more")
 		}
-		if v := ch.Voice; v.Pitch < 0 || v.Pitch > 2 || v.Rate < 0 || v.Rate > 10 {
+		if v := ch.Voice; !finiteNumber(v.Pitch) || !finiteNumber(v.Rate) || v.Pitch < 0 || v.Pitch > 2 || v.Rate < 0 || v.Rate > 10 {
 			c.errorf(diag.OutOfRange, w+".voice", "pitch is 0 to 2 and rate 0 to 10 (0 is 1)")
 		}
 		if len(ch.Greet) > len(af.Steps) {

@@ -91,3 +91,20 @@ func TestEntryPartsRejectIgnoredFieldsAndMissingBust(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEntryBustFiniteFractions(t *testing.T) {
+	for _, field := range []string{"width", "height", "top", "face"} {
+		for _, value := range []string{"0.5", ".nan", ".inf", "-.inf"} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				err := loadBoard(t, "10", "      - {label: Kiln, bounds: [0, 0, 200, 200], bust: {picture: kiln.png, "+field+": "+value+"}}\n")
+				if value == "0.5" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "bust") {
+					t.Fatalf("nonfinite bust fraction accepted or misdiagnosed: %v", err)
+				}
+			})
+		}
+	}
+}

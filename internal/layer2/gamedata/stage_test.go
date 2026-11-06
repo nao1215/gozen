@@ -325,3 +325,66 @@ func TestMapUnknown(t *testing.T) {
 		t.Fatalf("shown: %v", err)
 	}
 }
+
+func TestStageFiniteGeometry(t *testing.T) {
+	for _, field := range []string{"camera", "depth_bias", "speed"} {
+		for _, value := range []string{"0.5", ".nan", ".inf", "-.inf"} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				old, replacement := "    stage:", "    stage:\n      "+field+": "+value
+				if field == "speed" {
+					old, replacement = "speed: 0.9", "speed: "+value
+				}
+				_, files := scenesWith(old, replacement)
+				_, err := testgame.TryLoad(files)
+				if value == "0.5" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), field) {
+					t.Fatalf("nonfinite geometry accepted or misdiagnosed: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestSceneFinitePointsAndScale(t *testing.T) {
+	for _, field := range []struct{ name, old, format, path string }{
+		{"map x", "at: [32, 15]", "at: [%s, 15]", "map.points.fork.at"},
+		{"map y", "at: [32, 15]", "at: [32, %s]", "map.points.fork.at"},
+		{"road point", "via: [[20, 20]]", "via: [[%s, 20]]", "map.roads"},
+		{"scale height", "height: 12", "height: %s", "stage.scale"},
+		{"scale point", "at: [48, 50], height: 12", "at: [%s, 50], height: 12", "stage.scale"},
+		{"front base", "base: 25", "base: %s", "stage.fronts"},
+	} {
+		for _, value := range []string{".nan", ".inf", "-.inf"} {
+			t.Run(field.name+"/"+value, func(t *testing.T) {
+				_, files := scenesWith(field.old, fmt.Sprintf(field.format, value))
+				_, err := testgame.TryLoad(files)
+				if err == nil || !strings.Contains(err.Error(), field.path) {
+					t.Fatalf("nonfinite value accepted or misdiagnosed: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestDollFaceCoordinatesMustBeFinite(t *testing.T) {
+	for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {
+		for i := range 3 {
+			t.Run(fmt.Sprintf("%d/%s", i, value), func(t *testing.T) {
+				parts := []string{"0.5", "0.1", "0.2"}
+				parts[i] = value
+				_, files := scenesWith("doll: {hair: bun,", "doll: {face_at: ["+strings.Join(parts, ",")+"], hair: bun,")
+				_, err := testgame.TryLoad(files)
+				if value == "0.1" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "face_at") {
+					t.Fatalf("nonfinite face coordinates accepted: %v", err)
+				}
+			})
+		}
+	}
+}

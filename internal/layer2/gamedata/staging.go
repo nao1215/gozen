@@ -204,7 +204,7 @@ func (c *checker) effectCue(w string, e EffectCue) {
 			c.errorf(diag.Shape, w+".who", "%s is of the whole screen; who goes with shake or a reaction", e.Name)
 		}
 	}
-	if e.Seconds < 0 || e.Hold < 0 {
+	if !finiteNumber(e.Seconds) || !finiteNumber(e.Hold) || e.Seconds < 0 || e.Hold < 0 {
 		c.errorf(diag.OutOfRange, w, "seconds and hold are 0 or more")
 	}
 	if (e.Color.Valid || e.Hold != 0) && e.Name != "fade" {
@@ -267,7 +267,7 @@ func (c *checker) musicCommand(w string, m MusicCue) {
 	if m.Fade != 0 || m.Stop {
 		c.needsVersion(w, "music fade and stop", SchemaVersion4)
 	}
-	if m.Fade < 0 {
+	if !finiteNumber(m.Fade) || m.Fade < 0 {
 		c.errorf(diag.OutOfRange, w+".fade", "fade is seconds, 0 or more")
 	}
 	if m.Stop && (m.Song != "" || m.Mood != "") {

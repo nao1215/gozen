@@ -250,3 +250,41 @@ func TestStreamsMissingVoice(t *testing.T) {
 		})
 	}
 }
+
+func TestStreamFiniteSettings(t *testing.T) {
+	for _, field := range []struct{ name, old, format, path string }{
+		{"say duration", "say: 1.8", "say: %s", "timing"},
+		{"chat duration", "chat: 1.6", "chat: %s", "timing"},
+		{"ask duration", "ask: 12", "ask: %s", "timing"},
+		{"character duration", "per_char: 0.11", "per_char: %s", "timing"},
+		{"affection steps", "steps: [0, 10, 20]", "steps: [0, 10, %s]", "affection"},
+		{"comment points", "comment: 1", "comment: %s", "affection"},
+		{"reply points", "reply: 2", "reply: %s", "affection"},
+		{"answer points", "answer: 3", "answer: %s", "affection"},
+		{"tip points", "tip_per: 10", "tip_per: %s", "affection"},
+		{"stay points", "stayed: 4", "stayed: %s", "affection"},
+		{"bounce", "amount: 1", "amount: %s", "bounce.amount"},
+		{"pitch", "pitch: 1.1", "pitch: %s", "voice"},
+		{"rate", "voice: {pitch: 1.1}", "voice: {rate: %s}", "voice"},
+		{"frame center", "cx: 100", "cx: %s", "frame"},
+		{"frame top", "top: 0", "top: %s", "frame"},
+		{"frame bottom", "bottom: 200", "bottom: %s", "frame"},
+		{"away rate", "per_hour: 100", "per_hour: %s", "away"},
+		{"away cap", "cap_hours: 24", "cap_hours: %s", "away"},
+		{"away bonus", "star_bonus: 0.1", "star_bonus: %s", "away"},
+	} {
+		for _, value := range []string{".nan", ".inf", "-.inf"} {
+			t.Run(field.name+"/"+value, func(t *testing.T) {
+				files := streamGame()
+				if !strings.Contains(files["data/streams.yaml"], field.old) {
+					t.Fatal("fixture replacement missing")
+				}
+				files["data/streams.yaml"] = strings.Replace(files["data/streams.yaml"], field.old, fmt.Sprintf(field.format, value), 1)
+				_, err := testgame.TryLoad(files)
+				if err == nil || !strings.Contains(err.Error(), field.path) {
+					t.Fatalf("nonfinite setting accepted or misdiagnosed: %v", err)
+				}
+			})
+		}
+	}
+}

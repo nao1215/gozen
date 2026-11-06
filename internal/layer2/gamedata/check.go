@@ -361,17 +361,17 @@ func (db *DB) Check() []error {
 		if len(m.Wallpaper) != 0 && len(m.Wallpaper) != 3 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material.wallpaper", "want three gradient colors")
 		}
-		if m.Refraction < 0 || m.Refraction > 32 || m.WallpaperStrength < 0 || m.WallpaperStrength > 1 {
+		if !finiteNumber(m.Refraction) || !finiteNumber(m.WallpaperStrength) || m.Refraction < 0 || m.Refraction > 32 || m.WallpaperStrength < 0 || m.WallpaperStrength > 1 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material", "refraction must be in [0,32]; wallpaper_strength in [0,1]")
 		}
-		if m.Blur < 0 || m.Blur > 64 || m.Opacity < 0 || m.Opacity > 1 || m.Border < 0 || m.Border > 1 || m.Shadow < 0 || m.Shadow > 1 {
+		if !finiteNumber(m.Blur) || !finiteNumber(m.Opacity) || !finiteNumber(m.Border) || !finiteNumber(m.Shadow) || m.Blur < 0 || m.Blur > 64 || m.Opacity < 0 || m.Opacity > 1 || m.Border < 0 || m.Border > 1 || m.Shadow < 0 || m.Shadow > 1 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.material", "blur must be in [0,64]; opacity, border and shadow in [0,1]")
 		}
 	}
 	c.novelWindow(&g.UI)
 	if g.UI.Balloon != 0 {
 		c.needsVersion("game.yaml ui.balloon", "ui.balloon", SchemaVersion3)
-		if g.UI.Balloon < 0.01 || g.UI.Balloon > 0.2 {
+		if !finiteNumber(g.UI.Balloon) || g.UI.Balloon < 0.01 || g.UI.Balloon > 0.2 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.balloon", "want a fraction of the screen's height in [0.01, 0.2], got %g", g.UI.Balloon)
 		}
 	}
@@ -415,7 +415,7 @@ func (db *DB) Check() []error {
 	}
 	if tp := g.UI.TalkPortrait; tp != (TalkPortrait{}) {
 		c.needsVersion("game.yaml ui.talk_portrait", "ui.talk_portrait", SchemaVersion3)
-		if tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
+		if !finiteNumber(tp.X) || !finiteNumber(tp.Bottom) || !finiteNumber(tp.Height) || tp.X < 0 || tp.X > 1 || tp.Bottom < 0 || tp.Bottom > 4 || tp.Height < 0 || tp.Height > 4 {
 			c.errorf(diag.OutOfRange, "game.yaml ui.talk_portrait", "want x from 0 to 1, and bottom and height from 0 to 4 (fractions of the screen), got x %g, bottom %g, height %g", tp.X, tp.Bottom, tp.Height)
 		}
 	}
@@ -426,7 +426,7 @@ func (db *DB) Check() []error {
 	for i, f := range g.TitleFigures {
 		w := fmt.Sprintf("game.yaml title_figures[%d]", i)
 		c.picture(w, Picture{File: f.File})
-		if f.File == "" || f.X < 0 || f.X > 1 || f.Bottom < 0 || f.Height < 0 {
+		if f.File == "" || !finiteNumber(f.X) || !finiteNumber(f.Bottom) || !finiteNumber(f.Height) || f.X < 0 || f.X > 1 || f.Bottom < 0 || f.Height < 0 {
 			c.errorf(diag.OutOfRange, w, "a figure needs a file, x from 0 to 1, and bottom and height of 0 or more")
 		}
 	}
@@ -434,7 +434,7 @@ func (db *DB) Check() []error {
 	c.file("game.yaml fonts.subtitle", g.Fonts.Subtitle)
 	if tt := g.TitleText; tt != (TitleText{}) {
 		c.needsVersion("game.yaml title_text", "title_text", SchemaVersion3)
-		bad := tt.Size < 0 || tt.SubtitleSize < 0 || tt.Tracking != nil && *tt.Tracking < 0 || tt.SubtitleTracking != nil && *tt.SubtitleTracking < 0
+		bad := !finiteNumber(tt.Size) || tt.Size < 0 || !finiteNumber(tt.SubtitleSize) || tt.SubtitleSize < 0 || tt.Tracking != nil && (!finiteNumber(*tt.Tracking) || *tt.Tracking < 0) || tt.SubtitleTracking != nil && (!finiteNumber(*tt.SubtitleTracking) || *tt.SubtitleTracking < 0)
 		if bad {
 			c.errorf(diag.OutOfRange, "game.yaml title_text", "sizes and tracking must be 0 or more")
 		}
@@ -533,12 +533,17 @@ func (db *DB) Check() []error {
 		c.expr(w+".value", m.Value, FieldNames)
 		c.expr(w+".max_value", m.MaxValue, FieldNames)
 		c.expr(w+".when", m.When, FieldNames)
-		if !m.Value.Set() || m.Max < 0 {
+		if !m.Value.Set() || !finiteNumber(m.Max) || m.Max < 0 {
 			c.errorf(diag.OutOfRange, w, "a meter needs value (and max 0 or more)")
 		}
 		if m.Actor != "" {
 			_, ok := db.Actors[m.Actor]
 			c.ref(w+".actor", "actor", m.Actor, ok)
+		}
+		for j, mark := range m.Marks {
+			if !finiteNumber(mark) {
+				c.errorf(diag.OutOfRange, fmt.Sprintf("%s.marks[%d]", w, j), "a meter mark must be finite")
+			}
 		}
 		if len(m.MarkLabels) > len(m.Marks) {
 			c.errorf(diag.Shape, w+".mark_labels", "%d labels for %d marks", len(m.MarkLabels), len(m.Marks))
@@ -585,7 +590,7 @@ func (db *DB) Check() []error {
 			_, ok := db.States[cb.State]
 			c.ref(w+".state", "state", cb.State, ok)
 		}
-		if cb.Size < 0 || cb.Count < 0 || cb.Speed < 0 || cb.Rise < 0 {
+		if !finiteNumber(cb.Size) || !finiteNumber(cb.Speed) || !finiteNumber(cb.Rise) || cb.Size < 0 || cb.Count < 0 || cb.Speed < 0 || cb.Rise < 0 {
 			c.errorf(diag.OutOfRange, w, "size, count, speed and rise must not be negative")
 		}
 	}
@@ -721,16 +726,23 @@ func (db *DB) Check() []error {
 			}
 		}
 		c.file(w+".cutin", a.Cutin)
-		if len(a.FaceBox) != 0 && len(a.FaceBox) != 3 {
-			c.errorf(diag.Shape, w+".face_box", "want [x, y, size] (parts of the picture)")
+		for _, box := range []struct {
+			name   string
+			values []float64
+		}{{"face_box", a.FaceBox}, {"cutin_box", a.CutinBox}} {
+			if len(box.values) != 0 && len(box.values) != 3 {
+				c.errorf(diag.Shape, w+"."+box.name, "want [x, y, size] (parts of the picture)")
+			}
+			for i, value := range box.values {
+				if !finiteNumber(value) {
+					c.errorf(diag.OutOfRange, fmt.Sprintf("%s.%s[%d]", w, box.name, i), "picture coordinates must be finite")
+				}
+			}
 		}
-		if len(a.CutinBox) != 0 && len(a.CutinBox) != 3 {
-			c.errorf(diag.Shape, w+".cutin_box", "want [x, y, size] (parts of the picture)")
-		}
-		if a.FaceShade < 0 || a.FaceShade > 1 {
+		if !finiteNumber(a.FaceShade) || a.FaceShade < 0 || a.FaceShade > 1 {
 			c.errorf(diag.OutOfRange, w+".face_shade", "want 0 to 1 (0 as drawn, 1 black), got %g", a.FaceShade)
 		}
-		if a.FaceShadeTop < 0 || a.FaceShadeTop > 1 {
+		if !finiteNumber(a.FaceShadeTop) || a.FaceShadeTop < 0 || a.FaceShadeTop > 1 {
 			c.errorf(diag.OutOfRange, w+".face_shade_top", "want 0 to 1 (0 as drawn, 1 black), got %g", a.FaceShadeTop)
 		}
 		if (a.FaceShade > 0 || a.FaceShadeTop > 0) && a.Faces == "" {
@@ -814,7 +826,7 @@ func (db *DB) Check() []error {
 		if s.Restrict != "" && s.Restrict != "skip" && s.Restrict != "confuse" {
 			c.errorf(diag.NotAWord, w+".restrict", "want skip or confuse, not %q", s.Restrict)
 		}
-		if s.RestrictChance < 0 || s.RestrictChance >= 1 || s.RestrictChance > 0 && s.Restrict != "skip" {
+		if !finiteNumber(s.RestrictChance) || s.RestrictChance < 0 || s.RestrictChance >= 1 || s.RestrictChance > 0 && s.Restrict != "skip" {
 			c.errorf(diag.OutOfRange, w+".restrict_chance", "want 0 < chance < 1 with restrict: skip, not %g", s.RestrictChance)
 		}
 		for i := range s.Tick {
@@ -902,10 +914,10 @@ func (db *DB) Check() []error {
 			if ls.Level < 1 {
 				c.errorf(diag.OutOfRange, w+".level_scale.level", "%d (want 1 or more)", ls.Level)
 			}
-			if ls.Rate <= 0 || ls.Rate > 0.2 {
+			if !finiteNumber(ls.Rate) || ls.Rate <= 0 || ls.Rate > 0.2 {
 				c.errorf(diag.OutOfRange, w+".level_scale.rate", "%g (want more than 0, up to 0.2)", ls.Rate)
 			}
-			if !ls.Unbounded && (ls.Max <= 0 || ls.Max > 0.5) { // do not make it unboundedly strong like FF8 (training must always make things easier)
+			if !ls.Unbounded && (!finiteNumber(ls.Max) || ls.Max <= 0 || ls.Max > 0.5) { // do not make it unboundedly strong like FF8 (training must always make things easier)
 				c.errorf(diag.OutOfRange, w+".level_scale.max", "%g (want more than 0, up to 0.5)", ls.Max)
 			}
 			for _, s := range ls.Stats {
@@ -1411,7 +1423,7 @@ func (c *checker) effect(where string, e *Effect) {
 		}
 	}
 	n := 0
-	if e.Recoil < 0 || e.Recoil > 1 {
+	if !finiteNumber(e.Recoil) || e.Recoil < 0 || e.Recoil > 1 {
 		c.errorf(diag.OutOfRange, where+".recoil", "recoil is a part of the damage (0 to 1)")
 	}
 	for _, set := range []bool{e.Damage.Set(), e.Heal.Set(), e.AddState != "", e.Remove != "", e.Revive.Set(), e.Escape, e.Summon != "", e.Transform != "", e.Merge != nil} {
@@ -1777,10 +1789,10 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			if f := cmd.Image.Fit; f != "" && f != "contain" && f != "cover" {
 				c.errorf(diag.NotAWord, w+".image", "fit is contain or cover, not %q", f)
 			}
-			if cmd.Image.Fade < 0 {
+			if !finiteNumber(cmd.Image.Fade) || cmd.Image.Fade < 0 {
 				c.errorf(diag.OutOfRange, w+".image", "fade is seconds (0 or more)")
 			}
-			if cmd.Image.Auto < 0 || (cmd.Image.Auto > 0 && (len(cmd.Image.Files) == 0 || cmd.Image.Page != 0 || cmd.Image.Pick.Set())) {
+			if !finiteNumber(cmd.Image.Auto) || cmd.Image.Auto < 0 || (cmd.Image.Auto > 0 && (len(cmd.Image.Files) == 0 || cmd.Image.Page != 0 || cmd.Image.Pick.Set())) {
 				c.errorf(diag.OutOfRange, w+".image.auto", "auto is seconds a picture (more than 0), with files shown one after another (not page or pick)")
 			}
 			if cmd.Image.Page < 0 || (cmd.Image.Page > 0 && len(cmd.Image.Files) == 0) {

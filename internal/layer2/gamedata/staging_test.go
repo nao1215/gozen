@@ -1,6 +1,7 @@
 package gamedata_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -47,5 +48,22 @@ func TestStagingWords(t *testing.T) {
 	_, err := testgame.TryLoad(map[string]string{"game.yaml": v4 + testgame.Game, "data/z.yaml": "locations: {hall: {music: {song: theme, fade: 1}}}\n" + music})
 	if err == nil || !strings.Contains(err.Error(), "fade and stop go only in the music command") {
 		t.Errorf("a place's music with a fade: %v", err)
+	}
+}
+
+func TestStagingFiniteDurations(t *testing.T) {
+	for _, command := range []string{"effect: {name: fade, seconds: %s}", "effect: {name: fade, hold: %s}", "music: {stop: true, fade: %s}"} {
+		for _, value := range []string{"0", "0.25", ".nan", ".inf", "-.inf"} {
+			t.Run(command+"/"+value, func(t *testing.T) {
+				_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 4\nid: timing\n" + testgame.Game, "data/timing.yaml": "events: {timing: {do: [{" + fmt.Sprintf(command, value) + "}]}}\n"})
+				if value == "0" || value == "0.25" {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil {
+					t.Fatal("nonfinite duration accepted")
+				}
+			})
+		}
 	}
 }
