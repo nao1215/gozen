@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"math"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -40,6 +42,12 @@ type phoneView struct {
 	// tells that the keys moved it there, so its ring shows.
 	focus int
 	keyed bool
+	// viewPic is the chat's picture opened over the whole screen ("" for
+	// none), seenPic the pictures opened already, and pics where the chat's
+	// pictures were drawn, for a click on them.
+	viewPic string
+	seenPic map[int]bool
+	pics    map[int]picRect
 	// watch is the clip playing on the phone turned on its side: the video app's
 	// own, or a chat message's opened by the player (watchMsg is its index).
 	watch    *phoneClip
@@ -83,7 +91,8 @@ const (
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
-		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1}
+		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1,
+		seenPic: map[int]bool{}, pics: map[int]picRect{}}
 	switch cue.App {
 	case "chat", "lock":
 		p.shown = 1
@@ -240,6 +249,10 @@ func (g *Game) updatePhone() bool {
 			g.stopWatching(p)
 			return false
 		}
+		if p.viewPic != "" {
+			p.viewPic = ""
+			return false
+		}
 		if p.declineCall() {
 			return false
 		}
@@ -251,6 +264,10 @@ func (g *Game) updatePhone() bool {
 		return false
 	}
 	switch {
+	case p.viewPic != "":
+		if in.advance() {
+			p.viewPic = ""
+		}
 	case p.watch != nil:
 		g.updatePhoneWatch(p)
 	case p.cue.App == "chat":
@@ -293,38 +310,6 @@ func (g *Game) updatePhoneWatch(p *phoneView) {
 func (g *Game) stopWatching(p *phoneView) {
 	p.watch, p.watchMsg = nil, -1
 	p.turn(false)
-}
-
-func (g *Game) updatePhoneChat(p *phoneView) {
-	if p.typing > 0 {
-		p.typing--
-		if p.typing == 0 {
-			p.shown++
-		}
-		return
-	}
-	if !g.in.advance() && !g.phoneAuto(p) {
-		return
-	}
-	// The newest message is a video not yet seen: the press opens it.
-	last := p.shown - 1
-	if m := p.cue.Messages[last]; m.Video != nil && !g.autoRead {
-		key := fmt.Sprintf("msg%d", last)
-		if c := p.clip(key, m.Video); c.played == 0 {
-			p.watch, p.watchMsg = c, last
-			p.turn(true)
-			return
-		}
-	}
-	if p.shown >= len(p.cue.Messages) {
-		p.closing = phoneRise
-		return
-	}
-	if p.cue.Messages[p.shown].Mine {
-		p.shown++
-		return
-	}
-	p.typing = phoneTyping
 }
 
 // phoneAuto lets the auto mode read a chat as it reads lines.
@@ -470,6 +455,8 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	screen.Clear()
 	gfx.FillRect(screen, 0, 0, float32(scw), float32(sch), phoneScreen, false)
 	switch {
+	case p.viewPic != "":
+		g.drawPhonePicture(p, screen, scw, sch)
 	case p.watch != nil && p.side:
 		g.drawPhoneWatch(p, screen, scw, sch)
 	case p.cue.App == "chat":
@@ -539,91 +526,6 @@ const (
 	phoneChatSize = 17.0
 	phoneChatPad  = 12.0
 )
-
-func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
-	// The header goes over the messages that scroll up under it.
-	defer func() {
-		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
-		gfx.DrawTextLeft(dst, "<", 18, 44, 22, phoneMine)
-	}()
-	top := 85.0
-	maxW := w * 0.68
-	type bubble struct {
-		i      int
-		lines  []string
-		bw, bh float64
-	}
-	var bubbles []bubble
-	for i, m := range p.cue.Messages[:min(p.shown, len(p.cue.Messages))] {
-		b := bubble{i: i}
-		switch {
-		case m.Video != nil:
-			b.bw, b.bh = maxW, maxW*0.5625
-		case m.Picture != "":
-			b.bw, b.bh = maxW*0.85, maxW*0.85
-		default:
-			b.lines = gfx.Wrap(m.Text, phoneChatSize, maxW-phoneChatPad*2)
-			for _, l := range b.lines {
-				b.bw = math.Max(b.bw, gfx.TextWidth(l, phoneChatSize))
-			}
-			b.bw += phoneChatPad * 2
-			b.bh = float64(len(b.lines))*gfx.LineHeight(phoneChatSize) + phoneChatPad*1.4
-		}
-		if !m.Mine && m.From != "" {
-			b.bh += 20
-		}
-		bubbles = append(bubbles, b)
-	}
-	// The newest message sits at the bottom; the older ones scroll up.
-	y := h - 28
-	if p.typing > 0 {
-		y -= 48
-		g.drawTypingDots(dst, p, 64, y+8)
-	}
-	for i := len(bubbles) - 1; i >= 0 && y > top-200; i-- {
-		b := bubbles[i]
-		y -= b.bh
-		g.drawChatBubble(dst, p, b.i, b.lines, w, y, b.bw, b.bh)
-		y -= 12
-	}
-}
-
-func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, i int, lines []string, w, y, bw, bh float64) {
-	m := p.cue.Messages[i]
-	x := 64.0
-	fill, ink := phoneBubble, phoneInk
-	if m.Mine {
-		x, fill, ink = w-bw-16, phoneMine, phoneOnVideo
-	} else {
-		g.drawPhoneIcon(dst, p, m.Icon, 14, y, 40)
-		if m.From != "" {
-			gfx.DrawTextLeft(dst, m.From, x, y, 13, phoneMuted)
-			y += 20
-			bh -= 20
-		}
-	}
-	switch {
-	case m.Video != nil:
-		key := fmt.Sprintf("msg%d", i)
-		c := p.clip(key, m.Video)
-		g.drawPhoneMedia(dst, p, key+".thumb", c, x, y, bw, bh, 14)
-		gfx.FillCircle(dst, float32(x+bw/2), float32(y+bh/2), 26, color.NRGBA{0, 0, 0, 0x88}, true)
-		drawPlay(dst, x+bw/2+4, y+bh/2, 14)
-		gfx.DrawTextLeft(dst, clipTime(c.length()), x+10, y+bh-24, 13, phoneOnVideo)
-	case m.Picture != "":
-		if img := g.pics.get(m.Picture); img != nil {
-			frame := p.frame(fmt.Sprintf("pic%d", i), bw, bh)
-			drawCoverTop(frame, img, 0, 0, bw, bh)
-			gfx.RoundedMask(frame, float32(14*gfx.Scale()))
-			drawFrame(dst, frame, x, y)
-		}
-	default:
-		gfx.FillRoundRect(dst, float32(x), float32(y), float32(bw), float32(bh), 18, fill)
-		for k, l := range lines {
-			gfx.DrawTextLeft(dst, l, x+phoneChatPad, y+phoneChatPad*0.6+float64(k)*gfx.LineHeight(phoneChatSize), phoneChatSize, ink)
-		}
-	}
-}
 
 func clipTime(ticks int) string {
 	s := ticks / 60
@@ -749,13 +651,35 @@ func drawHeart(dst *ebiten.Image, cx, cy, r float64, clr color.Color, filled boo
 
 // drawPhoneIcon draws a round picture (a sender's or a poster's icon), or a
 // plain circle when there is none.
-func (g *Game) drawPhoneIcon(dst *ebiten.Image, p *phoneView, path string, x, y, size float64) {
+//
+// Without a picture it is a circle of a color kept for the name, with the
+// name's first letter, as a messaging app draws one.
+func (g *Game) drawPhoneIcon(dst *ebiten.Image, p *phoneView, path, name string, x, y, size float64) {
 	icon := p.icon(g, path, size)
-	if icon == nil {
+	if icon != nil {
+		drawFrame(dst, icon, x, y)
+		return
+	}
+	letter := nameInitial(name)
+	if letter == "" {
 		gfx.FillCircle(dst, float32(x+size/2), float32(y+size/2), float32(size/2), phoneLine, true)
 		return
 	}
-	drawFrame(dst, icon, x, y)
+	c := nameColor(name)
+	c.A = 0xff
+	gfx.FillCircle(dst, float32(x+size/2), float32(y+size/2), float32(size/2), c, true)
+	ts := size * 0.48
+	gfx.DrawText(dst, letter, x+size/2, y+size/2-gfx.LineHeight(ts)/2, ts, phoneOnVideo)
+}
+
+// nameInitial is the first letter or digit of a name, upper-cased ("" for none).
+func nameInitial(name string) string {
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return strings.ToUpper(string(r))
+		}
+	}
+	return ""
 }
 
 // icon is a picture cut to a circle at size UI units, made once per phone.

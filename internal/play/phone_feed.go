@@ -259,8 +259,9 @@ func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
 func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost, y, w float64) {
 	post := p.cue.Posts[i]
 	gfx.FillRect(dst, 0, float32(y), float32(w), float32(l.h), phoneBubble, false)
-	g.drawPhoneIcon(dst, p, post.Icon, 12, y+10, 38)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80), 60, y+18, 16, phoneInk)
+	g.drawPhoneIcon(dst, p, post.Icon, post.Who, 12, y+10, 38)
+	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), 60, y+18, 16, phoneInk)
+	gfx.DrawTextRight(dst, post.Time, w-14, y+20, 13, phoneMuted)
 	py := y + phoneFeedHead
 	switch {
 	case l.text:

@@ -691,3 +691,63 @@ func TestPhoneFeedLikeScripted(t *testing.T) {
 		t.Fatalf("a short scripted drag did not like the post (scroll %v)", p.scroll)
 	}
 }
+
+// TestPhoneChatPicture: a picture's bubble takes the picture's shape, a press
+// on the newest picture opens it over the screen, Cancel goes back, and a
+// click on a picture opens it again; a day of its own comes without dots.
+func TestPhoneChatPicture(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{From: "Ann", Picture: "wide.png", Time: "9:41"}, {Day: "Today"}, {Mine: true, Text: "Nice", Read: true, Time: "9:42"},
+	}})
+	g.pics.imgs["wide.png"] = &picEntry{img: ebiten.NewImage(160, 90)}
+	p := g.phone
+	b := g.chatBubble(p, 0, 200)
+	if math.Abs(b.bh/b.bw-9.0/16) > 1e-9 {
+		t.Fatalf("the bubble is %vx%v, want the picture's 16:9", b.bw, b.bh)
+	}
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnOK)
+	if p.viewPic != "wide.png" {
+		t.Fatal("a press on the newest picture did not open it")
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	phonePress(g, btnCancel)
+	if p.viewPic != "" || p.closing != 0 {
+		t.Fatal("Cancel did not go back to the chat")
+	}
+	g.drawPhone(dst)
+	r, ok := p.pics[0]
+	if !ok {
+		t.Fatal("the picture's place was not kept")
+	}
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	g.in = input{click: true, mouse: image.Pt(int(sx+r.x+r.w/2), int(sy+r.y+r.h/2))}
+	g.updatePhone()
+	if p.viewPic != "wide.png" {
+		t.Fatal("a click on the picture did not open it")
+	}
+	phonePress(g, btnOK)
+	phonePress(g, btnOK)
+	if p.shown != 2 || p.typing != 0 {
+		t.Fatalf("the day did not come at once: shown %d typing %d", p.shown, p.typing)
+	}
+	phonePress(g, btnOK)
+	if p.shown != 3 {
+		t.Fatalf("the owner's message did not come: %d", p.shown)
+	}
+	g.drawPhone(dst)
+}
+
+// TestPhoneInitial: an icon without a picture shows the name's first letter.
+func TestPhoneInitial(t *testing.T) {
+	for in, want := range map[string]string{"sam.travels": "S", "@lena_k": "L", "": "", "3am": "3"} {
+		if got := nameInitial(in); got != want {
+			t.Errorf("%q: %q, want %q", in, got, want)
+		}
+	}
+	if nameColor("sam") != nameColor("sam") {
+		t.Error("a name's color is not kept")
+	}
+}

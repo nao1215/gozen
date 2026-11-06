@@ -621,7 +621,14 @@ func (p PhoneCue) Do(r PhoneResult) []Command {
 // is their round picture under assets/. Text, Picture (under assets/) or Video
 // is the bubble's content; a video plays on the phone turned on its side when
 // the player opens it.
+//
+// Time shows small beside the bubble, Read marks the owner's message as read,
+// and Day puts a day's separator over the message (a message of only Day is
+// the separator alone). All are interpolated.
 type PhoneMessage struct {
+	Time    string      `yaml:"time"`
+	Read    bool        `yaml:"read"`
+	Day     string      `yaml:"day"`
 	From    string      `yaml:"from"`
 	Icon    string      `yaml:"icon"`
 	Mine    bool        `yaml:"mine"`
@@ -643,6 +650,7 @@ type PhonePost struct {
 	Video   *PhoneVideo `yaml:"video" json:",omitempty"`
 	Text    string      `yaml:"text"`
 	Likes   int         `yaml:"likes"`
+	Time    string      `yaml:"time"`
 	Replies int         `yaml:"replies"`
 	Reposts int         `yaml:"reposts"`
 }

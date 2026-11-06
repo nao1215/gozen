@@ -182,9 +182,11 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	c.text(where+".title", p.Title, names)
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
-		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n != 1 {
-			c.errorf(diag.Shape, at, "a message needs text, picture or video (one of them)")
+		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n > 1 || n == 0 && m.Day == "" {
+			c.errorf(diag.Shape, at, "a message needs text, picture or video (one of them), or only a day")
 		}
+		c.text(at+".time", m.Time, names)
+		c.text(at+".day", m.Day, names)
 		c.phoneVideo(at+".video", m.Video, names)
 		c.text(at+".from", m.From, names)
 		c.text(at+".text", m.Text, names)
@@ -204,6 +206,7 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 			c.errorf(diag.Shape, at+".likes", "likes must not be negative")
 		}
 		c.text(at+".who", post.Who, names)
+		c.text(at+".time", post.Time, names)
 		c.text(at+".text", post.Text, names)
 		c.picture(at+".picture", Picture{File: post.Picture})
 		c.picture(at+".icon", Picture{File: post.Icon})

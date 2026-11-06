@@ -287,6 +287,7 @@ var english = map[string]string{
 	"返信 %s 件":             "%s replies",
 	"リポスト %s 件":           "%s reposts",
 	"上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる": "Up, down or drag: scroll   Left, right, Tab: button   Enter: press   Esc: close",
+	"既読": "Read",
 	"応答": "Answer",
 	"拒否": "Decline",
 	"上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる": "Up, down, wheel or drag: scroll   Click a photo: like   Esc: close",

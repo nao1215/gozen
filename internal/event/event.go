@@ -1654,11 +1654,12 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	for i := range p.Messages {
 		m := &p.Messages[i]
 		m.From, m.Text, m.Video = fill(m.From), fill(m.Text), video(m.Video)
+		m.Time, m.Day = fill(m.Time), fill(m.Day)
 	}
 	p.Posts = append([]data.PhonePost(nil), p.Posts...)
 	for i := range p.Posts {
 		post := &p.Posts[i]
-		post.Who, post.Text, post.Video = fill(post.Who), fill(post.Text), video(post.Video)
+		post.Who, post.Text, post.Video, post.Time = fill(post.Who), fill(post.Text), video(post.Video), fill(post.Time)
 	}
 	p.Video = video(p.Video)
 	p.URL, p.Time, p.Date = fill(p.URL), fill(p.Time), fill(p.Date)

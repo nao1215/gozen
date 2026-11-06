@@ -326,7 +326,7 @@ func drawLocked(dst *ebiten.Image, x, y, w, h float64, label string) {
 func (g *Game) drawPageItem(dst *ebiten.Image, p *phoneView, it *data.PhoneItem, x, y, iw float64) {
 	tx := x
 	if it.Icon != "" {
-		g.drawPhoneIcon(dst, p, it.Icon, x, y+10, 42)
+		g.drawPhoneIcon(dst, p, it.Icon, it.Title, x, y+10, 42)
 		tx += 54
 	}
 	vw := gfx.TextWidth(it.Value, 16)
