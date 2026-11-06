@@ -89,25 +89,25 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Two languages | Staging (`stand`, `effect`) |
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
 | Event picture with its line | Phone: a chat |
-| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | ![a team chat on a phone: messages arrive one by one with a picture, then a clip sent in the chat turns the phone on its side and plays a recorded call](docs/images/phone-chat.gif) |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | ![a team chat on a phone: messages arrive one by one with times and a read mark, a picture opens over the screen, then a clip sent in the chat turns the phone on its side and plays a recorded call](docs/images/phone-chat.gif) |
 
 #### Phone apps
 
 `phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)). All from the office sample.
 
-| Chat: a picture and a clip sent in it | Feed: scrolled, a clip post, likes |
+| Feed: scrolled, a clip post, likes | Video on its side: footage |
 |:--|:--|
-| ![a team chat on a phone: messages arrive one by one with a picture, then a clip sent in the chat turns the phone on its side and plays a recorded call](docs/images/phone-chat.gif) | ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](docs/images/phone-feed.gif) |
-| Video on its side: footage | Video: a puppet clip |
-| ![a video app: the phone turns on its side and plays footage of a battle from the Go Zen sample, letterboxed](docs/images/phone-video.gif) | ![a video app playing Mia's clip: a picture with a puppet in front that breathes, sways and jiggles](docs/images/phone-puppet.gif) |
-| Page: a shop site with a picture grid | Page: a bank transfer to confirm |
-| ![a browser page of a clothing shop: a grid of pictures, two list items with prices and a button tapped](docs/images/phone-shop.gif) | ![a bank app: the balance, a transfer to confirm and recent items; Confirm is tapped and the story goes on from it](docs/images/phone-bank.gif) |
-| Lock screen: notices arriving | Lock screen: an incoming call answered |
-| ![the lock screen at 7:12: a bank notice, a chat preview and a calendar reminder arrive one a press](docs/images/phone-lock.gif) | ![a night on-call: two monitoring notices, an incoming call from the on-call app declined, ringing again and answered](docs/images/phone-call.gif) |
-| Page: a sign-in approval | Feed: a timeline of text posts |
-| ![a sign-in check asks to approve a sign-in to the production console; Approve is tapped and the story branches on it](docs/images/phone-sso.gif) | ![a timeline of text posts about the booking app being down, with likes, replies and reposts, scrolled](docs/images/phone-timeline.gif) |
-| Banner: a push notification over a scene | Page: a supporter site with locked posts |
-| ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](docs/images/phone-banner.gif) | ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](docs/images/phone-support.gif) |
+| ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](docs/images/phone-feed.gif) | ![a video app: the phone turns on its side, nearly as wide as the screen, and plays footage of a battle from the Go Zen sample](docs/images/phone-video.gif) |
+| Chat: a dance practice clip (a puppet) | Page: a shop site with a picture grid |
+| ![Mia says in the chat that she is practicing the launch party dance and sends the clip; it plays on the phone on its side, her puppet breathing, swaying and jiggling](docs/images/phone-puppet.gif) | ![a browser page of a clothing shop: a grid of pictures, two list items with prices and a button tapped](docs/images/phone-shop.gif) |
+| Page: a bank transfer to confirm | Lock screen: notices arriving |
+| ![a bank app: the balance, a transfer to confirm and recent items; Confirm is tapped and the story goes on from it](docs/images/phone-bank.gif) | ![the lock screen at 7:12: a bank notice, a chat preview and a calendar reminder arrive one a press](docs/images/phone-lock.gif) |
+| Lock screen: an incoming call answered | Page: a sign-in approval |
+| ![a night on-call: two monitoring notices, an incoming call from the on-call app declined, ringing again and answered](docs/images/phone-call.gif) | ![a sign-in check asks to approve a sign-in to the production console; Approve is tapped and the story branches on it](docs/images/phone-sso.gif) |
+| Feed: a timeline of text posts | Banner: a push notification over a scene |
+| ![a timeline of text posts with avatars and times about the booking app being down, with likes, replies and reposts, scrolled](docs/images/phone-timeline.gif) | ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](docs/images/phone-banner.gif) |
+| Page: a supporter site with locked posts | Page: a contact to add with a QR code |
+| ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](docs/images/phone-support.gif) | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](docs/images/phone-contact.gif) |
 
 ### Management workspaces
 
