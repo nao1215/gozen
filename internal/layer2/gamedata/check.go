@@ -159,14 +159,14 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	switch p.Hold {
 	case "", "portrait", "landscape":
 	default:
-		c.errorf(diag.Shape, where+".hold", "hold must be portrait or landscape, not %q", p.Hold)
+		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
 	apps := []string{"chat", "feed", "video", "page", "lock", "banner"}
 	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
 		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0}
 	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "lock": "notices", "banner": "notices"}
 	if _, ok := lists[p.App]; !ok {
-		c.errorf(diag.Shape, where+".app", "app must be chat, feed, video, page, lock or banner, not %q", p.App)
+		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner のいずれかを指定してください（指定値 %q）"), p.App)
 		return
 	}
 	for _, app := range apps {
@@ -175,17 +175,17 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 			continue
 		}
 		if app == p.App && !has {
-			c.errorf(diag.Shape, where+"."+keys[app], "app %s needs %s", app, keys[app])
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s には %s が必要です"), app, keys[app])
 		}
 		if app != p.App && has {
-			c.errorf(diag.Shape, where+"."+keys[app], "app %s does not show %s", p.App, keys[app])
+			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s は %s を表示しません"), p.App, keys[app])
 		}
 	}
 	c.text(where+".title", p.Title, names)
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
 		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n > 1 || n == 0 && m.Day == "" {
-			c.errorf(diag.Shape, at, "a message needs text, picture or video (one of them), or only a day")
+			c.errorf(diag.Shape, at, "%s", lang.T("メッセージには text・picture・video のいずれか１つ、または day だけを指定してください"))
 		}
 		c.text(at+".time", m.Time, names)
 		c.text(at+".day", m.Day, names)
@@ -198,14 +198,14 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	for i, post := range p.Posts {
 		at := fmt.Sprintf("%s.posts[%d]", where, i)
 		if post.Picture != "" && post.Video != nil || post.Picture == "" && post.Video == nil && post.Text == "" {
-			c.errorf(diag.Shape, at, "a post needs a picture, a video or only text (one of them)")
+			c.errorf(diag.Shape, at, "%s", lang.T("投稿には picture・video・text だけのいずれか１つが必要です"))
 		}
 		if post.Replies < 0 || post.Reposts < 0 {
 			c.errorf(diag.Shape, at, "replies and reposts must not be negative")
 		}
 		c.phoneVideo(at+".video", post.Video, names)
 		if post.Likes < 0 {
-			c.errorf(diag.Shape, at+".likes", "likes must not be negative")
+			c.errorf(diag.Shape, at+".likes", "%s", lang.T("likes は０以上を指定してください"))
 		}
 		c.text(at+".who", post.Who, names)
 		c.text(at+".time", post.Time, names)
@@ -330,6 +330,10 @@ func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
 	}
 }
 
+// maxPhoneSeconds is the longest phone clip whose frame count (60 a second)
+// still fits an int32.
+const maxPhoneSeconds = float64(math.MaxInt32) / 60
+
 // phoneVideo checks a clip on the phone: a picture, frames or a puppet to
 // show, the files they name, its length, its frame rate and the seconds it
 // jiggles at.
@@ -338,10 +342,19 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 		return
 	}
 	if v.Picture == "" && len(v.Frames) == 0 && v.Puppet == "" {
-		c.errorf(diag.Shape, where, "a video needs a picture, frames or a puppet")
+		c.errorf(diag.Shape, where, "%s", lang.T("動画には picture・frames・puppet のいずれかが必要です"))
+	}
+	if !finiteNumber(v.Seconds) || v.Seconds > maxPhoneSeconds {
+		c.errorf(diag.OutOfRange, where+".seconds", lang.T("seconds は有限の数で %g 以下を指定してください"), maxPhoneSeconds)
+	}
+	if !finiteNumber(v.Zoom) {
+		c.errorf(diag.OutOfRange, where+".zoom", "%s", lang.T("zoom は有限の数を指定してください"))
+	}
+	if !finiteNumber(v.FPS) || !finiteNumber(v.Fade) {
+		c.errorf(diag.OutOfRange, where, "%s", lang.T("fps と fade は有限の数を指定してください"))
 	}
 	if v.Seconds < 0 {
-		c.errorf(diag.Shape, where+".seconds", "seconds must not be negative")
+		c.errorf(diag.Shape, where+".seconds", "%s", lang.T("seconds は０以上を指定してください"))
 	}
 	if v.FPS < 0 {
 		c.errorf(diag.Shape, where+".fps", "fps must not be negative")
@@ -353,7 +366,7 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 		c.errorf(diag.Shape, where+".fade", "fade must be between 0 and a frame's length (%g seconds)", 1/v.FrameRate())
 	}
 	if v.Zoom < 0 {
-		c.errorf(diag.Shape, where+".zoom", "zoom must not be negative")
+		c.errorf(diag.Shape, where+".zoom", "%s", lang.T("zoom は０以上を指定してください"))
 	}
 	frames := 0
 	for i, f := range v.Frames {
@@ -368,13 +381,18 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 		frames += len(pages)
 	}
 	length := v.Length(frames)
+	if v.Seconds == 0 && length > maxPhoneSeconds {
+		c.errorf(diag.OutOfRange, where+".fps", lang.T("frames と fps の長さが %g 秒を超えています"), maxPhoneSeconds)
+	}
 	for i, at := range v.Bounce {
-		if at < 0 || at > length {
-			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), "bounce %g is outside the video (0 to %g seconds)", at, length)
+		if !finiteNumber(at) || at < 0 || at > length {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), lang.T("bounce %g は動画の範囲外です（０〜%g 秒）"), at, length)
 		}
 	}
 	if v.Puppet != "" && !c.db.Exists("assets/"+v.Puppet) {
-		c.errorf(diag.MissingAsset, where+".puppet", "no puppet assets/%s", v.Puppet)
+		c.errorf(diag.MissingAsset, where+".puppet", lang.T("puppet assets/%s がありません"), v.Puppet)
+	} else {
+		c.puppet(where+".puppet", v.Puppet, "")
 	}
 	c.text(where+".text", v.Text, names)
 	c.picture(where+".picture", Picture{File: v.Picture})
@@ -427,25 +445,25 @@ func (c *checker) pictureLimit(where, p string) {
 
 // puppet checks a moving portrait's YAML and that its pictures exist. Picture sizes
 // and positions are checked when the game loads it (and by gozen art puppet).
-func (c *checker) puppet(where string, a *Actor) {
-	if a.Puppet == "" {
+func (c *checker) puppet(where string, file, face string) {
+	if file == "" {
 		return
 	}
-	b, err := fs.ReadFile(c.db.FS, "assets/"+a.Puppet)
+	b, err := fs.ReadFile(c.db.FS, "assets/"+file)
 	if err != nil {
-		c.errorf(diag.MissingAsset, where, "no file assets/%s", a.Puppet)
+		c.errorf(diag.MissingAsset, where, "no file assets/%s", file)
 		return
 	}
 	spec, err := puppetdef.Parse(b)
 	if err != nil {
-		c.errorf(diag.Shape, where, "%s: %v", a.Puppet, err)
+		c.errorf(diag.Shape, where, "%s: %v", file, err)
 		return
 	}
 	for _, p := range spec.Pictures() {
-		c.file(where, path.Join(path.Dir(a.Puppet), p))
+		c.file(where, path.Join(path.Dir(file), p))
 	}
-	if face := a.Face; face != "" && !slices.Contains(spec.FaceNames(), face) {
-		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", a.Puppet, face)
+	if face != "" && !slices.Contains(spec.FaceNames(), face) {
+		c.errorf(diag.UnknownReference, where, "%s has no face %q (the actor's face)", file, face)
 	}
 }
 
@@ -943,7 +961,7 @@ func (db *DB) Check() []error {
 		if a.Faces != "" && !db.Exists("assets/"+a.Faces+"/"+a.Face+".png") {
 			c.errorf(diag.MissingAsset, w, "no face assets/%s/%s.png", a.Faces, a.Face)
 		}
-		c.puppet(w+".puppet", a)
+		c.puppet(w+".puppet", a.Puppet, a.Face)
 		c.voices(w+".voices", a)
 		c.doll(w+".doll", a.Doll)
 		for s, it := range a.Equip {
@@ -1105,7 +1123,7 @@ func (db *DB) Check() []error {
 			c.errorf(diag.NotAWord, w+".motion", "want none, breathe, sway, or bob")
 		}
 		if e.Puppet != "" {
-			c.puppet(w+".puppet", &Actor{Puppet: e.Puppet})
+			c.puppet(w+".puppet", e.Puppet, "")
 		}
 		for _, d := range e.Drops {
 			_, ok := db.Items[d.Item]

@@ -1455,6 +1455,8 @@ func (g *Game) newEventRunner() *event.Runner {
 }
 
 func (g *Game) startState() {
+	g.closePhone()
+	g.banners = nil
 	g.screenTrace = screenTranscript{}
 	g.st.Calm = g.opts.Calm
 	g.backlog, g.logView = nil, nil
@@ -1878,24 +1880,7 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Tap:
-		if g.phone != nil {
-			if g.updatePhone() {
-				result := g.phone.result
-				g.phone.close()
-				g.phone, g.req = nil, nil
-				if f := g.fast; f != nil && r.Results > 0 {
-					// A replay reads on: the phone is put down with the saved result.
-					if k := len(g.evAnswers); k < len(f.answers) {
-						result = f.answers[k]
-					}
-				}
-				if r.Results > 0 {
-					g.emit("answer", traceLine{"index": result})
-					g.evAnswers = append(g.evAnswers, result)
-					g.events.Answer(result)
-				}
-			}
-		} else if g.updateTap() {
+		if g.updateTapOrPhone(r, g.answerPhone) {
 			g.req = nil
 		}
 	}
@@ -1917,6 +1902,37 @@ func (g *Game) beginTap(r event.Tap) {
 	g.tapT = g.cg.FadeTicks()
 	g.tapAuto = r.Auto
 	g.talk.hidden = false
+}
+
+// updateTapOrPhone runs a Tap wait one tick: the phone on screen until it is
+// put down (answering the event with its result when it has results), else
+// the plain tap. Both the field and a battle's events wait here.
+func (g *Game) updateTapOrPhone(r event.Tap, answer func(int)) bool {
+	if g.phone == nil {
+		return g.updateTap()
+	}
+	if !g.updatePhone() {
+		return false
+	}
+	result := g.phone.result
+	g.closePhone()
+	if r.Results > 0 {
+		answer(result)
+	}
+	return true
+}
+
+// answerPhone answers the field's event with the result the phone was put
+// down with; a replay reads on with the saved result.
+func (g *Game) answerPhone(result int) {
+	if f := g.fast; f != nil {
+		if k := len(g.evAnswers); k < len(f.answers) {
+			result = f.answers[k]
+		}
+	}
+	g.emit("answer", traceLine{"index": result})
+	g.evAnswers = append(g.evAnswers, result)
+	g.events.Answer(result)
 }
 
 func (g *Game) updateTap() bool {
@@ -2273,9 +2289,7 @@ func (g *Game) Handle(e event.Effect) {
 			}
 			break
 		}
-		if g.phone != nil {
-			g.phone.close()
-		}
+		g.closePhone()
 		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)
@@ -2326,6 +2340,7 @@ func (g *Game) Close() error {
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
+	g.closePhone()
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })

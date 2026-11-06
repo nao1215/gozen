@@ -515,6 +515,7 @@ func TestCampaignArmyDefaultsPreserveAuthoredValues(t *testing.T) {
 		}
 	}
 }
+
 func TestCampaignInvalidReferencesDoNotPanic(t *testing.T) {
 	for _, player := range []string{"2", "bad-name", "\"[\""} {
 		t.Run("player_"+player, func(t *testing.T) {

@@ -113,7 +113,7 @@ func (g *Game) stepFeedClips(p *phoneView) {
 			continue
 		}
 		key := fmt.Sprintf("post%d", i)
-		p.clip(key, post.Video).step(g, key, true)
+		p.clip(key, post.Video).step(g, true)
 	}
 }
 
@@ -202,6 +202,9 @@ func (g *Game) dragPhone(p *phoneView, tap func(image.Point)) {
 		p.glide = 0.5*p.glide + 0.5*d
 	}
 	if in.pup && p.grab >= 0 {
+		// The pointer may move on the tick it lets go (with no tick held between).
+		d := y - p.grab
+		p.scroll, p.moved = p.scroll-d, p.moved+math.Abs(d)
 		p.grab = -1
 		if p.moved < phoneFeedTap {
 			p.glide = 0

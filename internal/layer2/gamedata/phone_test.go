@@ -5,11 +5,20 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/testgame"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // TestPhoneChecks: a phone names a known hold and app, carries the one list its
 // app shows, and every picture, puppet and second it names is checked.
 func TestPhoneChecks(t *testing.T) {
+	if err := lang.Use(lang.English, nil); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := lang.Use(lang.Japanese, nil); err != nil {
+			t.Error(err)
+		}
+	})
 	for _, tc := range []struct{ name, command, want string }{
 		{"chat", `phone: {app: chat, title: Team, messages: [{from: Ann, text: Hi}, {mine: true, text: Hello}]}`, ""},
 		{"chat picture and video", `phone: {app: chat, messages: [{picture: x.png}, {video: {picture: x.png, seconds: 5, bounce: [1, 4]}}]}`, ""},
@@ -90,6 +99,42 @@ func TestPhoneChecks(t *testing.T) {
 				t.Fatalf("want no error, got %v", err)
 			case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)):
 				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestPhoneFiniteVideoParameters(t *testing.T) {
+	for _, field := range []string{"seconds", "zoom", "bounce", "fps", "fade"} {
+		for _, value := range []string{".nan", ".inf", "-.inf"} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				if field == "bounce" {
+					value = "[" + value + "]"
+				}
+				_, err := testgame.TryLoad(map[string]string{
+					"game.yaml":   "schema_version: 11\nid: phone-check\n" + testgame.Game,
+					"data/z.yaml": "events: {e: [{phone: {app: video, video: {frames: [x.png], " + field + ": " + value + "}}}]}\n",
+				})
+				if err == nil || !strings.Contains(err.Error(), field) {
+					t.Fatalf("nonfinite %s accepted or misdiagnosed: %v", field, err)
+				}
+			})
+		}
+	}
+}
+
+func TestPhoneChecksPuppetContents(t *testing.T) {
+	for _, tc := range []struct{ name, rig, want string }{
+		{"invalid definition", "base: [invalid", "rig.yaml"},
+		{"missing base", "base: absent.png\nfaces: {normal: {}}\n", "absent.png"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := testgame.TryLoad(map[string]string{
+				"data/z.yaml":           "events: {e: {do: [{phone: {app: video, video: {puppet: phone/rig.yaml}}}]}}",
+				"assets/phone/rig.yaml": tc.rig,
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("invalid phone puppet was accepted or misdiagnosed: %v", err)
 			}
 		})
 	}

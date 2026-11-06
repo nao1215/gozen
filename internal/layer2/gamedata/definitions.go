@@ -265,10 +265,16 @@ func resolveMerges(n ast.Node, anchors map[string]ast.Node) {
 // does not write itself.
 func mergeInto(m *ast.MappingNode, anchors map[string]ast.Node) {
 	source := func(v ast.Node) *ast.MappingNode {
+		seen := map[string]bool{}
 		for {
 			switch x := v.(type) {
 			case *ast.AliasNode:
-				v = anchors[x.Value.GetToken().Value]
+				name := x.Value.GetToken().Value
+				if seen[name] {
+					return nil // Leave cyclic aliases to the decoder's validation.
+				}
+				seen[name] = true
+				v = anchors[name]
 			case *ast.AnchorNode:
 				v = x.Value
 			case *ast.TagNode:

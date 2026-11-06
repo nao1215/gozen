@@ -66,23 +66,36 @@ type phoneView struct {
 	// rows are a page's rows laid out for a screen rowsW wide.
 	rows  []pageRow
 	rowsW float64
+	// chatRead is how far the newest message, when it is taller than the
+	// screen, has been read down from its top.
+	chatRead float64
+	// bubbles are the chat's messages on the screen laid out for a screen
+	// bubblesW wide (only the visible ones are kept).
+	bubbles  map[int]chatBubble
+	bubblesW float64
 	// clips are the clips the phone has played, by where they are (so a feed's
-	// post keeps its place when it comes back), each with its own puppet.
+	// post keeps its place when it comes back), each with its own puppet motion.
 	clips map[string]*phoneClip
 
 	canvas, screen *ebiten.Image
 	icons          map[string]*ebiten.Image
 	frames         map[string]*ebiten.Image
+	// imageUse are the icons and frames drawn this frame, and bodies the
+	// clips whose puppet was drawn (true this frame): the rest are released.
+	imageUse map[*ebiten.Image]bool
+	bodies   map[*phoneClip]bool
 }
 
 // phoneClip is a video playing: where it is in ticks, whether it is paused,
 // whether it starts again at its end (a feed's post), and the body of its puppet.
 type phoneClip struct {
 	v      *data.PhoneVideo
+	key    string
 	played int
 	paused bool
 	loop   bool
 	body   *puppet.Puppet
+	motion *puppet.Motion // kept while an offscreen body has released its images
 }
 
 const (
@@ -94,7 +107,8 @@ const (
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
 		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1,
-		seenPic: map[int]bool{}, pics: map[int]picRect{}, qrs: map[string]*ebiten.Image{}}
+		seenPic: map[int]bool{}, pics: map[int]picRect{}, qrs: map[string]*ebiten.Image{},
+		bubbles: map[int]chatBubble{}, imageUse: map[*ebiten.Image]bool{}, bodies: map[*phoneClip]bool{}}
 	switch cue.App {
 	case "chat", "lock":
 		p.shown = 1
@@ -121,14 +135,16 @@ func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
 	}
 	c := p.clips[key]
 	if c == nil {
-		c = &phoneClip{v: v}
+		c = &phoneClip{v: v, key: key}
 		p.clips[key] = c
 	}
 	return c
 }
 
+// length is the clip's length in ticks: at least one, so a clip shorter than
+// a tick still plays.
 func (c *phoneClip) length() int {
-	return int(c.v.Length(len(c.v.Frames)) * 60)
+	return max(1, int(c.v.Length(len(c.v.Frames))*60))
 }
 
 // frame is the picture of the clip's footage on the screen now: the frames go
@@ -194,15 +210,26 @@ func phonePictures(cue data.PhoneCue) []string {
 	return out
 }
 
-// step plays the clip one tick: the puppet moves and jiggles at its seconds.
-// loop starts it again at its end (a feed's post), else it stops there.
-func (c *phoneClip) step(g *Game, key string, loop bool) {
-	c.loop = loop
-	if c.v.Puppet != "" && c.body == nil {
-		if rig := g.rig(c.v.Puppet); rig != nil {
-			c.body = seededPuppet(rig, "phone."+key)
+// prepare makes the clip's puppet, the same for its thumbnail and its
+// playback, taking back the motion it had when it was released offscreen.
+func (c *phoneClip) prepare(g *Game) {
+	if c.v.Puppet == "" || c.body != nil {
+		return
+	}
+	if rig := g.rig(c.v.Puppet); rig != nil {
+		c.body = seededPuppet(rig, "phone."+c.key)
+		if c.motion != nil {
+			c.body.Motion, c.motion = c.motion, nil
 		}
 	}
+}
+
+// step plays the clip one tick: the puppet moves and jiggles at its seconds
+// (one at 0 on the first tick). loop starts it again at its end (a feed's
+// post), else it stops there.
+func (c *phoneClip) step(g *Game, loop bool) {
+	c.loop = loop
+	c.prepare(g)
 	if c.paused {
 		return
 	}
@@ -215,7 +242,7 @@ func (c *phoneClip) step(g *Game, key string, loop bool) {
 	c.played++
 	if c.body != nil {
 		for _, at := range c.v.Bounce {
-			if int(at*60) == c.played {
+			if max(1, int(at*60)) == c.played {
 				c.body.Motion.React(puppetdef.Reaction{Kind: "jiggle", Amount: 1})
 			}
 		}
@@ -250,12 +277,12 @@ func (g *Game) updatePhone() bool {
 		p.closing--
 		return p.closing == 0
 	}
-	if g.skipping || g.replaying || g.fast != nil {
+	if g.skipping || g.replaying || g.fast != nil || g.in.fast {
 		p.closing = 1
 		return false
 	}
 	if p.watch != nil && p.resting() && p.age >= phoneRise {
-		p.watch.step(g, p.watchKey(), false)
+		p.watch.step(g, false)
 	}
 	if p.cue.App == "feed" && p.watch == nil {
 		g.stepFeedClips(p)
@@ -264,6 +291,15 @@ func (g *Game) updatePhone() bool {
 		return false
 	}
 	in := &g.in
+	// The auto and skip keys work over the phone as over the lines.
+	if in.pressed[btnAuto] {
+		g.autoRead = !g.autoRead
+		return false
+	}
+	if in.pressed[btnSkip] {
+		g.toggleSkip()
+		return false
+	}
 	if in.cancel() || in.esc {
 		if p.watchMsg >= 0 {
 			g.stopWatching(p)
@@ -360,7 +396,8 @@ var (
 func (g *Game) phoneSize(side bool) (w, h float64) {
 	sw, sh := g.screen()
 	if !side {
-		h = sh * 0.94
+		// A narrow screen keeps the whole phone on it.
+		h = math.Min(sh*0.94, sw*0.94/0.49)
 		return h * 0.49, h
 	}
 	// The bezel is 3.5% of the height on each side: h - 0.07h = (w - 0.07h) * 9/16.
@@ -390,6 +427,8 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	if p == nil {
 		return
 	}
+	clear(p.imageUse)
+	defer p.trimImages()
 	sw, sh := g.screen()
 	rise := easeOut(math.Min(1, float64(p.age)/phoneRise))
 	if p.closing > 0 {
@@ -431,13 +470,14 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 }
 
 func sized(img *ebiten.Image, w, h int) *ebiten.Image {
+	w, h = max(1, w), max(1, h)
 	if img != nil && img.Bounds().Dx() == w && img.Bounds().Dy() == h {
 		return img
 	}
 	if img != nil {
 		img.Deallocate()
 	}
-	return ebiten.NewImage(max(1, w), max(1, h))
+	return ebiten.NewImage(w, h)
 }
 
 func (g *Game) phoneHint(p *phoneView) string {
@@ -529,8 +569,9 @@ func (g *Game) drawPhoneStatus(dst *ebiten.Image, w float64, clock string, dark 
 // it, else a fixed evening hour.
 func (g *Game) phoneClock() string {
 	if g.st != nil {
-		if v, ok := g.st.Vars["clock_minutes"].(float64); ok && v >= 0 {
-			m := int(v) % (24 * 60)
+		if v, ok := g.st.Vars["clock_minutes"].(float64); ok && v >= 0 && !math.IsInf(v, 0) {
+			// Wrap to a day before the conversion: a huge value overflows an int.
+			m := int(math.Mod(v, 24*60))
 			return fmt.Sprintf("%d:%02d", m/60, m%60)
 		}
 	}
@@ -620,12 +661,9 @@ func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *ph
 	if img := g.pics.get(next); img != nil && mix > 0 {
 		drawContainZoom(frame, img, w, h, 1, float32(mix))
 	}
-	if c.v.Puppet != "" && c.body == nil {
-		if rig := g.rig(c.v.Puppet); rig != nil {
-			c.body = seededPuppet(rig, "phone."+key)
-		}
-	}
+	c.prepare(g)
 	if c.body != nil {
+		p.bodies[c] = true
 		zoom := c.v.Zoom
 		if zoom == 0 {
 			zoom = 1.5
@@ -645,6 +683,7 @@ func (p *phoneView) frame(key string, w, h float64) *ebiten.Image {
 	k := gfx.Scale()
 	img := sized(p.frames[key], int(math.Ceil(w*k)), int(math.Ceil(h*k)))
 	p.frames[key] = img
+	p.imageUse[img] = true
 	img.Clear()
 	return img
 }
@@ -717,20 +756,56 @@ func (p *phoneView) icon(g *Game, path string, size float64) *ebiten.Image {
 	if path == "" {
 		return nil
 	}
-	key := fmt.Sprintf("%s@%.0f", path, size)
+	px := max(1, int(math.Ceil(size*gfx.Scale())))
+	key := path + "@" + strconv.Itoa(px)
 	if img, ok := p.icons[key]; ok {
+		p.imageUse[img] = true
 		return img
 	}
 	src := g.pics.get(path)
 	if src == nil {
 		return nil
 	}
-	px := int(math.Ceil(size * gfx.Scale()))
 	img := ebiten.NewImage(px, px)
 	drawCoverTop(img, src, 0, 0, size, size)
 	gfx.RoundedMask(img, float32(px)/2)
 	p.icons[key] = img
+	p.imageUse[img] = true
 	return img
+}
+
+// trimImages releases the icons and frames not drawn this frame, and the
+// images of the puppets not drawn (keeping their motion for when they come
+// back). Where a clip is stays in clips.
+func (p *phoneView) trimImages() {
+	for _, images := range []map[string]*ebiten.Image{p.icons, p.frames} {
+		for key, img := range images {
+			if !p.imageUse[img] {
+				img.Deallocate()
+				delete(images, key)
+			}
+		}
+	}
+	clear(p.imageUse)
+	for c, drawn := range p.bodies {
+		if drawn {
+			p.bodies[c] = false
+			continue
+		}
+		c.motion = c.body.Motion
+		c.body.Close()
+		c.body = nil
+		delete(p.bodies, c)
+	}
+}
+
+// closePhone puts the phone away when its wait ends or the game resets (a
+// load, a new game, closing the game), freeing what it holds.
+func (g *Game) closePhone() {
+	if g.phone != nil {
+		g.phone.close()
+		g.phone = nil
+	}
 }
 
 // close frees the phone's own images and puppets.
@@ -740,16 +815,23 @@ func (p *phoneView) close() {
 			img.Deallocate()
 		}
 	}
+	p.canvas, p.screen = nil, nil
 	for _, m := range []map[string]*ebiten.Image{p.icons, p.frames, p.qrs} {
 		for _, img := range m {
 			if img != nil {
 				img.Deallocate()
 			}
 		}
+		clear(m)
 	}
+	clear(p.bubbles)
+	clear(p.imageUse)
+	clear(p.bodies)
 	for _, c := range p.clips {
+		c.motion = nil
 		if c.body != nil {
 			c.body.Close()
+			c.body = nil
 		}
 	}
 }

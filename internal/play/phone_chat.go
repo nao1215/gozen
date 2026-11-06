@@ -32,7 +32,22 @@ func (g *Game) chatPictureAspect(path string) float64 {
 	return math.Max(phoneFeedWide, math.Min(phoneFeedTall, g.pictureAspect(path)))
 }
 
+// chatBubble lays a message out once per width: the chat keeps the visible
+// ones, so a long chat is not laid out again every frame.
 func (g *Game) chatBubble(p *phoneView, i int, maxW float64) chatBubble {
+	if p.bubblesW != maxW {
+		clear(p.bubbles)
+		p.bubblesW = maxW
+	}
+	if b, ok := p.bubbles[i]; ok {
+		return b
+	}
+	b := g.layChatBubble(p, i, maxW)
+	p.bubbles[i] = b
+	return b
+}
+
+func (g *Game) layChatBubble(p *phoneView, i int, maxW float64) chatBubble {
 	m := p.cue.Messages[i]
 	b := chatBubble{i: i}
 	switch {
@@ -64,6 +79,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 		p.typing--
 		if p.typing == 0 {
 			p.shown++
+			p.chatRead = 0
 		}
 		return
 	}
@@ -79,6 +95,13 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	if !g.in.advance() && !g.phoneAuto(p) {
 		return
 	}
+	// A message taller than the screen is read from its top, a screen at a
+	// time (each overlapping the last), before the chat goes on.
+	_, _, w, h := g.phoneScreenRect(p.side)
+	if room := chatRoom(h); p.chatOverflow(g, w, room) > 0 {
+		p.chatRead += room * 0.8
+		return
+	}
 	// The newest message is a picture or a video not yet seen: the press opens it.
 	last := p.shown - 1
 	if m := p.cue.Messages[last]; !g.autoRead && g.openNewest(p, last, m) {
@@ -90,9 +113,22 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	}
 	if next := p.cue.Messages[p.shown]; next.Mine || next.Text == "" && next.Picture == "" && next.Video == nil {
 		p.shown++
+		p.chatRead = 0
 		return
 	}
 	p.typing = phoneTyping
+}
+
+// chatRoom is the height the chat's messages show in on a screen h tall.
+func chatRoom(h float64) float64 { return math.Max(1, h-28-phoneFeedTop) }
+
+// chatOverflow is how much of the newest message, a text taller than room,
+// is still under the bottom of the chat: it shows from its top until read.
+func (p *phoneView) chatOverflow(g *Game, w, room float64) float64 {
+	if p.shown < 1 || p.shown > len(p.cue.Messages) || p.cue.Messages[p.shown-1].Text == "" {
+		return 0
+	}
+	return math.Max(0, g.chatBubble(p, p.shown-1, w*0.68).h-room-p.chatRead)
 }
 
 // openNewest opens the newest message when it is a picture or a clip not seen
@@ -131,18 +167,27 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 		gfx.DrawTextLeft(dst, "<", 18, 44, 22, phoneMine)
 	}()
 	clear(p.pics)
-	top, maxW := 85.0, w*0.68
-	// The newest message sits at the bottom; the older ones scroll up.
-	y := h - 28
+	top, maxW := phoneFeedTop, w*0.68
+	// The newest message sits at the bottom; the older ones scroll up. A tall
+	// newest message shows from its top until it has been read down.
+	y := h - 28 + p.chatOverflow(g, w, chatRoom(h))
 	if p.typing > 0 {
 		y -= 48
 		g.drawTypingDots(dst, p, 64, y+8)
 	}
-	for i := min(p.shown, len(p.cue.Messages)) - 1; i >= 0 && y > top-200; i-- {
+	first := min(p.shown, len(p.cue.Messages))
+	for i := first - 1; i >= 0 && y > top-200; i-- {
 		b := g.chatBubble(p, i, maxW)
+		first = i
 		y -= b.h
 		g.drawChatBubble(dst, p, b, w, y)
 		y -= 12
+	}
+	// Only the layouts on the screen are kept.
+	for i := range p.bubbles {
+		if i < first || i >= p.shown {
+			delete(p.bubbles, i)
+		}
 	}
 }
 
@@ -163,7 +208,7 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, b chatBubble, w, 
 	} else {
 		g.drawPhoneIcon(dst, p, m.Icon, m.From, 14, y, 40)
 		if m.From != "" {
-			gfx.DrawTextLeft(dst, m.From, x, y, 13, phoneMuted)
+			gfx.DrawTextLeft(dst, gfx.Ellipsis(m.From, 13, w-x-16), x, y, 13, phoneMuted)
 			y += 20
 		}
 	}
@@ -203,9 +248,18 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 		if m.Mine {
 			fill, ink = phoneMine, phoneOnVideo
 		}
-		gfx.FillRoundRect(dst, float32(x), float32(y), float32(b.bw), float32(b.bh), 18, fill)
-		for k, l := range b.lines {
-			gfx.DrawTextLeft(dst, l, x+phoneChatPad, y+phoneChatPad*0.6+float64(k)*gfx.LineHeight(phoneChatSize), phoneChatSize, ink)
+		// A message many screens tall draws only its part on the screen.
+		screenH := float64(dst.Bounds().Dy()) / gfx.Scale()
+		if top, bottom := math.Max(y, -18), math.Min(y+b.bh, screenH+18); bottom > top {
+			gfx.FillRoundRect(dst, float32(x), float32(top), float32(b.bw), float32(bottom-top), 18, fill)
+		}
+		lineH := gfx.LineHeight(phoneChatSize)
+		for k := max(0, int(math.Floor((phoneFeedTop-y-phoneChatPad*0.6)/lineH))-1); k < len(b.lines); k++ {
+			ly := y + phoneChatPad*0.6 + float64(k)*lineH
+			if ly > screenH {
+				break
+			}
+			gfx.DrawTextLeft(dst, b.lines[k], x+phoneChatPad, ly, phoneChatSize, ink)
 		}
 	}
 }

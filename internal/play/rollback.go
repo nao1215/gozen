@@ -257,6 +257,9 @@ func (g *Game) resume(r *rpg.Resume) {
 // after a battle, a shop, a screen or a move, a save cannot hold where the event goes on
 // (the event cannot be read again up to that line), so it would lose the event's rest.
 func (g *Game) saveBlocked() string {
+	if g.phone != nil {
+		return lang.T("この 画面を 閉じて、操作が 終わってから セーブ しよう。")
+	}
 	if g.screenContinuation() {
 		if g.screenSaveAllowed() || g.homeCheckpoint() {
 			return ""

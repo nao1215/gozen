@@ -6,11 +6,15 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"golang.org/x/image/font/gofont/goregular"
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/testgame"
 	"rsc.io/qr"
 )
 
@@ -40,11 +44,7 @@ func phoneGame(t *testing.T, cue data.PhoneCue) *Game {
 	if g.phone == nil {
 		t.Fatal("the phone effect did not bring the phone up")
 	}
-	t.Cleanup(func() {
-		if g.phone != nil {
-			g.phone.close()
-		}
-	})
+	t.Cleanup(g.closePhone)
 	return g
 }
 
@@ -825,4 +825,417 @@ func TestPhoneQR(t *testing.T) {
 	if g.phone.qrs[url] == nil {
 		t.Fatal("the QR code was not drawn")
 	}
+}
+
+func TestPhoneFastForward(t *testing.T) {
+	for _, mode := range []string{"cursor", "held skip"} {
+		t.Run(mode, func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: "video", Video: &data.PhoneVideo{Picture: "missing.png"}})
+			if mode == "cursor" {
+				g.fast = &fastTo{lines: 2}
+			} else {
+				g.in.fast = true
+			}
+			for range 3 {
+				fast := g.in.fast
+				if g.updatePhone() {
+					return
+				}
+				g.in.fast = fast
+			}
+			t.Fatal("presentation-only phone blocked fast-forward")
+		})
+	}
+}
+
+// BenchmarkPhoneDraw measures CPU-side drawing calls, not a displayed GPU frame.
+func BenchmarkPhoneDraw(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		count int
+		text  string
+	}{
+		{"chat-1", 1, "The blue tiles are ready for the courtyard."},
+		{"chat-20", 20, "The blue tiles are ready for the courtyard."},
+		{"chat-200", 200, "The blue tiles are ready for the courtyard."},
+		{"long-message", 1, strings.Repeat("The blue tiles are ready.\n", 10000)},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			if err := gfx.LoadFonts(goregular.TTF, nil); err != nil {
+				b.Fatal(err)
+			}
+			defer gfx.Reset()
+			gfx.SetScale(1)
+			g := &Game{db: testgame.Load(b, nil)}
+			cue := data.PhoneCue{App: "chat", Title: "Workshop"}
+			for i := range tc.count {
+				cue.Messages = append(cue.Messages, data.PhoneMessage{From: "Maker", Text: fmt.Sprintf("Message %d: %s", i, tc.text)})
+			}
+			g.phone = newPhoneView(cue)
+			defer g.closePhone()
+			g.phone.shown, g.phone.age = tc.count, phoneRise
+			dst := ebiten.NewImage(1280, 720)
+			defer dst.Deallocate()
+			g.drawPhone(dst)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				g.drawPhone(dst)
+			}
+		})
+	}
+}
+
+func TestPhoneCanvasMinimumSizeIsReused(t *testing.T) {
+	img := sized(nil, 0, -1)
+	defer img.Deallocate()
+	if next := sized(img, 0, -1); next != img {
+		t.Fatal("an unchanged minimum-size canvas was reallocated")
+	}
+}
+
+func TestPhoneClipSubframeDuration(t *testing.T) {
+	c := &phoneClip{v: &data.PhoneVideo{Seconds: 0.001}}
+	if c.length() != 1 {
+		t.Fatalf("a positive clip must play at least one tick, got %d", c.length())
+	}
+}
+
+// TestPhoneLongChatMustBeReadBeforeAdvancing: a message taller than the
+// screen shows from its top, and presses read it down before the chat goes on.
+func TestPhoneLongChatMustBeReadBeforeAdvancing(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{Text: strings.Repeat("A tile for the courtyard. ", 100)}, {Mine: true, Text: "Next"},
+	}})
+	phoneTicks(g, phoneRise)
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	phonePress(g, btnOK)
+	if g.phone.shown != 1 || g.phone.closing != 0 {
+		t.Fatal("the first press discarded the unread part of a long message")
+	}
+	for range 100 {
+		phonePress(g, btnOK)
+		g.drawPhone(dst)
+		if g.phone.shown == 2 {
+			return
+		}
+	}
+	t.Fatal("the long message never reached its end")
+}
+
+func TestPhoneDrawReusesCanvasesAndBoundsLayouts(t *testing.T) {
+	cue := data.PhoneCue{App: "chat", Title: "Workshop"}
+	for range 200 {
+		cue.Messages = append(cue.Messages, data.PhoneMessage{Text: "One tile", Mine: true})
+	}
+	cue.Messages[198] = data.PhoneMessage{Picture: "x.png"}
+	g := phoneGame(t, cue)
+	p := g.phone
+	p.shown = len(cue.Messages)
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	canvas, screen := p.canvas, p.screen
+	if len(p.bubbles) == 0 || len(p.bubbles) >= len(cue.Messages) {
+		t.Fatalf("layout retained %d of %d messages", len(p.bubbles), len(cue.Messages))
+	}
+	g.drawPhone(dst)
+	if p.canvas != canvas || p.screen != screen {
+		t.Fatal("an unchanged draw replaced its canvases")
+	}
+	cue.Messages[199].Text = strings.Repeat("One tile ", 8)
+	p.cue = cue
+	clear(p.bubbles)
+	wide := g.chatBubble(p, 199, 400)
+	narrow := g.chatBubble(p, 199, 90)
+	if narrow.bh <= wide.bh {
+		t.Fatal("resize retained the old line wrapping")
+	}
+	p.turn(true)
+	g.drawPhone(dst)
+	if p.canvas == canvas || p.screen == screen {
+		t.Fatal("turning the phone retained incorrectly sized canvases")
+	}
+}
+
+func TestPhoneAutoChat(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{Video: &data.PhoneVideo{Picture: "missing.png"}}, {Text: "Next"},
+	}})
+	g.autoRead = true
+	if !phoneTicks(g, 600) {
+		t.Fatal("auto reading did not finish the chat")
+	}
+	if g.phone.shown != 2 || g.phone.watch != nil {
+		t.Fatal("auto reading played a video or lost a message")
+	}
+}
+
+// phonePuppetGame is a game with a puppet for the phone's clips.
+func phonePuppetGame(t *testing.T, rig string) *Game {
+	t.Helper()
+	g, _ := btlOpen(t, Options{Location: "camp"}, "", "", map[string]string{
+		"assets/phone/rig.yaml": rig,
+		"assets/phone/base.png": string(btlPNG(32, 32)),
+	})
+	t.Cleanup(g.closePhone)
+	return g
+}
+
+func TestPhoneCloseReleasesOwnedReferences(t *testing.T) {
+	g := phonePuppetGame(t, "base: base.png\nfaces: {normal: {}}\n")
+	g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "feed", Posts: []data.PhonePost{{Icon: "x.png", Video: &data.PhoneVideo{Puppet: "phone/rig.yaml", Seconds: 2, Bounce: []float64{0, 1}}}}}})
+	p := g.phone
+	phoneTicks(g, 70)
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	c := p.clips["post0"]
+	if c == nil || c.body == nil || p.canvas == nil || p.screen == nil || len(p.icons) == 0 || len(p.frames) == 0 {
+		t.Fatal("fixture did not allocate the phone's images and puppet")
+	}
+	g.closePhone()
+	if g.phone != nil || p.canvas != nil || p.screen != nil || len(p.icons) != 0 || len(p.frames) != 0 || c.body != nil {
+		t.Fatal("closed phone retained owned drawing resources")
+	}
+	p.close() // repeated cleanup is harmless
+}
+
+// TestPhoneVideoFramesStayBounded: scrolling down a long feed keeps only the
+// canvases of the posts on the screen.
+func TestPhoneVideoFramesStayBounded(t *testing.T) {
+	cue := data.PhoneCue{App: "feed"}
+	for range 20 {
+		cue.Posts = append(cue.Posts, data.PhonePost{Icon: "x.png", Video: &data.PhoneVideo{Picture: "x.png"}})
+	}
+	g := phoneGame(t, cue)
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	posts, _, _, _ := g.feedView(g.phone)
+	for i, l := range posts {
+		g.phone.scroll = l.top
+		g.drawPhone(dst)
+		if len(g.phone.frames) > 3 {
+			t.Fatalf("visiting post %d retained %d media canvases", i, len(g.phone.frames))
+		}
+	}
+}
+
+// TestPhoneFeedFollowsDrag: the feed follows the pointer, also on the tick it
+// lets go with no tick held between, and such a drag is not a tap.
+func TestPhoneFeedFollowsDrag(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		held bool
+	}{
+		{"continuous", true},
+		{"release-without-held-frame", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{{Picture: "x.png"}, {Picture: "x.png"}}})
+			phoneTicks(g, phoneRise)
+			_, sy, _, _ := g.phoneScreenRect(false)
+			down := int(sy + 400)
+			g.in = input{pdown: true}
+			g.in.mouse = image.Pt(640, down)
+			g.updatePhone()
+			if tc.held {
+				g.in = input{pheld: true}
+				g.in.mouse = image.Pt(640, down-60)
+				g.updatePhone()
+				if g.phone.scroll != 60 {
+					t.Fatalf("an upward drag scrolled the feed by %g, want 60", g.phone.scroll)
+				}
+			}
+			g.in = input{pup: true}
+			g.in.mouse = image.Pt(640, down-100)
+			g.updatePhone()
+			if g.phone.scroll < 100 || g.phone.liked[0] || g.phone.liked[1] {
+				t.Fatalf("releasing a drag: scroll %g liked %v", g.phone.scroll, g.phone.liked)
+			}
+		})
+	}
+}
+
+func TestPhoneClockLargeMinutes(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}}})
+	for _, tc := range []struct {
+		minutes float64
+		want    string
+	}{
+		{0, "0:00"}, {1441, "0:01"}, {1e30, "12:16"}, {-1, "21:30"}, {math.Inf(1), "21:30"},
+	} {
+		g.st.Vars["clock_minutes"] = tc.minutes
+		if got := g.phoneClock(); got != tc.want {
+			t.Errorf("clock(%g) = %q, want %q", tc.minutes, got, tc.want)
+		}
+	}
+}
+
+func TestPhoneBounceAtStart(t *testing.T) {
+	g := phonePuppetGame(t, "base: base.png\nsoft_sway:\n  - {ellipse: [4, 4, 20, 20], follow: body}\nfaces: {normal: {}}\n")
+	jump := &phoneClip{v: &data.PhoneVideo{Puppet: "phone/rig.yaml", Bounce: []float64{0}}}
+	still := &phoneClip{v: &data.PhoneVideo{Puppet: "phone/rig.yaml"}}
+	for range 5 {
+		jump.step(g, false)
+		still.step(g, false)
+	}
+	if jump.body == nil || still.body == nil {
+		t.Fatal("fixture did not load puppets")
+	}
+	defer jump.body.Close()
+	defer still.body.Close()
+	if jump.body.Motion.Pose() == still.body.Motion.Pose() {
+		t.Fatal("a bounce at second zero never started")
+	}
+}
+
+func TestPhoneModeShortcuts(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}}})
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnAuto)
+	if !g.autoRead {
+		t.Fatal("Auto did not enable automatic reading on the phone")
+	}
+	phonePress(g, btnAuto)
+	if g.autoRead {
+		t.Fatal("Auto did not stop automatic reading on the phone")
+	}
+	phonePress(g, btnSkip)
+	if !g.skipping || !phoneTicks(g, 3) {
+		t.Fatal("Skip did not put the phone down")
+	}
+}
+
+func TestPhoneFitsNarrowScreen(t *testing.T) {
+	g := &Game{db: &data.DB{Game: data.Game{Screen: data.Screen{Width: 160, Height: 720}}}}
+	for _, side := range []bool{false, true} {
+		w, h := g.phoneSize(side)
+		if w <= 0 || h <= 0 || w > 160*.94+1e-9 || h > 720*.94+1e-9 {
+			t.Errorf("side=%v: phone %gx%g does not fit the screen", side, w, h)
+		}
+	}
+}
+
+// TestPhoneOffscreenPuppetsReleaseImagesAndKeepMotion: a post scrolled off
+// the screen frees its puppet's images, and comes back in the same pose.
+func TestPhoneOffscreenPuppetsReleaseImagesAndKeepMotion(t *testing.T) {
+	g := phonePuppetGame(t, "base: base.png\nfaces: {normal: {}}\n")
+	g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Video: &data.PhoneVideo{Puppet: "phone/rig.yaml"}},
+		{Video: &data.PhoneVideo{Puppet: "phone/rig.yaml"}},
+		{Video: &data.PhoneVideo{Puppet: "phone/rig.yaml"}},
+		{Video: &data.PhoneVideo{Puppet: "phone/rig.yaml"}},
+	}}})
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	phoneTicks(g, phoneRise+10)
+	g.drawPhone(dst)
+	first := g.phone.clips["post0"]
+	if first == nil || first.body == nil {
+		t.Fatal("first puppet was not drawn")
+	}
+	pose, played := first.body.Motion.Pose(), first.played
+	posts, _, _, _ := g.feedView(g.phone)
+	g.phone.scroll = posts[2].top
+	g.drawPhone(dst)
+	if first.body != nil {
+		t.Fatal("offscreen clip retained its puppet's drawing resources")
+	}
+	g.phone.scroll = 0
+	g.drawPhone(dst)
+	if first.body == nil || first.body.Motion.Pose() != pose || first.played != played {
+		t.Fatal("revisiting the clip reset its pose or playback position")
+	}
+}
+
+// FuzzPhoneInputs checks the phone's state over any input, and that Cancel
+// still puts it down.
+func FuzzPhoneInputs(f *testing.F) {
+	f.Add(uint8(0), []byte{0, 0, 0, 3})
+	f.Add(uint8(1), []byte{1, 2, 0, 5, 3})
+	f.Add(uint8(2), []byte{4, 0, 0, 3})
+	f.Add(uint8(1), []byte{180, 96, 26, 3})
+	f.Add(uint8(3), []byte{0, 1, 2, 0, 3})
+	f.Fuzz(func(t *testing.T, app uint8, actions []byte) {
+		if len(actions) > 1024 {
+			return
+		}
+		video := &data.PhoneVideo{Picture: "missing.png", Seconds: 0.05}
+		cues := []data.PhoneCue{
+			{App: "chat", Messages: []data.PhoneMessage{{Video: video}, {Picture: "missing.png", Mine: true}}},
+			{App: "feed", Posts: []data.PhonePost{{Video: video}, {Picture: "missing.png"}}},
+			{App: "video", Hold: "landscape", Video: video},
+			{App: "lock", Notices: []data.PhoneNotice{{Text: "One"}, {Text: "Two"}}},
+		}
+		g := &Game{db: &data.DB{Game: data.Game{Screen: data.Screen{Width: 1280, Height: 720}}}, pics: newPictures(fstest.MapFS{})}
+		g.phone = newPhoneView(cues[int(app)%len(cues)])
+		defer g.closePhone()
+		buttons := []button{btnOK, btnUp, btnDown, btnCancel, btnAuto, btnSkip}
+		tick := func() { g.updateTapOrPhone(event.Tap{}, func(int) {}) }
+		for _, action := range actions {
+			if g.phone == nil {
+				break
+			}
+			g.in = input{}
+			kind := int(action) % 9
+			switch {
+			case kind < len(buttons):
+				g.in.pressed[buttons[kind]] = true
+			case kind == 6:
+				g.in.pdown = true
+			case kind == 7:
+				g.in.pheld = true
+			case kind == 8:
+				g.in.pup, g.in.click = true, true
+			}
+			g.in.mouse = image.Pt(int(action)*5, int(action)*3)
+			tick()
+			for range int(action) / 9 {
+				if g.phone == nil {
+					break
+				}
+				g.in = input{}
+				tick()
+			}
+			if p := g.phone; p != nil {
+				if p.typing < 0 || p.shown < 0 || p.shown > max(len(p.cue.Messages), len(p.cue.Notices)) || p.scroll < 0 || math.IsNaN(p.scroll) {
+					t.Fatalf("invalid phone position: shown=%d typing=%d scroll=%g", p.shown, p.typing, p.scroll)
+				}
+				for _, c := range p.clips {
+					if c.played < 0 || c.played > c.length() {
+						t.Fatalf("invalid clip tick %d", c.played)
+					}
+				}
+			}
+		}
+		// Cancel exits the player first, then the phone, whatever came before.
+		g.skipping, g.autoRead = false, false
+		for range 3 {
+			for range phoneRise + phoneTurn + 1 {
+				if g.phone == nil {
+					return
+				}
+				g.in = input{}
+				tick()
+			}
+			if g.phone == nil {
+				return
+			}
+			g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+			tick()
+		}
+		for range phoneRise {
+			if g.phone == nil {
+				return
+			}
+			g.in = input{}
+			tick()
+		}
+		if g.phone != nil {
+			t.Fatal("Cancel left the phone open")
+		}
+	})
 }
