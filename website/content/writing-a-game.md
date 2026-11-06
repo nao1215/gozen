@@ -278,7 +278,7 @@ damage: a.atk * 2 - b.def
 - In battle formulas, `a` is the user and `b` the target; in stats, `level` is the actor's level.
 - Operators: `+ - * /`, comparisons, `&&` (`and`), `||` (`or`), `!`, and `cond ? x : y`.
 - Functions: `min`, `max`, `abs`, `floor`, `ceil`, `round`, `int`, `sqrt`, `pow`, `clamp`, `len`, `rand`, `chance`, `pages`.
-- There are no loops or user functions: a list is read with `len(menu)` or `menu[0].label`. Going through every entry is the job of Go code, not of YAML.
+- Use collection expressions such as `filter`, `count` and `sum` to select or summarize records. A bounded `call.each` applies one parameterized event to selected IDs; screen entries also accept `each`. Read [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) for scope and replay limits.
 
 A condition you leave out holds; a formula you leave out is 0. `gozen check` parses every expression and reports unknown names with file and line.
 
