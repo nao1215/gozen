@@ -36,6 +36,10 @@ type phoneView struct {
 	// result is the index in the cue's Results the phone was put down with
 	// (a page's button, a call answered or declined), -1 for none.
 	result int
+	// focus is the page's button the keys are on (-1 for none), and keyed
+	// tells that the keys moved it there, so its ring shows.
+	focus int
+	keyed bool
 	// watch is the clip playing on the phone turned on its side: the video app's
 	// own, or a chat message's opened by the player (watchMsg is its index).
 	watch    *phoneClip
@@ -79,7 +83,7 @@ const (
 
 func newPhoneView(cue data.PhoneCue) *phoneView {
 	p := &phoneView{cue: cue, liked: map[int]bool{}, clips: map[string]*phoneClip{},
-		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1}
+		icons: map[string]*ebiten.Image{}, frames: map[string]*ebiten.Image{}, watchMsg: -1, turned: phoneTurn, aim: -1, grab: -1, result: -1, focus: -1}
 	switch cue.App {
 	case "chat", "lock":
 		p.shown = 1
@@ -217,7 +221,7 @@ func (g *Game) updatePhone() bool {
 		p.closing--
 		return p.closing == 0
 	}
-	if g.skipping || g.replaying {
+	if g.skipping || g.replaying || g.fast != nil {
 		p.closing = 1
 		return false
 	}
@@ -439,6 +443,8 @@ func (g *Game) phoneHint(p *phoneView) string {
 		return lang.T("Enter: 応答　Esc: 拒否")
 	case p.cue.App == "lock":
 		return lang.T("クリック: 次の通知　Esc: 閉じる")
+	case p.cue.App == "page" && len(pageButtons(p.cue.Rows)) > 0:
+		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
 	case p.cue.App == "page":
 		return lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる")
 	}

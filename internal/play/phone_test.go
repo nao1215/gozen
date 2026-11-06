@@ -559,3 +559,58 @@ func TestPhoneBanner(t *testing.T) {
 		t.Fatal("the last banner did not go away by itself")
 	}
 }
+
+// TestPhonePageKeys: the keys reach the page's buttons: the first OK rings the
+// button in view, right and Tab move the ring, left wraps, and OK presses the
+// ringed button with its result.
+func TestPhonePageKeys(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Var: "var.sso", Rows: []data.PhoneRow{
+		{Text: "Approve sign-in?"}, {Button: "Approve"}, {Button: "Deny"},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnOK)
+	if p.closing != 0 || p.focus != 1 || !p.keyed {
+		t.Fatalf("the first OK: focus %d keyed %v closing %d", p.focus, p.keyed, p.closing)
+	}
+	phonePress(g, btnNext)
+	if p.focus != 2 {
+		t.Fatalf("Tab moved the ring to %d, want 2", p.focus)
+	}
+	phonePress(g, btnRight)
+	if p.focus != 1 {
+		t.Fatalf("right from the last button went to %d, want 1", p.focus)
+	}
+	phonePress(g, btnLeft)
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	phonePress(g, btnOK)
+	if p.closing == 0 || p.result != 1 {
+		t.Fatalf("OK on Deny put the phone down with %d (closing %d)", p.result, p.closing)
+	}
+}
+
+// TestPhonePageKeysScroll: a button off the screen is scrolled to when the
+// keys move the ring onto it.
+func TestPhonePageKeysScroll(t *testing.T) {
+	rows := []data.PhoneRow{{Button: "Top"}}
+	for range 12 {
+		rows = append(rows, data.PhoneRow{Item: &data.PhoneItem{Title: "Row"}})
+	}
+	rows = append(rows, data.PhoneRow{Button: "Bottom"})
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: rows})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnLeft)
+	phoneTicks(g, 40)
+	laid, _, _ := g.pageView(p)
+	if p.focus != len(rows)-1 || !g.pageInView(p, laid[p.focus]) {
+		t.Fatalf("left did not ring and show the last button: focus %d scroll %v", p.focus, p.scroll)
+	}
+	phonePress(g, btnUp)
+	phoneTicks(g, 40)
+	if p.focus >= 0 && !g.pageInView(p, laid[p.focus]) {
+		t.Fatal("scrolling up left the ring on a button off the screen")
+	}
+}

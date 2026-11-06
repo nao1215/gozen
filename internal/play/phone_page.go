@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -105,6 +106,9 @@ func (g *Game) pageView(p *phoneView) (rows []pageRow, w, end float64) {
 
 func (g *Game) updatePhonePage(p *phoneView) {
 	rows, _, end := g.pageView(p)
+	if g.pageKeys(p, rows, end) {
+		return
+	}
 	stops := make([]float64, len(rows))
 	for i, l := range rows {
 		stops[i] = l.top - phonePageGap
@@ -117,6 +121,99 @@ func (g *Game) updatePhonePage(p *phoneView) {
 			}
 		}
 	})
+	if in := &g.in; in.pressed[btnUp] || in.pressed[btnDown] {
+		g.focusInView(p, rows, true)
+	}
+}
+
+// pageButtons are the rows of the page that are buttons.
+func pageButtons(rows []data.PhoneRow) []int {
+	var out []int
+	for i, r := range rows {
+		if r.Button != "" {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// pageInView tells that a row is all on the screen.
+func (g *Game) pageInView(p *phoneView, l pageRow) bool {
+	_, _, _, h := g.phoneScreenRect(p.side)
+	return l.top >= p.scroll && l.top+l.h <= p.scroll+h-phoneFeedTop
+}
+
+// focusInView moves the keys' focus to the first button on the screen when the
+// focused one is not (keyed: the keys moved it, so the ring shows).
+func (g *Game) focusInView(p *phoneView, rows []pageRow, keyed bool) {
+	at := p.scroll
+	if p.aim >= 0 {
+		at = p.aim
+	}
+	was := p.scroll
+	p.scroll = at
+	defer func() { p.scroll = was }()
+	if p.focus >= 0 && g.pageInView(p, rows[p.focus]) {
+		p.keyed = p.keyed || keyed
+		return
+	}
+	p.focus = -1
+	for _, i := range pageButtons(p.cue.Rows) {
+		if g.pageInView(p, rows[i]) {
+			p.focus, p.keyed = i, p.keyed || keyed
+			return
+		}
+	}
+}
+
+// pageKeys moves the keys' focus between the page's buttons (left, right, Tab)
+// and presses the focused one with OK, the first OK showing the ring when the
+// keys have not moved it yet. It tells whether it took the input.
+func (g *Game) pageKeys(p *phoneView, rows []pageRow, end float64) bool {
+	in := &g.in
+	buttons := pageButtons(p.cue.Rows)
+	if len(buttons) == 0 {
+		return false
+	}
+	d := 0
+	switch {
+	case in.pressed[btnRight] || in.pressed[btnNext]:
+		d = 1
+	case in.pressed[btnLeft]:
+		d = -1
+	case in.ok():
+		g.focusInView(p, rows, false)
+		switch {
+		case p.focus >= 0 && p.keyed:
+			p.putDown(p.focus, -1)
+			return true
+		case p.focus >= 0:
+			p.keyed = true
+			return true
+		}
+		return false
+	default:
+		return false
+	}
+	k := slices.Index(buttons, p.focus)
+	switch {
+	case k < 0 && d > 0:
+		k = 0
+	case k < 0:
+		k = len(buttons) - 1
+	default:
+		k = (k + d + len(buttons)) % len(buttons)
+	}
+	p.focus, p.keyed = buttons[k], true
+	l := rows[p.focus]
+	_, _, _, h := g.phoneScreenRect(p.side)
+	if !g.pageInView(p, l) {
+		p.aim = math.Max(0, math.Min(end, l.top+l.h+phonePageGap-(h-phoneFeedTop)))
+		if l.top < p.scroll {
+			p.aim = math.Max(0, l.top-phonePageGap)
+		}
+	}
+	return true
 }
 
 // pageAccent is the page's color: its app bar's, or the phone's blue.
@@ -135,7 +232,7 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 		if y+l.h <= phoneFeedTop || y >= h {
 			continue
 		}
-		g.drawPageRow(dst, p, p.cue.Rows[i], l, y, w)
+		g.drawPageRow(dst, p, i, l, y, w)
 	}
 	// The bar goes over the rows that scroll up under it.
 	switch accent, ok := p.pageAccent(); {
@@ -152,7 +249,8 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 }
 
-func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, r data.PhoneRow, l pageRow, y, w float64) {
+func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y, w float64) {
+	r := p.cue.Rows[i]
 	x, iw := phonePagePad, w-phonePagePad*2
 	switch {
 	case r.Text != "":
@@ -181,6 +279,9 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, r data.PhoneRow, l p
 		g.drawPageItem(dst, p, r.Item, x, y, iw)
 	default:
 		accent, _ := p.pageAccent()
+		if p.keyed && p.focus == i {
+			gfx.StrokeRoundRect(dst, float32(x-4), float32(y-4), float32(iw+8), phonePageBtn+8, 15, 2.5, phoneInk)
+		}
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(iw), phonePageBtn, 12, accent)
 		gfx.DrawText(dst, gfx.Ellipsis(r.Button, 17, iw-24), w/2, y+13, 17, phoneOnVideo)
 	}
