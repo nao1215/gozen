@@ -51,7 +51,7 @@ type imageInputs struct {
 
 // computeImageInputs hashes the inputs of every picture of m, reading the repository at dir.
 func computeImageInputs(m manifest, dir string) (imageInputs, error) {
-	h := &inputHasher{root: dir, files: map[string]string{}, pkgs: map[string]string{}}
+	h := newInputHasher(dir)
 	in := imageInputs{inputs: map[string]string{}, images: map[string]string{}, uses: map[string][]string{}}
 	var err error
 	if in.inputs["go"], err = h.goModule(); err != nil {
@@ -106,6 +106,14 @@ type inputHasher struct {
 	root  string
 	files map[string]string // slash path -> hash
 	pkgs  map[string]string // import path -> hash of the package's own files
+	// deps are the packages of this module each package imports, kept with its
+	// hash so that a package hashed for one sample still leads to its imports for
+	// the next: the samples come in map order.
+	deps map[string][]string
+}
+
+func newInputHasher(dir string) *inputHasher {
+	return &inputHasher{root: dir, files: map[string]string{}, pkgs: map[string]string{}, deps: map[string][]string{}}
 }
 
 func (h *inputHasher) abs(p string) string {
@@ -258,6 +266,7 @@ func (h *inputHasher) mainPackage(pkg string) (string, error) {
 		}
 		seen[dir] = true
 		if _, ok := h.pkgs[dir]; ok {
+			queue = append(queue, h.deps[dir]...)
 			continue
 		}
 		p, err := ctx.ImportDir(h.abs(dir), 0)
@@ -304,9 +313,10 @@ func (h *inputHasher) mainPackage(pkg string) (string, error) {
 		h.pkgs[dir] = hex.EncodeToString(d.Sum(nil))
 		for _, imp := range p.Imports {
 			if rel, ok := strings.CutPrefix(imp, mod+"/"); ok {
-				queue = append(queue, rel)
+				h.deps[dir] = append(h.deps[dir], rel)
 			}
 		}
+		queue = append(queue, h.deps[dir]...)
 	}
 	d := sha256.New()
 	for _, dir := range sortedKeys(seen) {
@@ -586,5 +596,42 @@ func TestImageInputsFollowChanges(t *testing.T) {
 	}
 	if bad := staleImages(got, base, []string{"a.jpg", "b.jpg"}); len(bad) != 1 || !strings.Contains(bad[0], "b.jpg: not recorded") {
 		t.Fatalf("after recording a.jpg: %v", bad)
+	}
+}
+
+// A sample's package hash does not depend on the samples hashed before it with
+// the same hasher: the samples come in map order, and a package already hashed
+// for one must still lead to the packages it imports.
+func TestImageInputsIndependentOfSampleOrder(t *testing.T) {
+	t.Parallel()
+	m := loadManifest(t)
+	var pkgs []string
+	for _, s := range m.Samples {
+		if !slices.Contains(pkgs, s.Package) {
+			pkgs = append(pkgs, s.Package)
+		}
+	}
+	slices.Sort(pkgs)
+	alone := map[string]string{}
+	for _, pkg := range pkgs {
+		s, err := newInputHasher(root).mainPackage(pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		alone[pkg] = s
+	}
+	reversed := slices.Clone(pkgs)
+	slices.Reverse(reversed)
+	for _, order := range [][]string{pkgs, reversed} {
+		h := newInputHasher(root)
+		for _, pkg := range order {
+			s, err := h.mainPackage(pkg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s != alone[pkg] {
+				t.Errorf("%s: hashed after %v differs from hashed alone", pkg, order)
+			}
+		}
 	}
 }
