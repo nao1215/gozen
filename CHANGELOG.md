@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.17.0 - 2026-11-06
+
+A phone over any scene (chat, feed, video, page, lock screen and banner apps, held upright or on its side), YAML schema 11 with shorter authoring forms, about fifty bug fixes from a quality pass, and checks that keep the engine, the YAML and the docs from drifting: `gozen check --strict` and `--baseline`, per-definition unused warnings, error codes with causes and fixes, whole-program dead code and complexity checks, and documentation pictures verified by their inputs.
+
 ### Breaking: YAML schema 11
 
 - Authored tactic rows default to `enabled: true` in schema 11. Schemas 0–10
