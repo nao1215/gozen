@@ -146,6 +146,89 @@ func (c *checker) ref(where, kind, id string, ok bool) {
 	}
 }
 
+// phone checks a phone command (ADR 0056): a known hold and app, the list the
+// app shows and nothing else, the pictures it draws and its texts.
+func (c *checker) phone(where string, p PhoneCue, names []string) {
+	switch p.Hold {
+	case "", "portrait", "landscape":
+	default:
+		c.errorf(diag.Shape, where+".hold", "hold must be portrait or landscape, not %q", p.Hold)
+	}
+	lists := map[string]bool{"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil}
+	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video"}
+	if _, ok := lists[p.App]; !ok {
+		c.errorf(diag.Shape, where+".app", "app must be chat, feed or video, not %q", p.App)
+		return
+	}
+	for _, app := range []string{"chat", "feed", "video"} {
+		has := lists[app]
+		if app == p.App && !has {
+			c.errorf(diag.Shape, where+"."+keys[app], "app %s needs %s", app, keys[app])
+		}
+		if app != p.App && has {
+			c.errorf(diag.Shape, where+"."+keys[app], "app %s does not show %s", p.App, keys[app])
+		}
+	}
+	c.text(where+".title", p.Title, names)
+	for i, m := range p.Messages {
+		at := fmt.Sprintf("%s.messages[%d]", where, i)
+		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n != 1 {
+			c.errorf(diag.Shape, at, "a message needs text, picture or video (one of them)")
+		}
+		c.phoneVideo(at+".video", m.Video, names)
+		c.text(at+".from", m.From, names)
+		c.text(at+".text", m.Text, names)
+		c.picture(at+".picture", Picture{File: m.Picture})
+		c.picture(at+".icon", Picture{File: m.Icon})
+	}
+	for i, post := range p.Posts {
+		at := fmt.Sprintf("%s.posts[%d]", where, i)
+		if (post.Picture == "") == (post.Video == nil) {
+			c.errorf(diag.Shape, at, "a post needs picture or video (one of them)")
+		}
+		c.phoneVideo(at+".video", post.Video, names)
+		if post.Likes < 0 {
+			c.errorf(diag.Shape, at+".likes", "likes must not be negative")
+		}
+		c.text(at+".who", post.Who, names)
+		c.text(at+".text", post.Text, names)
+		c.picture(at+".picture", Picture{File: post.Picture})
+		c.picture(at+".icon", Picture{File: post.Icon})
+	}
+	c.phoneVideo(where+".video", p.Video, names)
+}
+
+// phoneVideo checks a clip on the phone: a picture or a puppet to show, the
+// files they name, its length and the seconds it jiggles at.
+func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
+	if v == nil {
+		return
+	}
+	if v.Picture == "" && v.Puppet == "" {
+		c.errorf(diag.Shape, where, "a video needs a picture or a puppet")
+	}
+	if v.Seconds < 0 {
+		c.errorf(diag.Shape, where+".seconds", "seconds must not be negative")
+	}
+	if v.Zoom < 0 {
+		c.errorf(diag.Shape, where+".zoom", "zoom must not be negative")
+	}
+	length := v.Seconds
+	if length == 0 {
+		length = 30
+	}
+	for i, at := range v.Bounce {
+		if at < 0 || at > length {
+			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), "bounce %g is outside the video (0 to %g seconds)", at, length)
+		}
+	}
+	if v.Puppet != "" && !c.db.Exists("assets/"+v.Puppet) {
+		c.errorf(diag.MissingAsset, where+".puppet", "no puppet assets/%s", v.Puppet)
+	}
+	c.text(where+".text", v.Text, names)
+	c.picture(where+".picture", Picture{File: v.Picture})
+}
+
 func (c *checker) picture(where string, p Picture) {
 	if p.File != "" && !c.db.Exists("assets/"+p.File) {
 		c.errorf(diag.MissingAsset, where, "no picture assets/%s", p.File)
@@ -1614,6 +1697,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.text(w+".respond.from", cmd.Respond.From, names)
 		case "notice":
 			c.text(w+".notice", cmd.Notice, names)
+		case "phone":
+			c.phone(w+".phone", *cmd.Phone, names)
 		case "call_view":
 			cam, share := cmd.CallView.Camera, cmd.CallView.Share
 			if (cam == nil) == (share == nil) {

@@ -257,7 +257,12 @@ var english = map[string]string{
 	"game.yaml %s: 版が整数の範囲を超えています":                                             "game.yaml %s: the version is too large",
 	"game.yaml schema_version: 仕様版 %d には対応していません（対応版 %d〜%d）。対応するエンジンを使用してください": "game.yaml schema_version: schema %d is not supported (supported: %d to %d); use an engine that supports it",
 	"game.yaml data_version: 作品のデータ版は０以上にしてください（指定値 %d）":                       "game.yaml data_version: the data version must be 0 or more (got %d)",
-	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください":        "game.yaml id: schema %d needs a game ID that starts with a letter or digit and uses only letters, digits, _ and -",
+	"クリック: 一時停止　Esc: チャットに戻る":                                                  "Click: pause   Esc: back to the chat",
+	"クリック: 一時停止　Esc: 閉じる":                                                      "Click: pause   Esc: close",
+	"左右・スワイプ: 投稿を送る　クリック: いいね　Esc: 閉じる":                                        "Left, right or swipe: next post   Click: like   Esc: close",
+	"クリック: 次のメッセージ　Esc: 閉じる":                                                   "Click: next message   Esc: close",
+	"いいね！ %s 件": "%s likes",
+	"game.yaml id: 仕様版 %d では作品の ID が必要です。英数字で始まる英数字・_・- だけの名前を指定してください": "game.yaml id: schema %d needs a game ID that starts with a letter or digit and uses only letters, digits, _ and -",
 	// screens: battle
 	"CRITICAL!":     "CRITICAL!",
 	"WEAK!":         "WEAK!",

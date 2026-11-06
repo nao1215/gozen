@@ -267,6 +267,9 @@ type Game struct {
 	// callCamera overrides participants' cameras for the call's lines
 	// (call_view; presentation only, cleared by a line outside a call).
 	callCamera map[string]bool
+	// phone is the phone over the scene (the phone command, ADR 0056), nil
+	// while none is up.
+	phone *phoneView
 	// callShare is the screen shared on the call's stage (call_view.share;
 	// presentation only, cleared like callCamera); nil shares nothing.
 	callShare *event.CallShareEffect
@@ -1162,6 +1165,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		s.draw(g, dst)
 	}
 	// Over the modal screen on top: the chat notification belongs to the surface.
+	g.drawPhone(dst)
 	g.drawInboxToast(dst)
 	g.drawGuide(dst)
 	if shaken != nil {
@@ -1866,7 +1870,12 @@ func (g *Game) pump() bool {
 			}
 		}
 	case event.Tap:
-		if g.updateTap() {
+		if g.phone != nil {
+			if g.updatePhone() {
+				g.phone.close()
+				g.phone, g.req = nil, nil
+			}
+		} else if g.updateTap() {
 			g.req = nil
 		}
 	}
@@ -2233,6 +2242,11 @@ func (g *Game) Handle(e event.Effect) {
 		g.Mood(e.Name)
 	case event.ImageEffect:
 		g.Image(e.Picture)
+	case event.PhoneEffect:
+		if g.phone != nil {
+			g.phone.close()
+		}
+		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)
 	case event.CallCameraEffect:

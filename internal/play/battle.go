@@ -1167,7 +1167,12 @@ func (s *battleScene) event(g *Game) {
 			s.req = nil
 		}
 	case event.Tap:
-		if g.updateTap() {
+		if g.phone != nil {
+			if g.updatePhone() {
+				g.phone.close()
+				g.phone, s.req = nil, nil
+			}
+		} else if g.updateTap() {
 			s.req = nil
 		}
 	}

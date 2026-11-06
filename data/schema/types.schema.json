@@ -5269,6 +5269,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "phone": {}
+          },
+          "required": [
+            "phone"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "sfx": {}
           },
           "required": [
@@ -6267,6 +6276,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[OrderCmd](#ordercmd) or string"
+        },
+        "phone": {
+          "$ref": "#/$defs/PhoneCue",
+          "description": "Shows a phone over the scene until the player puts it down, without changing any state (ADR 0056): app chat (messages), feed (posts) or video (video), held upright or with hold landscape on its side.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneCue](#phonecue)"
         },
         "pick": {
           "description": "Picks an item of the current location's menu (a person, action or exit) by its label.",
@@ -15187,6 +15209,364 @@
         },
         "wash": {
           "description": "How strongly workspace surfaces are covered with the light, 0 through 0.8.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneCue": {
+      "additionalProperties": false,
+      "description": "A phone over the scene (ADR 0056); the event waits until it is put down.",
+      "properties": {
+        "app": {
+          "description": "chat, feed or video; names the one list the phone shows.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "hold": {
+          "description": "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "messages": {
+          "description": "The chat's messages, the first shown when the phone comes up and each press bringing the next.",
+          "items": {
+            "$ref": "#/$defs/PhoneMessage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneMessage](#phonemessage)[]"
+        },
+        "posts": {
+          "description": "The feed's posts, one on the screen at a time.",
+          "items": {
+            "$ref": "#/$defs/PhonePost"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhonePost](#phonepost)[]"
+        },
+        "title": {
+          "description": "Interpolated header of the app.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "The video app's clip.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneMessage": {
+      "additionalProperties": false,
+      "description": "One bubble of a chat: exactly one of text, picture and video.",
+      "properties": {
+        "from": {
+          "description": "Interpolated name of the sender, over the bubble.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "icon": {
+          "description": "Path of the sender's round picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "mine": {
+          "description": "True puts the bubble on the right, as sent by the phone's owner; it comes without typing dots.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "picture": {
+          "description": "Path of a picture under assets/ sent in the chat.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Interpolated text of the bubble.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "A clip sent in the chat; a press on it while it is the newest turns the phone on its side and plays it.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        }
+      },
+      "type": "object"
+    },
+    "PhonePost": {
+      "additionalProperties": false,
+      "description": "One post of a photo feed.",
+      "properties": {
+        "icon": {
+          "description": "Path of the poster's round picture under assets/.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "likes": {
+          "description": "Number of likes; a click on the post adds the player's.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "picture": {
+          "description": "Path of the post's picture under assets/; a tall picture is cropped from its top.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "Interpolated caption.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "video": {
+          "$ref": "#/$defs/PhoneVideo",
+          "description": "A clip playing in the post's place, looping, instead of a picture.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneVideo](#phonevideo)"
+        },
+        "who": {
+          "description": "Interpolated name of who posted it.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneVideo": {
+      "additionalProperties": false,
+      "description": "A clip on the phone: a picture pushed in slowly with an optional puppet in front.",
+      "properties": {
+        "bounce": {
+          "description": "Seconds into the clip at which the puppet jiggles.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number[]"
+        },
+        "picture": {
+          "description": "Path of the picture under assets/ that fills the frame.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "puppet": {
+          "description": "Path of a puppet file under assets/; it breathes and sways as on the stage.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "seconds": {
+          "description": "Length of the clip on the seek bar (0 is 30).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "text": {
+          "description": "Interpolated title over the player.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "zoom": {
+          "description": "How many times the frame's height the puppet is drawn (0 is 1.5, its upper body).",
           "type": "number",
           "x-contract": {
             "default": "0",

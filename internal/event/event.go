@@ -59,6 +59,10 @@ type MoodEffect struct{ Name string }
 // ImageEffect sets the current picture; an empty file clears it.
 type ImageEffect struct{ Picture data.CG }
 
+// PhoneEffect shows a phone over the scene (the phone command, ADR 0056) with
+// its texts already filled; the event waits on a Tap while it is up.
+type PhoneEffect struct{ Phone data.PhoneCue }
+
 // CallCameraEffect turns a call participant's camera view on or off; it is
 // presentation only.
 type CallCameraEffect struct {
@@ -118,6 +122,7 @@ func (ImageEffect) isEffect()      {}
 func (SoundEffect) isEffect()      {}
 func (CallCameraEffect) isEffect() {}
 func (CallShareEffect) isEffect()  {}
+func (PhoneEffect) isEffect()      {}
 func (BreedEffect) isEffect()      {}
 func (VisualEffect) isEffect()     {}
 func (StandEffect) isEffect()      {}
@@ -1264,6 +1269,9 @@ func (r *Runner) run(c *data.Command) Request {
 		return Wait{Seconds: c.Wait.Seconds, NoSkip: !c.Wait.Skippable()}
 	case "notice":
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
+	case "phone":
+		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
+		return Tap{}
 	case "call_view":
 		if cam := c.CallView.Camera; cam != nil {
 			r.emit(CallCameraEffect{Who: cam.Who, On: cam.On})
@@ -1611,6 +1619,33 @@ func (r *Runner) asideInside(a data.Aside) bool {
 }
 
 // show shows a picture (and remembers the last picture shown).
+// fillPhone fills the phone's texts for the screen: every name, caption and
+// line is interpolated and translated as a line of dialogue is.
+func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
+	fill := func(s string) string { return data.Render(r.db.Tr(s), env) }
+	p.Title = fill(p.Title)
+	p.Messages = append([]data.PhoneMessage(nil), p.Messages...)
+	video := func(v *data.PhoneVideo) *data.PhoneVideo {
+		if v == nil {
+			return nil
+		}
+		c := *v
+		c.Text = fill(c.Text)
+		return &c
+	}
+	for i := range p.Messages {
+		m := &p.Messages[i]
+		m.From, m.Text, m.Video = fill(m.From), fill(m.Text), video(m.Video)
+	}
+	p.Posts = append([]data.PhonePost(nil), p.Posts...)
+	for i := range p.Posts {
+		post := &p.Posts[i]
+		post.Who, post.Text, post.Video = fill(post.Who), fill(post.Text), video(post.Video)
+	}
+	p.Video = video(p.Video)
+	return p
+}
+
 func (r *Runner) show(c data.CG) {
 	// notify both the screen and the screenless run of the portrait display over a provisional background, with the same value.
 	if r.db.StandIn(c.File) {
