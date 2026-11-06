@@ -70,6 +70,28 @@ jobs:
           go-version-file: go.mod
       - run: go test -count=1 ./internal/dev/docs/... ./internal/diag/... ./internal/layer2/gamedata/...
 
+  docs-images-fresh:
+    # The fast staleness check of the documentation pictures, on every push and pull
+    # request (also while private: it takes seconds and needs no display). It hashes
+    # what makes each picture of docs/images/manifest.yaml and compares the hashes with
+    # docs/images/inputs.sum; the Docs workflow remakes the pictures when that file
+    # changes, and nightly (docs/development/docs.md).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Compare the inputs of the pictures with docs/images/inputs.sum
+        run: |
+          if ! make docs-images-fresh; then
+            echo "::error file=docs/images/inputs.sum,title=Stale documentation pictures::The log above names each stale picture and what changed. Run make docs-images and commit the pictures with docs/images/inputs.sum."
+            exit 1
+          fi
+
   lint:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
