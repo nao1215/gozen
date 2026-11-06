@@ -237,3 +237,23 @@ func BenchmarkCheckGame(b *testing.B) {
 		}
 	}
 }
+
+func TestRunCaseRejectsInlineStandardStreams(t *testing.T) {
+	previous := batchRun
+	t.Cleanup(func() { batchRun = previous })
+	called := false
+	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int { called = true; return 0 }
+	for _, arg := range []string{"--script=-", "--trace=-"} {
+		t.Run(arg, func(t *testing.T) {
+			called = false
+			record, err := json.Marshal(batchCase{ID: "inline", Args: []string{"game", arg}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := runCase(record, nil)
+			if result.Exit != 2 || called {
+				t.Fatalf("standard stream case executed: %+v, called=%v", result, called)
+			}
+		})
+	}
+}
