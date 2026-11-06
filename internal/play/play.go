@@ -2246,6 +2246,7 @@ func (g *Game) Handle(e event.Effect) {
 		if g.phone != nil {
 			g.phone.close()
 		}
+		g.pics.warm(phonePictures(e.Phone)...)
 		g.phone = newPhoneView(e.Phone)
 	case event.SoundEffect:
 		g.SFX(e.Name)

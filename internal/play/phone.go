@@ -52,12 +52,13 @@ type phoneView struct {
 	frames         map[string]*ebiten.Image
 }
 
-// phoneClip is a video playing: where it is in ticks, whether it is paused, and
-// the body of its puppet.
+// phoneClip is a video playing: where it is in ticks, whether it is paused,
+// whether it starts again at its end (a feed's post), and the body of its puppet.
 type phoneClip struct {
 	v      *data.PhoneVideo
 	played int
 	paused bool
+	loop   bool
 	body   *puppet.Puppet
 }
 
@@ -92,16 +93,49 @@ func (p *phoneView) clip(key string, v *data.PhoneVideo) *phoneClip {
 }
 
 func (c *phoneClip) length() int {
-	s := 30.0
-	if c.v.Seconds > 0 {
-		s = c.v.Seconds
+	return int(c.v.Length(len(c.v.Frames)) * 60)
+}
+
+// frame is the picture of the clip's footage on the screen now: the frames go
+// by at the clip's rate, starting again in a loop, else staying on the last.
+// It is empty for a clip without frames.
+func (c *phoneClip) frame() string {
+	n := len(c.v.Frames)
+	if n == 0 {
+		return ""
 	}
-	return int(s * 60)
+	i := int(float64(c.played) * c.v.FrameRate() / 60)
+	if c.loop {
+		i %= n
+	}
+	return c.v.Frames[min(i, n-1)]
+}
+
+// phonePictures are the pictures the phone shows: icons, pictures, posters and
+// every frame of its clips, to decode before it comes up.
+func phonePictures(cue data.PhoneCue) []string {
+	var out []string
+	video := func(v *data.PhoneVideo) {
+		if v != nil {
+			out = append(append(out, v.Picture), v.Frames...)
+		}
+	}
+	for _, m := range cue.Messages {
+		out = append(out, m.Icon, m.Picture)
+		video(m.Video)
+	}
+	for _, post := range cue.Posts {
+		out = append(out, post.Icon, post.Picture)
+		video(post.Video)
+	}
+	video(cue.Video)
+	return out
 }
 
 // step plays the clip one tick: the puppet moves and jiggles at its seconds.
 // loop starts it again at its end (a feed's post), else it stops there.
 func (c *phoneClip) step(g *Game, key string, loop bool) {
+	c.loop = loop
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {
 			c.body = seededPuppet(rig, "phone."+key)
@@ -667,15 +701,22 @@ func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	gfx.DrawTextLeft(dst, clipTime(c.played)+" / "+clipTime(length), 18, h-34, 14, phoneOnVideo)
 }
 
-// drawPhoneMedia draws a clip in x, y, w, h: its picture pushed in slowly and
-// its puppet in front, cut to the box (with corners of radius r).
+// drawPhoneMedia draws a clip in x, y, w, h: its footage's frame over its
+// picture (or the picture alone, pushed in slowly) and its puppet in front, cut
+// to the box (with corners of radius r).
 func (g *Game) drawPhoneMedia(dst *ebiten.Image, p *phoneView, key string, c *phoneClip, x, y, w, h, r float64) {
 	frame := p.frame(key, w, h)
 	frame.Fill(color.Black)
 	if img := g.pics.get(c.v.Picture); img != nil {
-		zoom := 1 + 0.06*float64(c.played)/float64(max(1, c.length()))
+		zoom := 1.0
+		if len(c.v.Frames) == 0 {
+			zoom += 0.06 * float64(c.played) / float64(max(1, c.length()))
+		}
 		zw, zh := w*zoom, h*zoom
 		drawCoverTop(frame, img, (w-zw)/2, (h-zh)/2, zw, zh)
+	}
+	if img := g.pics.get(c.frame()); img != nil {
+		drawCoverTop(frame, img, 0, 0, w, h)
 	}
 	if c.v.Puppet != "" && c.body == nil {
 		if rig := g.rig(c.v.Puppet); rig != nil {

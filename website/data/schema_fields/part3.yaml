@@ -329,13 +329,15 @@ PhonePost:
   likes: "Number of likes; a click on the post adds the player's."
 
 PhoneVideo:
-  _: "A clip on the phone: a picture pushed in slowly with an optional puppet in front."
-  picture: "Path of the picture under assets/ that fills the frame."
+  _: "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front."
+  picture: "Path of the picture under assets/ that fills the frame; with frames, the poster drawn behind them."
+  frames: "Pictures under assets/ played in order as footage (a pattern such as clips/battle/*.jpg stands for the files it matches, sorted); a feed's post loops them, otherwise the clip stops on the last."
+  fps: "Frames shown a second (0 is 12)."
   puppet: "Path of a puppet file under assets/; it breathes and sways as on the stage."
   zoom: "How many times the frame's height the puppet is drawn (0 is 1.5, its upper body)."
   bounce: "Seconds into the clip at which the puppet jiggles."
   text: "Interpolated title over the player."
-  seconds: "Length of the clip on the seek bar (0 is 30)."
+  seconds: "Length of the clip on the seek bar (0 is the frames' length, or 30)."
 
 CallViewCue:
   _: "A presentation-only change of the video call on screen."

@@ -1618,9 +1618,9 @@ func (r *Runner) asideInside(a data.Aside) bool {
 	return false
 }
 
-// show shows a picture (and remembers the last picture shown).
 // fillPhone fills the phone's texts for the screen: every name, caption and
-// line is interpolated and translated as a line of dialogue is.
+// line is interpolated and translated as a line of dialogue is, and a clip's
+// frames patterns become the pictures they match.
 func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	fill := func(s string) string { return data.Render(r.db.Tr(s), env) }
 	p.Title = fill(p.Title)
@@ -1631,6 +1631,7 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 		}
 		c := *v
 		c.Text = fill(c.Text)
+		c.Frames = c.FramePictures(r.db.FS)
 		return &c
 	}
 	for i := range p.Messages {
@@ -1646,6 +1647,7 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	return p
 }
 
+// show shows a picture (and remembers the last picture shown).
 func (r *Runner) show(c data.CG) {
 	// notify both the screen and the screenless run of the portrait display over a provisional background, with the same value.
 	if r.db.StandIn(c.File) {

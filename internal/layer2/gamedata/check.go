@@ -203,25 +203,38 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	c.phoneVideo(where+".video", p.Video, names)
 }
 
-// phoneVideo checks a clip on the phone: a picture or a puppet to show, the
-// files they name, its length and the seconds it jiggles at.
+// phoneVideo checks a clip on the phone: a picture, frames or a puppet to
+// show, the files they name, its length, its frame rate and the seconds it
+// jiggles at.
 func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 	if v == nil {
 		return
 	}
-	if v.Picture == "" && v.Puppet == "" {
-		c.errorf(diag.Shape, where, "a video needs a picture or a puppet")
+	if v.Picture == "" && len(v.Frames) == 0 && v.Puppet == "" {
+		c.errorf(diag.Shape, where, "a video needs a picture, frames or a puppet")
 	}
 	if v.Seconds < 0 {
 		c.errorf(diag.Shape, where+".seconds", "seconds must not be negative")
 	}
+	if v.FPS < 0 {
+		c.errorf(diag.Shape, where+".fps", "fps must not be negative")
+	}
 	if v.Zoom < 0 {
 		c.errorf(diag.Shape, where+".zoom", "zoom must not be negative")
 	}
-	length := v.Seconds
-	if length == 0 {
-		length = 30
+	frames := 0
+	for i, f := range v.Frames {
+		at := fmt.Sprintf("%s.frames[%d]", where, i)
+		pages := PhoneVideo{Frames: []string{f}}.FramePictures(c.db.FS)
+		if strings.ContainsAny(f, "*?[") && len(pages) == 0 {
+			c.errorf(diag.MissingAsset, at, "no picture matches %s under assets/", f)
+		}
+		for _, p := range pages {
+			c.picture(at, Picture{File: p})
+		}
+		frames += len(pages)
 	}
+	length := v.Length(frames)
 	for i, at := range v.Bounce {
 		if at < 0 || at > length {
 			c.errorf(diag.Shape, fmt.Sprintf("%s.bounce[%d]", where, i), "bounce %g is outside the video (0 to %g seconds)", at, length)

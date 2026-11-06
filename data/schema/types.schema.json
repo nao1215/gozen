@@ -15511,7 +15511,7 @@
     },
     "PhoneVideo": {
       "additionalProperties": false,
-      "description": "A clip on the phone: a picture pushed in slowly with an optional puppet in front.",
+      "description": "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front.",
       "properties": {
         "bounce": {
           "description": "Seconds into the clip at which the puppet jiggles.",
@@ -15532,8 +15532,40 @@
           },
           "x-type": "number[]"
         },
+        "fps": {
+          "description": "Frames shown a second (0 is 12).",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "frames": {
+          "description": "Pictures under assets/ played in order as footage (a pattern such as clips/battle/*.jpg stands for the files it matches, sorted); a feed's post loops them, otherwise the clip stops on the last.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
         "picture": {
-          "description": "Path of the picture under assets/ that fills the frame.",
+          "description": "Path of the picture under assets/ that fills the frame; with frames, the poster drawn behind them.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15559,7 +15591,7 @@
           "x-type": "string"
         },
         "seconds": {
-          "description": "Length of the clip on the seek bar (0 is 30).",
+          "description": "Length of the clip on the seek bar (0 is the frames' length, or 30).",
           "type": "number",
           "x-contract": {
             "default": "0",

@@ -26,7 +26,14 @@ func TestPhoneChecks(t *testing.T) {
 		{"negative likes", `phone: {app: feed, posts: [{picture: x.png, likes: -1}]}`, `likes must not be negative`},
 		{"missing picture", `phone: {app: feed, posts: [{picture: none.png}]}`, `phone.posts[0].picture: no picture assets/none.png`},
 		{"missing icon", `phone: {app: chat, messages: [{icon: none.png, text: Hi}]}`, `phone.messages[0].icon: no picture assets/none.png`},
-		{"empty video", `phone: {app: video, video: {text: Clip}}`, `a video needs a picture or a puppet`},
+		{"empty video", `phone: {app: video, video: {text: Clip}}`, `a video needs a picture, frames or a puppet`},
+		{"frames", `phone: {app: video, video: {frames: [f/1.png, f/2.png], fps: 8}}`, ""},
+		{"frames pattern", `phone: {app: feed, posts: [{video: {picture: x.png, frames: [f/*.png]}}]}`, ""},
+		{"bounce within frames", `phone: {app: video, video: {frames: [f/*.png], fps: 1, bounce: [2]}}`, ""},
+		{"bounce past frames", `phone: {app: video, video: {frames: [f/*.png], fps: 1, bounce: [3]}}`, `bounce 3 is outside the video (0 to 2 seconds)`},
+		{"missing frame", `phone: {app: video, video: {frames: [f/1.png, f/9.png]}}`, `phone.video.frames[1]: no picture assets/f/9.png`},
+		{"pattern matching nothing", `phone: {app: chat, messages: [{video: {frames: [g/*.png]}}]}`, `phone.messages[0].video.frames[0]: no picture matches g/*.png under assets/`},
+		{"negative fps", `phone: {app: video, video: {frames: [f/1.png], fps: -2}}`, `phone.video.fps: fps must not be negative`},
 		{"missing puppet", `phone: {app: video, video: {puppet: none.yaml}}`, `phone.video.puppet: no puppet assets/none.yaml`},
 		{"bounce outside", `phone: {app: video, video: {picture: x.png, seconds: 3, bounce: [5]}}`, `phone.video.bounce[0]: bounce 5 is outside the video (0 to 3 seconds)`},
 		{"negative seconds", `phone: {app: video, video: {picture: x.png, seconds: -1}}`, `seconds must not be negative`},
@@ -36,6 +43,8 @@ func TestPhoneChecks(t *testing.T) {
 				"data/z.yaml":       "events: {e: {do: [{" + tc.command + "}]}}",
 				"assets/p/rig.yaml": "base: base.png\nface: normal\nfaces: {normal: {}}\n",
 				"assets/p/base.png": "x",
+				"assets/f/1.png":    "x",
+				"assets/f/2.png":    "x",
 			})
 			switch {
 			case tc.want == "" && err != nil:

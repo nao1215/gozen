@@ -180,3 +180,73 @@ func TestPhoneSkip(t *testing.T) {
 		t.Fatal("skipping did not put the phone down")
 	}
 }
+
+// TestPhoneFrames: a clip's footage goes by at its rate, 12 a second unless
+// told, and lasts as long as its frames.
+func TestPhoneFrames(t *testing.T) {
+	frames := []string{"f/1.png", "f/2.png", "f/3.png", "f/4.png"}
+	c := &phoneClip{v: &data.PhoneVideo{Frames: frames, FPS: 10}}
+	if c.length() != 24 {
+		t.Fatalf("four frames at 10 a second last %d ticks, want 24", c.length())
+	}
+	if c.frame() != "f/1.png" {
+		t.Fatalf("the clip starts on %q", c.frame())
+	}
+	c.played = 13
+	if c.frame() != "f/3.png" {
+		t.Fatalf("13 ticks in at 10 a second shows %q, want f/3.png", c.frame())
+	}
+	if (&phoneClip{v: &data.PhoneVideo{Frames: frames}}).length() != 20 {
+		t.Fatal("frames without fps do not go at 12 a second")
+	}
+
+}
+
+// TestPhoneFramesFeed: a feed's post starts its footage again at its end.
+func TestPhoneFramesFeed(t *testing.T) {
+	frames := []string{"f/1.png", "f/2.png", "f/3.png", "f/4.png"}
+	g := phoneGame(t, data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+		{Video: &data.PhoneVideo{Frames: frames, FPS: 10, Seconds: 1}},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	post := p.clips["post0"]
+	seen := map[string]bool{}
+	for range 70 {
+		phoneTicks(g, 1)
+		seen[post.frame()] = true
+	}
+	if len(seen) != len(frames) || post.played != (phoneRise+70)%post.length() {
+		t.Fatalf("the post's footage did not loop through its frames: saw %v, at %d", seen, post.played)
+	}
+}
+
+// TestPhoneFramesVideo: the video app's footage advances, keeps its frame while
+// paused and stays on its last frame at its end.
+func TestPhoneFramesVideo(t *testing.T) {
+	frames := []string{"f/1.png", "f/2.png", "f/3.png", "f/4.png"}
+	g := phoneGame(t, data.PhoneCue{App: "video", Video: &data.PhoneVideo{Frames: frames, FPS: 10, Seconds: 1}})
+	p := g.phone
+	phoneTicks(g, phoneRise+10)
+	at := p.watch.frame()
+	if at == frames[0] {
+		t.Fatal("the video app's footage did not advance")
+	}
+	phonePress(g, btnOK)
+	if !p.watch.paused {
+		t.Fatal("a press did not pause the video")
+	}
+	played, at := p.watch.played, p.watch.frame()
+	phoneTicks(g, 30)
+	if p.watch.played != played || p.watch.frame() != at {
+		t.Fatalf("a paused clip went on: %d to %d, %q to %q", played, p.watch.played, at, p.watch.frame())
+	}
+	phonePress(g, btnOK)
+	phoneTicks(g, 90)
+	if p.watch.played != p.watch.length() || p.watch.frame() != frames[3] {
+		t.Fatalf("the video did not stop on its last frame: %q at %d", p.watch.frame(), p.watch.played)
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+}

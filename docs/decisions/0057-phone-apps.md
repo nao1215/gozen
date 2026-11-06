@@ -33,10 +33,20 @@ the player's hand and cannot play anything.
    slowly, and a `puppet` in front of it that breathes and sways as it does on
    the stage, `zoom` times the frame's height, jiggling at each second listed
    in `bounce`. `seconds` is its length (30 by default).
+
+   A still pushed in barely moves, so a clip can also play footage: `frames`
+   lists pictures under assets/ (a pattern such as `clips/battle/*.jpg` stands
+   for the files it matches, sorted, as an image's `files` do) shown in order
+   at `fps` (12 by default) with the same cover crop, over the `picture`, which
+   becomes the poster. A feed's post loops them; elsewhere the clip stops on its
+   last frame. `seconds` defaults to the frames' length. The frames are decoded
+   with the phone's other pictures when it comes up; the engine decodes no
+   video files, so a clip is cut into pictures beforehand (ffmpeg does it).
 5. Every text is interpolated and translated when the command runs. `gozen
    check` rejects an unknown hold or app, a missing list or a list the app does
    not show, a message without exactly one content, a post without a picture or
-   a video, a video without a picture or a puppet, missing files, negative
+   a video, a video without a picture, frames or a puppet, missing files, a frames
+   pattern that matches nothing, negative
    numbers and a bounce outside the clip.
 
 ## Consequences
