@@ -1,7 +1,7 @@
 package gamedata
 
 // Uses reports whether any command in the game has the verb (such as sp_suggest).
-// It walks events, places (person talk, items, exits, on-arrival, dungeon tiles, complete, walked) and in-battle events of enemy groups,
+// It walks authored screen actions, events, places (person talk, items, exits, on-arrival, dungeon tiles, roamers, complete, walked) and in-battle events of enemy groups,
 // descending into the branches of if, choice and battle. It is used to show a screen field only when the game uses it.
 func (db *DB) Uses(verb string) bool {
 	found := false
@@ -13,7 +13,9 @@ func (db *DB) Uses(verb string) bool {
 	return found
 }
 
-// EachCommand walks every command in the game (descending into the branches of if, choice and battle) and passes it to fn.
+// EachCommand walks every command in the game, including authored screen actions,
+// descending into if, choice and battle branches. Loaders use the mutable command
+// pointers to resolve defaults; presentation and CLI consumers inspect feature use.
 func (db *DB) EachCommand(fn func(*Command)) {
 	var in func(cs []Command)
 	in = func(cs []Command) {
@@ -32,6 +34,14 @@ func (db *DB) EachCommand(fn func(*Command)) {
 	}
 	for _, e := range db.Events {
 		in(e.Do)
+	}
+	for _, screen := range db.Game.Screens {
+		if screen == nil {
+			continue
+		}
+		for _, entry := range screen.Entries {
+			in(entry.Do)
+		}
 	}
 	if cp := db.Game.Campaign; cp != nil {
 		for _, id := range cp.OrderIDs() {
@@ -79,6 +89,11 @@ func (db *DB) EachCommand(fn func(*Command)) {
 				if t != nil {
 					in(t.Do)
 				}
+			}
+			for _, roamer := range d.Roamers {
+				in(roamer.OnAppear)
+				in(roamer.OnLeave)
+				in(roamer.Meet)
 			}
 			in(d.Complete)
 			in(d.Walked)

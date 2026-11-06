@@ -145,3 +145,31 @@ events:
 		})
 	}
 }
+
+func TestSimRoutesFindsNestedUnreachableEndings(t *testing.T) {
+	for _, place := range []string{"event", "screen"} {
+		t.Run(place, func(t *testing.T) {
+			dir := t.TempDir()
+			game := "schema_version: 10\nid: route-audit\nstart: {location: room}\n"
+			world := "locations: {room: {name: Room}}\n"
+			if place == "event" {
+				world += "events: {unused: {do: [{choice: [{label: Depart, do: [{clear: true}]}]}]}}\n"
+			} else {
+				game += "screens: {unused: {title: Desk, entries: [{label: Inspect, do: [{choice: [{label: Depart, do: [{clear: true}]}]}]}]}}\n"
+			}
+			write(t, filepath.Join(dir, "game.yaml"), game)
+			write(t, filepath.Join(dir, "data", "world.yaml"), world)
+			out, _ := invoke(t, 1, "sim", "routes", dir, "--format", "json", "--fail-unreachable")
+			var report routesReport
+			if err := json.Unmarshal(resultData(t, out, "sim routes"), &report); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(report.UnreachableEndings, []string{"clear"}) {
+				t.Fatalf("nested ending was omitted: %+v", report)
+			}
+			if len(report.UnofferedOptions) != 1 || report.UnofferedOptions[0].Option != "Depart" {
+				t.Fatalf("nested option was omitted or duplicated: %+v", report)
+			}
+		})
+	}
+}

@@ -114,24 +114,16 @@ func (c *command) routes() clihelp.Operation {
 		if db.Game.GameOver.Event != "" && counts["game_over"] == 0 {
 			report.UnreachableEndings = append(report.UnreachableEndings, "game_over")
 		}
-		if hasClear(db) && counts["clear"] == 0 {
+		if db.Uses("clear") && counts["clear"] == 0 {
 			report.UnreachableEndings = append(report.UnreachableEndings, "clear")
 		}
-		for _, ev := range db.Events {
-			collectOptions(ev.Do, offered, &report.UnofferedOptions)
-		}
-		for _, loc := range db.Locations {
-			collectOptions(loc.OnEnter, offered, &report.UnofferedOptions)
-			for _, person := range loc.People {
-				collectOptions(person.Talk, offered, &report.UnofferedOptions)
+		db.EachCommand(func(cmd *gamedata.Command) {
+			for _, option := range cmd.Choice {
+				if !offered[cmd.Prompt+"\x00"+option.Label] {
+					report.UnofferedOptions = append(report.UnofferedOptions, routeOption{Prompt: cmd.Prompt, Option: option.Label})
+				}
 			}
-			for _, action := range loc.Actions {
-				collectOptions(action.Do, offered, &report.UnofferedOptions)
-			}
-			for _, exit := range loc.Exits {
-				collectOptions(exit.Do, offered, &report.UnofferedOptions)
-			}
-		}
+		})
 		for _, warning := range db.FlagWarnings() {
 			message := warning.Error()
 			const prefix, suffix = "flag.", " is set but nothing reads it"
@@ -182,67 +174,6 @@ func (c *command) routes() clihelp.Operation {
 		printRoutes(c, report)
 		return failure
 	}}
-}
-
-func hasClear(db *gamedata.DB) bool {
-	for _, ev := range db.Events {
-		if commandsHaveClear(ev.Do) {
-			return true
-		}
-	}
-	for _, loc := range db.Locations {
-		if commandsHaveClear(loc.OnEnter) {
-			return true
-		}
-		for _, person := range loc.People {
-			if commandsHaveClear(person.Talk) {
-				return true
-			}
-		}
-		for _, action := range loc.Actions {
-			if commandsHaveClear(action.Do) {
-				return true
-			}
-		}
-		for _, exit := range loc.Exits {
-			if commandsHaveClear(exit.Do) {
-				return true
-			}
-		}
-		if loc.Dungeon != nil {
-			for _, tile := range loc.Dungeon.Tiles {
-				if commandsHaveClear(tile.Do) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func commandsHaveClear(cs []gamedata.Command) bool {
-	for _, c := range cs {
-		if c.Clear || commandsHaveClear(c.Then) || commandsHaveClear(c.Else) || commandsHaveClear(c.OnWin) || commandsHaveClear(c.OnLose) || commandsHaveClear(c.OnRun) {
-			return true
-		}
-	}
-	return false
-}
-
-func collectOptions(cs []gamedata.Command, offered map[string]bool, out *[]routeOption) {
-	for _, c := range cs {
-		for _, o := range c.Choice {
-			if !offered[c.Prompt+"\x00"+o.Label] {
-				*out = append(*out, routeOption{Prompt: c.Prompt, Option: o.Label})
-			}
-			collectOptions(o.Do, offered, out)
-		}
-		collectOptions(c.Then, offered, out)
-		collectOptions(c.Else, offered, out)
-		collectOptions(c.OnWin, offered, out)
-		collectOptions(c.OnLose, offered, out)
-		collectOptions(c.OnRun, offered, out)
-	}
 }
 
 func printRoutes(c *command, r routesReport) {
