@@ -515,7 +515,7 @@ func (s *Session) Answer(n int) {
 	}
 	s.pending = nil
 	if q.Kind == "choice" {
-		if n < 0 || n >= len(q.Options) {
+		if n < 0 || n >= event.ReplayView(*q).Answers() {
 			s.replayBlocked = true
 		}
 		s.recordInput(rpg.ReplayInput{Answer: &n})
@@ -904,7 +904,7 @@ func (s *Session) recordInput(input rpg.ReplayInput) {
 func (s *Session) resumeScreens(inputs []rpg.ReplayInput) error {
 	var pending event.Request
 	if s.pending != nil && s.pending.Kind == "choice" {
-		pending = event.Choice{Prompt: s.pending.Text, Options: s.pending.Options}
+		pending = event.Choice{Prompt: s.pending.Text, Options: s.pending.Options, Muted: s.pending.Seconds}
 	}
 	replay, err := s.runner.ReplayScreens(inputs, pending)
 	if err != nil {

@@ -301,6 +301,9 @@ func noRetryTroops(db *data.DB) map[string]bool {
 			for _, o := range c.Choice {
 				walk(o.Do)
 			}
+			if c.Muted != nil {
+				walk(c.Muted.Do)
+			}
 		}
 	}
 	for _, ev := range db.Events {

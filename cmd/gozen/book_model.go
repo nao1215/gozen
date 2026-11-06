@@ -265,6 +265,7 @@ type bookCommand struct {
 	OnWin    []bookCommand       `json:"on_win,omitempty"`
 	OnLose   []bookCommand       `json:"on_lose,omitempty"`
 	OnEscape []bookCommand       `json:"on_escape,omitempty"`
+	Muted    []bookCommand       `json:"muted,omitempty"`
 	SetV     map[string]bookExpr `json:"set,omitempty"`
 	Call     string              `json:"call,omitempty"`
 	Give     bookGive            `json:"give,omitzero"`
@@ -341,6 +342,9 @@ func bookCommands(db *gamedata.DB, cs []gamedata.Command) []bookCommand {
 		}
 		for _, o := range c.Choice {
 			v.Choice = append(v.Choice, bookChoice{o.Label, bookExpression(o.When), bookCommands(db, o.Do)})
+		}
+		if c.Muted != nil {
+			v.Muted = bookCommands(db, c.Muted.Do)
 		}
 		if len(c.SetV) > 0 {
 			v.SetV = map[string]bookExpr{}

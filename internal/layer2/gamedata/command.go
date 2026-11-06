@@ -42,6 +42,9 @@ type Command struct {
 	Say     *Say           `yaml:"say" command:"verb"`
 	Choice  []ChoiceOption `yaml:"choice" command:"verb"`
 	Prompt  string         `yaml:"prompt" command:"choice,stone_choose,stone_wearer"` // a line shown with the choice
+	// Muted holds the choice behind a muted microphone, as a video call's
+	// floor: the player unmutes to see the options, or stays quiet.
+	Muted *ChoiceMuted `yaml:"muted" command:"choice" json:",omitempty"`
 	// ID names the choice: the state remembers the option taken there as chose.<id>
 	// (schema_version 4, ADR 0025).
 	ID    string      `yaml:"id" command:"choice"`
@@ -272,6 +275,15 @@ func (s *Say) UnmarshalYAML(unmarshal func(any) error) error {
 	return unmarshal((*plain)(s))
 }
 
+// ChoiceMuted holds a choice behind a muted microphone: only an unmute button
+// shows, and the options come when it is pressed. Left muted for Seconds, the
+// choice is answered by Do instead, so keeping quiet is an answer the story
+// can follow, as a call left to ring is.
+type ChoiceMuted struct {
+	Seconds float64   `yaml:"seconds"`
+	Do      []Command `yaml:"do"`
+}
+
 // ChoiceOption is one answer of a choice.
 type ChoiceOption struct {
 	// LabelExpr selects a source template before translation and choice read-key hashing.
@@ -497,8 +509,8 @@ type MessageCue struct {
 // address bar or a Title on an app bar of Color (#rrggbb). A lock screen shows
 // Time (the phone's clock when empty) and Date over its notices, which arrive
 // on a press or, with Auto, by themselves. Var receives the result the phone
-// was put down with: a page button's id (its label by default), answer or
-// decline for a call; a feed keeps its likes with its posts' set. A feed scrolls down (the default) or, with Scroll
+// was put down with: a page button's id (its label by default), answer,
+// decline or missed for a call; a feed keeps its likes with its posts' set. A feed scrolls down (the default) or, with Scroll
 // across, shows a post a screen swiped sideways; Browse makes it only looked
 // at, a tap liking nothing.
 type PhoneCue struct {
@@ -558,24 +570,30 @@ type PhoneItem struct {
 // PhoneNotice is a notification on the lock screen: the App's short name, its
 // Icon under assets/, a Title and a Text. Call makes it an incoming call that
 // fills the screen: Title is the caller; OK answers (setting Set) and Cancel
-// declines. A banner's Event is the parameterless event a click on it opens.
+// declines. A call with Ring stops ringing after that many seconds unanswered
+// and puts the phone down, setting Missed: a call left to ring is a choice
+// too. A banner's Event is the parameterless event a click on it opens.
 type PhoneNotice struct {
-	App   string      `yaml:"app"`
-	Icon  string      `yaml:"icon"`
-	Title string      `yaml:"title"`
-	Text  string      `yaml:"text"`
-	Call  bool        `yaml:"call"`
-	Set   Assignments `yaml:"set" json:",omitempty"`
-	Event string      `yaml:"event"`
+	App    string      `yaml:"app"`
+	Icon   string      `yaml:"icon"`
+	Title  string      `yaml:"title"`
+	Text   string      `yaml:"text"`
+	Call   bool        `yaml:"call"`
+	Set    Assignments `yaml:"set" json:",omitempty"`
+	Ring   float64     `yaml:"ring"`
+	Missed Assignments `yaml:"missed" json:",omitempty"`
+	Event  string      `yaml:"event"`
 }
 
 // PhoneResult is one way the phone can be put down that the story keeps: a
-// page's button (Row), a call answered (Notice) or the last call declined
-// (both -1). ID is what the phone's Var receives and Set what it sets.
+// page's button (Row), a call answered (Notice), the last call declined (both
+// -1) or a call with a ring that rang out (Notice, Missed). ID is what the
+// phone's Var receives and Set what it sets.
 type PhoneResult struct {
 	Row, Notice int
 	ID          string
 	Set         Assignments
+	Missed      bool
 }
 
 // Results are the phone's results in order, when it keeps any (it has a Var
@@ -603,6 +621,14 @@ func (p PhoneCue) Results() []PhoneResult {
 	}
 	if calls {
 		out = append(out, PhoneResult{Row: -1, Notice: -1, ID: "decline"})
+	}
+	// The calls that ring out come last, so a save made before ring existed
+	// keeps the places of the results it answered.
+	for i, n := range p.Notices {
+		if n.Call && n.Ring > 0 && p.App == "lock" {
+			out = append(out, PhoneResult{Row: -1, Notice: i, ID: "missed", Set: n.Missed, Missed: true})
+			keeps = keeps || len(n.Missed) > 0
+		}
 	}
 	if !keeps {
 		return nil

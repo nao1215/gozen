@@ -23,7 +23,9 @@ type Request struct {
 	// ID is the troop of battle, the shop of shop, the screen of open, and the speaker's
 	// actor of say ("" when the speaker is not an actor).
 	ID string
-	// Seconds is the time of wait, and the time before tap goes on by itself (0: never).
+	// Seconds is the time of wait, the time before tap goes on by itself (0:
+	// never), and the time a muted choice waits before the player keeps quiet,
+	// which Answer takes as len(Options).
 	Seconds float64
 	// Flags are the battle's can_lose and no_retry, comma-separated.
 	Flags string

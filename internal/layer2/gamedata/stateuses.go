@@ -229,6 +229,9 @@ func (u *stateUses) commands(where string, cs []Command) {
 			u.expr(ow+".label_expr", o.LabelExpr)
 			u.commands(ow+".do", o.Do)
 		}
+		if c.Muted != nil {
+			u.commands(w+".muted.do", c.Muted.Do)
+		}
 	}
 }
 

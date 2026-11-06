@@ -9,6 +9,7 @@ import (
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer5/gfx"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 type talk struct {
@@ -35,6 +36,15 @@ type talk struct {
 	voiceT int
 	// asked is the question while choice is open, to ask it again in another language.
 	asked event.Choice
+	// held are the options of a muted choice (event.Choice.Muted) while choice
+	// is its unmute button, and muted the ticks left before the player is taken
+	// to keep quiet.
+	held  *list
+	muted int
+	// mic is where the call drew its mic control while muted (micR 0 for
+	// nowhere), so a click on it unmutes as the button does.
+	mic  phonePoint
+	micR float64
 }
 
 const (
@@ -244,6 +254,28 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 		}
 	}
 	t.choice = l
+	if c.Muted > 0 && !again {
+		t.mute(int(math.Ceil(c.Muted * 60)))
+	}
+}
+
+// mute holds the options behind an unmute button, in the last row of where
+// they stand, for ticks.
+func (t *talk) mute(ticks int) {
+	l := t.choice
+	gate := newList([]listItem{{label: lang.T("ミュートを解除")}}, l.x, 0, l.w, 1)
+	gate.rowH, gate.size = l.rowH, l.size
+	gate.y = l.y + l.height() - gate.height()
+	t.held, t.choice, t.muted, t.micR = l, gate, max(1, ticks), 0
+}
+
+// answers is how many answers the open choice takes: its options, and
+// staying quiet while it is muted.
+func (t *talk) answers() int {
+	if t.held != nil {
+		return len(t.held.items) + 1
+	}
+	return len(t.choice.items)
 }
 
 // reword shows the open line or question again in the language the game shows now
@@ -259,6 +291,10 @@ func (t *talk) reword(g *Game) {
 		g.renameOnStage(old, k)
 	}
 	if t.choice != nil {
+		muted := 0
+		if t.held != nil {
+			muted = t.muted
+		}
 		sel, top := t.choice.sel, t.choice.top
 		if !t.bare {
 			// A question without a prompt stays under the last page of the line before it.
@@ -266,7 +302,11 @@ func (t *talk) reword(g *Game) {
 			t.setPage(len(t.pages) - 1)
 		}
 		t.question(g, t.asked.Reword(g.db), true)
-		t.choice.sel, t.choice.top = sel, top
+		if muted > 0 {
+			t.mute(muted)
+		} else {
+			t.choice.sel, t.choice.top = sel, top
+		}
 		return
 	}
 	if t.bare {
@@ -323,6 +363,22 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 		return false, -1
 	}
 	if t.choice != nil {
+		if t.held != nil {
+			t.muted--
+			if t.muted <= 0 {
+				t.active, t.closed = false, g.tick
+				g.remember(logLine{text: "→ " + lang.T("ミュートのまま"), answer: true})
+				quiet := len(t.held.items)
+				// The call stays up after the choice: its mic is no longer muted.
+				t.held, t.micR = nil, 0
+				return true, quiet
+			}
+			chose, _ := t.choice.update(g)
+			if chose || g.in.click && t.micR > 0 && t.mic.Dist(g.in.mouse) <= t.micR {
+				t.choice, t.held = t.held, nil
+			}
+			return false, -1
+		}
 		chose, _ := t.choice.update(g)
 		if chose {
 			t.active, t.closed = false, g.tick

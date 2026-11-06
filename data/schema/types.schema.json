@@ -4049,6 +4049,45 @@
       },
       "type": "object"
     },
+    "ChoiceMuted": {
+      "additionalProperties": false,
+      "description": "Holds a choice behind a muted microphone, as the floor of a video call: only an unmute button shows (on a call, its mic control is struck through and a click on it unmutes too), and the options come when it is pressed.",
+      "properties": {
+        "do": {
+          "description": "The commands that run when the player keeps quiet.",
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Command](#command)[]"
+        },
+        "seconds": {
+          "description": "Seconds the choice waits muted; left that long, the player kept quiet and do runs instead of an option.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "ChoiceOption": {
       "additionalProperties": false,
       "description": "One answer of a `choice` command.",
@@ -5016,6 +5055,7 @@
           "properties": {
             "choice": {},
             "id": {},
+            "muted": {},
             "prompt": {}
           },
           "required": [
@@ -6167,6 +6207,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[MusicCue](#musiccue) or string"
+        },
+        "muted": {
+          "$ref": "#/$defs/ChoiceMuted",
+          "description": "With `choice`, holds the answers behind an unmute button for `seconds`; left muted, its `do` runs instead (the player kept quiet).",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional; only with choice",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ChoiceMuted](#choicemuted)"
         },
         "notice": {
           "description": "Shows a short notice at the top of the screen without stopping the event.",
@@ -15719,6 +15772,70 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "missed": {
+          "additionalProperties": {
+            "description": "An expression. gozen check checks its syntax, names and types.",
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Assignments made when the call rings out (needs ring).",
+          "patternProperties": {
+            "^actor\\.[^.]+\\.tactics$": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            }
+          },
+          "properties": {
+            "location": {
+              "description": "A name as written, not an expression.",
+              "type": "string"
+            },
+            "party": {
+              "anyOf": [
+                {
+                  "description": "A name as written, not an expression.",
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string → expression"
+        },
+        "ring": {
+          "description": "Seconds a call rings unanswered before it stops and puts the phone down with the result missed; 0 (the default) rings until it is answered or declined.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
         },
         "set": {
           "additionalProperties": {

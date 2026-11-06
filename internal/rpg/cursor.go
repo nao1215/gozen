@@ -37,7 +37,8 @@ type Cursor struct {
 	Line int `json:"line"`
 	// Answers are the options taken in the event, in order, and the results
 	// of its phones (-1 for a phone put down with nothing kept; a feed's likes
-	// as bits). The replay checks a choice's against its options.
+	// as bits). The replay checks a choice's against its options; a muted
+	// choice also takes the index past them, the player kept quiet.
 	Answers []int `json:"answers,omitempty"`
 	// Opened are the parameterless events a phone banner's click opened while the
 	// event ran, in order: a loader queues them after the event again, as the click did.

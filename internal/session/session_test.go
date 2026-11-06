@@ -2274,3 +2274,21 @@ screens:
 		t.Fatal("refused action executed during replay")
 	}
 }
+
+// TestMutedChoiceKeptQuiet: a session shows a muted choice with its seconds,
+// and Answer takes the index past the options as keeping quiet, running the
+// muted commands.
+func TestMutedChoiceKeptQuiet(t *testing.T) {
+	s := session(t, load(t), gozen.Config{Seed: 1})
+	if err := s.Start("- choice: [{label: Speak, do: [{gold: 1}]}]\n  muted: {seconds: 8, do: [{gold: 50}]}\n- say: after\n"); err != nil {
+		t.Fatal(err)
+	}
+	gold := query[int](t, s, "gold")
+	if q := s.Next(); q.Kind != "choice" || len(q.Options) != 1 || q.Seconds != 8 {
+		t.Fatalf("the muted choice was shown as %+v", q)
+	}
+	s.Answer(1)
+	if q := s.Next(); q.Kind != "say" || q.Text != "after" || query[int](t, s, "gold") != gold+50 {
+		t.Fatalf("keeping quiet: %+v, gold %d", q, query[int](t, s, "gold"))
+	}
+}

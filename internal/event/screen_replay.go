@@ -25,6 +25,15 @@ type ReplayView struct {
 	Flags     string
 }
 
+// Answers is how many answers the request takes: its options, and for a muted
+// choice (Seconds) staying quiet, the index past them.
+func (v ReplayView) Answers() int {
+	if v.Kind == "choice" && v.Seconds > 0 {
+		return len(v.Options) + 1
+	}
+	return len(v.Options)
+}
+
 // Digest identifies a presented request without storing its text in a save.
 func (v ReplayView) Digest() (string, error) {
 	b, err := json.Marshal(v)
@@ -63,7 +72,7 @@ func ReplayRequest(q Request) (ReplayView, bool) {
 	case Say:
 		return ReplayView{Kind: "say", Text: q.Text, Who: q.Name, Face: q.Face, ID: q.Actor}, true
 	case Choice:
-		return ReplayView{Kind: "choice", Text: q.Prompt, Options: q.Options}, true
+		return ReplayView{Kind: "choice", Text: q.Prompt, Options: q.Options, Seconds: q.Muted}, true
 	case Wait:
 		return ReplayView{Kind: "wait", Seconds: q.Seconds}, true
 	case Tap:
@@ -128,7 +137,7 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 	for _, input := range inputs {
 		if input.Answer != nil {
 			n := *input.Answer
-			if (s.View.Kind != "open" && s.View.Kind != "choice") || n < 0 && (n != -1 || s.View.Kind != "open") || n >= len(s.View.Options) {
+			if (s.View.Kind != "open" && s.View.Kind != "choice") || n < 0 && (n != -1 || s.View.Kind != "open") || n >= s.View.Answers() {
 				return s, errors.New("load: invalid screen replay answer")
 			}
 			if s.View.Kind == "choice" {

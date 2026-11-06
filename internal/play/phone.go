@@ -122,11 +122,12 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 }
 
 // putDown puts the phone down with the result of a page's row or a notice
-// (-1 for neither: the last call declined), when the story keeps it.
-func (p *phoneView) putDown(row, notice int) {
+// (-1 for neither: the last call declined), when the story keeps it; missed
+// tells the call rang out rather than was answered.
+func (p *phoneView) putDown(row, notice int, missed bool) {
 	p.closing = phoneRise
 	for i, r := range p.cue.Results() {
-		if r.Row == row && r.Notice == notice {
+		if r.Row == row && r.Notice == notice && r.Missed == missed {
 			p.result = i
 		}
 	}
@@ -135,8 +136,7 @@ func (p *phoneView) putDown(row, notice int) {
 // answer is what the phone answers its event with: the result it was put
 // down with or, for a feed that keeps likes, bit k for the k-th post of
 // data.PhoneCue.Liking liked as the phone goes down (a like taken back by a
-// second tap is not kept). Skip, which puts the phone down at once, keeps the
-// likes given before it.
+// second tap is not kept).
 func (p *phoneView) answer() int {
 	likes := p.cue.Liking()
 	if len(likes) == 0 {
@@ -264,6 +264,12 @@ func (c *phoneClip) step(g *Game, loop bool) {
 	}
 }
 
+// asks tells that the phone keeps a result the player gives (a page's button,
+// a call, a feed's likes): skipping and Ctrl stop at it as at a choice.
+func (p *phoneView) asks() bool {
+	return len(p.cue.Results()) > 0 || len(p.cue.Liking()) > 0
+}
+
 func (p *phoneView) resting() bool { return p.turned >= phoneTurn }
 
 // ready tells that the phone has come up and turned, so it takes input.
@@ -291,7 +297,7 @@ func (g *Game) updatePhone() bool {
 		p.closing--
 		return p.closing == 0
 	}
-	if g.skipping || g.replaying || g.fast != nil || g.in.fast {
+	if g.replaying || g.fast != nil || (g.skipping || g.in.fast) && !p.asks() {
 		p.closing = 1
 		return false
 	}
@@ -327,7 +333,7 @@ func (g *Game) updatePhone() bool {
 			return false
 		}
 		if p.calling() {
-			p.putDown(-1, -1)
+			p.putDown(-1, -1, false)
 			return false
 		}
 		p.closing = phoneRise

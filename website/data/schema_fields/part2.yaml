@@ -49,6 +49,7 @@ Command:
   open_wall: "Turns the wall next to the party's cell in a dungeon into the tile of the given map character, such as a hidden stair."
   pick: "Picks an item of the current location's menu (a person, action or exit) by its label."
   prompt: "A line of text shown above the answers of a choice or stone selection."
+  muted: "With `choice`, holds the answers behind an unmute button for `seconds`; left muted, its `do` runs instead (the player kept quiet)."
   reset_actor: "Puts an actor back to the starting state of the actors file: the level, exp, learnt skills, skill tree and SP, HP and MP at full, and no states. Equipment, the name, the row and joined or not stay. An actor who has not joined yet is already at the start."
   reset_tree: "Gives back the SP spent in the skill tree of an actor, an ID of actors, or of everyone with `all`."
   retry: "With `battle`, set to false to skip the offer to retry after losing."

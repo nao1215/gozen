@@ -71,7 +71,7 @@ func Explore(ctx context.Context, s *Session, script string, opt ExploreOptions)
 			return v
 		}
 		cfg.Choose = func(st *rpg.State, q event.Choice) int {
-			return pol.Decide(ctx, view(st), Request{Kind: "choice", Text: q.Prompt, Options: q.Options})
+			return pol.Decide(ctx, view(st), Request{Kind: "choice", Text: q.Prompt, Options: q.Options, Seconds: q.Muted})
 		}
 		cfg.Fight = func(st *rpg.State, b event.Battle) int {
 			v := view(st)

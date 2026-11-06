@@ -55,7 +55,7 @@ func TestPhoneSaveReplays(t *testing.T) {
 	if g.phone == nil {
 		t.Fatalf("the page did not come up: at %q fast %v req %T", at(g), g.fast != nil, g.req)
 	}
-	g.phone.putDown(2, -1)
+	g.phone.putDown(2, -1, false)
 	for range 60 {
 		if at(g) == "Before." {
 			break

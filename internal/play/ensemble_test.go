@@ -573,3 +573,68 @@ func TestCallDrawingPreservesSimulation(t *testing.T) {
 		})
 	}
 }
+
+// TestCallMutedChoice: a muted choice on a call shows only the unmute button
+// and strikes the call's mic. OK on the button, or a click on the mic, brings
+// the options; left alone for its seconds, the choice is answered past its
+// options (the player kept quiet).
+func TestCallMutedChoice(t *testing.T) {
+	g := callGame(t, "{address: call.example.test, controls: [{label: Mic, icon: mic}, {label: Leave, icon: leave}]}")
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	ask := func() {
+		g.talk.open(g, event.Say{Ensemble: "studio", Actor: "weaver", Name: "Weaver", Text: "Anyone?"})
+		g.talk.active, g.talk.closed = false, g.tick
+		g.talk.say.Text = ""
+		g.talk.ask(g, event.Choice{Options: []string{"Red", "Blue"}, Muted: 1})
+	}
+	step := func(in input) (bool, int) {
+		g.in = in
+		return g.talk.update(g)
+	}
+
+	ask()
+	if g.talk.held == nil || len(g.talk.choice.items) != 1 || g.talk.answers() != 3 {
+		t.Fatalf("the muted choice shows %d items (held %v), takes %d answers", len(g.talk.choice.items), g.talk.held != nil, g.talk.answers())
+	}
+	var in input
+	in.pressed[btnOK] = true
+	if done, _ := step(in); done || g.talk.held != nil || len(g.talk.choice.items) != 2 {
+		t.Fatal("OK on the unmute button did not bring the options")
+	}
+
+	ask()
+	g.talk.draw(g, dst)
+	if g.talk.micR == 0 {
+		t.Fatal("the call did not draw its mic while muted")
+	}
+	if done, _ := step(input{click: true, mouse: image.Pt(int(g.talk.mic.x), int(g.talk.mic.y))}); done || g.talk.held != nil {
+		t.Fatal("a click on the call's mic did not unmute")
+	}
+	for range 120 {
+		if done, _ := step(input{}); done {
+			t.Fatal("an unmuted choice ran out of time")
+		}
+	}
+
+	ask()
+	step(input{})
+	left := g.talk.muted
+	g.talk.reword(g)
+	if g.talk.held == nil || len(g.talk.choice.items) != 1 || g.talk.muted != left {
+		t.Fatalf("a language change unmuted the choice or reset its time: held %v, %d items, %d ticks left of %d", g.talk.held != nil, len(g.talk.choice.items), g.talk.muted, left)
+	}
+	for i := 1; i < 60; i++ {
+		if done, answer := step(input{}); done {
+			if i != 59 || answer != 2 {
+				t.Fatalf("kept quiet after %d ticks with answer %d, want 60 and 2", i+1, answer)
+			}
+			g.talk.draw(g, dst)
+			if g.talk.held != nil || g.talk.micR != 0 {
+				t.Fatal("the mic stayed muted after the player kept quiet")
+			}
+			return
+		}
+	}
+	t.Fatal("the muted choice did not run out")
+}

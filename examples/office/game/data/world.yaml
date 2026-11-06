@@ -30,6 +30,34 @@ events:
     - say: {who: daniel, text: I can add it after the payments work. Not before., ensemble: team_call}
     - say: {who: nora, text: Then I test both on the same day., ensemble: team_call}
     - set: {var.reviewed: 1}
+  # A muted choice on the call (choice muted): the answers wait behind Unmute,
+  # or a click on the struck mic; left muted for eight seconds, Martin keeps
+  # quiet and the muted commands run.
+  review_floor:
+    - say: {who: daniel, text: 'Payments first, the form after. Any objections?', ensemble: team_call}
+    - choice:
+      - label: Friday is too tight for both.
+        do: [{set: {var.floor: 1}}]
+      - label: Agreed. Payments first.
+        do: [{set: {var.floor: 2}}]
+      muted:
+        seconds: 8
+        do: [{set: {var.floor: 3}}]
+    - if: var.floor == 3
+      then: [{say: {who: daniel, text: 'Nobody? Payments first, then.', ensemble: team_call}}]
+      else: [{say: {who: daniel, text: Noted. I will update the plan., ensemble: team_call}}]
+  # A call that rings out (ring): left alone for eight seconds it stops and the
+  # phone goes down with missed, which runs the call's missed sets.
+  phone_missed:
+    - say: {who: martin, text: The phone buzzes on the desk in the middle of the review.}
+    - phone:
+        app: lock
+        var: var.client_call
+        notices:
+        - {app: Phone, icon: apps/oncall.png, title: Harbor Bank, text: Incoming call, call: true, ring: 8, set: {var.callback: 0}, missed: {var.callback: 1}}
+    - if: 'var.client_call == "missed"'
+      then: [{say: {who: martin, text: Missed it. I will call them back after the review.}}]
+      else: [{say: {who: martin, text: 'Martin Shaw, Harbor app team.'}}]
   # The phone command: every app one after another (the captures start each
   # with --event). Each waits until the phone is put down, but a banner.
   phone_tour:

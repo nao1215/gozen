@@ -367,6 +367,12 @@ does the first line outside a call.
 - call_view: {share: {who: ann, picture: ""}}
 ```
 
+A `choice` right after a line of the call with `muted: {seconds, do}` gives the
+player the floor without forcing them to speak: the call's mic control turns red
+and struck through, and only an Unmute button shows. OK or a click on the
+button, or a click on the mic, brings the answers; left muted for `seconds`, the
+muted `do` runs instead (see [Events](../writing-a-game/#events)).
+
 
 ## Full call
 

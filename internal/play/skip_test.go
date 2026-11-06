@@ -239,3 +239,53 @@ func TestSelectedSourcesKeepSceneSummaryUnknown(t *testing.T) {
 		t.Fatalf("dynamic source reported fully read: %d/%d", read, all)
 	}
 }
+
+// TestSkipStopsAtPhoneResult: skip mode passes the lines read but stops before
+// a phone that keeps a result (here a page's buttons with a var), as before a
+// choice: the phone stays up for the player instead of going down at once with
+// no result. Ctrl held does not put it down either, and the skip key does not
+// start skipping over it.
+func TestSkipStopsAtPhoneResult(t *testing.T) {
+	g := phoneSaveGame(t)
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.read = map[uint64]bool{source("Start."): true}
+	var out bytes.Buffer
+	g.tr = newTracer(&out)
+	for range 30 {
+		if g.fast == nil && at(g) == "Start." {
+			break
+		}
+		sysFrames(t, g, 1)
+	}
+	g.toggleSkip()
+	for range 120 {
+		if g.phone != nil && g.phone.ready() {
+			break
+		}
+		sysFrames(t, g, 1)
+	}
+	if g.phone == nil || g.skipping {
+		t.Fatalf("skip did not stop at the phone: phone %v, skipping %v, at %q\n%s", g.phone != nil, g.skipping, at(g), out.String())
+	}
+	skips := traceLines(t, out.Bytes(), "skip")
+	if len(skips) != 2 || skips[1]["why"] != "phone" {
+		t.Fatalf("skip lines %v, want on then off for the phone", skips)
+	}
+	for range 30 {
+		g.in = input{fast: true}
+		if g.updatePhone() || g.phone.closing > 0 {
+			t.Fatal("Ctrl held put down a phone that keeps a result")
+		}
+	}
+	g.toggleSkip()
+	if g.skipping {
+		t.Fatal("the skip key started skipping over a phone that keeps a result")
+	}
+	if _, set := g.st.Vars["pick"]; set {
+		t.Fatalf("the page answered before a press: %v", g.st.Vars)
+	}
+}

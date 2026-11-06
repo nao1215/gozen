@@ -413,6 +413,9 @@ func (s *authorScreen) drawCall(g *Game, dst *ebiten.Image) {
 	case v.Chat != nil:
 		log.draw(g, dst, v.Chat, l.chat.x, l.chat.y, l.chat.w, l.chat.h)
 	}
+	// A muted choice on the call (data.ChoiceMuted) shows on its mic: red and
+	// struck through until the player unmutes.
+	muted := g.talk.held != nil && g.talk.say.Ensemble == s.name
 	for i, c := range v.Call.Controls {
 		cx, cy := l.controlsX+float64(i)*l.controlDX, l.controlsY+float64(i)*l.controlsDY
 		tint := control
@@ -420,8 +423,17 @@ func (s *authorScreen) drawCall(g *Game, dst *ebiten.Image) {
 			tint = leave
 		}
 		tint = c.Color.Or(tint)
+		mic := muted && c.ControlIcon(i) == "mic"
+		if mic {
+			tint = leave
+		}
 		gfx.FillCircle(dst, float32(cx), float32(cy), float32(l.controlR), tint, true)
 		drawCallControl(dst, c.ControlIcon(i), cx, cy, l.controlR/21)
+		if mic {
+			g.talk.mic, g.talk.micR = phonePoint{cx, cy}, l.controlR
+			k := l.controlR / 21
+			gfx.StrokeLine(dst, float32(cx-10*k), float32(cy-10*k), float32(cx+10*k), float32(cy+10*k), float32(2.4*k), color.White, true)
+		}
 	}
 }
 

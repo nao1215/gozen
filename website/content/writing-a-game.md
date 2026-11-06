@@ -262,6 +262,19 @@ events:
 
 `trigger: auto` runs the event as soon as its `when` holds. `once: true` runs it a single time per save.
 
+A choice with `muted` waits behind a muted microphone, as the floor of a video call does: only an Unmute button shows, and the answers come when the player presses it (OK, a click, or on a call a click on its struck-through mic control). Left muted for `seconds`, the player has kept quiet: the muted `do` runs instead of an answer, a named choice keeps `muted` in `chose.<id>`, and the story goes on. The call stays on the screen, its mic struck, for a choice without a `prompt` right after a line of the call; a choice whose options are all hidden by `when` is not asked, and its muted `do` does not run either. `gozen routes` explores keeping quiet as one more branch.
+
+<!-- verify: parse a fragment of an event -->
+```yaml
+- say: {who: ann, text: Any objections?, ensemble: studio}
+- choice:
+  - {label: Friday is too tight., do: [{set: {var.floor: 1}}]}
+  - {label: Agreed., do: [{set: {var.floor: 2}}]}
+  muted:
+    seconds: 8
+    do: [{set: {var.floor: 3}}]
+```
+
 ## Expressions
 
 Conditions and formulas are strings in a small expression language:
@@ -384,7 +397,7 @@ ui:
   message: novel
 ```
 
-The band has buttons to roll back a line, for the backlog, auto, skip, saving and loading, hiding the window and the settings. Rolling back (Q, or the wheel) takes the state back with the line, and a save made in the middle of a scene goes on at its line ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)). The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" makes skipping pass lines not read too.
+The band has buttons to roll back a line, for the backlog, auto, skip, saving and loading, hiding the window and the settings. Rolling back (Q, or the wheel) takes the state back with the line, and a save made in the middle of a scene goes on at its line ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)). The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a phone that keeps a result, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" makes skipping pass lines not read too.
 
 Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)). A line can have a recorded voice ([Add voices](/cookbook/#add-voices)). [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, is a short one with choices, staging and a Japanese translation ([play it in the browser](/play/)).
 
@@ -428,7 +441,7 @@ A line counts as read by its source: the speaker and the text as written, before
 
 ### A phone on the screen
 
-`phone` shows a phone over the scene and waits until the player puts it down. It changes no state of its own, only what its buttons, calls and liked posts keep, and Skip passes it (keeping nothing the player did not do). `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down. It changes no state of its own, only what its buttons, calls and liked posts keep. Skip and Ctrl pass a phone that only shows, and stop at one that keeps a result (a button, a call, a liked post), as they stop at a choice. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml
@@ -462,7 +475,7 @@ A chat shows its first message when the phone comes up, and each press brings th
 
 For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
 
-A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK answers it and Cancel declines, and the next notice rings again when it is a call too. `var` keeps what the phone was put down with (a button's `id` or label, `answer` or `decline`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
+A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK (or a click on the green button) answers it and Cancel (or the red one) declines, and the next notice rings again when it is a call too. A call with `ring: 8` stops ringing after eight seconds unanswered and puts the phone down with `missed`, setting the call's `missed` (written as the `set` command), even when more notices would follow; without `ring` it rings until it is answered or declined. `var` keeps what the phone was put down with (a button's `id` or label, `answer`, `decline` or `missed`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
 
 <!-- verify: parse a fragment of an event; the pictures are the author's files -->
 ```yaml

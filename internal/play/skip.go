@@ -10,7 +10,8 @@ import (
 )
 
 // Skip mode and scene skip (ADR 0026). Skip mode passes the lines read, as Ctrl held does,
-// until a line that was not read, a choice, a battle or the end of the events. Scene skip
+// until a line that was not read, a choice, a phone that keeps a result, a battle or the end
+// of the events. Scene skip
 // replays the running event at once, quietly, to the same places, when all its lines were read.
 
 // skipPasses reports whether skipping goes past the line (read, or the setting skips all).
@@ -23,7 +24,7 @@ func (g *Game) toggleSkip() {
 		g.stopSkip("button")
 		return
 	}
-	if g.talk.choice != nil {
+	if g.talk.choice != nil || g.phone != nil && g.phone.asks() {
 		return // a choice is waiting for the player; skipping would stop here at once
 	}
 	g.skipping = true
@@ -50,6 +51,13 @@ func (g *Game) skipBefore(r event.Request) {
 		}
 	case event.Choice:
 		why = "choice"
+	case event.Tap:
+		// A phone that keeps a result (a page's button, a call, a feed's
+		// likes) is a choice the player makes: put down at once, it would
+		// answer nothing and the story would branch as if declined.
+		if r.Results > 0 {
+			why = "phone"
+		}
 	case event.Battle:
 		why = "battle"
 	}
@@ -119,6 +127,9 @@ func commandLines(db *data.DB, cmds []data.Command) []uint64 {
 			for _, o := range c.Choice {
 				walk(o.Do)
 			}
+			if c.Muted != nil {
+				walk(c.Muted.Do)
+			}
 		}
 	}
 	walk(cmds)
@@ -147,7 +158,7 @@ func (g *Game) sceneSkippable() bool {
 }
 
 // sceneSkip replays the running event at once, quietly, to its next choice, line not read,
-// battle or end.
+// phone that keeps a result, battle or end.
 func (g *Game) sceneSkip() {
 	if !g.sceneSkippable() {
 		return

@@ -321,6 +321,7 @@ func (db *DB) SetWarnings() []error {
 				check(w+".set", x.Set)
 			case PhoneNotice:
 				check(w+".set", x.Set)
+				check(w+".missed", x.Missed)
 			case PhonePost:
 				check(w+".set", x.Set)
 			}

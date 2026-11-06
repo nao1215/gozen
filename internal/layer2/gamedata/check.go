@@ -377,6 +377,15 @@ func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
 		if n.Call && p.App != "lock" {
 			c.errorf(diag.Shape, at+".call", "only the lock screen takes calls")
 		}
+		switch {
+		case !finiteNumber(n.Ring) || n.Ring < 0 || n.Ring > maxPhoneSeconds:
+			c.errorf(diag.OutOfRange, at+".ring", "ring is the seconds a call rings unanswered, 0 or more (got %v)", n.Ring)
+		case n.Ring > 0 && !n.Call:
+			c.errorf(diag.Shape, at+".ring", "only a call rings (add call: true or drop ring)")
+		}
+		if len(n.Missed) > 0 && n.Ring == 0 {
+			c.errorf(diag.Shape, at+".missed", "missed runs when the call rings out, which needs ring (seconds)")
+		}
 		if n.Event != "" {
 			c.useDefinition("event", n.Event) // a banner's click opens it
 		}
@@ -384,11 +393,24 @@ func (c *checker) phoneLock(where string, p PhoneCue, names []string) {
 			c.errorf(diag.UnknownReference, at+".event", "no parameterless event %q", n.Event)
 		}
 		c.assignments(at+".set", n.Set, names)
+		c.assignments(at+".missed", n.Missed, names)
 		c.picture(at+".icon", Picture{File: n.Icon})
 		for _, s := range []string{n.App, n.Title, n.Text} {
 			c.text(at, s, names)
 		}
 	}
+}
+
+// choiceMuted checks a choice's mute: it waits a time, so the player has a
+// moment to unmute, and its commands are checked as an option's are.
+func (c *checker) choiceMuted(w string, m *ChoiceMuted, names []string) {
+	if m == nil {
+		return
+	}
+	if !finiteNumber(m.Seconds) || m.Seconds <= 0 || m.Seconds > maxPhoneSeconds {
+		c.errorf(diag.OutOfRange, w+".seconds", "seconds is how long the choice waits muted before the player is taken to keep quiet, more than 0 (got %v)", m.Seconds)
+	}
+	c.commands(w+".do", m.Do, names)
 }
 
 // maxPhoneSeconds is the longest phone clip whose frame count (60 a second)
@@ -1935,6 +1957,7 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 				c.expr(ww+".when", o.When, names)
 				c.commands(ww+".do", o.Do, names)
 			}
+			c.choiceMuted(w+".muted", cmd.Muted, names)
 		case "respond":
 			if cmd.Respond.Who == "" || db.ReactionBooks[cmd.Respond.Who] == nil {
 				c.errorf(diag.UnknownReference, w+".respond.who", "speaker %q needs a reaction book in game.yaml reactions", cmd.Respond.Who)
