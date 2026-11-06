@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.18.0 - 2026-11-06
+
+A phone feed that pages sideways (`scroll: across`) or is only browsed without likes (`browse: true`), and long captions that no longer run past the phone's right edge.
+
 ### Added
 
 - A phone feed takes `scroll: across`: a post a screen, swiped sideways as a photo carousel pages (a drag that settles on the nearest post or, flicked, the next; left and right, the wheel and OK step a post; dots show the place). `browse: true` turns a feed's likes off, so a click on a post likes nothing. Both default to today's feed (a column scrolled up and down, with likes) and are checked: `scroll` is `down` or `across`, and neither is set on another app.
