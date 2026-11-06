@@ -692,11 +692,18 @@ func (r *Runner) Answer(n int) {
 				r.push(r.options[n].Do)
 			}
 		} else if quiet := r.asked; n == len(r.options) && r.pick == nil && quiet != nil && quiet.Muted != nil {
-			// The player stayed muted: no option was taken.
+			// The player stayed muted: no option was taken, and a named
+			// choice remembers that rather than an earlier visit's option.
 			for _, option := range r.options {
 				for j := range option.Do {
 					delete(r.offers, &option.Do[j])
 				}
+			}
+			if quiet.ID != "" {
+				if r.st.Chose == nil {
+					r.st.Chose = map[string]string{}
+				}
+				r.st.Chose[quiet.ID] = "muted"
 			}
 			r.push(quiet.Muted.Do)
 		}

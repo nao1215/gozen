@@ -173,9 +173,9 @@ func (d *Driver) answer(r event.Request) {
 		} else if len(d.Answers) > 0 {
 			n, d.Answers = d.Answers[0], d.Answers[1:]
 		}
-		n = max(0, min(n, len(r.Options)-1))
-		d.Transcript = append(d.Transcript, "> "+r.Options[n])
-		d.record(Step{Kind: "choice", Text: r.Options[n]})
+		n = max(0, min(n, r.Answers()-1))
+		d.Transcript = append(d.Transcript, "> "+answerText(r, n))
+		d.record(Step{Kind: "choice", Text: answerText(r, n)})
 		d.runner.Answer(n)
 	case event.Battle:
 		d.St.Fighters = r.Fighters
@@ -550,4 +550,13 @@ func (d *Driver) handle(e event.Effect) {
 	case event.VisualEffect:
 		d.effect(e.Name)
 	}
+}
+
+// answerText is how a transcript shows the answer n of a choice: the option,
+// or (muted) for a muted choice's staying quiet, the answer past the options.
+func answerText(q event.Choice, n int) string {
+	if n >= len(q.Options) {
+		return "(muted)"
+	}
+	return q.Options[n]
 }

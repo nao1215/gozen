@@ -1142,6 +1142,7 @@ func (s *battleScene) event(g *Game) {
 		case event.Wait:
 			s.stepT = int(r.Seconds * 60)
 		case event.Tap:
+			g.skipBefore(r)
 			g.beginTap(r)
 		case event.Notice:
 			g.traceBattleRequest(r)

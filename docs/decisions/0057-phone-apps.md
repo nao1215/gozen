@@ -13,7 +13,9 @@ the player's hand and cannot play anything.
 
 1. The event command `phone` shows a phone over the scene and waits until the
    player puts it down. It changes no state and is skipped by Skip and by a
-   replay, so it is presentation only, like `call_view`.
+   replay, so it is presentation only, like `call_view`. (Amended 2026-11-07:
+   a phone that keeps a result, a page's button, a call or a liked post, stops
+   Skip and Ctrl as a choice does, and a call may `ring` out with `missed`.)
 2. `hold` is `portrait` (the default) or `landscape`. A phone on its side comes
    up upright and turns a quarter, as a hand turns a phone to watch a video.
 3. `app` is one of three shapes most phones have, each with its own list:

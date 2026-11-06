@@ -112,3 +112,27 @@ events:
 		}
 	}
 }
+
+// TestExploreKeepsQuietAtAMutedChoice: a muted choice's staying quiet is a
+// branch of its own, so a route only it reaches is explored.
+func TestExploreKeepsQuietAtAMutedChoice(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  root:
+    do:
+      - choice: [{label: Speak, do: [{set: {var.spoke: 1}}]}]
+        muted: {seconds: 8, do: [{set: {var.quiet: 1}}]}
+`})
+	paths := headless.Explore(db, testgame.State(db, 1), db.Events["root"].Do, headless.Config{})
+	seen := map[string]bool{}
+	for _, p := range paths {
+		for _, k := range []string{"spoke", "quiet"} {
+			if optional.Value[float64](p.St.Vars[k]) > 0 {
+				seen[k] = true
+			}
+		}
+	}
+	if len(paths) != 2 || !seen["spoke"] || !seen["quiet"] {
+		t.Fatalf("%d paths reached %v, want speaking and keeping quiet", len(paths), seen)
+	}
+}

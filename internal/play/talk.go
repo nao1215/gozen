@@ -368,7 +368,10 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 			if t.muted <= 0 {
 				t.active, t.closed = false, g.tick
 				g.remember(logLine{text: "→ " + lang.T("ミュートのまま"), answer: true})
-				return true, len(t.held.items)
+				quiet := len(t.held.items)
+				// The call stays up after the choice: its mic is no longer muted.
+				t.held, t.micR = nil, 0
+				return true, quiet
 			}
 			chose, _ := t.choice.update(g)
 			if chose || g.in.click && t.micR > 0 && t.mic.Dist(g.in.mouse) <= t.micR {

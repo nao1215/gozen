@@ -7,11 +7,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ### Added
 
 - A phone call on the lock screen takes `ring`: the seconds it rings unanswered before it stops and puts the phone down with the result `missed` (the phone's `var` receives `missed`), running the call's `missed` assignments, written as the `set` command. Without `ring` a call rings until it is answered or declined, as before. The missed results come after `answer` and `decline`, so saves made before keep their answers. `gozen check` rejects a negative or infinite `ring`, `ring` on a notice that is not a call and `missed` without `ring`. The office example's wrap-up screen has a client call that rings out.
-- A `choice` takes `muted: {seconds, do}`: its answers wait behind an Unmute button, as the floor of a video call. OK or a click on the button, or a click on the call's mic control (red and struck through while muted), brings the answers; left muted for `seconds`, the muted `do` runs instead, so keeping quiet is an answer the story can follow. A save, Back and a session replay it as an answer one past the options. The office example's wrap-up screen has a plan call with a muted choice.
+- A `choice` takes `muted: {seconds, do}`: its answers wait behind an Unmute button, as the floor of a video call. OK or a click on the button, or a click on the call's mic control (red and struck through while muted), brings the answers; left muted for `seconds`, the muted `do` runs instead, so keeping quiet is an answer the story can follow. A save, Back, a session (its request's `Seconds`) and a screen transcript replay it as an answer one past the options; a named choice keeps `muted` in `chose.<id>`. `gozen routes` and headless exploration take keeping quiet as one more branch, and `gozen book` lists the muted commands. The office example's wrap-up screen has a plan call with a muted choice.
 
 ### Changed
 
-- Skip mode and Ctrl held stop at a phone that keeps a result (a page's button, a call, a feed post with `set`), as they stop at a choice, instead of putting it down at once with no result; the skip key does nothing while such a phone is up. A phone that only shows still passes.
+- Skip mode, scene skip and Ctrl held stop at a phone that keeps a result (a page's button, a call, a feed post with `set`), in a battle's events too, as they stop at a choice, instead of putting it down at once with no result; the skip key does nothing while such a phone is up. A phone that only shows still passes.
 
 ## v0.19.0 - 2026-11-06
 

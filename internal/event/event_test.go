@@ -1301,13 +1301,14 @@ func TestScreenRowUnavailableFailsClosed(t *testing.T) {
 // answer past its options runs the muted commands instead of any option's; a
 // saved cursor replays that answer as it does an option.
 func TestChoiceMutedKeptQuiet(t *testing.T) {
-	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 4\nid: muted\n" + testgame.Game, "data/z.yaml": `
 events:
   e:
     do:
       - choice:
           - {label: Raise the risk, do: [{set: {var.spoke: 1}}]}
           - {label: Agree, do: [{set: {var.spoke: 2}}]}
+        id: floor
         muted: {seconds: 8, do: [{set: {flag.quiet: true}}]}
       - say: after
 `})
@@ -1323,9 +1324,10 @@ events:
 	if !ok || asked.Muted != 8 || asked.Answers() != 3 {
 		t.Fatalf("the muted choice asked %+v", asked)
 	}
+	st.Chose = map[string]string{"floor": "1"} // an earlier visit's option
 	r.Answer(2)
-	if say, ok := r.Next().(event.Say); !ok || say.Text != "after" || !st.Flags["quiet"] || st.Vars["spoke"] != nil {
-		t.Fatalf("keeping quiet: %+v flags %v vars %v", say, st.Flags, st.Vars)
+	if say, ok := r.Next().(event.Say); !ok || say.Text != "after" || !st.Flags["quiet"] || st.Vars["spoke"] != nil || st.Chose["floor"] != "muted" {
+		t.Fatalf("keeping quiet: %+v flags %v vars %v chose %v", say, st.Flags, st.Vars, st.Chose)
 	}
 	r, st = run()
 	r.Next()

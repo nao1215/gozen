@@ -618,10 +618,20 @@ func TestCallMutedChoice(t *testing.T) {
 	}
 
 	ask()
-	for i := range 60 {
+	step(input{})
+	left := g.talk.muted
+	g.talk.reword(g)
+	if g.talk.held == nil || len(g.talk.choice.items) != 1 || g.talk.muted != left {
+		t.Fatalf("a language change unmuted the choice or reset its time: held %v, %d items, %d ticks left of %d", g.talk.held != nil, len(g.talk.choice.items), g.talk.muted, left)
+	}
+	for i := 1; i < 60; i++ {
 		if done, answer := step(input{}); done {
 			if i != 59 || answer != 2 {
 				t.Fatalf("kept quiet after %d ticks with answer %d, want 60 and 2", i+1, answer)
+			}
+			g.talk.draw(g, dst)
+			if g.talk.held != nil || g.talk.micR != 0 {
+				t.Fatal("the mic stayed muted after the player kept quiet")
 			}
 			return
 		}

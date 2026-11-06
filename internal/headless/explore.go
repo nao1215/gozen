@@ -243,14 +243,15 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 					n = opt.Choose(st, q)
 				}
 				if n >= 0 {
-					n = min(len(q.Options)-1, n)
-					p.Taken = append(p.Taken, "> "+q.Options[n])
+					n = min(q.Answers()-1, n)
+					p.Taken = append(p.Taken, "> "+answerText(q, n))
 				} else {
+					// A muted choice's staying quiet is one more branch.
 					key := "choice:" + place(r.Asking()) + q.Prompt + "\x00" + strings.Join(q.Options, "\x00")
-					n = decide(key, len(q.Options), func(a int) string { return "> " + q.Options[a] })
+					n = decide(key, q.Answers(), func(a int) string { return "> " + answerText(q, a) })
 				}
-				p.Lines = append(p.Lines, "> "+q.Options[n])
-				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Text: q.Options[n]})
+				p.Lines = append(p.Lines, "> "+answerText(q, n))
+				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Text: answerText(q, n)})
 				p.Picks = append(p.Picks, n)
 				r.Answer(n)
 			case event.Battle:

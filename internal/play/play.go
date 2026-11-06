@@ -1955,9 +1955,6 @@ func (g *Game) begin(r event.Request) {
 		// one replayed past a phone's result (a button, a call, a feed's
 		// likes) would lose it: such a screen root is not saved mid-screen.
 		g.screenTrace.blocked = true
-	} else if c, ok := r.(event.Choice); ok && c.Muted > 0 {
-		// Nor does it keep staying quiet, which is no option of the choice.
-		g.screenTrace.blocked = true
 	} else if q, ok := event.ReplayRequest(r); ok {
 		g.recordScreenView(q)
 	} else if _, ok := r.(event.Open); !ok {

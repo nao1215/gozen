@@ -388,6 +388,10 @@ func commands(b *md.Markdown, cmds []bookCommand, ind string) {
 				reportBullet(b, ind, lang.T("選択「%s」%s"), o.Label, when(o.When))
 				commands(b, o.Do, ind+"  ")
 			}
+			if len(c.Muted) > 0 {
+				reportBullet(b, ind, "%s", lang.T("ミュートのまま"))
+				commands(b, c.Muted, ind+"  ")
+			}
 		case "if":
 			reportBullet(b, ind, lang.T("もし %s"), c.If.String())
 			commands(b, c.Then, ind+"  ")
@@ -540,6 +544,9 @@ func eventLinks(cmds []gamedata.Command) (calls, moves []string) {
 			walk(c.OnRun)
 			for _, o := range c.Choice {
 				walk(o.Do)
+			}
+			if c.Muted != nil {
+				walk(c.Muted.Do)
 			}
 		}
 	}

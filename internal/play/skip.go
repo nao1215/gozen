@@ -158,7 +158,7 @@ func (g *Game) sceneSkippable() bool {
 }
 
 // sceneSkip replays the running event at once, quietly, to its next choice, line not read,
-// battle or end.
+// phone that keeps a result, battle or end.
 func (g *Game) sceneSkip() {
 	if !g.sceneSkippable() {
 		return
