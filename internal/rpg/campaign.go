@@ -2,6 +2,7 @@ package rpg
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -34,7 +35,7 @@ func (s *State) setCampaign(path string, v any) (bool, error) {
 	kind, rest, _ := strings.Cut(path, ".")
 	number := func() (float64, error) {
 		f, ok := expr.ToNumber(v)
-		if !ok {
+		if !ok || math.IsNaN(f) || math.IsInf(f, 0) {
 			return 0, fmt.Errorf("set %s: want a number, got %v", path, v)
 		}
 		return f, nil
@@ -66,7 +67,7 @@ func (s *State) setCampaign(path string, v any) (bool, error) {
 				return true, err
 			}
 			if field == "troops" {
-				n = max(0, float64(int(n)))
+				n = max(0, math.Trunc(n))
 			}
 			s.Vars[data.RegionVar(id, field)] = n
 		default:
@@ -92,7 +93,7 @@ func (s *State) setCampaign(path string, v any) (bool, error) {
 		if err != nil {
 			return true, err
 		}
-		s.Vars[data.GeneralVar(id, "troops")] = max(0, float64(int(n)))
+		s.Vars[data.GeneralVar(id, "troops")] = max(0, math.Trunc(n))
 		return true, nil
 	}
 	return false, nil
