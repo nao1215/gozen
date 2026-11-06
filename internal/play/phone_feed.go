@@ -7,6 +7,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
 
@@ -28,8 +30,9 @@ type feedPost struct {
 	lines             []string
 }
 
-// feedLayout lays the posts out top to bottom on a screen w wide (once per width).
-func (p *phoneView) feedLayout(w float64) []feedPost {
+// feedLayout lays the posts out top to bottom on a screen w wide (once per
+// width), each picture's box at its media's own shape.
+func (p *phoneView) feedLayout(g *Game, w float64) []feedPost {
 	if p.layout != nil && p.layoutW == w {
 		return p.layout
 	}
@@ -41,7 +44,7 @@ func (p *phoneView) feedLayout(w float64) []feedPost {
 			caption = post.Who + "  " + caption
 		}
 		lines, _ := gfx.FitLines(caption, 15, w-28, 3)
-		picH := w * 1.25
+		picH := w * g.mediaAspect(post)
 		h := phoneFeedHead + picH + 46 + float64(len(lines))*gfx.LineHeight(15)
 		out[i] = feedPost{top: y, pic: y + phoneFeedHead, picH: picH, h: h, lines: lines}
 		y += h + phoneFeedGap
@@ -50,11 +53,37 @@ func (p *phoneView) feedLayout(w float64) []feedPost {
 	return out
 }
 
+// Shapes of a post's box (height over width), as photo apps keep them: from
+// a landscape 16:9 to a portrait 4:5.
+const (
+	phoneFeedWide = 9.0 / 16
+	phoneFeedTall = 5.0 / 4
+)
+
+// mediaAspect is the shape of a post's box: its picture's, or its footage's
+// first frame's, between 16:9 and 4:5. A clip of a picture and a puppet, and a
+// picture not loaded, keep the portrait 4:5.
+func (g *Game) mediaAspect(post data.PhonePost) float64 {
+	path := post.Picture
+	if v := post.Video; v != nil {
+		if len(v.Frames) == 0 {
+			return phoneFeedTall
+		}
+		path = v.Frames[0]
+	}
+	img := g.pics.get(path)
+	if img == nil || img == missing || img.Bounds().Dx() == 0 {
+		return phoneFeedTall
+	}
+	a := float64(img.Bounds().Dy()) / float64(img.Bounds().Dx())
+	return math.Max(phoneFeedWide, math.Min(phoneFeedTall, a))
+}
+
 // feedView is the feed's screen: the posts laid out, the height they show in
 // and the farthest they scroll.
 func (g *Game) feedView(p *phoneView) (posts []feedPost, w, view, end float64) {
 	_, _, w, h := g.phoneScreenRect(p.side)
-	posts = p.feedLayout(w)
+	posts = p.feedLayout(g, w)
 	view = h - phoneFeedTop
 	if n := len(posts); n > 0 {
 		end = math.Max(0, posts[n-1].top+posts[n-1].h-view)
@@ -179,7 +208,7 @@ func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, w float64, at image
 }
 
 func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
-	for i, l := range p.feedLayout(w) {
+	for i, l := range p.feedLayout(g, w) {
 		y := phoneFeedTop + l.top - p.scroll
 		if y+l.h <= phoneFeedTop || y >= h {
 			continue
