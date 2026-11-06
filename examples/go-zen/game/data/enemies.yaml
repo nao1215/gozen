@@ -789,7 +789,6 @@ troops:
   crab_rats: {members: [rust_crab, pipe_rat]}
   crab_pair: {members: [rust_crab, rust_crab]}
   hound: {members: [brass_hound]}
-  hounds: {members: [brass_hound, brass_hound]}
   hound_crab: {members: [brass_hound, rust_crab]}
   warden:
     members: [brass_warden]

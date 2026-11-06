@@ -55,6 +55,9 @@ func Text(e Entry) string {
 	b.WriteString(wrap(e.Detail, 78))
 	b.WriteString("\n\nFix: ")
 	b.WriteString(wrap(e.Fix, 73))
+	if e.Code.ExitCode() == 0 {
+		b.WriteString("\n\nWarnings fail with exit status 1 under check --strict or an exceeded --baseline.")
+	}
 	fmt.Fprintf(&b, "\n\nExit status %d. Since %s.\n%s#%s\n", e.Code.ExitCode(), e.Since, URL, strings.ToLower(e.Code.String()))
 	return b.String()
 }

@@ -20,6 +20,7 @@ of `retry: false`, which only suppresses the retry question. Actors outside
 `fighters` keep their HP. The same policy applies to rendered play, sessions,
 headless exploration and authored event simulation.
 
+<!-- verify: parse event fragment; the troop and actors belong to the surrounding game -->
 ```yaml
 - battle: expedition_guard
   fighters: [guide]

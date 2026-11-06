@@ -231,12 +231,20 @@ func checkMarks(blocks []block) []string {
 	return bad
 }
 
-// TestDocBlocks checks the marks of every code block of README.md and the
-// website, and the YAML examples that need no shell: load (all the load
+// TestDocBlocks checks the marks of every code block of README.md, docs, skills
+// and website content, and the YAML examples that need no shell: load (all the load
 // examples of a page together, as data files over testdata/docgame), same (equal to a file of the
 // repository) and parse (YAML syntax). The shell steps run in TestDocSteps.
 func TestDocBlocks(t *testing.T) {
-	for _, doc := range stepDocuments(t) {
+	documents := stepDocuments(t)
+	// Design and development documents contain fragments, including historical
+	// proposals. Check their YAML marks without running their maintenance scripts.
+	for _, dir := range []string{"docs", "skills", "website/content"} {
+		documents = append(documents, markdownUnder(t, dir)...)
+	}
+	slices.Sort(documents)
+	documents = slices.Compact(documents)
+	for _, doc := range documents {
 		src, err := os.ReadFile(filepath.Join(root, doc)) //nolint:gosec // A document of this repository.
 		if err != nil {
 			t.Fatal(err)
@@ -244,6 +252,11 @@ func TestDocBlocks(t *testing.T) {
 		blocks, bad := parseBlocks(doc, src)
 		bad = append(bad, checkMarks(blocks)...)
 		bad = append(bad, checkYAMLBlocks(blocks)...)
+		for _, b := range blocks {
+			if isYAML(b.lang) && b.mark != nil && (b.mark.kind == "parse" || b.mark.kind == "skip") {
+				t.Logf("%s: %s (not load-verified): %s", b.where, b.mark.kind, b.mark.reason)
+			}
+		}
 		for _, b := range bad {
 			t.Error(b)
 		}
@@ -254,6 +267,8 @@ func TestDocBlocks(t *testing.T) {
 func checkYAMLBlocks(blocks []block) []string {
 	var bad []string
 	var loads []block
+	files := fstest.MapFS{}
+	var gameFiles []block
 	for _, b := range blocks {
 		if !isYAML(b.lang) || b.mark == nil {
 			continue
@@ -270,10 +285,24 @@ func checkYAMLBlocks(blocks []block) []string {
 			}
 		case "load":
 			loads = append(loads, b)
+		case "file":
+			name := b.mark.opts["path"]
+			files[name] = &fstest.MapFile{Data: []byte(b.body)}
+			if path.Base(name) == "game.yaml" {
+				gameFiles = append(gameFiles, b)
+			}
 		}
 		var v any
 		if err := yaml.Unmarshal([]byte(b.body), &v); err != nil {
 			bad = append(bad, fmt.Sprintf("%s: not YAML: %v", b.where, err))
+		}
+	}
+	// A complete multi-file tutorial also loads during ordinary go test, even
+	// when its shell steps are unavailable. Unlike load fragments, it receives
+	// no implicit definitions or stub assets from docgame.
+	for _, b := range gameFiles {
+		if _, err := gozen.Load(files, path.Dir(b.mark.opts["path"])); err != nil {
+			bad = append(bad, fmt.Sprintf("%s: file examples do not form a loadable game: %v", b.where, err))
 		}
 	}
 	// The load examples of a page load together, or by group=NAME (a recipe
@@ -449,6 +478,15 @@ func TestParseBlocksMarks(t *testing.T) {
 
 // A load example that breaks a reference fails with its place.
 func TestLoadExamplesReportsErrors(t *testing.T) {
+	fileGame := block{where: "tutorial.md:5", lang: "yaml", body: "schema_version: 11\nid: tutorial\nstart: {location: camp}\n", mark: &mark{kind: "file", opts: map[string]string{"path": "game/game.yaml"}}}
+	fileData := block{where: "tutorial.md:12", lang: "yaml", body: "locations: {camp: {name: Camp}}\n", mark: &mark{kind: "file", opts: map[string]string{"path": "game/data/world.yaml"}}}
+	if bad := checkYAMLBlocks([]block{fileGame, fileData}); len(bad) != 0 {
+		t.Fatalf("complete file tutorial: %v", bad)
+	}
+	fileGame.body = strings.ReplaceAll(fileGame.body, "location: camp", "location: docs_start")
+	if bad := checkYAMLBlocks([]block{fileGame, fileData}); len(bad) != 1 || !strings.Contains(bad[0], "tutorial.md:5") || !strings.Contains(bad[0], "docs_start") {
+		t.Fatalf("file tutorial must not borrow docgame definitions: %v", bad)
+	}
 	good := block{body: "locations:\n  camp2: {name: Camp, background: camp.jpg, exits: [{to: docs_start}]}\n", mark: &mark{kind: "load", opts: map[string]string{}}}
 	if err := loadExamples([]block{good}); err != nil {
 		t.Fatalf("a good example: %v", err)

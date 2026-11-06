@@ -18,6 +18,7 @@ gozen help GZN1101                     # explain a diagnostic code
 |:--|:--|
 | [check](#check) | Check definitions, references, expressions, assets and text layout |
 | [sim](#sim) | Measure play without a window: [battle](#sim-battle), [dive](#sim-dive), [floors](#sim-floors), [design](#sim-design), [campaign](#sim-campaign), [routes](#sim-routes), [breed](#sim-breed), [script](#sim-script) |
+| [migrate](#migrate) | Copy and upgrade a versioned game to the current schema |
 | [new](#new) | Create a playable template without Go source |
 | [run](#run) | Run a game directory in a window |
 | [trace](#trace), [notes](#notes) | Inspect traces and build HTML reports from test-play notes |
@@ -34,7 +35,7 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 ## Conventions
 
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
-- A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
+- A diagnostic may end with a code such as `[GZN1101]`; its first digit is the default exit status. Warning enforcement with `check --strict` or `--baseline` uses exit 1 without changing the code. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
 - Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
 - Every command except `export`, `run`, `capture`, `faces` and `mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
@@ -71,9 +72,17 @@ theme and a final summary. Machine-mode errors are JSONL on stderr with the same
 GZN codes and exit statuses; output formatting does not change the created game.
 Other commands currently retain the result shapes described in their sections.
 
+## migrate
+
+`gozen migrate GAME --out NEW` copies schema 1–11 games into a new directory
+and upgrades their YAML to schema 11. It preserves identity, assets and old
+tactic defaults. Check and play the copy before replacing the original.
+Schema 0 needs a separate numeric-default review. See
+[compact authoring](/writing-a-game/#the-game-directory).
+
 ## check
 
-Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr and do not fail the check.
+Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr. By default they do not fail the check. `--strict` fails with exit 1 when any warning is reported; diagnostic codes stay unchanged, including `GZN0xxx` warnings.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -90,6 +99,9 @@ data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN110
 
 | Option | Meaning |
 |:--|:--|
+| `--strict` | Fail with exit 1 when warning counts exceed zero, or the supplied baseline. |
+| `--baseline FILE` | Enforce recorded warning counts per code and source file; only growth fails. |
+| `--write-baseline FILE` | Write a new JSON baseline after successful validation. Existing files are not overwritten. |
 | `--only structure` | Check definitions, references, expressions and assets only; do not read the font or check the text layout. stdout says so. |
 | `--only layout` | Check only that dialogue and choices fit the message window, with the game's font and display rules. |
 | `--format` | `text` (default), `json` or `jsonl`. JSON returns a version-1 result whose `data` is the diagnostic array (`file`, `line`, `col`, `path`, `message`, `severity`, `code`). JSONL emits each diagnostic and a terminal summary. Validation errors set `status: failed` and exit 1, without duplicate stderr output. |
@@ -116,6 +128,31 @@ The `data` field contains diagnostics such as:
 ```shell
 gozen check --only layout game
 ```
+
+### Warning budgets
+
+<!-- verify: run fixture=cli -->
+```sh
+gozen check game --strict
+gozen check game --write-baseline warnings.json
+gozen check game --baseline warnings.json
+```
+
+`--baseline FILE` enables enforcement on its own. It allows the recorded warning
+counts for each diagnostic code and game-relative source file; only increased
+counts fail (exit 1). New codes and files start with zero allowance. Decreases
+pass, but do not rewrite the baseline. Combining `--strict` with `--baseline`
+uses these allowances instead of zero. All warnings remain visible in text,
+JSON and JSONL, including those within the budget. Errors always fail.
+
+`--write-baseline FILE` writes versioned JSON to a **new** file after a valid
+check, including zero counts when clean. It does not overwrite an existing file
+or record a game with validation errors. Review a newly written baseline before
+replacing an older one. It does not disable `--strict` or comparison when those
+options are also supplied. Paths are relative to the current working directory;
+warning file names inside the JSON are relative to the game. A baseline records
+the `--only` scope, which must match when it is used. It detects count growth,
+not replacement of one warning by another within the same code/file bucket.
 
 ## sim
 
@@ -365,7 +402,7 @@ gozen run game --dev --save-dir test-saves
 gozen run game --dev --script check.txt --shots shots --trace run.jsonl
 ```
 
-Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Use the directory operand instead of `--dir`.
+Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Pass the game directory as an operand.
 
 `--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
 
@@ -740,10 +777,66 @@ go tool pprof cpu.pprof
 ```
 
 A profile includes setup and decoding as well as gameplay. Compare the same
-fixture and seed; use `-benchmem` benchmarks for allocations. Profile creation
+fixture and seed; use `go test -benchmem` benchmarks for allocations. Profile creation
 and closing failures are reported on stderr.
 
 `gozen export game --target web --runtime web-runtime --out site2 --reuse site` reuses compatible generated output where the
 exporter permits it. Keep the earlier export directory when iterating; omit
 `--reuse` for a fresh export. See `gozen export --help` for output and
 runtime options. Reuse does not replace checking the authored game.
+
+## Command and option index
+
+This complete inventory is checked against `gozen help --format json`.
+Options are listed per command, including short aliases; use that command
+with `--help` for values, defaults and requirements. Shared implementation
+options can appear on several image tools; their effect depends on the action.
+
+| CLI command | Purpose | Options |
+| --- | --- | --- |
+| `gozen` | Play, check, simulate, and package Gozen games | `--help`, `-h`, `--version` |
+| `gozen book` | Write the game synopsis as Markdown or structured data | `--help`, `-h`, `--format`, `--section` |
+| `gozen capture` | Capture PNG images and animated GIFs from a game | `--help`, `-h`, `--config`, `--overlay`, `--raw`, `--out`, `-o`, `--only`, `--timeout`, `--format` |
+| `gozen check` | Check the definitions, assets, and text layout of a game | `--help`, `-h`, `--only`, `--format`, `--strict`, `--baseline`, `--write-baseline` |
+| `gozen export` | Export a playable game with a prebuilt runtime | `--help`, `-h`, `--runtime`, `--target`, `--out`, `-o`, `--reuse`, `--format` |
+| `gozen faces` | Find the faces for the balloons and icons | `--help`, `-h`, `--model`, `--ort`, `--min`, `--preview` |
+| `gozen help` | Describe commands or diagnostic codes | `--help`, `-h`, `--format` |
+| `gozen migrate` | Copy and upgrade a versioned game to the current schema | `--help`, `-h`, `--format`, `--out` |
+| `gozen models` | Inspect the inference model cache | `--help`, `-h` |
+| `gozen models fetch` | Download the pinned detection models into the cache | `--help`, `-h`, `--format` |
+| `gozen models list` | List pinned models and their cache status | `--help`, `-h`, `--format` |
+| `gozen mosaic` | Pixelate image regions, with optional ONNX detection | `--help`, `-h`, `--format` |
+| `gozen mosaic add` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic auto` | Detect and pixelate regions, and write images | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--dry-run`, `-n`, `--format` |
+| `gozen mosaic clear` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic drop` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic grow` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic inspect` | Report if images need and have pixelation | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--pretty`, `--redetect`, `--format` |
+| `gozen mosaic list` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic mark` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--checked`, `--format` |
+| `gozen mosaic show` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic skip` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen mosaic view` | Add, drop, grow, or check regions | `--help`, `-h`, `--fix`, `--manual`, `--tags`, `--model`, `--yes`, `--ort`, `--face`, `--seg`, `--tagger`, `--classes`, `--labels`, `--threshold`, `--sure`, `--passes`, `--threads`, `--shape`, `--block`, `--margin`, `--pad`, `--min`, `--dilate`, `--out`, `-o`, `--quality`, `--rect`, `--box`, `--poly`, `--ellipse`, `--norm`, `--note`, `--region-id`, `--by`, `--left`, `--top`, `--right`, `--bottom`, `--src`, `--region`, `--size`, `--step`, `--view-out`, `--format` |
+| `gozen new` | Create a playable game without Go source | `--help`, `-h`, `--format`, `--template`, `--id`, `--title` |
+| `gozen notes` | Turn test-play notes into HTML with thumbnails | `--help`, `-h`, `--out`, `-o` |
+| `gozen prompt` | Assemble image-generation text from a catalog | `--help`, `-h`, `--config`, `-c`, `--format`, `--scene`, `--plan`, `--scenes`, `--select` |
+| `gozen prompt lint` | Check every catalog item and scene | `--help`, `-h`, `--config`, `-c`, `--format` |
+| `gozen puppet` | Check a moving portrait and cut its pictures | `--help`, `-h`, `--out`, `-o` |
+| `gozen release` | Build a release tree with approved assets only | `--help`, `-h`, `--out`, `-o`, `--inspect`, `--overlay`, `--prefix` |
+| `gozen run` | Run a game directory in a window | `--help`, `-h`, `--dev`, `--build-info`, `--external-input`, `--seed`, `--script`, `--shots`, `--record`, `--mute`, `--fullscreen`, `--gallery-all`, `--book-as-played`, `--window`, `--save-dir`, `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm`, `--autoplay`, `--report`, `--shot-every`, `--auto-floors`, `--speed`, `--trace`, `--replay`, `--replay-battle`, `--memos`, `--from-memo`, `--allow-legacy-save`, `--until`, `--trace-shots`, `--scene`, `--event`, `--line`, `--picture`, `--answers`, `--review`, `--review-log`, `--review-sources` |
+| `gozen sim` | Measure play without a window | `--help`, `-h` |
+| `gozen sim batch` | Play many sim script cases in one process | `--help`, `-h`, `--cases`, `--games` |
+| `gozen sim battle` | Fight AUTO battles against a troop | `--help`, `-h`, `--troop`, `--battles`, `-n`, `--party`, `--level`, `--seed`, `--verbose`, `-v`, `--turns`, `--no-tree`, `--gear`, `--state`, `--as-is`, `--streak`, `--hp`, `--format` |
+| `gozen sim breed` | Explore the monster breeding graph | `--help`, `-h`, `--format` |
+| `gozen sim campaign` | Play a campaign many times and measure it | `--help`, `-h`, `--campaigns`, `-n`, `--seed`, `--as`, `--tactic`, `--orders`, `--format`, `--compare` |
+| `gozen sim design` | Play the game with personas and write a report | `--help`, `-h`, `--config`, `--root`, `--out`, `-o`, `--only`, `--memos`, `--verbose`, `-v`, `--seed`, `--list`, `--format` |
+| `gozen sim dive` | Simulate a dive floor by floor | `--help`, `-h`, `--location`, `--floors`, `--battles`, `--boss`, `--shops`, `--tries`, `--grind`, `--seed`, `--turns`, `--rest`, `--supplies`, `--events`, `--rest-cost`, `--rest-event`, `--back-item`, `--worn-hp`, `--worn-mp`, `--scene-event`, `--scene-when`, `--guards`, `--retreat`, `--guards-only`, `--no-town`, `--floor-event`, `--arrival-saves`, `--format` |
+| `gozen sim floors` | Show generated floors: maps, steps, and encounters | `--help`, `-h`, `--location`, `--from`, `--to`, `--floor`, `--try`, `--format`, `--no-map` |
+| `gozen sim routes` | Find unreachable endings and choice options | `--help`, `-h`, `--paths`, `--depth`, `--timeout`, `--format`, `--fail-unreachable` |
+| `gozen sim script` | Play a script without a window and write its trace | `--help`, `-h`, `--script`, `--trace`, `--seed`, `--save-dir`, `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm`, `--event`, `--line`, `--answers` |
+| `gozen theme` | Inspect and install dungeon themes | `--help`, `-h` |
+| `gozen theme add` | Copy a dungeon theme into a game | `--help`, `-h`, `--name`, `--force` |
+| `gozen theme list` | List the dungeon themes | `--help`, `-h`, `--format` |
+| `gozen trace` | Print or check a JSON Lines trace of a play | `--help`, `-h`, `--only`, `--format`, `--from`, `--to`, `--input`, `--check`, `--music-late` |
+| `gozen trial` | Build a trial tree with the reachable part | `--help`, `-h`, `--out`, `-o`, `--config`, `--overlay`, `--inspect`, `--list`, `--dry-run`, `-n` |
+| `gozen version` | Print the gozen version | `--help`, `-h` |

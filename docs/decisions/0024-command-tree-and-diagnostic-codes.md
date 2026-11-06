@@ -62,6 +62,15 @@ The `play run <game-dir>` addition (2026-10-24) runs a game directory through th
 
 Unchanged: 0 for success and help, 1 when processing fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot id) is an invalid argument and exits 2 in every command; `sim battle` with an unknown troop used to exit 1.
 
+### Warning enforcement (2026-11-06)
+
+`check --strict` treats warning counts above zero as a failed check (exit 1).
+`--baseline FILE` allows counts per code and source file and fails only on growth.
+Warnings retain their stable GZN0xxx identity and severity in all output formats;
+the enforcement policy changes the process result, not the underlying problem.
+`--write-baseline FILE` writes a new versioned JSON file only after successful
+validation. Existing files are never overwritten.
+
 ### Diagnostic codes
 
 - A code is `GZN` and four digits. The thousands digit is the exit value (`GZN0xxx` warnings exit 0, `GZN1xxx` exit 1, `GZN2xxx` exit 2). The hundreds digit is the family, what the reader has to fix. Exit values are not widened to atago's 3 to 6: the author's Makefile, tools and tests rely on 0, 1 and 2.

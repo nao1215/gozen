@@ -97,7 +97,11 @@ func TestCodes_AreProvokedByE2E(t *testing.T) {
 			for _, asserted := range assertions(t, sc) {
 				for _, c := range reported(asserted.text) {
 					seen[c] = true
-					if asserted.exit != c.ExitCode() {
+					want := c.ExitCode()
+					if asserted.enforced && want == 0 && asserted.exit == 1 {
+						want = 1
+					}
+					if asserted.exit != want {
 						t.Errorf("%s: %q asserts %s with exit_code %d", filepath.Base(f), sc["name"], c, asserted.exit)
 					}
 				}
@@ -140,8 +144,9 @@ func reported(text string) []Code {
 }
 
 type asserted struct {
-	text string
-	exit int
+	enforced bool
+	text     string
+	exit     int
 }
 
 // assertions expands a scenario's matrix and returns the text and the exit
@@ -178,7 +183,12 @@ func assertions(t *testing.T, sc map[string]any) []asserted {
 		if err := yaml.Unmarshal([]byte(text), &steps); err != nil {
 			t.Fatal(err)
 		}
+		enforced := false
 		for _, st := range steps {
+			if run, ok := st["run"].(map[string]any); ok {
+				command := fmt.Sprint(run["command"])
+				enforced = strings.Contains(command, "gozen check ") && (strings.Contains(command, "--strict") || strings.Contains(command, "--baseline"))
+			}
 			a, ok := st["assert"].(map[string]any)
 			if !ok {
 				continue
@@ -215,7 +225,7 @@ func assertions(t *testing.T, sc map[string]any) []asserted {
 					}
 				}
 			}
-			out = append(out, asserted{text, exit})
+			out = append(out, asserted{enforced, text, exit})
 		}
 	}
 	return out

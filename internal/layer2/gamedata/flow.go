@@ -48,6 +48,7 @@ func (c *checker) flows() {
 				c.errorf(diag.Shape, sw+".label", "a step needs a label")
 			}
 			c.text(sw+".label", st.Label, FieldNames)
+			c.useDefinition("screen", st.Screen)
 			screen := g.Screens[st.Screen]
 			switch {
 			case screen == nil:

@@ -1,4 +1,9 @@
-locations: {workshop: {name: Workshop}}
+locations:
+  workshop:
+    name: Workshop
+    actions:
+    - {label: Try event examples, do: [{open: tasks}]}
+    - {label: Calendar, do: [{open: calendar}]}
 events:
   inspect_activity:
     params: {task: activity}

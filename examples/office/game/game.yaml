@@ -83,6 +83,14 @@ screens:
     view: {fullscreen: true, background: bg/pantry.jpg}
     entries:
     - {label: Go home, style: button, bounds: [40, 150, 220, 48], do: [{set: {var.day: 'var.day+1', var.assigned_n: 0}}]}
+    - {label: Client request, style: button, bounds: [40, 220, 220, 48], do: [{call: notify}]}
+    - {label: Team chat, style: button, bounds: [300, 220, 220, 48], do: [{call: phone_chat}]}
+    - {label: Photo feed, style: button, bounds: [560, 220, 220, 48], do: [{call: phone_feed}]}
+    - {label: Client video, style: button, bounds: [820, 220, 220, 48], do: [{call: phone_video}]}
+    - {label: Sprint plan, style: button, bounds: [40, 290, 220, 48], destination: timeline, do: [{open: timeline}]}
+    - {label: Calendar, style: button, bounds: [300, 290, 220, 48], destination: calendar, do: [{open: calendar}]}
+    - {label: Materials, style: button, bounds: [560, 290, 220, 48], destination: materials, do: [{open: materials}]}
+    - {label: Phone apps, style: button, bounds: [820, 290, 220, 48], do: [{call: phone_tour}]}
   team_call:
     title: Team call
     kind: ensemble
@@ -121,14 +129,17 @@ screens:
     - {label: Ask Iris, carousel: help, picture: icons/iris.png, cost: 1 slot, text: Ask her to look at the error screens., bounds: [200, 500, 880, 196], do: [{set: {var.help: 2}}]}
     - {label: Ask Mia, carousel: help, picture: icons/mia.png, text: Ask her to move the demo., bounds: [200, 500, 880, 196], unavailable: 'true', reason: Mia is off today., do: [{set: {var.help: 3}}]}
   timeline:
+    back: wrap
     title: Sprint plan
     kind: timeline
     view: {fullscreen: true, background: bg/meeting.jpg}
   calendar:
+    back: wrap
     title: Sprint calendar
     kind: calendar
     view: {fullscreen: true, background: bg/office.jpg}
   materials:
+    back: wrap
     title: Overlapping panels
     kind: workspace
     view: {fullscreen: true, background: bg/office.jpg}

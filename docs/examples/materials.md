@@ -3,7 +3,9 @@
 Use `ui.material` to add soft backdrop sampling to planning and dialogue windows.
 Omission retains the classic renderer. The workshop example uses this configuration:
 
+<!-- verify: load as=game.yaml -->
 ```yaml
+schema_version: 11
 ui:
   material:
     kind: glass

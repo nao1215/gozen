@@ -18,6 +18,7 @@ The head, hair and swaying parts can extend beyond the base picture by some tent
 
 Writing `puppet` on a party member (actors) makes the talk window's portrait that puppet.
 
+<!-- verify: parse portrait fragment; pictures and surrounding puppet or game definitions are supplied separately -->
 ```yaml
 actors:
   walker: {name: Walker, class: walker, faces: walker, puppet: walker/puppet.yaml}
@@ -33,6 +34,7 @@ actors:
 
 With `ui.message: novel`, the stage shows the face pictures of the figures that `stand` places or that come on with their lines. `ui.stage_puppets: true` in game.yaml (schema version 8) draws an actor's puppet there instead ([ADR 0046](../decisions/0046-moving-portraits-on-the-novel-stage.md)):
 
+<!-- verify: parse portrait fragment; pictures and surrounding puppet or game definitions are supplied separately -->
 ```yaml
 schema_version: 11
 ui:
@@ -68,6 +70,7 @@ A whole picture is compared at load time with the base (for the eyes or mouth of
 
 All coordinates are pixels of the base picture (origin at the top left). Picture paths are relative to the directory of the YAML. Unknown keys are an error.
 
+<!-- verify: parse portrait fragment; pictures and surrounding puppet or game definitions are supplied separately -->
 ```yaml
 base: streamer.png
 face: smile              # the first face. Required if there are 2 or more faces
@@ -153,6 +156,7 @@ A part follows the motion of what it follows (head or body) with a lag through a
 
 Give a `soft_sway` or `springs` part an `idle` oscillator to move it at full HP even when its body is stationary. For example, this moves a small decorative patch on a neutral figure:
 
+<!-- verify: parse portrait fragment; pictures and surrounding puppet or game definitions are supplied separately -->
 ```yaml
 soft_sway:
   - ellipse: [34, 52, 20, 36]
