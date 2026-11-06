@@ -123,3 +123,17 @@ func TestDuplicateDefinitionLocations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) { wantDiagnostics(t, tc.files, tc.want...) })
 	}
 }
+
+func TestLoadRejectsMultipleDocuments(t *testing.T) {
+	for _, name := range []string{"game.yaml", "data/base.yaml"} {
+		t.Run(name, func(t *testing.T) {
+			fsys := diagnosticFS(nil)
+			fsys[name].Data = append(fsys[name].Data, []byte("\n---\nunknown_section: ignored\n")...)
+			if _, err := Load(fsys); err == nil {
+				t.Fatal("accepted an extra YAML document without checking it")
+			} else if !strings.Contains(err.Error(), name) {
+				t.Fatalf("missing file name: %v", err)
+			}
+		})
+	}
+}
