@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.20.0 - 2026-11-07
+
+A lock screen call that rings out to a `missed` result, a choice that waits behind an Unmute button so keeping quiet is an answer, and Skip that stops at phones that keep a result.
+
 ### Added
 
 - A phone call on the lock screen takes `ring`: the seconds it rings unanswered before it stops and puts the phone down with the result `missed` (the phone's `var` receives `missed`), running the call's `missed` assignments, written as the `set` command. Without `ring` a call rings until it is answered or declined, as before. The missed results come after `answer` and `decline`, so saves made before keep their answers. `gozen check` rejects a negative or infinite `ring`, `ring` on a notice that is not a call and `missed` without `ring`. The office example's wrap-up screen has a client call that rings out.
