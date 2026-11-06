@@ -142,7 +142,12 @@ func (c *checker) ref(where, kind, id string, ok bool) {
 		c.errorf(diag.Shape, where, "event %q requires arguments; use a parameterless wrapper here", id)
 	}
 	if id != "" && !ok {
-		c.errorf(diag.UnknownReference, where, "unknown %s %q", kind, id)
+		message := fmt.Sprintf("unknown %s %q", kind, id)
+		section := map[string]string{"location": "locations", "actor": "actors", "item": "items", "skill": "skills", "class": "classes", "event": "events", "enemy": "enemies", "troop": "troops", "shop": "shops", "state": "states", "region": "regions", "faction": "factions", "song": "songs"}[kind]
+		if near := nearestName(id, c.db.Order[section]); near != "" {
+			message += fmt.Sprintf(lang.T("（%q の誤りですか？）"), near)
+		}
+		c.errorf(diag.UnknownReference, where, "%s", message)
 	}
 }
 

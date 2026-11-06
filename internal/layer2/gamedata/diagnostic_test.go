@@ -123,3 +123,15 @@ func TestDuplicateDefinitionLocations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) { wantDiagnostics(t, tc.files, tc.want...) })
 	}
 }
+
+func TestReferenceSuggestionKeepsLocationAndCode(t *testing.T) {
+	_, err := Load(diagnosticFS(map[string]string{"data/typo.yaml": "locations:\n  trail:\n    exits: [{to: capm}]\n"}))
+	if err == nil {
+		t.Fatal("accepted unknown reference")
+	}
+	for _, want := range []string{"data/typo.yaml:3:", `unknown location "capm"`, `"camp"`, "GZN1101"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("missing %q in %v", want, err)
+		}
+	}
+}

@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
+
+	lang "github.com/nao1215/gozen/internal/text"
 
 	"github.com/nao1215/gozen/internal/diag"
 
@@ -52,6 +55,32 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		}
 		return nil // Finite scalar/list values are checked by planning validation.
 	}
+	if typ == reflect.TypeFor[Event]() {
+		if list, ok := raw.([]any); ok {
+			// Keep runtime paths stable (including read/save keys), while locating
+			// errors at the corresponding authored list entry.
+			prefix := doc.logicalPath(where)
+			// Snapshot authored paths once; scanning the whole file for every
+			// compact event would make large narrative files quadratic to load.
+			// keepSources rebuilds this index after all aliases have been added.
+			if doc.sorted == nil {
+				doc.sorted = slices.Sorted(maps.Keys(doc.positions))
+			}
+			start, _ := slices.BinarySearch(doc.sorted, prefix+"[")
+			for _, key := range doc.sorted[start:] {
+				if !strings.HasPrefix(key, prefix+"[") {
+					break
+				}
+				doc.positions[prefix+".do"+strings.TrimPrefix(key, prefix)] = doc.positions[key]
+			}
+			for key, bare := range doc.bareKeys {
+				if strings.HasPrefix(key, prefix+"[") {
+					doc.bareKeys[prefix+".do"+strings.TrimPrefix(key, prefix)] = bare
+				}
+			}
+			return doc.definitionShape(list, reflect.TypeFor[[]Command](), where+".do")
+		}
+	}
 	if typ == reflect.TypeFor[AIRef]() {
 		if _, ok := raw.(string); ok {
 			return nil
@@ -59,7 +88,7 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 		return doc.definitionShape(raw, reflect.TypeFor[[]Rule](), where)
 	}
 	switch typ {
-	case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
+	case reflect.TypeFor[ItemCount](), reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
 		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 		if _, ok := raw.(string); ok {
 			return nil
@@ -126,6 +155,12 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 			}
 			if field, ok := fields[key]; ok {
 				errs = append(errs, doc.definitionShape(it.Value, field, numberPath(where, key))...)
+			} else if typ != reflect.TypeFor[Command]() {
+				message := fmt.Sprintf("unknown field %q", key)
+				if near := nearestName(key, slices.Sorted(maps.Keys(fields))); near != "" {
+					message += fmt.Sprintf(lang.T("（%q の誤りですか？）"), near)
+				}
+				errs = append(errs, coded(doc.diagnostic(numberPath(where, key), message), diag.Shape))
 			}
 		}
 	case reflect.Map:
@@ -137,6 +172,10 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 			return bad("a map")
 		}
 		for _, it := range m {
+			if it.Key == nil || fmt.Sprint(it.Key) == "null" && doc.bareKeys[doc.logicalPath(numberPath(where, "null"))] {
+				errs = append(errs, coded(doc.diagnostic(where, lang.T("定義のキーに null は使えません。文字列の ID を指定してください")), diag.Shape))
+				continue
+			}
 			errs = append(errs, doc.definitionShape(it.Value, typ.Elem(), numberPath(where, fmt.Sprint(it.Key)))...)
 		}
 	case reflect.Slice, reflect.Array:
@@ -323,6 +362,12 @@ func (doc *sourceDocument) definitionDecodeError(node ast.Node, typ reflect.Type
 		}
 		return nil
 	}
+	if typ == reflect.TypeFor[Event]() {
+		if _, ok := node.(*ast.SequenceNode); ok {
+			typ = reflect.TypeFor[[]Command]()
+			where += ".do"
+		}
+	}
 	switch n := node.(type) {
 	case *ast.MappingNode:
 		fields := map[string]reflect.Type{}
@@ -351,4 +396,24 @@ func (doc *sourceDocument) definitionDecodeError(node ast.Node, typ reflect.Type
 		}
 	}
 	return &diagnostic{nodePosition(doc.name, node.GetToken()), where, err.Error(), diag.Shape}
+}
+
+// nearestName suggests only a unique close match. A tie is not a correction.
+func nearestName(name string, candidates []string) string {
+	best, distance, tied := "", 3, false
+	for _, candidate := range candidates {
+		d := editDistance(name, candidate)
+		if d >= len([]rune(name)) {
+			continue
+		}
+		if d < distance {
+			best, distance, tied = candidate, d, false
+		} else if d == distance {
+			tied = true
+		}
+	}
+	if tied {
+		return ""
+	}
+	return best
 }

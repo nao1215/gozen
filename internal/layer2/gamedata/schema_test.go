@@ -56,6 +56,7 @@ var schemaDefaults = map[string]string{
 	"Fonts.regular":             "同梱の Go Regular（ラテン文字のみ）",
 	"GalleryScene.id":           "省略時は従来のフラグまたはイベントと題名によるキー", "GalleryScene.legacy_keys": "旧キーからの引き継ぎなし",
 	"GalleryScene.pages": "頁選択なし。先頭から再生", "GalleryPage.picture": "回想開始から台詞と問いを数える", "GalleryPage.answers": "未指定の選択肢で止まる",
+	"TacticRow.enabled":   "true in schema 11",
 	"Game.schema_version": "0（旧仕様）", "Game.language": "en（英語）", "Game.data_version": "0（未管理）",
 	"Game.equip_slots": "weapon・armor・accessory の３枠", "Game.id": "旧版は空文字。新版は必須。標準保存先の準備には空でない ID が必要",
 	"Actor.face": "normal", "Actor.face_shade_top": "face_shade を継承",
@@ -210,7 +211,7 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 			n := schemaNode{"type": "object", "properties": props, "additionalProperties": false}
 			b.constraints(t, n, props)
 			switch t {
-			case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+			case reflect.TypeFor[ItemCount](), reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
 				reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "string"}, n}}
 			case reflect.TypeFor[CrowdLines](): // a list is the lines of any hour
@@ -219,6 +220,8 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 				n["additionalProperties"] = b.node(reflect.TypeFor[StreamLine]())
 				n["minProperties"], n["maxProperties"] = 1, 1
 				b.defs[name] = n
+			case reflect.TypeFor[Event]():
+				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "array", "items": b.node(reflect.TypeFor[Command]())}, n}}
 			case reflect.TypeFor[WaitCue]():
 				b.defs[name] = schemaNode{"anyOf": []any{schemaNode{"type": "number"}, n}}
 			case reflect.TypeFor[Token](): // a map piece can also be written as the single word doll
@@ -432,6 +435,9 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	}
 	c.LegacyDefault = c.Default
 	switch key {
+	case "TacticRow.enabled":
+		c.LegacyDefault = "false"
+		c.Version = "all; omitted enabled changes in schema 11"
 	case "Learning.level":
 		c.LegacyDefault = "0（最初から習得対象）"
 	case "Screen.height":
@@ -631,11 +637,13 @@ func schemaTypeLabel(t reflect.Type) string {
 	case reflect.Struct:
 		result := "[" + schemaName(t) + "](#" + strings.ToLower(schemaName(t)) + ")"
 		switch t {
-		case reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
+		case reflect.TypeFor[ItemCount](), reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](),
 			reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[StreamLine](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 			result += " または文字列"
 		case reflect.TypeFor[WaitCue]():
 			result += " または数値"
+		case reflect.TypeFor[Event]():
+			result += " or Command[] (schema 11)"
 		case reflect.TypeFor[CrowdLines]():
 			result += " or string[]"
 		case reflect.TypeFor[Token]():

@@ -38,10 +38,13 @@ const (
 	// screen kinds, views and workspace entries, say.ensemble and say.instant
 	// (ADR 0053), and ui.material.
 	SchemaVersion10 = 10
+	// SchemaVersion11 adds compact events and single-item commands, and enables
+	// authored tactic rows by default. Versions 0 through 10 keep their defaults.
+	SchemaVersion11 = 11
 	// CurrentSchemaVersion is the latest YAML spec version that can be loaded. 3 adds to 2 the place presentation map and stage,
 	// the doll, speech bubbles, and the spot of expressions and set (ADR 0022); 4 adds the novel game vocabulary; 5 adds
-	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams; 10 adds event arguments, planning and materials.
-	CurrentSchemaVersion = SchemaVersion10
+	// campaigns (ADR 0030); 6 adds monster collection; 7 adds battle forms and pictures; 8 adds stacked spaces; 9 adds live streams; 10 adds event arguments, planning and materials; 11 adds compact authoring and enabled-by-default tactic rows.
+	CurrentSchemaVersion = SchemaVersion11
 )
 
 // MaxRollback is the most earlier events ui.rollback may keep (the history is a copy of the

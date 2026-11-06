@@ -279,8 +279,20 @@ type ChoiceOption struct {
 
 // ItemCount is an item and how many.
 type ItemCount struct {
+	short bool   // A single item written as its ID (schema 11).
 	Item  string `yaml:"item"`
 	Count *int   `yaml:"count,omitempty"` // omitted means 1. In spec version 1, 0 means no change.
+}
+
+// UnmarshalYAML accepts an item ID for one item, or an explicit item/count map.
+func (i *ItemCount) UnmarshalYAML(unmarshal func(any) error) error {
+	var id string
+	if err := unmarshal(&id); err == nil {
+		*i = ItemCount{Item: id, short: true}
+		return nil
+	}
+	type plain ItemCount
+	return unmarshal((*plain)(i))
 }
 
 // N is the count. It returns 1 only when omitted. Load turns the legacy 0 back into omitted.
