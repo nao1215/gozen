@@ -874,6 +874,7 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 		}
 		seenTabs := map[string]bool{}
 		for _, id := range v.Tabs {
+			c.useDefinition("screen", id)
 			screen := c.db.Game.Screens[id]
 			if screen == nil || !screen.View.Fullscreen || seenTabs[id] {
 				c.errorf(diag.UnknownReference, w+".tabs", "unknown, duplicate or non-fullscreen tab %q", id)

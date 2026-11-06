@@ -34,7 +34,7 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 ## Conventions
 
 - Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
-- A diagnostic may end with a code such as `[GZN1101]`; its first digit is the exit status. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
+- A diagnostic may end with a code such as `[GZN1101]`; its first digit is the default exit status. Warning enforcement with `check --strict` or `--baseline` uses exit 1 without changing the code. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
 - Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
 - Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
 - Every command except `export`, `run`, `capture`, `faces` and `mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
@@ -73,7 +73,7 @@ Other commands currently retain the result shapes described in their sections.
 
 ## check
 
-Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr and do not fail the check.
+Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr. By default they do not fail the check. `--strict` fails with exit 1 when any warning is reported; diagnostic codes stay unchanged, including `GZN0xxx` warnings.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -90,6 +90,9 @@ data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN110
 
 | Option | Meaning |
 |:--|:--|
+| `--strict` | Fail with exit 1 when warning counts exceed zero, or the supplied baseline. |
+| `--baseline FILE` | Enforce recorded warning counts per code and source file; only growth fails. |
+| `--write-baseline FILE` | Write a new JSON baseline after successful validation. Existing files are not overwritten. |
 | `--only structure` | Check definitions, references, expressions and assets only; do not read the font or check the text layout. stdout says so. |
 | `--only layout` | Check only that dialogue and choices fit the message window, with the game's font and display rules. |
 | `--format` | `text` (default), `json` or `jsonl`. JSON returns a version-1 result whose `data` is the diagnostic array (`file`, `line`, `col`, `path`, `message`, `severity`, `code`). JSONL emits each diagnostic and a terminal summary. Validation errors set `status: failed` and exit 1, without duplicate stderr output. |
@@ -116,6 +119,31 @@ The `data` field contains diagnostics such as:
 ```shell
 gozen check --only layout game
 ```
+
+### Warning budgets
+
+<!-- verify: run fixture=cli -->
+```sh
+gozen check game --strict
+gozen check game --write-baseline warnings.json
+gozen check game --baseline warnings.json
+```
+
+`--baseline FILE` enables enforcement on its own. It allows the recorded warning
+counts for each diagnostic code and game-relative source file; only increased
+counts fail (exit 1). New codes and files start with zero allowance. Decreases
+pass, but do not rewrite the baseline. Combining `--strict` with `--baseline`
+uses these allowances instead of zero. All warnings remain visible in text,
+JSON and JSONL, including those within the budget. Errors always fail.
+
+`--write-baseline FILE` writes versioned JSON to a **new** file after a valid
+check, including zero counts when clean. It does not overwrite an existing file
+or record a game with validation errors. Review a newly written baseline before
+replacing an older one. It does not disable `--strict` or comparison when those
+options are also supplied. Paths are relative to the current working directory;
+warning file names inside the JSON are relative to the game. A baseline records
+the `--only` scope, which must match when it is used. It detects count growth,
+not replacement of one warning by another within the same code/file bucket.
 
 ## sim
 

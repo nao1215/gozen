@@ -46,13 +46,13 @@ func TestLoadSummarisesAGameThatLoads(t *testing.T) {
 	if db == nil || !strings.HasPrefix(out.String(), "ok: 3 locations, 2 events, 2 actors, 9 skills, 5 items, 2 enemies, 3 troops, 0 ai sets\n") {
 		t.Fatalf("summary: %q", out.String())
 	}
-	// The test expedition sets one flag nothing reads and reads one nothing sets: two warnings, no error.
-	if !strings.Contains(warn.String(), "flag.saw_two is set but nothing reads it") || !strings.Contains(warn.String(), "flag.ghost is read but nothing sets it") || strings.Count(warn.String(), "warning: ") != 2 {
+	// The expedition has two flag warnings and five definitions used only by tests.
+	if !strings.Contains(warn.String(), "flag.saw_two is set but nothing reads it") || !strings.Contains(warn.String(), "flag.ghost is read but nothing sets it") || strings.Count(warn.String(), "warning: ") != 7 {
 		t.Errorf("warnings: %q", warn.String())
 	}
 	got, diags := Diagnose(game(t, nil))
-	if got == nil || len(diags) != 2 || diags[0].Code != diag.UnusedFlag.String() || diags[1].Code != diag.UnsetFlag.String() {
-		t.Errorf("the same two warnings, as diagnostics: %+v", diags)
+	if got == nil || len(diags) != 7 || diags[0].Code != diag.UnusedFlag.String() || diags[1].Code != diag.UnsetFlag.String() {
+		t.Errorf("the same warnings, as diagnostics: %+v", diags)
 	}
 	for _, d := range diags {
 		if d.Severity != "warning" || d.File != "data/main.yaml" || d.Line == 0 {
@@ -165,8 +165,8 @@ func TestLoadReportsWarningsOfTheDefinitionsWithoutFailing(t *testing.T) {
 			lonely++
 		}
 	}
-	if db == nil || lonely != 1 || len(diags) != 3 {
-		t.Fatalf("%v %+v", db, diags)
+	if db == nil || lonely != 1 || len(diags) != 9 {
+		t.Fatalf("loaded=%v diagnostics=%+v", db != nil, diags)
 	}
 	if _, err := Load(game(t, extra), io.Discard, &limitedWriter{}); err == nil || !strings.Contains(err.Error(), "disk full") {
 		t.Errorf("a warning that cannot be written fails the check: %v", err)

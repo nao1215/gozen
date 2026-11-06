@@ -96,6 +96,13 @@ screens:
       do: [{call: priority_demo}]
     - label: Inspect the preparation work
       do: [{call: {event: inspect_activity, args: {task: '"prepare"'}}}]
+    - {label: Visit the residents, do: [{call: visit}]}
+    - {label: Assign a resident, do: [{call: {event: assign_visit, args: {task: '"prepare"', resident: '"potter"'}}}]}
+    - {label: Collect stock, do: [{call: stock_demo}]}
+    - {label: Inspect residents, do: [{call: inspection_demo}]}
+    - {label: Compare progress, do: [{call: progress_demo}]}
+    - {label: Assign shifts, do: [{call: shift_demo}]}
+    - {label: Adjust started work, do: [{call: adjustment_demo}]}
     kind: timeline
     view:
       fullscreen: true

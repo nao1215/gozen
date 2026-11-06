@@ -138,6 +138,7 @@ func (c *checker) tacticCatalog() {
 }
 
 func (c *checker) tacticRows(w, id string, rows []TacticRow) {
+	c.useDefinition("ai", id)
 	if _, ok := c.db.AI[id]; !ok || id == "" {
 		c.errorf(diag.UnknownReference, w, lang.T("おまかせ作戦の参照先 AI %q がありません"), id)
 	}

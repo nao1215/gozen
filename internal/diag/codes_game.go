@@ -3,6 +3,12 @@ package diag
 // GZN01xx: warnings of check. The game loads and the command exits 0, but
 // something is likely not what the author meant.
 var (
+	UnusedDefinition = register(124, "UnusedDefinition", Entry{
+		Summary: "a definition has no YAML consumer",
+		Detail:  "An event, authored screen (including an ensemble), location, item, troop, shop or AI set has no incoming reference in the loaded YAML. Start points, triggered events, calls, screen navigation, flows and literal expression references count as consumers. Dynamic lookups retain their entire definition kind. This is not a proof of unreachable content; external scripts may use a definition.",
+		Fix:     "Connect the definition to its intended consumer, remove it if obsolete, or record an intentional external-script entry in a reviewed check baseline.",
+	})
+
 	SpeechConsistency = register(123, "SpeechConsistency", Entry{
 		Summary: "dialogue differs from the speaker's declared language style",
 		Detail:  "An opt-in speech rule found an explicitly discouraged form in a literal line.",
@@ -172,6 +178,7 @@ var (
 		Summary: "the game directory or game.yaml cannot be read",
 		Detail:  "The directory given is not a game directory: it does not exist, cannot be read, or has no game.yaml.",
 		Fix:     "Pass the directory that holds game.yaml, data/ and assets/.",
+		NotYAML: "This reports an absent or unreadable game directory or game.yaml, rather than YAML content.",
 	})
 	ThemeMissing = register(1111, "ThemeMissing", Entry{
 		Summary: "a dungeon theme is named but its pictures are not in the game",
