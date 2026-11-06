@@ -147,6 +147,8 @@ func chartLayout(ids []string, profiles map[string]*data.Profile) []image.Point 
 	if len(ids) > 10 {
 		return points
 	}
+	edges := chartEdges(ids, profiles)
+	best := chartCrossings(edges, points)
 	for range min(2, len(ids)) {
 		changed := false
 		for i := range ids {
@@ -157,9 +159,9 @@ func chartLayout(ids []string, profiles map[string]*data.Profile) []image.Point 
 				if profiles[ids[j]] == nil || profiles[ids[i]].Affiliation != profiles[ids[j]].Affiliation {
 					continue
 				}
-				before := chartCrossings(ids, profiles, points)
 				points[i], points[j] = points[j], points[i]
-				if chartCrossings(ids, profiles, points) < before {
+				if crossings := chartCrossings(edges, points); crossings < best {
+					best = crossings
 					changed = true
 				} else {
 					points[i], points[j] = points[j], points[i]
@@ -173,23 +175,29 @@ func chartLayout(ids []string, profiles map[string]*data.Profile) []image.Point 
 	return points
 }
 
-func chartCrossings(ids []string, profiles map[string]*data.Profile, points []image.Point) int {
+type chartEdge struct{ a, b int }
+
+// chartEdges resolves relationships once for the bounded layout search.
+func chartEdges(ids []string, profiles map[string]*data.Profile) []chartEdge {
 	index := make(map[string]int, len(ids))
 	for i, id := range ids {
 		index[id] = i
 	}
-	type edge struct{ a, b int }
-	edges := []edge{}
+	var edges []chartEdge
 	for i, id := range ids {
 		if profiles[id] == nil {
 			continue
 		}
 		for _, r := range profiles[id].Relations {
 			if j, ok := index[r.Who]; ok && i != j {
-				edges = append(edges, edge{i, j})
+				edges = append(edges, chartEdge{i, j})
 			}
 		}
 	}
+	return edges
+}
+
+func chartCrossings(edges []chartEdge, points []image.Point) int {
 	cross := func(a, b, c image.Point) int {
 		return (b.X-a.X)*(c.Y-a.Y) - (b.Y-a.Y)*(c.X-a.X)
 	}
