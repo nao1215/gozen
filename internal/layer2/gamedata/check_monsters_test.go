@@ -119,3 +119,41 @@ func TestMonsterGrowthAndCaptureSourceDiagnostics(t *testing.T) {
 		t.Fatalf("recruit without an encounter: %v", warnings)
 	}
 }
+
+func TestMonsterDefinitionBoundaries(t *testing.T) {
+	for _, tc := range []struct{ name, file, old, replacement, want string }{
+		{"missing families", "data/monsters.yaml", "monster_families: {slime: Slime}", "monster_families: {}", "define monster_families"},
+		{"party too large", "game.yaml", "id: monster-test", "id: monster-test\nmax_party: 5", "at most four"},
+		{"unknown family", "data/main.yaml", "family: slime", "family: absent", "unknown or missing monster family"},
+		{"zero rank", "data/main.yaml", "rank: 1", "rank: 0", "rank must be positive"},
+		{"missing class", "data/main.yaml", "monster_class: ranger", "monster_class: absent", "unknown or missing monster class"},
+		{"unknown admission", "data/main.yaml", "recruit: {", "recruit: {admission: unknown, ", "admission must be"},
+		{"zero chance", "data/main.yaml", "chance: 1", "chance: 0", "chance must be"},
+		{"excess chance", "data/main.yaml", "chance: 1", "chance: 1.01", "chance must be"},
+		{"nonfinite chance", "data/main.yaml", "chance: 1", "chance: .nan", "chance"},
+		{"missing recruit class", "data/main.yaml", "recruit: {", "recruit: {class: absent, ", "unknown monster class"},
+		{"negative recruit level", "data/main.yaml", "chance: 1, level: 1", "chance: 1, level: -1", "level cannot be negative"},
+		{"negative recruit bonus", "data/main.yaml", "bonus: 0", "bonus: -1", "bonus cannot be negative"},
+		{"missing bonus item", "data/main.yaml", "bonus_item: potion", "bonus_item: absent", "unknown item"},
+		{"missing bonus skill", "data/main.yaml", "recruit: {", "recruit: {bonus_skill: absent, ", "unknown skill"},
+		{"one parent", "data/monsters.yaml", "parents: [mote, mote]", "parents: [mote]", "parents needs two enemy IDs"},
+		{"self recipe", "data/monsters.yaml", "child: boss", "child: mote", "parent-to-self"},
+		{"negative recipe level", "data/monsters.yaml", "child: boss", "child: boss, min_level: -1", "min_level and min_plus"},
+		{"negative recipe plus", "data/monsters.yaml", "child: boss", "child: boss, min_plus: -1", "min_level and min_plus"},
+		{"one family", "data/monsters.yaml", "parents: [slime, slime]", "parents: [slime]", "parents needs two family IDs"},
+		{"unknown parent family", "data/monsters.yaml", "parents: [slime, slime]", "parents: [slime, absent]", "unknown family"},
+		{"empty children", "data/monsters.yaml", "children: [mote, boss]", "children: []", "children cannot be empty"},
+		{"unknown family child", "data/monsters.yaml", "children: [mote, boss]", "children: [absent]", "unknown monster"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := testgame.MonsterFiles()
+			if !strings.Contains(files[tc.file], tc.old) {
+				t.Fatal("fixture replacement missing")
+			}
+			files[tc.file] = strings.Replace(files[tc.file], tc.old, tc.replacement, 1)
+			if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}

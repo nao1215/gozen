@@ -85,7 +85,7 @@ func (c *checker) monsters() {
 			if e.Boss {
 				c.errorf(diag.MonsterRules, w+".recruit", "a boss cannot be recruited")
 			}
-			if r.Chance <= 0 || r.Chance > 1 {
+			if !finiteNumber(r.Chance) || r.Chance <= 0 || r.Chance > 1 {
 				c.errorf(diag.MonsterRules, w+".recruit.chance", "chance must be greater than zero and at most one")
 			}
 			if r.Class != "" && db.Classes[r.Class] == nil {
