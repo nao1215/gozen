@@ -614,3 +614,17 @@ func TestPhonePageKeysScroll(t *testing.T) {
 		t.Fatal("scrolling up left the ring on a button off the screen")
 	}
 }
+
+// TestPhoneHidesHUD: the place's header, gold and party hide while the phone
+// is up and come back when it is put down.
+func TestPhoneHidesHUD(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hi"}}})
+	if g.placeHUDShown() {
+		t.Fatal("the place's HUD shows behind the phone")
+	}
+	g.phone.close()
+	g.phone = nil
+	if !g.placeHUDShown() {
+		t.Fatal("the place's HUD did not come back")
+	}
+}

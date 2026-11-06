@@ -259,7 +259,7 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 		q := places[i]
 		g.drawStanding(dst, p.Image, q.x, q.bottom, q.h, 1, false, cs)
 	}
-	if g.talk.active || g.cg.File != "" || len(g.stack) > 1 {
+	if !g.placeHUDShown() {
 		return
 	}
 
@@ -289,6 +289,12 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 		f.menu.draw(g, dst, !g.busy())
 	}
 	g.drawPartyHUD(dst, sh-140)
+}
+
+// placeHUDShown tells whether the place's header, gold, meters, menu and party
+// show: not under a line, a picture, a screen over the place or a phone up.
+func (g *Game) placeHUDShown() bool {
+	return !g.talk.active && g.cg.File == "" && len(g.stack) <= 1 && g.phone == nil
 }
 
 func (f *field) head(g *Game) (area, name, desc string) {
