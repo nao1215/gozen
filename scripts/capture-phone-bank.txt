@@ -1,4 +1,5 @@
-# Office sample capture (run phone-bank): a bank app's transfer confirmation; Confirm is tapped and the story goes on from it (pb###).
+# Office sample capture (run phone-bank): a bank app's transfer confirmation; the keys ring Confirm, Not now and Confirm again, and OK presses it (pb###).
+# The capture ends as the phone goes down, before the line after it.
 # A frame every 5 ticks.
 gap 1
 wait 30
@@ -19,6 +20,7 @@ shot pb006
 wait 2
 shot pb007
 wait 2
+press right
 shot pb008
 wait 2
 shot pb009
@@ -29,6 +31,7 @@ shot pb011
 wait 2
 shot pb012
 wait 2
+press right
 shot pb013
 wait 2
 shot pb014
@@ -39,6 +42,7 @@ shot pb016
 wait 2
 shot pb017
 wait 2
+press left
 shot pb018
 wait 2
 shot pb019
@@ -49,6 +53,7 @@ shot pb021
 wait 2
 shot pb022
 wait 2
+press ok
 shot pb023
 wait 2
 shot pb024
@@ -58,78 +63,5 @@ wait 2
 shot pb026
 wait 2
 shot pb027
-wait 2
-shot pb028
-wait 2
-shot pb029
-wait 2
-shot pb030
-wait 2
-shot pb031
-wait 2
-shot pb032
-wait 2
-shot pb033
-wait 2
-shot pb034
-wait 2
-shot pb035
-wait 2
-shot pb036
-wait 2
-shot pb037
-wait 2
-shot pb038
-wait 2
-shot pb039
-wait 2
-shot pb040
-wait 2
-shot pb041
-wait 2
-shot pb042
-wait 2
-shot pb043
-wait 2
-click 640 567
-shot pb044
-wait 2
-shot pb045
-wait 2
-shot pb046
-wait 2
-shot pb047
-wait 2
-shot pb048
-wait 2
-shot pb049
-wait 2
-shot pb050
-wait 2
-shot pb051
-wait 2
-shot pb052
-wait 2
-shot pb053
-wait 2
-shot pb054
-wait 2
-shot pb055
-wait 2
-shot pb056
-wait 2
-shot pb057
-wait 2
-shot pb058
-wait 2
-shot pb059
-wait 2
-shot pb060
-wait 2
-shot pb061
-wait 2
-shot pb062
-wait 2
-shot pb063
 wait 2
 quit

@@ -705,57 +705,57 @@ images:
     run: phone-chat
     frames:
       - {shots: "pc*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-feed.gif:
     run: phone-feed
     frames:
       - {shots: "pf*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-video.gif:
     run: phone-video
     frames:
       - {shots: "pv*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-puppet.gif:
     run: phone-puppet
     frames:
       - {shots: "pp*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-shop.gif:
     run: phone-shop
     frames:
       - {shots: "ps*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-bank.gif:
     run: phone-bank
     frames:
       - {shots: "pb*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-lock.gif:
     run: phone-lock
     frames:
       - {shots: "pl*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-call.gif:
     run: phone-call
     frames:
       - {shots: "pk*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-sso.gif:
     run: phone-sso
     frames:
       - {shots: "pa*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-timeline.gif:
     run: phone-timeline
     frames:
       - {shots: "pt*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-banner.gif:
     run: phone-banner
     frames:
       - {shots: "pn*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256, palette: scene}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-support.gif:
     run: phone-support
     frames:

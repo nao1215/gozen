@@ -1,4 +1,5 @@
 # Office sample capture (run phone-call): a night on-call: two monitoring notices, an incoming call declined that rings again, then answered (pk###).
+# The capture ends as the phone goes down, before the line after it.
 # A frame every 5 ticks.
 gap 1
 wait 30
@@ -150,33 +151,5 @@ wait 2
 shot pk070
 wait 2
 shot pk071
-wait 2
-shot pk072
-wait 2
-shot pk073
-wait 2
-shot pk074
-wait 2
-shot pk075
-wait 2
-shot pk076
-wait 2
-shot pk077
-wait 2
-shot pk078
-wait 2
-shot pk079
-wait 2
-shot pk080
-wait 2
-shot pk081
-wait 2
-shot pk082
-wait 2
-shot pk083
-wait 2
-shot pk084
-wait 2
-shot pk085
 wait 2
 quit

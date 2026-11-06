@@ -1,4 +1,5 @@
 # Office sample capture (run phone-video): a video app; the phone comes up upright, turns on
+# The capture ends as the phone goes down, before the line after it.
 # its side and plays the clip's footage (a battle) to its last frame, then a press puts it
 # down (pv###). A frame every 5 ticks.
 gap 1
@@ -132,21 +133,5 @@ wait 2
 shot pv062
 wait 2
 shot pv063
-wait 2
-shot pv064
-wait 2
-shot pv065
-wait 2
-shot pv066
-wait 2
-shot pv067
-wait 2
-shot pv068
-wait 2
-shot pv069
-wait 2
-shot pv070
-wait 2
-shot pv071
 wait 2
 quit
