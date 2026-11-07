@@ -17,6 +17,169 @@ data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN110
 
 Between plays, `gozen sim battle` fights a battle many times and prints the win rate, and `gozen sim dive` plays a whole dungeon dive; the window, a headless session and these commands follow the same rules, so their numbers agree.
 
+## Playtesting
+
+![Play, script or autoplay to a trace; reproduce a screen, inspect its structure, read play metrics or section frames. Capture and compare with the previous capture.](/images/playtesting-flow.svg)
+
+Use one recorded run to revisit a screen and inspect what happened around it.
+The following examples run in order from an empty working directory, with
+`gozen` on PATH. Recording, replaying and capturing need a display; reading a
+trace does not. On Linux a virtual display works too; see
+[graphics requirements](https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md#requirements).
+Use new output directory names when repeating the examples.
+
+### Record a short play
+
+Create a small story to try the tools:
+
+```shell
+gozen new playtest-game --template novel
+```
+
+Save this as `input.txt`. Each `mark` begins a named section; `shot` writes a PNG.
+
+<!-- verify: file input.txt -->
+```text
+mark opening
+wait 80
+press ok
+wait 30
+shot scene
+mark after-input
+wait 60
+quit
+```
+
+```shell
+gozen run playtest-game --dev --mute --seed 7 --script input.txt --shots shots --trace play.jsonl
+```
+
+This writes `shots/scene.png` and `play.jsonl`. For manual play, omit `--script`
+and close the window when finished. For a reachable dungeon, replace the script
+with `--autoplay 60`; see [Autoplay](#autoplay). Both can write the same trace
+format. Keep the game unchanged while recording a reproduction case.
+
+### Reproduce a screen
+
+```shell
+gozen trace play.jsonl --repro shots/scene.png --out repro
+sh repro/repro.sh
+```
+
+The first command prints a shell command and writes `repro/repro.sh`,
+`repro/repro.json` and the trace up to the target. Initial saves, if present,
+are included too. Running the script writes the PNG at the `screenshot` path
+in `repro.json`. Original save slots are not overwritten.
+
+A target can also be a simulation tick (`--repro 120`) or time
+(`--repro 2s`, rounded to a tick). A screenshot basename works only if it
+identifies one tick. `--format json` returns the command, seed, start options,
+target tick and latest recorded screen structure in the result's `data`.
+The screen record retains its own tick; it may precede the target.
+
+Reproduction refuses traces it cannot reproduce exactly: missing start details
+or initial save bytes, unsupported review starts and live reloads need a new
+recording. Replay rejects changed game data. The bundle copies no game assets;
+the unchanged game directory must remain at its recorded location even if the
+bundle moves. Traces can contain saved player data. A required picture that
+cannot finish loading fails the replay instead of producing a placeholder.
+
+### Read the screen structure
+
+```shell
+gozen trace play.jsonl --only screen
+```
+
+Each changed draw records an indented block with the tick, speaker, phone app,
+backgrounds, standing cast, text boxes and controls. Controls include their
+label, rectangle, enabled state, focus and reason when disabled. Use
+`--format jsonl` to keep the fields as JSON objects.
+
+Rectangles are `[x, y, width, height]` in UI units, with a screen height of 720.
+These are drawing facts: an overlay can cover recorded text, icon-only controls
+can have empty labels, and moving puppets are not standing-picture entries.
+Headless simulations have no drawn screen records. The separate `layout`
+records below measure contrast after the screen settles.
+
+### Read play metrics
+
+```shell
+gozen trace play.jsonl --metrics --top 5 --stall-seconds 2
+```
+
+The text report lists text per decision, the longest span without a decision,
+repeated dialogue, spacing between observed scene signals, unchanged-state or
+screen spans, and named sections. `--format json` puts these under
+`text_per_decision`, `longest_read_only`, `repeated_text`, `climax_spacing`,
+`stalls` and `sections` in `data`; unfinished dialogue is `trailing_text`.
+A short recording may have no decisions or repeated lines.
+
+Text counts describe offered dialogue, not proof of reading. Signal spacing
+uses observed battles, music, pictures and calls, not emotional intensity.
+An unchanged screen is not necessarily a fault. Times here are simulation
+ticks divided by 60, not wall time. Older traces cannot supply unrecorded
+choices or screens. Metrics read the whole trace and cannot be combined with
+display filters, `--check` or `--repro`; repetition and waiting do not fail the
+command.
+
+### Read per-section frame numbers
+
+```shell
+gozen trace play.jsonl --only section --format jsonl
+```
+
+The `section` objects name `opening` and `after-input`, with `from_tick`, the
+ending `tick`, `ticks` and `frames`. They also contain `elapsed_seconds`,
+`fps`, `tps`, `slow_frame_share`, `heap_inuse_bytes`, `allocations` and
+`allocations_per_frame`. The final `scope: run` row covers the entire run;
+`scope: mark` rows cover sections (including the initial `run` section before
+the first mark).
+
+A mark consumes no tick. Frame counts are completed draws, not a frame number
+for every simulation tick; updates and draws need not be one-to-one. Timing
+and allocation values depend on the machine and include process activity.
+Ratios per frame are absent if there was no completed draw. Headless scripts
+accept marks but do not collect frame performance.
+
+### Compare captures
+
+Save this job list as `captures.yaml`:
+
+<!-- verify: file captures.yaml -->
+```yaml
+title: Story opening
+seed: 7
+shots:
+  - id: opening
+    event: opening
+    wait: 80
+```
+
+```shell
+gozen capture playtest-game --config captures.yaml --out previous
+gozen capture playtest-game --config captures.yaml --out current --against previous
+```
+
+Open `current/index.html`: changed rows come first, with previous and current
+pictures and pink difference highlights; unchanged rows are collapsed. With
+no edit, the example should show an unchanged capture. Edit the story, then
+repeat into a new directory to inspect the difference. `shots.json` keeps each
+job's `change`, `diff_pixels`, `diff_ratio` and `diff_bbox` alongside its image.
+
+Jobs are matched by ID. New or removed jobs count as changes; `--only` makes
+omitted previous jobs appear removed. Pixels are compared exactly, without a
+tolerance. GIFs also compare frames, delays and loop settings. Text/control
+structure differences appear when both captures contain structure; the first
+comparison against an older capture establishes it for the next comparison.
+Differences alone exit successfully; capture and file errors still fail.
+
+| Detail | Reference |
+|:--|:--|
+| Reproduction targets and bundle contents | [Graphics: reproduce a trace screen](https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md#reproduce-a-trace-screen) |
+| Screen fields and coordinates | [Graphics: structured screen records](https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md#structured-screen-records) |
+| Metric counting and missing observations | [Graphics: play metrics](https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md#play-metrics-from-traces) |
+| F8 state and control rectangles | [Graphics: development overlay](https://github.com/nao1215/gozen/blob/main/docs/development/graphics.md#f8-development-overlay) |
+
 ## Turn on the author tools
 
 <!-- verify: skip opens a game window and waits for input -->
@@ -38,7 +201,7 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 | F5 | Reload the definitions. The game keeps your place: the location, the party, and the current line of an event. |
 | F6 | Open or close the character book, with every page open: each character's profile, faces and relations ([profiles](/cookbook/#keep-a-character-book)). |
 | F7 | Show or hide the balance panel: win rates of the battles at this place. |
-| F8 | Open or close the development panel: the state (flip a flag, step a number), a table of the flags each event sets and reads, the events to jump to with their read rates, a line of YAML to run, and the frame meter (ticks and frames a second, the longest and average Update and Draw). |
+| F8 | Open or close the development panel: the state (flip a flag, step a number), a table of the flags each event sets and reads, the events to jump to with their read rates, a line of YAML to run, and the Frames overlay (scene state, control rectangles, and Update and Draw times). |
 | F9 | Write a note: a screenshot, the game state and your comment. |
 | F10 | Tag the picture on screen, when picture review is on. |
 
@@ -51,10 +214,19 @@ The usual keys still work: O or F2 for settings, F11 for full screen, M to mute.
 | ![flag.thanked_hedda and chose.toast in the development panel](/images/novel-panel.jpg) | ![the flags each event sets and reads](/images/novel-flags.jpg) |
 | Scenes: jump to an event | Command: run a line of YAML |
 | ![the Scenes tab jumps to the late night](/images/playtest-jump.mp4) | ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.mp4) |
-| Frames: ticks and frames a second, the slowest Update and Draw | |
-| ![the frame meter over the tavern](/images/playtest-frames.jpg) | |
+| Frames: scene state, control rectangles, Update and Draw | |
+| ![the Frames overlay over the tavern](/images/playtest-frames.jpg) | |
 
-The panel holds the game while it is open; left and right change its tab. Every change it makes goes through `set` or starts an event, the same as a headless test's `Do`, and the trace records it: `dev_set` for a change, `jump` for a jump, `dev_do` for a command. A script does the same with `jump EVENT [LINE]` (start an event from the state as it is, read on to the line) and `do YAML` (run a line of commands, such as `do - set: {flag.met: true}`). The Frames tab hides the panel and leaves the frame meter, and the game goes on until F8 closes it. The flags table and `gozen book`'s Flow section come from one index of where each name is written and read.
+The panel holds the game while it is open; left and right change its tab. Every change it makes goes through `set` or starts an event, the same as a headless test's `Do`, and the trace records it: `dev_set` for a change, `jump` for a jump, `dev_do` for a command. A script does the same with `jump EVENT [LINE]` (start an event from the state as it is, read on to the line) and `do YAML` (run a line of commands, such as `do - set: {flag.met: true}`). From State, press Left once to select Frames; the game continues until F8 closes it. Frames shows the tick, event and dialogue line, location, seed, cast and phone state, plus flags and variables read by the current event. Its control boxes show pressable, disabled (with a reason) and focused controls through labels and colors. Update and Draw are CPU times, with averages over their latest calls, not GPU timings. The top band can cover controls without intercepting their input.
+
+To open the same overlay in a script, use:
+
+```text
+press panel
+press left
+```
+
+Collection stops when Frames closes. The flags table and `gozen book`'s Flow section come from one index of where each name is written and read.
 
 ## F6: the character book
 
