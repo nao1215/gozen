@@ -92,6 +92,46 @@ Paths to review logs and source maps are not recorded.
 | `--trace`, `--trace-shots`, `--shots`, `--record`, `--until` | Output destinations and stopping controls; recorded inputs/state are restored through the requested tick. Output files themselves are not replay state. |
 | `--help` | Prints help without starting a trace. |
 
+### Structured screen records
+
+`gozen run --trace FILE` extends the layout collector with a `screen` record
+on the first draw and each changed draw. A seeded digest of the drawing facts
+suppresses unchanged frames; tracing off does no collection or hashing.
+`gozen trace FILE --only screen` prints the full structure as an indented text
+block. `--format json` and `--format jsonl` preserve all fields.
+
+Each record has `t: "screen"`, `tick`, and these fields:
+
+| Field | Facts |
+| --- | --- |
+| `controls` | Draw-order list of `label`, `rect`, `enabled`, `focused`, and `reason` when disabled |
+| `texts` | Text and boxes from the existing layout collector: `text`, `rect`, `size`, `color` |
+| `figures` | Existing layout figure schema: `picture`, `rect`, `content`, `clip`, `source_cut`, `alpha` |
+| `cast` | Standing identities and slots: `id`, `face`, `side`, `x`, `alpha`, optional `speaking` and `leaving` |
+| `backgrounds` | Full-screen picture paths in draw order, including overlapping backgrounds during transitions |
+| `speaker` | Message speaker name, or the recorded standing speaker identity |
+| `phone` | Open phone app name, or an empty string |
+
+Rectangles use `[x, y, width, height]` in screen UI units. Phone boxes are clipped
+to its canvas and transformed into screen coordinates; rotating boxes use their
+axis-aligned enclosing rectangle. Empty collections are `null`. Disabled reasons
+use authored reason text where provided, otherwise factual codes such as
+`disabled`, `cost`, `inactive`, `modal`, `phone`, `transition`, `browse`,
+`no_event`, or `no_history`. Icon-only controls have an empty label. Hidden controls
+are absent. The schema describes instrumented drawing operations, not pixel
+visibility: a later overlay may cover earlier text or figures. Moving puppets
+remain outside the standing-picture collector, as with layout records.
+
+The existing `layout` records still wait ten stable ticks and measure contrast.
+`screen` records do not read pixels or make judgments; `trace --check` does not
+fail on their values. Headless simulations do not draw or emit either kind.
+The `screen` member of reproduction JSON is the latest record at or before the
+target; its own `tick` identifies when that structure was drawn. Old traces omit it.
+
+Measure the digest with `go test ./internal/play -run '^$' -bench
+'BenchmarkScreen(Digest|ChangedRecord)' -benchmem`. The graphics fixture is
+`TestGraphicsTraceLayout`, already included in `make graphics`.
+
 ### Reproduce a trace screen
 
 ```sh

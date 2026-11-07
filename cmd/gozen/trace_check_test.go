@@ -248,6 +248,7 @@ func TestTraceCheckMusicArrivesLateOrNever(t *testing.T) {
 // use the actual trace field, including unreadable equal-color text and cropping.
 func TestTraceFactsNeverFailCheck(t *testing.T) {
 	records := []string{
+		`{"t":"screen","tick":1,"controls":[{"label":"Wait","rect":[-1,0,50,20],"enabled":false,"reason":"cooldown","focused":true}],"texts":[{"text":"Note"}],"figures":[],"phone":"page"}`,
 		`{"t":"section","tick":1,"name":"stress","scope":"mark","frames":1,"ticks":1,"fps":0.01,"tps":0.01,"slow_frame_share":1,"heap_inuse_bytes":9000000000,"allocations_per_frame":1000000}`,
 		`{"t":"layout","tick":1,"since":0,"figures":[{"picture":"x.png","rect":[-100,-100,500,500],"content":[-100,-100,500,500],"clip":[0,0,10,10],"source_cut":["top","bottom"],"alpha":1}],"texts":[{"text":"Note","rect":[0,0,100,24],"size":24,"color":"#000000","back":"#000000","ratio":1}]}`,
 		`{"t":"layout","tick":2,"since":1,"texts":[{"text":"Note","rect":[1000,1000,5000,5000],"size":24,"color":"#000000","back":"#ffffff","ratio":21}]}`,

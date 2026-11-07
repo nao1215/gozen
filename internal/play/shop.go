@@ -46,7 +46,7 @@ func (s *shop) open(g *Game) {
 	if s.mode == "buy" {
 		for _, id := range s.def.Goods {
 			it := g.db.Items[id]
-			row := listItem{label: it.Name, right: fmt.Sprintf("%d%s", it.Price, cur), disabled: it.Price > g.st.Gold}
+			row := listItem{label: it.Name, right: fmt.Sprintf("%d%s", it.Price, cur), disabled: it.Price > g.st.Gold, reason: "cost"}
 			row.note, row.noteColor = gearNote(g, gearCompare(g, id))
 			items = append(items, row)
 			s.ids = append(s.ids, id)

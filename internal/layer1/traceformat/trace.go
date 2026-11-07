@@ -79,6 +79,7 @@ var kinds = map[string]bool{
 	"save_write":          true,
 	"say":                 true,
 	"scene":               true,
+	"screen":              true, // Drawing observation only.
 	"screen_action":       true,
 	"screen_carry":        true,
 	"screen_drop":         true,

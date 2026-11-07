@@ -32,9 +32,18 @@ func TestGraphicsToastsStayReadableOnGlass(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path string, b []byte) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

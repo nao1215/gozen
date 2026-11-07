@@ -1000,6 +1000,15 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		}
 		actionable := focusStop(e)
 		focused := actionable && j == s.focus
+		if g.tr != nil && actionable && e.Carousel == "" {
+			r := entryBounds(e)
+			reason := e.Reason
+			enabled := !s.unavailable(g, entryIndex) && s.popup == nil
+			if s.popup != nil {
+				reason = "modal"
+			}
+			g.traceControl(e.Label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), enabled, focused && s.keyed, reason)
+		}
 		switch {
 		case e.Carousel != "" && actionable:
 			ringFocused = ringFocused || focused

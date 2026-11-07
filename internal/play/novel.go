@@ -305,8 +305,11 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 		if buttons[i].b == btnBack && !g.canRollBack() {
 			c = g.th.disabled
 		}
+		if g.tr != nil {
+			g.traceControl(lang.T(buttons[i].label), roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), buttons[i].b != btnBack || g.canRollBack(), false, "no_history")
+		}
 		// The label is centered on its hit rectangle (gfx.DrawText centers on x).
-		gfx.DrawText(dst, lang.T(buttons[i].label), float64(r.Min.X)+float64(r.Dx())/2, float64(r.Min.Y)+2, sizeS, c)
+		g.screenText(dst, lang.T(buttons[i].label), float64(r.Min.X)+float64(r.Dx())/2, float64(r.Min.Y)+2, sizeS, c)
 	}
 	if t.choice != nil {
 		g.drawNovelChoice(dst, t.choice)

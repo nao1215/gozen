@@ -139,6 +139,9 @@ func (g *Game) refreshMaterial(dst *ebiten.Image, x, y, w, h, margin float64) {
 }
 
 func (g *Game) materialBackground(dst *ebiten.Image, path string) {
+	if g.tr != nil && g.tr.layout != nil {
+		g.tr.layout.backgrounds = append(g.tr.layout.backgrounds, path)
+	}
 	sw, sh := g.screen()
 	gfx.DrawImageCover(dst, g.pics.get(path), 0, 0, sw, sh, 1)
 	g.prepareMaterial(dst, "")

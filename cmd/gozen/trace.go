@@ -28,7 +28,7 @@ func (c *command) traceCmd() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen trace")
 	repro := fl.String("repro", "", "print a command to retake this `TICK`, time (12.5s), or screenshot path")
 	out := fl.String("out", "", "with --repro, write a cut trace and reproduction script to a new `DIR`")
-	only := fl.StringArray("only", nil, "print only this record `KIND`; repeat for multiple kinds")
+	only := fl.StringArray("only", nil, "print only this record `KIND` (screen: drawn text and controls); repeat for multiple kinds")
 	c.reporting(fl)
 	from := fl.Float64("from", 0, "start at this `SECOND`")
 	to := fl.Float64("to", 0, "stop at this `SECOND`; 0 is the end")
@@ -204,6 +204,8 @@ func (c *command) traceCmd() clihelp.Operation {
 				if _, ok := l["slow_frame_share"]; ok {
 					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", num(l["slow_frame_share"]), num(l["allocations_per_frame"]))
 				}
+			case "screen":
+				what = screenText(l)
 			case "layout":
 				what = layoutText(l)
 			case "state":
@@ -428,4 +430,13 @@ func layoutText(l map[string]any) string {
 		what += fmt.Sprintf("  lowest contrast %.2f %q", low, lowText)
 	}
 	return what
+}
+
+// screenText preserves all screen facts in a readable indented block.
+func screenText(l map[string]any) string {
+	b, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }

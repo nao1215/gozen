@@ -381,13 +381,20 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	post := p.cue.Posts[i]
 	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(l.h), phoneBubble, false)
 	g.drawPhoneIcon(dst, p, post.Icon, post.Who, x+12, y+10, 38)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), x+60, y+18, 16, phoneInk)
-	gfx.DrawTextRight(dst, post.Time, x+w-14, y+20, 13, phoneMuted)
+	g.text(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), x+60, y+18, 16, phoneInk)
+	g.screenTextRight(dst, post.Time, x+w-14, y+20, 13, phoneMuted)
 	py := y + phoneFeedHead
+	if g.tr != nil {
+		reason := "transition"
+		if p.cue.Browse {
+			reason = "browse"
+		}
+		g.traceControl("", roundRect(x, py, w, l.picH+phoneFeedLikes), p.ready() && !p.cue.Browse, false, reason)
+	}
 	switch {
 	case l.text:
 		for k, line := range l.lines {
-			gfx.DrawTextLeft(dst, line, x+14, py+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
+			g.text(dst, line, x+14, py+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
 		}
 	case post.Video != nil:
 		key := fmt.Sprintf("post%d", i)
@@ -414,11 +421,11 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	if post.Reposts > 0 {
 		counts += "　" + fmt.Sprintf(lang.T("リポスト %s 件"), strconv.Itoa(post.Reposts))
 	}
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(counts, 16, w-60), x+48, ly, 16, phoneInk)
+	g.text(dst, gfx.Ellipsis(counts, 16, w-60), x+48, ly, 16, phoneInk)
 	if l.text {
 		return
 	}
 	for k, line := range l.lines {
-		gfx.DrawTextLeft(dst, line, x+14, ly+30+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
+		g.text(dst, line, x+14, ly+30+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
 	}
 }

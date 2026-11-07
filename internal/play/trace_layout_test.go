@@ -1,8 +1,12 @@
 package play
 
 import (
+	"bytes"
+	"encoding/json"
+	"hash/maphash"
 	"image"
 	"image/color"
+	"io"
 	"math"
 	"testing"
 )
@@ -67,5 +71,118 @@ func TestBackColor(t *testing.T) {
 	back, ok = backColor(pixels(50, 10, dark, blend(half, dark), 10), b, b, half)
 	if !ok || back != dark {
 		t.Fatalf("back %v %v of a translucent text, want the dark back", back, ok)
+	}
+}
+
+func TestScreenChanges(t *testing.T) {
+	tr := &tracer{}
+	f := &layoutFrame{controls: []screenControl{{Label: "Travel", Rect: [4]float64{10, 20, 100, 30}, Reason: "cost", Focused: true}}, texts: []layoutText{{Text: "Welcome", Size: 20}}, figures: []layoutFigure{{Picture: "guide.png"}}}
+	if !tr.screenChanged(f) || tr.screenChanged(f) {
+		t.Fatal("first or unchanged screen")
+	}
+	changes := []func(){
+		func() { f.controls[0].Reason = "flag" },
+		func() { f.controls[0].Enabled = true; f.controls[0].Reason = "" },
+		func() { f.controls[0].Focused = false },
+		func() { f.controls[0].Rect[0]++ },
+		func() { f.texts[0].Text = "Next" },
+		func() { f.figures[0].Picture = "other.png" },
+		func() { f.phone = "page" },
+		func() { f.backgrounds = []string{"room.png"} },
+		func() { f.speaker = "Guide" },
+		func() { f.controls = nil; f.texts = nil; f.figures = nil },
+	}
+	for i, change := range changes {
+		change()
+		if !tr.screenChanged(f) || tr.screenChanged(f) {
+			t.Fatalf("change %d lost or repeated", i)
+		}
+	}
+}
+
+func TestScreenRecordShape(t *testing.T) {
+	var out bytes.Buffer
+	g := &Game{tr: newTracer(&out)}
+	f := &layoutFrame{controls: []screenControl{{Label: "Travel", Rect: [4]float64{10, 20, 100, 30}, Reason: "cost", Focused: true}}, texts: []layoutText{{Text: "Welcome"}}, figures: []layoutFigure{{Picture: "guide.png"}}, phone: "page", speaker: "Guide"}
+	g.traceScreenEnd(f)
+	g.traceScreenEnd(f)
+	if g.tr.err != nil {
+		t.Fatal(g.tr.err)
+	}
+	var record struct {
+		Kind     string `json:"t"`
+		Phone    string `json:"phone"`
+		Speaker  string `json:"speaker"`
+		Controls []struct {
+			Label   string    `json:"label"`
+			Enabled *bool     `json:"enabled"`
+			Focused *bool     `json:"focused"`
+			Reason  string    `json:"reason"`
+			Rect    []float64 `json:"rect"`
+		} `json:"controls"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &record); err != nil {
+		t.Fatal(err)
+	}
+	if record.Kind != "screen" || record.Phone != "page" || record.Speaker != "Guide" || len(record.Controls) != 1 {
+		t.Fatal(record)
+	}
+	c := record.Controls[0]
+	if c.Enabled == nil || *c.Enabled || c.Focused == nil || !*c.Focused || c.Reason != "cost" || len(c.Rect) != 4 {
+		t.Fatal(c)
+	}
+}
+
+func BenchmarkScreenDigest(b *testing.B) {
+	f := &layoutFrame{phone: "page", speaker: "Guide"}
+	for range 20 {
+		f.controls = append(f.controls, screenControl{Label: "Travel", Reason: "cost"})
+		f.texts = append(f.texts, layoutText{Text: "The next train arrives soon.", Size: 20})
+	}
+	seed := maphash.MakeSeed()
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = f.digest(seed)
+	}
+}
+
+func BenchmarkScreenChangedRecord(b *testing.B) {
+	g := &Game{tr: newTracer(io.Discard)}
+	f := &layoutFrame{phone: "page", speaker: "Guide"}
+	for range 20 {
+		f.controls = append(f.controls, screenControl{Label: "Travel", Reason: "cost"})
+		f.texts = append(f.texts, layoutText{Text: "The next train arrives soon.", Size: 20})
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		f.controls[0].Focused = !f.controls[0].Focused
+		g.traceScreenEnd(f)
+	}
+	if g.tr.err != nil {
+		b.Fatal(g.tr.err)
+	}
+}
+
+func TestScreenCanvasCoordinates(t *testing.T) {
+	g := &Game{tr: &tracer{layout: &layoutFrame{
+		texts:    []layoutText{{Text: "underlying", Rect: [4]float64{1, 2, 3, 4}}, {Text: "clipped", Rect: [4]float64{-10, 10, 30, 20}}, {Text: "outside", Rect: [4]float64{120, 0, 10, 10}}},
+		controls: []screenControl{{Label: "Continue", Rect: [4]float64{80, 80, 40, 40}}},
+	}}}
+	g.clipScreenRecords(1, 0, 100, 100)
+	g.transformScreenRecords(1, 0, func(x, y float64) (float64, float64) { return 200 - y, 300 + x })
+	f := g.tr.layout
+	if len(f.texts) != 2 || f.texts[0].Rect != ([4]float64{1, 2, 3, 4}) || f.texts[1].Rect != ([4]float64{170, 300, 20, 20}) || f.controls[0].Rect != ([4]float64{100, 380, 20, 20}) {
+		t.Fatalf("texts=%+v controls=%+v", f.texts, f.controls)
+	}
+}
+
+func TestScreenTracingOff(t *testing.T) {
+	g := &Game{}
+	var ink color.Color = color.White
+	if allocs := testing.AllocsPerRun(100, func() {
+		g.traceControl("Continue", [4]float64{1, 2, 3, 4}, true, false, "")
+		g.traceText("Hello", 1, 2, 3, 4, 20, ink)
+	}); allocs != 0 {
+		t.Fatalf("tracing off allocated %g", allocs)
 	}
 }

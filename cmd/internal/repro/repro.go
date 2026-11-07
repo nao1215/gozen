@@ -22,6 +22,8 @@ import (
 // Bundle describes generated replay artifacts for both command adapters.
 // Generation never executes its Argv or Command.
 type Bundle struct {
+	// Screen is the last drawn screen at or before Tick, with its original tick.
+	Screen       json.RawMessage            `json:"screen,omitempty"`
 	GameDir      string                     `json:"game_dir"`
 	Seed         uint64                     `json:"seed"`
 	StartOptions map[string]json.RawMessage `json:"start_options"`
@@ -113,6 +115,14 @@ func readRepro(path, target string) (Bundle, []byte, error) {
 	}
 	for _, key := range []string{"t", "tick", "game", "game_dir", "seed", "setup", "fingerprint", "screen", "version"} {
 		delete(b.StartOptions, key)
+	}
+	for _, r := range records {
+		if r.tick > tick {
+			break
+		}
+		if r.kind == "screen" {
+			b.Screen = json.RawMessage(r.raw)
+		}
 	}
 	cut, err := cutReproRecords(records, tick)
 	return b, cut, err

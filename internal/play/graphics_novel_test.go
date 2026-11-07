@@ -36,9 +36,18 @@ func TestGraphicsNovelHeadFraming(t *testing.T) {
 			if err := os.CopyFS(game, gameFiles(t)); err != nil {
 				t.Fatal(err)
 			}
+			gameRoot, err := os.OpenRoot(game)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := gameRoot.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			write := func(path string, b []byte) {
 				t.Helper()
-				if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+				if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -143,12 +152,21 @@ func TestGraphicsNovelStagePuppets(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path string, b []byte) {
 		t.Helper()
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(game, path)), 0o700); err != nil {
+		if err := gameRoot.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -491,9 +509,18 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path string, b []byte) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -509,16 +536,34 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	paint("hair", 10) // hair 40 pixels above the head box, inside the picture
 	paint("drawn", 0) // the picture itself starts cut at its top
 	// Both heads are framed at the screen's top edge: the hair of the first goes above it.
-	write("game.yaml", []byte(fmt.Sprintf("schema_version: 8\nid: layout\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n  stage_framing:\n    hair.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n    drawn.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n", testgame.Game)))
+	write("game.yaml", []byte(fmt.Sprintf("schema_version: 11\nid: layout\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n  stage_framing:\n    hair.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n    drawn.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n", testgame.Game)))
+	gameYAML, err := gameRoot.ReadFile("game.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("game.yaml", append(gameYAML, []byte(`planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [morning]}
+screens:
+  routes:
+    title: Routes
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+      - {label: Mountain trail, style: button, bounds: [40, 160, 300, 50], unavailable: 'true', reason: The gate is closed., do: [{set: {flag.trail: true}}]}
+      - {label: Riverside, style: button, bounds: [40, 230, 300, 50], do: [{set: {flag.river: true}}]}
+`)...))
 	write("data/layout.yaml", []byte(`events:
   layout:
     do:
       - stand: {who: Left, face: hair.png, at: 0.25}
       - stand: {who: Right, face: drawn.png, at: 0.75}
       - say: {who: Left, face: hair.png, text: "Measure this line."}
+      - phone: {app: page, title: Journal, rows: [{text: A quiet morning.}, {button: Continue}]}
+      - open: routes
+
 `))
 	script := filepath.Join(root, "layout.txt")
-	if err := os.WriteFile(script, []byte("wait 60\nquit\n"), 0o600); err != nil {
+	if err := os.WriteFile(script, []byte("wait 60\npress ok\nwait 60\npress cancel\nwait 60\nquit\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "layout.jsonl")
@@ -551,11 +596,45 @@ func TestGraphicsTraceLayout(t *testing.T) {
 		Texts   []text   `json:"texts"`
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
-		if strings.Contains(line, `"t":"layout"`) {
+		if strings.Contains(line, `"t":"layout"`) && strings.Contains(line, "Measure this line") {
 			if err := json.Unmarshal([]byte(line), &last); err != nil {
 				t.Fatal(err)
 			}
 		}
+	}
+	var disabled, phone, standing bool
+	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
+		var record struct {
+			Kind     string          `json:"t"`
+			Phone    string          `json:"phone"`
+			Controls []screenControl `json:"controls"`
+			Texts    []layoutText    `json:"texts"`
+			Figures  []layoutFigure  `json:"figures"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatal(err)
+		}
+		if record.Kind != "screen" {
+			continue
+		}
+		for _, c := range record.Controls {
+			if c.Label == "Mountain trail" && !c.Enabled && c.Reason == "The gate is closed." && c.Rect[2] > 0 {
+				disabled = true
+			}
+		}
+		for _, text := range record.Texts {
+			if record.Phone == "page" && text.Text == "A quiet morning." {
+				phone = true
+			}
+		}
+		for _, f := range record.Figures {
+			if f.Picture == "hair.png" {
+				standing = true
+			}
+		}
+	}
+	if !disabled || !phone || !standing {
+		t.Fatalf("screen facts: disabled=%v phone=%v standing=%v\n%s", disabled, phone, standing, b)
 	}
 	got := map[string]figure{}
 	for _, f := range last.Figures {
@@ -609,9 +688,18 @@ func TestGraphicsNovelPhonePalette(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path, content string) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(game, path), []byte(content), 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

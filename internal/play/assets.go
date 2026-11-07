@@ -572,6 +572,12 @@ func (g *Game) drawPicture(dst *ebiten.Image, pic data.Picture, x, y, w, h float
 	if pic.File == "" {
 		return
 	}
+	if g.tr != nil && g.tr.layout != nil && alpha > 0 {
+		sw, sh := g.screen()
+		if x == 0 && y == 0 && w == sw && h == sh {
+			g.tr.layout.backgrounds = append(g.tr.layout.backgrounds, pic.File)
+		}
+	}
 	img := g.pics.get(pic.File)
 	if pic.Blur {
 		img = g.pics.blurred(pic.File)

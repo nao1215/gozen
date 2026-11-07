@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"image"
 	"io"
 	"io/fs"
@@ -70,6 +71,9 @@ type tracer struct {
 	layoutN       int
 	layoutAt      int
 	layoutLast    string
+	screenSeed    maphash.Seed
+	screenSeen    bool
+	screenDigest  uint64
 
 	pending   string
 	pendingN  int
@@ -667,7 +671,9 @@ func (g *Game) traceFrameStart() {
 	}
 	g.tr.drawn, g.tr.missing, g.tr.lists = map[string]bool{}, map[string]bool{}, nil
 	g.tr.stand = &standFrame{}
-	g.tr.layout = &layoutFrame{}
+	if g.tr.enc != nil {
+		g.tr.layout = &layoutFrame{}
+	}
 	g.pics.seen = func(path string, ok bool) {
 		g.tr.drawn[path] = true
 		if !ok {
@@ -681,6 +687,19 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 		return
 	}
 	g.pics.seen = nil
+	if g.tr.layout != nil {
+		if g.tr.stand != nil {
+			g.tr.layout.cast = g.tr.stand.figures
+			g.tr.layout.speaker = g.tr.stand.speaker
+		}
+		if g.phone != nil {
+			g.tr.layout.phone = g.phone.cue.App
+		}
+		if g.talk.active && !g.talk.hidden {
+			g.tr.layout.speaker = g.talk.say.Name
+		}
+	}
+
 	g.traceStandEnd()
 	g.traceLayoutEnd(screen)
 

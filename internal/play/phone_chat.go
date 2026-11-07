@@ -164,7 +164,7 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 	// The header goes over the messages that scroll up under it.
 	defer func() {
 		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
-		gfx.DrawTextLeft(dst, "<", 18, 44, 22, g.phoneAccent())
+		g.text(dst, "<", 18, 44, 22, g.phoneAccent())
 	}()
 	clear(p.pics)
 	top, maxW := phoneFeedTop, w*0.68
@@ -196,7 +196,7 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, b chatBubble, w, 
 	if m.Day != "" {
 		dw := gfx.TextWidth(m.Day, 12) + 24
 		gfx.FillRoundRect(dst, float32(w/2-dw/2), float32(y+6), float32(dw), 22, 11, phoneLine)
-		gfx.DrawText(dst, m.Day, w/2, y+9, 12, phoneMuted)
+		g.screenText(dst, m.Day, w/2, y+9, 12, phoneMuted)
 		y += phoneChatDay
 	}
 	if b.bh == 0 {
@@ -208,7 +208,7 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, b chatBubble, w, 
 	} else {
 		g.drawPhoneIcon(dst, p, m.Icon, m.From, 14, y, 40)
 		if m.From != "" {
-			gfx.DrawTextLeft(dst, gfx.Ellipsis(m.From, 13, w-x-16), x, y, 13, phoneMuted)
+			g.text(dst, gfx.Ellipsis(m.From, 13, w-x-16), x, y, 13, phoneMuted)
 			y += 20
 		}
 	}
@@ -216,13 +216,13 @@ func (g *Game) drawChatBubble(dst *ebiten.Image, p *phoneView, b chatBubble, w, 
 	// The time beside the bubble's foot, with the read mark over it for the owner's.
 	foot := y + b.bh - 14
 	if m.Mine {
-		gfx.DrawTextRight(dst, m.Time, x-6, foot, 11, phoneMuted)
+		g.screenTextRight(dst, m.Time, x-6, foot, 11, phoneMuted)
 		if m.Read {
-			gfx.DrawTextRight(dst, lang.T("既読"), x-6, foot-14, 11, phoneMuted)
+			g.screenTextRight(dst, lang.T("既読"), x-6, foot-14, 11, phoneMuted)
 		}
 		return
 	}
-	gfx.DrawTextLeft(dst, m.Time, x+b.bw+6, foot, 11, phoneMuted)
+	g.text(dst, m.Time, x+b.bw+6, foot, 11, phoneMuted)
 }
 
 func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x, y float64) {
@@ -234,9 +234,12 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 		g.drawPhoneMedia(dst, p, key+".thumb", c, x, y, b.bw, b.bh, 14)
 		gfx.FillCircle(dst, float32(x+b.bw/2), float32(y+b.bh/2), 26, color.NRGBA{0, 0, 0, 0x88}, true)
 		drawPlay(dst, x+b.bw/2+4, y+b.bh/2, 14)
-		gfx.DrawTextLeft(dst, clipTime(c.length()), x+10, y+b.bh-24, 13, phoneOnVideo)
+		g.text(dst, clipTime(c.length()), x+10, y+b.bh-24, 13, phoneOnVideo)
 	case m.Picture != "":
 		p.pics[b.i] = picRect{x, y, b.bw, b.bh}
+		if g.tr != nil {
+			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready(), false, "transition")
+		}
 		if img := g.pics.get(m.Picture); img != nil {
 			frame := p.frame(fmt.Sprintf("pic%d", b.i), b.bw, b.bh)
 			drawCoverTop(frame, img, 0, 0, b.bw, b.bh)
@@ -259,7 +262,7 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 			if ly > screenH {
 				break
 			}
-			gfx.DrawTextLeft(dst, b.lines[k], x+phoneChatPad, ly, phoneChatSize, ink)
+			g.text(dst, b.lines[k], x+phoneChatPad, ly, phoneChatSize, ink)
 		}
 	}
 }

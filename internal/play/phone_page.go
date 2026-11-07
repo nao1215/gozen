@@ -248,11 +248,11 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 	case p.cue.URL != "":
 		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), phoneBubble, false)
 		gfx.FillRoundRect(dst, 12, 40, float32(w-24), 34, 17, phoneScreen)
-		gfx.DrawText(dst, gfx.Ellipsis(p.cue.URL, 14, w-60), w/2, 48, 14, phoneMuted)
+		g.screenText(dst, gfx.Ellipsis(p.cue.URL, 14, w-60), w/2, 48, 14, phoneMuted)
 		gfx.FillRect(dst, 0, float32(phoneFeedTop-1), float32(w), 1, phoneLine, false)
 	case ok:
 		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), accent, false)
-		gfx.DrawText(dst, gfx.Ellipsis(p.cue.Title, 19, w-60), w/2, 46, 19, phoneOnVideo)
+		g.screenText(dst, gfx.Ellipsis(p.cue.Title, 19, w-60), w/2, 46, 19, phoneOnVideo)
 	default:
 		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 	}
@@ -266,9 +266,9 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		size := pageTextSize(r)
 		for k, line := range l.lines {
 			ly := y + float64(k)*gfx.LineHeight(size)
-			gfx.DrawTextLeft(dst, line, x, ly, size, g.pageInk(p))
+			g.text(dst, line, x, ly, size, g.pageInk(p))
 			if r.Bold {
-				gfx.DrawTextLeft(dst, line, x+0.7, ly, size, g.pageInk(p))
+				g.text(dst, line, x+0.7, ly, size, g.pageInk(p))
 			}
 		}
 	case r.Picture != "":
@@ -277,10 +277,10 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 			drawContain(dst, img, x, y, iw, ph)
 		}
 		if r.Shut {
-			drawLocked(dst, x, y, iw, ph, r.Label)
+			g.drawLocked(dst, x, y, iw, ph, r.Label)
 		}
 		for k, line := range l.lines {
-			gfx.DrawTextLeft(dst, line, x, y+ph+6+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
+			g.text(dst, line, x, y+ph+6+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
 		}
 	case len(r.Pictures) > 0:
 		g.drawPageGrid(dst, r, x, y, iw)
@@ -290,15 +290,18 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		side := math.Min(iw, phonePageQR)
 		p.drawQR(dst, r.QR, w/2, y, side)
 		for k, line := range l.lines {
-			gfx.DrawText(dst, line, w/2, y+side+8+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
+			g.screenText(dst, line, w/2, y+side+8+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
 		}
 	default:
+		if g.tr != nil {
+			g.traceControl(r.Button, roundRect(x, y, iw, phonePageBtn), p.ready(), p.keyed && p.focus == i, "transition")
+		}
 		accent, _ := g.pageAccent(p)
 		if p.keyed && p.focus == i {
 			gfx.StrokeRoundRect(dst, float32(x-4), float32(y-4), float32(iw+8), phonePageBtn+8, 15, 2.5, g.pageInk(p))
 		}
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(iw), phonePageBtn, 12, accent)
-		gfx.DrawText(dst, gfx.Ellipsis(r.Button, 17, iw-24), w/2, y+13, 17, phoneOnVideo)
+		g.screenText(dst, gfx.Ellipsis(r.Button, 17, iw-24), w/2, y+13, 17, phoneOnVideo)
 	}
 }
 
@@ -313,7 +316,7 @@ func (g *Game) drawPageGrid(dst *ebiten.Image, r data.PhoneRow, x, y, iw float64
 			drawCoverTop(dst, img, cx, cy, cell, cell*1.25)
 		}
 		if r.Shut {
-			drawLocked(dst, cx, cy, cell, cell*1.25, r.Label)
+			g.drawLocked(dst, cx, cy, cell, cell*1.25, r.Label)
 		}
 	}
 }
@@ -323,7 +326,7 @@ var phoneLockVeil = color.NRGBA{0x18, 0x1a, 0x22, 0xe0}
 
 // drawLocked covers a locked picture in x, y, w, h: darkened, with a padlock
 // and its label in the middle.
-func drawLocked(dst *ebiten.Image, x, y, w, h float64, label string) {
+func (g *Game) drawLocked(dst *ebiten.Image, x, y, w, h float64, label string) {
 	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(h), phoneLockVeil, false)
 	cx, cy := x+w/2, y+h/2
 	if label != "" {
@@ -334,7 +337,7 @@ func drawLocked(dst *ebiten.Image, x, y, w, h float64, label string) {
 	gfx.FillRoundRect(dst, float32(cx-13*k), float32(cy-6*k), float32(26*k), float32(20*k), float32(4*k), phoneOnVideo)
 	if label != "" {
 		size := math.Max(10, 13*k)
-		gfx.DrawText(dst, gfx.Ellipsis(label, size, w-8), cx, cy+20*k, size, phoneOnVideo)
+		g.screenText(dst, gfx.Ellipsis(label, size, w-8), cx, cy+20*k, size, phoneOnVideo)
 	}
 }
 
@@ -346,9 +349,9 @@ func (g *Game) drawPageItem(dst *ebiten.Image, p *phoneView, it *data.PhoneItem,
 	}
 	vw := gfx.TextWidth(it.Value, 16)
 	room := x + iw - tx - vw - 10
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(it.Title, 16, room), tx, y+10, 16, g.pageInk(p))
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(it.Text, 13, room), tx, y+34, 13, g.pageMuted(p))
-	gfx.DrawTextRight(dst, it.Value, x+iw, y+20, 16, g.pageInk(p))
+	g.text(dst, gfx.Ellipsis(it.Title, 16, room), tx, y+10, 16, g.pageInk(p))
+	g.text(dst, gfx.Ellipsis(it.Text, 13, room), tx, y+34, 13, g.pageMuted(p))
+	g.screenTextRight(dst, it.Value, x+iw, y+20, 16, g.pageInk(p))
 	gfx.FillRect(dst, float32(tx), float32(y+phonePageItem+phonePageGap/2), float32(x+iw-tx), 1, phoneLine, false)
 }
 
