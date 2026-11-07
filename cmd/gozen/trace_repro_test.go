@@ -3,11 +3,19 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"image"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
+
+	"github.com/nao1215/gozen/internal/play"
+	"github.com/nao1215/gozen/internal/savefile"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 func reproFixture(t *testing.T) string {
@@ -133,7 +141,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 	}
 }
 
-func TestReproFirstVisitGuideRequiresExplicitAction(t *testing.T) {
+func TestReproRejectsGuides(t *testing.T) {
 	start := `{"t":"start","tick":0,"game_dir":"game","seed":7,"scripted":false}`
 	guide := `{"t":"guide","tick":2,"screen":"board","step":1,"text":"The kiln log first."}`
 	shot := `{"t":"shot","tick":3,"file":"first-visit.png"}`
@@ -144,12 +152,82 @@ func TestReproFirstVisitGuideRequiresExplicitAction(t *testing.T) {
 			args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
 		}
 		_, stderr := invoke(t, 1, args...)
-		if !strings.Contains(stderr, "first-visit guide") || !strings.Contains(stderr, "guides off") {
+		if !strings.Contains(stderr, "guides cannot be reproduced exactly") {
 			t.Fatal(stderr)
 		}
 	}
-	path = traceFile(t, start, `{"t":"act","tick":1,"name":"guides","on":true}`, guide, shot)
-	if _, _, err := readRepro(path, "first-visit.png"); err != nil {
+	path = traceFile(t, start, `{"t":"act","tick":1,"name":"guides","args":{"on":true}}`, guide, shot)
+	if _, _, err := readRepro(path, "first-visit.png"); err == nil {
+		t.Fatal("explicit guides accepted")
+	}
+}
+
+func TestReproActualGuidesScript(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml": {Data: []byte("schema_version: 10\nid: guide-repro\n" + testgame.Game + `
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-09', phases: [morning]}
+screens:
+  board:
+    title: Board
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Hours, style: plate, bounds: [40, 150, 200, 100]}
+    guide:
+      steps:
+      - {who: guide, text: 'Read the board.'}
+`)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+	}
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewNRGBA(image.Rect(0, 0, 16, 16))); err != nil {
 		t.Fatal(err)
+	}
+	fsys["assets/x.png"] = &fstest.MapFile{Data: picture.Bytes()}
+	var trace bytes.Buffer
+	result, err := play.Simulate(t.Context(), play.Options{FS: fsys, GameDir: "fixture", Location: "camp", Seed: 7, Store: savefile.MemStore(), Trace: &trace, Script: "guides on\ndo open: board\nwait 10\nquit\n"}, play.SimulateConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(trace.String(), `"t":"guide"`) {
+		t.Fatalf("no actual guide: %s", &trace)
+	}
+	path := traceFile(t, strings.TrimSpace(trace.String()))
+	for _, bundle := range []bool{false, true} {
+		args := []string{"trace", path, "--repro", strconv.Itoa(result.Ticks), "--format", "json"}
+		if bundle {
+			args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
+		}
+		out, stderr := invoke(t, 1, args...)
+		if out != "" || !strings.Contains(stderr, "guides cannot be reproduced exactly") {
+			t.Fatalf("stdout=%s stderr=%s", out, stderr)
+		}
+	}
+}
+
+func TestReproRejectsWindowChanges(t *testing.T) {
+	for _, change := range []string{
+		`{"t":"act","tick":2,"name":"window","args":{"width":960,"height":540}}`,
+		`{"t":"viewport","tick":2,"width":960,"height":540,"scale":1}`,
+	} {
+		path := traceFile(t,
+			`{"t":"start","tick":0,"game_dir":"game","seed":7,"window":2}`,
+			`{"t":"viewport","tick":0,"width":1280,"height":720,"scale":1}`,
+			`{"t":"viewport","tick":1,"width":1280,"height":720,"scale":1}`,
+			change)
+		if _, _, err := readRepro(path, "1"); err != nil {
+			t.Fatal(err)
+		}
+		for _, bundle := range []bool{false, true} {
+			args := []string{"trace", path, "--repro", "2"}
+			if bundle {
+				args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
+			}
+			out, stderr := invoke(t, 1, args...)
+			if out != "" || !strings.Contains(stderr, "cannot reproduce exactly: the recording changed the window size") {
+				t.Fatalf("stdout=%s stderr=%s", out, stderr)
+			}
+		}
 	}
 }

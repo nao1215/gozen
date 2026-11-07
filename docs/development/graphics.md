@@ -85,7 +85,7 @@ contains `game_dir`, the exact integer `seed`, `start_options`, `initial_saves`,
 `initial_memo` when present, `tick`, `until`, `argv`, `command`, and `screenshot`.
 
 New start records include `game_dir`, `scripted`, device locales,
-book display options, and, inside `setup`,
+book display options, the development mode, window scale and effective fullscreen setting, and, inside `setup`,
 `save_data` (base64 bytes), `save_times`, and optional `memo` (the initial save,
 resume cursor and randomness). Existing configuration, read marks, unlocks,
 start/event/flag options, save digests and data fingerprint remain recorded.
@@ -100,6 +100,14 @@ move; the game directory and unchanged game assets must still be available at
 the recorded location. No game assets are copied. Without `--out`, the command
 uses the original trace and writes to `<trace>.repro-<tick>/`.
 
+The `viewport` records describe render width, height, UI scale and portrait layout
+at the initial layout and each change. Reproduction rejects changed viewports
+and script `window` actions through the target tick with
+"cannot reproduce exactly: the recording changed the window size" (exit 1).
+It does not restore viewport changes. The start record preserves the plain
+`window` option and `fullscreen`; exact native-screen reproduction still requires
+the same display scale. Injected in-process state is an unsupported start condition.
+
 Script `do`, `jump`, `guides`, and `window` operations are recorded as direct
 actions alongside input; campaign `order` and `end_turn` use the same `do` path.
 Script `recruit`, `guarantee-recruit`, and `battle-log` emit `unsupported_script`
@@ -107,10 +115,12 @@ with an `operation` name; `battle-hp` emits `battle_setup`. Replay and reproduct
 reject targets that include these mutations. Record older scripts again: older
 traces did not identify the recruitment mutations.
 
-Replays still default guides off (ADR 0055). Reproduction refuses a trace that
-shows a first-visit `guide` without an earlier explicit `guides on` action,
-because its screenshot and accepted input cannot be reproduced exactly. Scripts
-that explicitly use `guides on` continue to replay that action.
+Replays still default guides off (ADR 0055). Reproduction rejects any `guide`
+record through the target tick with "cannot reproduce exactly: guides cannot be
+reproduced exactly" (exit 1), including explicit `guides on` scripts. Guide rings
+and the prompt pulse use the recorded tick, but exact text pixels have not been
+established across seeking and ordinary drawing. Ordinary replay still accepts
+the explicit `guides on` action.
 
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep

@@ -408,7 +408,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "timed-fade", "campaign", "battle-puppet"} {
+	for _, mode := range []string{"novel", "timed-fade", "campaign", "battle-puppet", "native-window", "native-script", "guides"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
@@ -416,7 +416,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			game := filepath.Join(dir, "game")
 			fixture := mode
-			if mode == "timed-fade" {
+			if mode == "timed-fade" || strings.HasPrefix(mode, "native-") || mode == "guides" {
 				fixture = "novel"
 			}
 			source := os.DirFS(filepath.Join("testdata", fixture))
@@ -434,13 +434,14 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			start := []string{"--start", "war"}
 			body := "wait 40\npress ok\nwait 30\nshot frame\nquit\n"
-			if mode == "novel" {
+			if fixture == "novel" {
 				writeNovelFigure(t, game)
+			}
+			if mode == "novel" {
 				start = []string{"--start", "room"}
 				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
 			}
 			if mode == "timed-fade" {
-				writeNovelFigure(t, game)
 				// Change the screen after seeking has begun, animate it, then trigger a
 				// fade without input. Capture while the pre-transition image is frozen.
 				event := `events:
@@ -461,13 +462,60 @@ func TestGraphicsScreensRepro(t *testing.T) {
 				start = []string{"--start", "field", "--party", "scout,guide", "--battle", "one"}
 				body = "wait 90\nshot frame\nquit\n"
 			}
+			if strings.HasPrefix(mode, "native-") || mode == "guides" {
+				gameRoot, err := os.OpenRoot(game)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := gameRoot.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				b, err := gameRoot.ReadFile("game.yaml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				b = bytes.Replace(b, []byte("schema_version: 4"), []byte("schema_version: 11"), 1)
+				b = bytes.Replace(b, []byte("screen: {"), []byte("screen: {native: true, "), 1)
+				if mode == "guides" {
+					b = append(b, []byte(`
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-09', phases: [morning]}
+screens:
+  board:
+    title: Board
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Hours, style: plate, bounds: [40, 150, 200, 100]}
+    guide:
+      steps:
+      - {who: reader, text: 'Read the board.'}
+`)...)
+				}
+				if err := gameRoot.WriteFile("game.yaml", b, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				start = []string{"--start", "room", "--window", "2"}
+				body = "window 960 540\nwait 40\nshot frame\nquit\n"
+				if mode == "guides" {
+					body = "wait 40\nguides on\ndo open: board\nwait 40\nshot frame\nquit\n"
+				}
+			}
 			script := filepath.Join(dir, "input.txt")
 			// Let the opening settle, then capture an ordinary scripted frame.
 			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			trace := filepath.Join(dir, "run.jsonl")
-			run(t, append([]string{"run", game, "--dev", "--mute", "--seed", "7", "--script", script, "--shots", dir, "--trace", trace, "--trace-shots", "--save-dir", filepath.Join(dir, "saves")}, start...)...)
+			recordArgs := []string{"run", game, "--dev", "--mute", "--seed", "7", "--shots", dir, "--trace", trace, "--trace-shots", "--save-dir", filepath.Join(dir, "saves")}
+			if mode == "native-window" {
+				recordArgs = append(recordArgs, "--until", "75")
+			} else {
+				recordArgs = append(recordArgs, "--script", script)
+			}
+			run(t, append(recordArgs, start...)...)
 			if mode == "battle-puppet" {
 				for j, mutation := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1"} {
 					input := filepath.Join(dir, fmt.Sprintf("mutation-%d.txt", j))
@@ -490,6 +538,13 @@ func TestGraphicsScreensRepro(t *testing.T) {
 				}
 			}
 			targets := []string{"frame.png", "60"}
+			if mode == "guides" || mode == "native-script" {
+				targets = []string{"frame.png", "frame.png"}
+			}
+			if mode == "native-window" {
+				targets = []string{"until_000075.png", "until_000075.png"}
+			}
+
 			data, err := os.ReadFile(trace) //nolint:gosec // Reads this test's own trace.
 			if err != nil {
 				t.Fatal(err)
@@ -502,8 +557,23 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			for i, target := range targets {
 				args := []string{"trace", trace, "--repro", target, "--format", "json"}
-				if mode == "campaign" {
+				if mode == "campaign" || (i == 1 && (mode == "guides" || strings.HasPrefix(mode, "native-"))) {
 					args = append(args, "--out", filepath.Join(dir, fmt.Sprintf("bundle-%d", i)))
+				}
+				if mode == "native-script" || mode == "guides" {
+					cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Test-owned CLI and fixture arguments.
+					var stdout, stderr bytes.Buffer
+					cmd.Stdout, cmd.Stderr = &stdout, &stderr
+					err := cmd.Run()
+					var exit *exec.ExitError
+					want := "the recording changed the window size"
+					if mode == "guides" {
+						want = "guides cannot be reproduced exactly"
+					}
+					if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), want) {
+						t.Fatalf("reproduction refusal: %v stdout=%s stderr=%s", err, &stdout, &stderr)
+					}
+					continue
 				}
 				out := run(t, args...)
 				var result struct {

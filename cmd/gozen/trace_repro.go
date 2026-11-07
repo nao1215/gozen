@@ -130,7 +130,13 @@ func readReproRecords(src []byte) ([]reproRecord, error) {
 // cutReproRecords validates replayable actions through tick and adds the seek boundary.
 func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 	var cut bytes.Buffer
-	guides := false
+	type viewportSize struct {
+		Width  int     `json:"width"`
+		Height int     `json:"height"`
+		Scale  float64 `json:"scale"`
+		Tall   bool    `json:"tall"`
+	}
+	var viewport *viewportSize
 	for _, r := range records {
 		if r.tick > tick {
 			break
@@ -147,17 +153,26 @@ func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 		if r.kind == "act" {
 			var act struct {
 				Name string `json:"name"`
-				On   bool   `json:"on"`
 			}
 			if err := json.Unmarshal(r.raw, &act); err != nil {
 				return nil, err
 			}
-			if act.Name == "guides" {
-				guides = act.On
+			if act.Name == "window" {
+				return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
 			}
 		}
-		if r.kind == "guide" && !guides {
-			return nil, errors.New("cannot reproduce exactly: first-visit guide appeared without explicit guides on; replays default guides off")
+		if r.kind == "viewport" {
+			var current viewportSize
+			if err := json.Unmarshal(r.raw, &current); err != nil {
+				return nil, err
+			}
+			if viewport != nil && current != *viewport {
+				return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
+			}
+			viewport = &current
+		}
+		if r.kind == "guide" {
+			return nil, errors.New("cannot reproduce exactly: guides cannot be reproduced exactly")
 		}
 		if r.kind == "end" {
 			continue

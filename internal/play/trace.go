@@ -33,9 +33,10 @@ import (
 )
 
 type tracer struct {
-	enc   *lineWriter
-	lines int
-	err   error
+	viewport traceViewport
+	enc      *lineWriter
+	lines    int
+	err      error
 
 	scenes string
 	music  string
@@ -188,12 +189,16 @@ func (g *Game) traceStart() error {
 			}
 		}
 	}
+	if o.State != nil {
+		setup.Unsupported = append(setup.Unsupported, "injected state")
+	}
 	if o.Review {
 		setup.Unsupported = append(setup.Unsupported, "review")
 	}
 	g.emit("start", traceLine{
 		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
 		"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"window": o.Window, "fullscreen": g.cfg.Fullscreen, "development": o.Development,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
 		"floor": o.Floor, "battle": o.Battle, "speed": max(1, o.Speed), "gallery_all": o.GalleryAll,
@@ -575,9 +580,16 @@ func (g *Game) isAutopilot() bool {
 	return g.auto != nil || g.opts.Autopilot != nil || (g.rep != nil && g.rep.autopilot)
 }
 
+// traceViewport records layout changes so exact reproduction can reject resized runs.
+type traceViewport struct {
+	Width  int     `json:"width"`
+	Height int     `json:"height"`
+	Scale  float64 `json:"scale"`
+	Tall   bool    `json:"tall,omitempty"`
+}
+
 type replay struct {
 	scripted bool
-	size     [2]int
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
@@ -635,6 +647,9 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	var start traceLine
 	var reloads []int
 	var startOptions struct {
+		Development  *bool       `json:"development"`
+		Window       float64     `json:"window"`
+		Fullscreen   bool        `json:"fullscreen"`
 		Seed         uint64      `json:"seed"`
 		Version      int         `json:"version"`
 		Speed        int         `json:"speed"`
@@ -748,7 +763,13 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if !ok {
 				return nil, errors.New("replay: action name must be a string")
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk", "dev_do", "dev_jump", "guides", "window"}, name) {
+			if name == "window" {
+				if !r.partial || tick < o.Until {
+					return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
+				}
+				continue
+			}
+			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk", "dev_do", "dev_jump", "guides"}, name) {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
@@ -788,6 +809,10 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			return nil, errors.New(lang.T("replay は途中の素材・データ再読込に対応していない"))
 		}
 	}
+	if startOptions.Development != nil {
+		o.Development = *startOptions.Development
+	}
+	o.Window, o.Fullscreen = startOptions.Window, startOptions.Fullscreen
 	o.Seed = startOptions.Seed
 	o.Locales, o.BookAsPlayed = startOptions.Locales, startOptions.BookAsPlayed
 
@@ -1084,9 +1109,6 @@ func (g *Game) act(name string, args traceLine) bool {
 		if w <= 0 || h <= 0 {
 			g.failure = errors.New("replay: invalid window dimensions")
 			return false
-		}
-		if g.rep != nil {
-			g.rep.size = [2]int{w, h}
 		}
 		if !g.opts.headless {
 			ebiten.SetWindowSize(w, h)

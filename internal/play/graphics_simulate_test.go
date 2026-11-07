@@ -202,7 +202,7 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 	}
 }
 
-// simulateComparable is the trace's lines but those of drawing and music, each with its
+// simulateComparable is the trace's lines but those of presentation and music, each with its
 // tick when requested; the end line without its count of lines. Presentation
 // readiness can add render-wait ticks without changing the event sequence.
 func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
@@ -214,7 +214,7 @@ func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 			t.Fatalf("%v: %q", err, l)
 		}
 		switch m["t"] {
-		case "shot", "view", "stand", "layout", "menu", "music", "start":
+		case "shot", "view", "viewport", "stand", "layout", "menu", "music", "start":
 			continue
 		case "end":
 			m = maps.Clone(m)

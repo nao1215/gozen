@@ -171,9 +171,6 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	ebiten.SetWindowSize(max(1, int(sw*scale)), max(1, int(sh*scale)))
 
-	if opts.Fullscreen {
-		g.cfg.Fullscreen = true
-	}
 	ebiten.SetFullscreen(g.cfg.Fullscreen)
 	if opts.Script != "" || opts.Autopilot != nil {
 		ebiten.SetVsyncEnabled(false)
@@ -730,6 +727,9 @@ func New(opts Options) (_ *Game, err error) {
 	if err := g.useLanguage(); err != nil {
 		return nil, err
 	}
+	if opts.Fullscreen {
+		g.cfg.Fullscreen = true
+	}
 	if err := g.traceStart(); err != nil {
 		return nil, err
 	}
@@ -840,9 +840,6 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 		}
 	case g.rep != nil && g.rep.scripted:
 		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
-		if g.rep.size[0] > 0 {
-			w, h = float64(g.rep.size[0]), float64(g.rep.size[1])
-		}
 	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
 		if m := ebiten.Monitor(); m != nil {
 			dsf = m.DeviceScaleFactor()
@@ -863,12 +860,19 @@ func (g *Game) fitView(ow, oh, dsf float64) {
 		k := UIScale(&g.db.Game)
 		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
 	}
-	if v == g.view {
-		return
+	if v != g.view {
+		g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
+		gfx.SetScale(g.ui)
+		g.in.ui = g.ui
 	}
-	g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
-	gfx.SetScale(g.ui)
-	g.in.ui = g.ui
+	if g.tr != nil {
+		w, h := g.pixels()
+		viewport := traceViewport{Width: int(w), Height: int(h), Scale: g.ui, Tall: g.view.tall}
+		if g.tr.viewport != viewport {
+			g.tr.viewport = viewport
+			g.emit("viewport", traceLine{"width": viewport.Width, "height": viewport.Height, "scale": viewport.Scale, "tall": viewport.Tall})
+		}
+	}
 }
 
 func (g *Game) stateRng() *rand.Rand {
@@ -1325,8 +1329,6 @@ func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
 	screen.ReadPixels(img.Pix)
 	if s := g.in.script; g.db.Game.Screen.Native && s != nil && s.size[0] > 0 {
 		img = letterboxShot(img, s.size[0], s.size[1])
-	} else if g.db.Game.Screen.Native && g.rep != nil && g.rep.size[0] > 0 {
-		img = letterboxShot(img, g.rep.size[0], g.rep.size[1])
 	}
 	g.shots.write(filepath.Join(g.shotDir(), name+".png"), img)
 }

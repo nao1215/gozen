@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -462,5 +464,100 @@ func TestTraceReproBatchesIdleTicks(t *testing.T) {
 	}
 	if g.tick <= 1 {
 		t.Fatalf("idle seek did not batch: tick %d", g.tick)
+	}
+}
+
+func TestTraceRecordsViewportChanges(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("schema_version: 11\nscreen: {width: 640, height: 360, native: true}\n")...)
+	var buf bytes.Buffer
+	g, err := New(Options{FS: fsys, Trace: &buf, Seed: 7, Window: 2, Fullscreen: true, NoSound: true, headless: true, Store: savefile.MemStore()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.in.script = nil
+	g.layout(1280, 720)
+	g.layout(1280, 720) // unchanged layouts must not add records
+	g.tick = 3
+	g.layout(900, 600)
+	g.traceEnd()
+	if got := len(traceLines(t, buf.Bytes(), "viewport")); got != 2 {
+		t.Fatalf("viewport records: %d", got)
+	}
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Options{Development: true}
+	rep, err := loadReplay(path, &opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Window != 2 || !opts.Fullscreen || !rep.setup.Config.Fullscreen || opts.Development {
+		t.Fatalf("lost start window/fullscreen: %+v", opts)
+	}
+}
+
+func TestTraceRejectsInjectedState(t *testing.T) {
+	g, _ := wldTracedGame(t, "wait 5\n")
+	g.opts.State = g.st
+	var buf bytes.Buffer
+	g.tr = newTracer(&buf)
+	if err := g.traceStart(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `"unsupported":["injected state"]`) {
+		t.Fatal(buf.String())
+	}
+}
+
+func TestTraceRestoresPresentationSettings(t *testing.T) {
+	for _, saved := range []bool{false, true} {
+		t.Run(strconv.FormatBool(saved), func(t *testing.T) {
+			fsys := wldWorldFiles(t, "written_in: en\nlanguages: [en, ja]\nui: {accent: '#123456'}\n", map[string]string{"lang/ja.yaml": twoLanguageWords})
+			store := savefile.MemStore()
+			if saved {
+				if err := store.Write("config.json", []byte(`{"language":"en","window":3,"text_speed":4}`)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var buf bytes.Buffer
+			g := wldOpenWith(t, Options{FS: fsys, Trace: &buf, Store: store, Locales: []string{"ja-JP"}, Location: "camp", Flags: []string{"ready"}, BookAsPlayed: true})
+			wantLanguage, wantTheme, wantConfig := g.language(), g.th, g.cfg
+			g.traceEnd()
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			replayed := wldOpenWith(t, Options{FS: fsys, Replay: path, Store: savefile.MemStore(), Locales: []string{"en-US"}})
+			if replayed.language() != wantLanguage || replayed.th != wantTheme || !reflect.DeepEqual(replayed.cfg, wantConfig) || !replayed.opts.BookAsPlayed || !reflect.DeepEqual(replayed.opts.Flags, []string{"ready"}) {
+				t.Fatal("replay lost language, theme, settings, book display or flags")
+			}
+		})
+	}
+}
+
+func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	trace := `{"t":"start","tick":0,"version":1,"seed":7}
+{"t":"act","tick":3,"name":"window","args":{"width":960,"height":540}}
+{"t":"end","tick":5}
+`
+	if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 4}); err == nil || !strings.Contains(err.Error(), "the recording changed the window size") {
+		t.Fatalf("resize: %v", err)
 	}
 }
