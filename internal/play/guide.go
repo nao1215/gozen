@@ -359,7 +359,7 @@ func (g *Game) drawGuide(dst *ebiten.Image) {
 	r := g.guideToastRect(rects, h)
 	x, y, w, hh := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 	light := g.lightPalette()
-	if !g.materialSurface(dst, x, y, w, hh, color.NRGBA{250, 252, 254, 246}, "card") {
+	if !g.toastSurface(dst, x, y, w, hh, color.NRGBA{250, 252, 254, 246}) {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(hh), 14, color.NRGBA{250, 252, 254, 246})
 	}
 	gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(hh), 14, 1.5, withAlpha(accent, 200))

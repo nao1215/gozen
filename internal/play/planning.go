@@ -421,10 +421,16 @@ func (g *Game) planningFace(dst *ebiten.Image, path string, cx, cy, r float64) {
 	gfx.StrokeLine(dst, float32(cx-r*.20), float32(cy+r*.30), float32(cx+r*.20), float32(cy+r*.30), 2, color.Black, true)
 }
 
-func portraitTransform(bounds, face image.Rectangle, x, y, w, faceHeight float64) (scale, left, top float64) {
+// faceOr is face, or the upper middle quarter of a picture whose face is unknown.
+func faceOr(bounds, face image.Rectangle) image.Rectangle {
 	if face.Empty() || !face.In(bounds) {
-		face = image.Rect(bounds.Min.X+bounds.Dx()/4, bounds.Min.Y, bounds.Min.X+3*bounds.Dx()/4, bounds.Min.Y+max(1, bounds.Dy()/4))
+		return image.Rect(bounds.Min.X+bounds.Dx()/4, bounds.Min.Y, bounds.Min.X+3*bounds.Dx()/4, bounds.Min.Y+max(1, bounds.Dy()/4))
 	}
+	return face
+}
+
+func portraitTransform(bounds, face image.Rectangle, x, y, w, faceHeight float64) (scale, left, top float64) {
+	face = faceOr(bounds, face)
 	scale = faceHeight / float64(face.Dy())
 	left = x + w/2 - float64(face.Min.X+face.Dx()/2)*scale
 	top = y - float64(face.Min.Y)*scale

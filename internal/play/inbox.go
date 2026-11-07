@@ -67,7 +67,7 @@ func (g *Game) drawInboxToast(dst *ebiten.Image) {
 	r := g.inboxToastRect()
 	x, y, w, h := float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())
 	light := g.lightPalette()
-	if !g.materialSurface(dst, x, y, w, h, color.NRGBA{250, 252, 254, 240}, "card") {
+	if !g.toastSurface(dst, x, y, w, h, color.NRGBA{250, 252, 254, 240}) {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 12, color.NRGBA{250, 252, 254, 240})
 	}
 	gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 12, 1, color.NRGBA{255, 255, 255, 220})
@@ -125,7 +125,7 @@ func (g *Game) drawInboxBubble(dst *ebiten.Image) {
 	w, h := min(760.0, sw-64), 186.0
 	x, y := (sw-w)/2, 92.0
 	light := g.lightPalette()
-	if !g.materialSurface(dst, x, y, w, h, color.NRGBA{250, 252, 254, 245}, "card") {
+	if !g.toastSurface(dst, x, y, w, h, color.NRGBA{250, 252, 254, 245}) {
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 16, color.NRGBA{250, 252, 254, 245})
 	}
 	gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 16, 1, color.NRGBA{255, 255, 255, 230})

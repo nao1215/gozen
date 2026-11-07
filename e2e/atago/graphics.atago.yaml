@@ -464,6 +464,81 @@ scenarios:
       stdout:
         json: {path: "$.data.records[0].t", equals: layout}
       stderr: {equals: ''}
+- name: a call keeps tall hair in its view and draws a backdrop behind a picture self view
+  tags: [graphics]
+  steps:
+  # A picture self view on the stage while the caller speaks, then small while the
+  # participant speaks. Its hair rises 132 pixels above the face box: the layout
+  # line's opaque top stays inside the view's clip both times (the stage's top is
+  # at 76, the small view's at 346), and self_backdrop is drawn behind it.
+  - fixture: {file: call/assets/hair.png, from: fixtures/call/hair.png}
+  - fixture: {file: call/assets/room.png, from: fixtures/call/room.png}
+  - fixture:
+      file: call/assets/faces.json
+      content: '{"version": 1, "model": "authored-geometric-fixture", "pictures": {"hair.png": {"box": [60, 140, 140, 220], "size": [200, 600], "sha256": "1fe2e170a62da1a14cce6c75215c3825daedd0954269f0b7da9e4e3043d99f1c"}}}'
+  - fixture:
+      file: call/game.yaml
+      content: |
+        schema_version: 11
+        id: call-framing
+        title: Call framing
+        language: en
+        screen: {width: 1280, height: 720, native: true}
+        start: {location: room}
+        ui: {message: novel}
+        planning:
+          calendar: {start: '2030-01-01', end: '2030-01-09', phases: [morning]}
+          entities: {potter: {name: Potter, actor: potter}}
+        screens:
+          studio:
+            title: Studio
+            kind: ensemble
+            view:
+              order: [potter]
+              chat: {title: Messages}
+              call: {address: call.example.test, layout: full, captions: overlay, others: side, still: true, self: hair.png, self_label: Me, self_stage: true, self_backdrop: room.png}
+  - fixture:
+      file: call/data/world.yaml
+      content: |
+        actors:
+          potter: {name: Potter}
+          me: {name: Me}
+        locations:
+          room: {name: Room}
+        events:
+          meet:
+            - call: {event: talk, ensemble: studio}
+          talk:
+            - say: {who: me, text: 'Can you hear me?'}
+            - say: {who: potter, text: 'Loud and clear.'}
+  - fixture:
+      file: call.txt
+      content: |
+        wait 60
+        shot stage
+        press ok
+        wait 60
+        shot small
+        quit
+  - run:
+      command: gozen run call --dev --mute --seed 7 --window 1 --event meet --script call.txt --shots shots --save-dir saves --trace call.jsonl
+      timeout: 120s
+  - assert:
+      exit_code: 0
+      file:
+        path: call.jsonl
+        contains: ['"pictures":["hair.png","room.png"]']
+  - run:
+      command: gozen trace call.jsonl --format json --only layout
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.records[0].figures[0].clip[1]', equals: 76}
+        - {path: '$.data.records[0].figures[0].content[1]', gte: 76}
+        - {path: '$.data.records[1].figures[0].clip[1]', equals: 346}
+        - {path: '$.data.records[1].figures[0].content[1]', gte: 346}
+      stderr: {equals: ''}
 - name: capture the office sample's management screens in a window
   tags: [graphics]
   steps:

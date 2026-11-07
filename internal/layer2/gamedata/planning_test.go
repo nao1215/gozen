@@ -512,6 +512,29 @@ func TestDesktopCallSettings(t *testing.T) {
 	}
 }
 
+// TestCallSelfBackdrop: call.self_backdrop puts a picture behind a self view that is a
+// picture or a guest actor; it needs self and the file, and an entity's self view takes
+// the entity's own backdrop.
+func TestCallSelfBackdrop(t *testing.T) {
+	const header = "schema_version: 11\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\n  entities: {potter: {name: Potter}}\nscreens:\n  call:\n    title: Workshop call\n    kind: ensemble\n    view:\n      chat: {}\n"
+	for _, tc := range []struct{ call, want string }{
+		{"{self: me.png, self_stage: true, self_backdrop: room.png}", ""},
+		{"{self_backdrop: room.png}", "needs self"},
+		{"{self: me.png, self_backdrop: nowhere.png}", "no file assets/nowhere.png"},
+		{"{self: potter, self_backdrop: room.png}", "is an entity"},
+	} {
+		_, err := Load(fstest.MapFS{
+			"game.yaml":       {Data: []byte(header + "      call: " + tc.call + "\n")},
+			"data/world.yaml": {Data: []byte("locations: {room: {name: Workshop}}\n")},
+			"assets/me.png":   {Data: []byte("x")},
+			"assets/room.png": {Data: []byte("x")},
+		})
+		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: %v", tc.call, err)
+		}
+	}
+}
+
 // TestCallEnsembleNamesACall: call.ensemble takes an ensemble screen only.
 func TestCallEnsembleNamesACall(t *testing.T) {
 	const header = "schema_version: 10\nid: workshop\nstart: {location: room}\nplanning:\n  calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}\nscreens:\n  call: {title: Call, kind: ensemble, view: {chat: {}, call: {}}}\n  board: {title: Board, kind: entities}\n"

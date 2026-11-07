@@ -7,10 +7,16 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ### Added
 
 - A trace (`run --trace`) has `layout` lines: once a screen has stayed the same for ten ticks, where its standing pictures and texts were drawn. A figure gives its picture, the rectangle of its canvas, the rectangle of its opaque part, the screen or the frame that clips it, and `source_cut`, the edges the opaque part already touches in the picture file. A text gives its rectangle, size and color, the color behind it read from the finished screen and the WCAG contrast ratio. gozen records them and does not judge them, so a game's own checks can find a head cut by its frame or a text hard to read without gozen deciding what is intended. Nothing of it is computed without `--trace`. `gozen trace` prints a line of each with the pictures and the text of the lowest contrast.
+- `view.call.self_backdrop` puts a picture behind a self view that is a guest actor or a picture, small and on the stage, as an entity's backdrop is behind an entity. Omitted, the view keeps the plain tile as before; `check` refuses it without `self`, for a missing file and when `self` is an entity (ADR 0059).
 
 ### Changed
 
 - With the setting "Text to skip" set to all, scene skip (Page Down) is offered in any event with lines and passes lines not read, as skip mode and Ctrl already did; it still stops at a choice, a phone that keeps a result and a battle. A `skip` line of the trace that starts skipping carries `"unread": true` then, and `trace --check` no longer reports the lines it passes as GZN1404.
+
+### Fixed
+
+- A call's view no longer cuts the hair of a person on camera at its top: when the hair above the face found in the picture would rise above the view, the face moves down by up to a tenth of the view's height and then shrinks until the hair fits. Pictures whose hair already fitted, and pictures drawn cut at their own top edge, are framed as before (ADR 0059).
+- Under `ui.material`, a screen guide's line, an inbox notification and the bubble it opens stand on a card at least 0.94 opaque, whatever the card role's opacity: on glass the text of the screen under them showed through and their own text fell below a contrast of 4.5:1 (ADR 0059).
 
 ## v0.20.0 - 2026-11-07
 
