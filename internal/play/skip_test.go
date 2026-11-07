@@ -230,6 +230,55 @@ func TestSceneSkipNeedsEveryLineRead(t *testing.T) {
 	}
 }
 
+// TestSkipAllPassesUnreadLines: with the setting "Text to skip: all", skip mode and
+// scene skip pass lines never read and stop only at the choice; their skip lines say
+// so (unread), so trace --check does not take the lines for a fault.
+func TestSkipAllPassesUnreadLines(t *testing.T) {
+	for _, key := range []string{"skip", "scene_skip"} {
+		t.Run(key, func(t *testing.T) {
+			g := novelGame(t, Options{Location: "camp", Event: "story", Script: "wait 10\npress " + key + "\nwait 120\nquit\n", ShotDir: t.TempDir()})
+			g.read = map[uint64]bool{}
+			g.cfg.SkipAll = true
+			var out bytes.Buffer
+			g.tr = newTracer(&out)
+			runToEnd(t, g)
+			skips := traceLines(t, out.Bytes(), "skip")
+			if len(skips) != 2 || skips[0]["on"] != true || skips[0]["unread"] != true || skips[1]["why"] != "choice" || (key == "scene_skip") != (skips[0]["scene"] == true) {
+				t.Fatalf("skip lines %v", skips)
+			}
+			if key == "skip" {
+				for _, l := range traceLines(t, out.Bytes(), "say") {
+					if l["choices"] == nil && l["read"] != false {
+						t.Fatalf("a line passed was read before: %v", l)
+					}
+				}
+			}
+			if g.evLines != 4 || g.talk.choice == nil {
+				t.Fatalf("at line %d, choice %v", g.evLines, g.talk.choice != nil)
+			}
+		})
+	}
+}
+
+// TestSkipAllTurnedOnWhileSkipping: turning the setting on while skip mode runs writes
+// the skip line again with the mark, so the lines passed after are not taken for faults.
+func TestSkipAllTurnedOnWhileSkipping(t *testing.T) {
+	g := novelGame(t, Options{})
+	var out bytes.Buffer
+	g.tr = newTracer(&out)
+	g.skipping = true
+	s := newConfigScreen(g)
+	s.list.sel = slices.Index(s.rows, rowSkipAll)
+	if s.list.sel < 0 {
+		t.Fatal("the settings have no row for the text to skip")
+	}
+	s.change(g, 1, true)
+	skips := traceLines(t, out.Bytes(), "skip")
+	if !g.cfg.SkipAll || len(skips) != 1 || skips[0]["on"] != true || skips[0]["unread"] != true {
+		t.Fatalf("setting %v, skip lines %v", g.cfg.SkipAll, skips)
+	}
+}
+
 func TestSelectedSourcesKeepSceneSummaryUnknown(t *testing.T) {
 	g := novelGame(t, Options{})
 	g.db.Events["selected"] = &data.Event{Do: []data.Command{{Say: &data.Say{TextExpr: data.MustExpr(`"A selected source."`)}}}}

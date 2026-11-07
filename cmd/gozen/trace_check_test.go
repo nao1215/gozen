@@ -170,6 +170,25 @@ func TestTraceCheckSkipVoiceAndRollbackFaults(t *testing.T) {
 	}
 }
 
+// TestTraceCheckSkipAllPassesUnreadLines: a skip line marked unread (the setting
+// "Text to skip: all") lets lines not read pass without a fault; the next skip without
+// the mark checks them again.
+func TestTraceCheckSkipAllPassesUnreadLines(t *testing.T) {
+	out := checkTraceOut(t, 1,
+		`{"t":"skip","tick":20,"on":true,"unread":true}`,
+		`{"t":"say","tick":21,"text":"Passed on purpose","read":false}`,
+		`{"t":"skip","tick":22,"on":false,"why":"choice"}`,
+		`{"t":"skip","tick":25,"scene":true,"on":true,"unread":true}`,
+		`{"t":"say","tick":26,"text":"Scene passed on purpose","read":false}`,
+		`{"t":"skip","tick":27,"scene":true,"on":false,"why":"choice"}`,
+		`{"t":"skip","tick":30,"on":true}`,
+		`{"t":"say","tick":31,"text":"Not read","read":false}`,
+	)
+	if strings.Contains(out, "assed on purpose") || !strings.Contains(out, "Not read") || !strings.Contains(out, "check: 1") {
+		t.Errorf("only the line passed without the setting is a fault:\n%s", out)
+	}
+}
+
 // TestTraceCheckBattleLines: a line said in a battle counts and is checked like any other.
 func TestTraceCheckBattleLines(t *testing.T) {
 	out := checkTraceOut(t, 1,

@@ -1402,7 +1402,7 @@ Not YAML-reproducible: This measures music delivery times in a runtime trace; YA
 
 Skipping passed a line that was not read.
 
-trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.
+trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read, unless the player set Text to skip to all (the skip line then carries unread).
 
 Fix: Record the trace again with this engine; if it happens again, report it with the trace.
 

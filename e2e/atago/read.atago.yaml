@@ -211,6 +211,27 @@ scenarios:
       exit_code: 0
       stderr:
         equals: ''
+- name: trace check lets skipping pass lines not read when the setting says so
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: '{"t":"skip","tick":20,"on":true,"unread":true}
+
+        {"t":"say","tick":21,"text":"Passed on purpose","read":false}
+
+        {"t":"skip","tick":22,"on":false,"why":"choice"}
+
+        {"t":"end","tick":60}
+
+        '
+  - run:
+      command: gozen trace trace.jsonl --check
+  - assert:
+      exit_code: 0
+      stdout:
+        not_contains: skip-unread
+      stderr:
+        equals: ''
 - name: malformed trace structures fail without panic
   steps:
   - fixture:

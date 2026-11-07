@@ -334,6 +334,11 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 		c.BattleAuto = &v
 	case rowSkipAll:
 		c.SkipAll = !c.SkipAll
+		if g.skipping {
+			// Skip mode goes on under the new setting: the trace says so again, or
+			// trace --check would judge the lines it passes by the old one.
+			g.emit("skip", g.skipUnread(traceLine{"on": true}))
+		}
 	case rowSP:
 		c.ManualSP = !c.ManualSP
 	case rowVoice:

@@ -29,7 +29,7 @@ func (g *Game) toggleSkip() {
 	}
 	g.skipping = true
 	g.finishCGTransition()
-	g.emit("skip", traceLine{"on": true})
+	g.emit("skip", g.skipUnread(traceLine{"on": true}))
 }
 
 func (g *Game) stopSkip(why string) {
@@ -147,18 +147,28 @@ func (g *Game) readRate(name string) (read, all int) {
 	return read, all
 }
 
+// skipUnread marks a skip line of a trace when the setting "Text to skip: all" lets
+// skipping pass lines not read, so trace --check does not take them for a fault.
+func (g *Game) skipUnread(l traceLine) traceLine {
+	if g.cfg.SkipAll {
+		l["unread"] = true
+	}
+	return l
+}
+
 // sceneSkippable reports whether the running event can be skipped: it has a name, it is
-// not a recollection, a line is on the screen, and every line it can show was read.
+// not a recollection, a line is on the screen, and every line it can show was read, or
+// the setting "Text to skip: all" skips lines not read as well.
 func (g *Game) sceneSkippable() bool {
 	if g.evName == "" || g.replaying || g.fast != nil || g.st == nil || !g.talk.active || g.events == nil || !g.events.Running() {
 		return false
 	}
 	read, all := g.readRate(g.evName)
-	return all > 0 && read == all
+	return all > 0 && (read == all || g.cfg.SkipAll)
 }
 
-// sceneSkip replays the running event at once, quietly, to its next choice, line not read,
-// phone that keeps a result, battle or end.
+// sceneSkip replays the running event at once, quietly, to its next choice, line not read
+// (unless the setting skips them), phone that keeps a result, battle or end.
 func (g *Game) sceneSkip() {
 	if !g.sceneSkippable() {
 		return
@@ -166,7 +176,7 @@ func (g *Game) sceneSkip() {
 	g.stopSkip("scene")
 	name := g.evName
 	read, all := g.readRate(name)
-	g.emit("skip", traceLine{"scene": true, "on": true, "event": name, "line": g.evLines, "read": read, "lines": all})
+	g.emit("skip", g.skipUnread(traceLine{"scene": true, "on": true, "event": name, "line": g.evLines, "read": read, "lines": all}))
 	g.liveCatchUp(&fastTo{lines: math.MaxInt, scene: true}, name, nil)
 }
 
