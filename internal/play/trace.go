@@ -393,11 +393,16 @@ func (g *Game) traceSaves() (map[string]string, error) {
 	return out, nil
 }
 
+// buttonNames is the canonical table for trace encoding, validation and replay.
+// TestTraceButtonsRoundTrip requires a unique nonempty name for every button.
 var buttonNames = [numButtons]string{
 	btnUp: "up", btnDown: "down", btnLeft: "left", btnRight: "right", btnOK: "ok", btnCancel: "cancel",
 	btnMenu: "menu", btnLog: "log", btnAuto: "auto", btnHide: "hide", btnConfig: "config", btnNext: "next",
 	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs", btnSkip: "skip", btnSceneSkip: "scene_skip",
 	btnBack: "back", btnSave: "save", btnLoad: "load", btnPanel: "panel",
+	btnBook: "characters", btnBestiary: "bestiary", btnCaptions: "captions",
+	btnMapZoomIn: "map_zoom_in", btnMapZoomOut: "map_zoom_out", btnMapOverview: "map_overview",
+	btnMapFocus: "map_focus", btnMapPan: "map_pan", btnEndTurn: "end_turn_key", btnInbox: "inbox",
 }
 
 func (g *Game) traceInput(in *input) {
@@ -872,6 +877,9 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			}
 			for _, field := range []string{"press", "held"} {
 				for _, name := range strs(l[field]) {
+					if name == "" {
+						return nil, fmt.Errorf("replay: empty button name in %s at tick %d; older recordings lost the button identity; record a new trace", field, tick)
+					}
 					if !slices.Contains(buttonNames[:], name) {
 						return nil, fmt.Errorf(lang.T("replay の未知のボタン %q"), name)
 					}

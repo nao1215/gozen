@@ -44,6 +44,112 @@ func wldTracedGame(t *testing.T, script string) (*Game, *bytes.Buffer) {
 	return wldOpenWith(t, opts), &buf
 }
 
+func TestTraceButtonsRoundTrip(t *testing.T) {
+	seen := make(map[string]button)
+	for b := range numButtons {
+		name := buttonNames[b]
+		if name == "" {
+			t.Fatalf("button %d has no trace name", b)
+		}
+		if previous, ok := seen[name]; ok {
+			t.Fatalf("buttons %d and %d share trace name %q", previous, b, name)
+		}
+		seen[name] = b
+		for _, field := range []string{"press", "held"} {
+			t.Run(name+"/"+field, func(t *testing.T) {
+				var buf bytes.Buffer
+				g := &Game{tr: newTracer(&buf), tick: 1}
+				var want input
+				if field == "press" {
+					want.pressed[b] = true
+				} else {
+					want.held[b] = true
+				}
+				g.traceInput(&want)
+				path := filepath.Join(t.TempDir(), "trace.jsonl")
+				data := append([]byte(`{"t":"start","tick":0,"version":1,"exact_version":1}`+"\n"), buf.Bytes()...)
+				data = append(data, []byte(`{"t":"end","tick":2}`+"\n")...)
+				if err := os.WriteFile(path, data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				r, err := loadReplay(path, &Options{Until: 2})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got input
+				r.feed(&got, 1)
+				if got.pressed != want.pressed || got.held != want.held {
+					t.Fatalf("button %d round trip: pressed %v, held %v", b, got.pressed, got.held)
+				}
+				r.feed(&got, 2)
+				if got.pressed != [numButtons]bool{} || got.held != [numButtons]bool{} {
+					t.Fatal("button remained active on an empty tick")
+				}
+			})
+		}
+	}
+}
+
+func TestReplayRejectsEmptyButtonNames(t *testing.T) {
+	for _, field := range []string{"press", "held"} {
+		t.Run(field, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "old.jsonl")
+			data := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1,\"exact_version\":1}\n{\"t\":\"input\",\"tick\":1,%q:[\"\"]}\n{\"t\":\"end\",\"tick\":2}\n", field)
+			if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := loadReplay(path, &Options{Until: 2})
+			if err == nil || !strings.Contains(err.Error(), "empty button name") || !strings.Contains(err.Error(), "record a new trace") {
+				t.Fatalf("old trace diagnostic: %v", err)
+			}
+		})
+	}
+}
+
+func TestTraceMapZoomReproduction(t *testing.T) {
+	fsys := atlasCameraFiles(t)
+	var buf bytes.Buffer
+	g := wldOpenWith(t, Options{FS: fsys, Location: "large", Trace: &buf, Script: "wait 5\npress map_zoom_in\nwait 10\n"})
+	want, ok := g.stack[0].(*atlasScene)
+	if !ok {
+		t.Fatalf("recorded scene %T, want map", g.stack[0])
+	}
+	initial := want.cameraZoom
+	for range 15 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want.cameraZoom <= initial {
+		t.Fatal("recording did not zoom the map")
+	}
+	g.traceEnd()
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r := wldOpenWith(t, Options{FS: fsys, Replay: path, Until: g.tick})
+	for range 15 {
+		if err := r.Update(); errors.Is(err, errQuit) {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, ok := r.stack[0].(*atlasScene)
+	if !ok {
+		t.Fatalf("replayed scene %T, want map", r.stack[0])
+	}
+	wk, wx, wy, _ := want.fit(g)
+	gk, gx, gy, _ := got.fit(r)
+	if got.cameraZoom != want.cameraZoom || gk != wk || gx != wx || gy != wy || len(r.stack) != 1 {
+		t.Fatalf("map view was not reproduced: zoom %g, want %g", got.cameraZoom, want.cameraZoom)
+	}
+}
+
 func TestWldTraceInputLinesCarryMouseDigitsAndFast(t *testing.T) {
 	g, buf := wldTracedGame(t, "wait 3\nclick 120 340\nwait 10\npress 3\nwait 5\nskip 4\nwait 5\nquit\n")
 	// Inject raw values to test serialization, including digits unused by the field.
