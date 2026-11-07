@@ -630,6 +630,43 @@ func TestTraceRecordsViewportChanges(t *testing.T) {
 	}
 }
 
+func TestReplayStartOptionPresence(t *testing.T) {
+	caller := Options{Development: true, Window: 2, Fullscreen: true, Locales: []string{"en-US"}, BookAsPlayed: true}
+	for _, tt := range []struct {
+		name   string
+		fields string
+		want   Options
+	}{
+		{name: "older trace", want: caller},
+		{name: "development only", fields: `,"development":false`, want: Options{Window: 2, Fullscreen: true, Locales: []string{"en-US"}, BookAsPlayed: true}},
+		{name: "window only", fields: `,"window":0`, want: Options{Development: true, Fullscreen: true, Locales: []string{"en-US"}, BookAsPlayed: true}},
+		{name: "fullscreen only", fields: `,"fullscreen":false`, want: Options{Development: true, Window: 2, Locales: []string{"en-US"}, BookAsPlayed: true}},
+		{name: "locales only", fields: `,"locales":["fr-FR"]`, want: Options{Development: true, Window: 2, Fullscreen: true, Locales: []string{"fr-FR"}, BookAsPlayed: true}},
+		{name: "empty locales", fields: `,"locales":[]`, want: Options{Development: true, Window: 2, Fullscreen: true, Locales: []string{}, BookAsPlayed: true}},
+		{name: "null locales", fields: `,"locales":null`, want: Options{Development: true, Window: 2, Fullscreen: true, BookAsPlayed: true}},
+		{name: "book only", fields: `,"book_as_played":false`, want: Options{Development: true, Window: 2, Fullscreen: true, Locales: []string{"en-US"}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// Version 2 predates these optional start fields and exact replay metadata.
+			trace := `{"t":"start","tick":0,"version":2,"setup":{}` + tt.fields + "}\n" +
+				`{"t":"end","tick":1,"lines":2,"state":{}}` + "\n"
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			opts := caller
+			if _, err := loadReplay(path, &opts); err != nil {
+				t.Fatal(err)
+			}
+			got := Options{Development: opts.Development, Window: opts.Window, Fullscreen: opts.Fullscreen, Locales: opts.Locales, BookAsPlayed: opts.BookAsPlayed}
+			if got.Development != tt.want.Development || got.Window != tt.want.Window || got.Fullscreen != tt.want.Fullscreen ||
+				got.BookAsPlayed != tt.want.BookAsPlayed || !reflect.DeepEqual(got.Locales, tt.want.Locales) {
+				t.Fatalf("replayed options = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTraceRejectsInjectedState(t *testing.T) {
 	g, _ := wldTracedGame(t, "wait 5\n")
 	g.opts.State = g.st

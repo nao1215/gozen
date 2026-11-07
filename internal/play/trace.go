@@ -969,9 +969,21 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	if startOptions.Development != nil {
 		o.Development = *startOptions.Development
 	}
-	o.Window, o.Fullscreen = startOptions.Window, startOptions.Fullscreen
+	// Older traces omit these fields; only recorded values replace caller options.
+	if _, ok := start["window"]; ok {
+		o.Window = startOptions.Window
+	}
+	if _, ok := start["fullscreen"]; ok {
+		o.Fullscreen = startOptions.Fullscreen
+	}
 	o.Seed = startOptions.Seed
-	o.Locales, o.BookAsPlayed = startOptions.Locales, startOptions.BookAsPlayed
+	// A recorded null locale list deliberately clears the caller's locales.
+	if _, ok := start["locales"]; ok {
+		o.Locales = startOptions.Locales
+	}
+	if _, ok := start["book_as_played"]; ok {
+		o.BookAsPlayed = startOptions.BookAsPlayed
+	}
 
 	if value, ok := start["location"].(string); ok {
 		o.Location = value
