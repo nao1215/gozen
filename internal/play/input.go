@@ -391,6 +391,9 @@ type script struct {
 	quit        bool
 	idle        func() bool
 	graphsReady func() bool
+	ready       func(verb string) bool
+	err         error
+	blocked     int
 	limit       int
 	gap         int
 	tps         int
@@ -739,12 +742,28 @@ func (s *script) midEvent(in *input, name string) {
 func (s *script) step(in *input) {
 	in.held = [numButtons]bool{}
 	in.fast = false
+	if s.err != nil {
+		return
+	}
 	if s.wait > 0 {
 		s.wait--
 		return
 	}
 	for s.pc < len(s.cmds) || s.more() {
 		c := &s.cmds[s.pc]
+		if s.ready != nil && !s.ready(c.verb) {
+			s.blocked++
+			if s.blocked > 6000 {
+				s.err = fmt.Errorf("script: %s timed out waiting for input readiness", c.verb)
+			}
+			return
+		}
+		s.blocked = 0
+		deadline := map[string]int{"read": 6000, "until": 3000, "walk": 6000, "face": 6000, "lines": 20000, "play": 40000}[c.verb]
+		if deadline > 0 && s.limit >= deadline {
+			s.err = fmt.Errorf("script: %s timed out after %d ticks", c.verb, deadline)
+			return
+		}
 		switch c.verb {
 		case "hold":
 			for name := range strings.SplitSeq(c.arg, "+") {
@@ -824,12 +843,12 @@ func (s *script) step(in *input) {
 				what, t = s.waiting()
 			}
 			s.limit++
-			if what == "choice" || what == "command" || (s.idle != nil && s.idle()) || s.limit > 6000 {
+			if what == "choice" || what == "command" || (s.idle != nil && s.idle()) {
 				s.limit = 0
 				s.pc++
 				return
 			}
-			in.pressed[btnOK] = what == "text" && t >= c.n
+			in.pressed[btnOK] = (what == "text" || what == "phone") && t >= c.n
 			return
 		case "shot":
 			s.shot = c.arg
@@ -862,10 +881,8 @@ func (s *script) step(in *input) {
 		case "until":
 			if s.idle != nil && !s.idle() {
 				s.limit++
-				if s.limit < 3000 {
-					in.pressed[btnOK] = s.limit%6 == 0
-					return
-				}
+				in.pressed[btnOK] = s.limit%6 == 0
+				return
 			}
 			s.limit = 0
 			s.pc++
@@ -897,7 +914,7 @@ func (s *script) step(in *input) {
 			}
 			b, done := s.walk(arg)
 			s.limit++
-			if done || s.limit > 6000 {
+			if done {
 				s.limit = 0
 				s.pc++
 				return
@@ -936,7 +953,7 @@ func (s *script) step(in *input) {
 				}
 				end()
 				return
-			case what == "text" && t >= 4:
+			case (what == "text" || what == "phone") && t >= 4:
 				if !s.lineShot {
 					s.lineShot = true
 					shoot()
@@ -951,7 +968,7 @@ func (s *script) step(in *input) {
 				s.lineShot = false
 				s.wait = 2
 				return
-			case what == "" && s.idle != nil && s.idle() && s.limit > 30, s.limit > 20000:
+			case what == "" && s.idle != nil && s.idle() && s.limit > 30:
 				end()
 				return
 			}
@@ -989,7 +1006,7 @@ func (s *script) step(in *input) {
 					s.battleAuto()
 				}
 				return
-			case what == "text" && t >= 4:
+			case (what == "text" || what == "phone") && t >= 4:
 				if !s.lineShot {
 					s.lineShot = true
 					shoot("_")
@@ -1010,7 +1027,7 @@ func (s *script) step(in *input) {
 					shoot("_b")
 				}
 				return
-			case what == "" && s.idle != nil && s.idle() && s.limit > 30, s.limit > 40000:
+			case what == "" && s.idle != nil && s.idle() && s.limit > 30:
 				s.limit, s.lineShot = 0, false
 				s.pc++
 				return
@@ -1092,10 +1109,13 @@ func (s *script) step(in *input) {
 			s.pc++
 			continue
 		case "pick":
-			s.pc++
 			if s.pick != nil {
 				s.pick(in, c.name) // a pick that finds nothing is written to the trace
+				if s.err != nil {
+					return
+				}
 			}
+			s.pc++
 			s.wait = 8
 			return
 		case "window":

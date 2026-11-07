@@ -1,6 +1,10 @@
 package play
 
 import (
+	"bytes"
+	"context"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -120,5 +124,44 @@ func TestPhoneResultBlocksScreenSave(t *testing.T) {
 	g.begin(event.Tap{Results: 2})
 	if !g.screenTrace.blocked {
 		t.Fatal("a phone with results left the screen transcript open to a save")
+	}
+}
+
+func TestPhoneScriptLinesAndRead(t *testing.T) {
+	for _, command := range []string{"lines chat", "read 4", "wait 40\nlook\nread 4", "wait 40\nsnapshot\nread 4"} {
+		t.Run(command, func(t *testing.T) {
+			var trace bytes.Buffer
+			_, err := Simulate(context.Background(), Options{
+				FS: os.DirFS("../../e2e/atago/fixtures/input-readiness"), Location: "studio", SaveDir: t.TempDir(), Trace: &trace,
+				Script: "wait 20\ndo open: board\nwait 10\npick Chat\n" + command + "\nsnapshot\nquit",
+			}, SimulateConfig{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(trace.String(), `"chatted":1`) {
+				t.Fatalf("phone did not finish: %s", &trace)
+			}
+		})
+	}
+}
+
+func TestPhoneScriptInputWaitsForReceiver(t *testing.T) {
+	for _, verb := range []string{"press", "click"} {
+		t.Run(verb, func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}, {Text: "Next"}}})
+			g.stack = append(g.stack, &authorScreen{running: true})
+			g.phone.age, g.phone.turned = 0, phoneTurn
+			s := &script{cmds: []scriptCmd{{verb: verb, arg: "ok"}, {verb: "wait", n: 1000}}, ready: g.scriptReady}
+			var in input
+			s.step(&in)
+			if s.pc != 0 {
+				t.Fatal("input consumed while phone was rising")
+			}
+			g.phone.age = phoneRise
+			s.step(&in)
+			if s.pc != 1 {
+				t.Fatalf("ready phone did not receive input: pc=%d", s.pc)
+			}
+		})
 	}
 }

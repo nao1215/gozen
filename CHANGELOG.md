@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- Scripted play keeps inputs and state observations (`look` and `snapshot`) pending while date cards, fades, and ending or game-over input lockouts block the screen, and waits for busy screens before picking a control. Phone inputs and observations wait for the phone to be ready, independently of its busy parent screen; `lines` and `read` also wait for text to finish revealing. Script wait timeouts and invalid picks now fail visibly instead of silently advancing.
+
 ## v0.21.0 - 2026-11-07
 
 Layout lines in traces, scene skip that passes unread lines under "Text to skip: all", call views that keep the hair inside, a backdrop behind a picture self view, and notices that stay readable on glass.

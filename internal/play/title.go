@@ -209,9 +209,11 @@ func newGameOver(g *Game) *gameOver {
 	return &gameOver{}
 }
 
+func (s *gameOver) ready() bool { return s.age > 90 }
+
 func (s *gameOver) update(g *Game) {
 	s.age++
-	if s.age > 90 && (g.in.advance() || g.in.cancel()) {
+	if s.ready() && (g.in.advance() || g.in.cancel()) {
 		if ev := g.db.Game.GameOver.Event; ev != "" && g.db.Events[ev] != nil {
 			for _, a := range g.st.Members() {
 				a.Recover()
@@ -253,9 +255,11 @@ func newEnding(g *Game) *ending {
 	return e
 }
 
+func (s *ending) ready() bool { return s.age > 150 }
+
 func (s *ending) update(g *Game) {
 	s.age++
-	if s.age > 150 && (g.in.advance() || g.in.cancel()) {
+	if s.ready() && (g.in.advance() || g.in.cancel()) {
 		g.toTitle()
 	}
 }
@@ -272,7 +276,7 @@ func (s *ending) draw(g *Game, dst *ebiten.Image) {
 	}
 	gfx.DrawTextOutlineColor(dst, "THE END", sw/2, sh*0.4, 96, g.th.text, g.th.nameTag, a)
 	gfx.DrawTextOutlineColor(dst, g.db.Game.Title, sw/2, sh*0.4+130, sizeL, g.th.text, g.th.window, a)
-	if s.age > 150 {
+	if s.ready() {
 		gfx.DrawTextOutlineColor(dst, "Thank you for playing!", sw/2, sh-90, sizeM, g.th.text, g.th.window, 1)
 	}
 }
