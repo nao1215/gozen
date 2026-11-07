@@ -713,6 +713,60 @@ func TestTraceRestoresPresentationSettings(t *testing.T) {
 	}
 }
 
+func TestExactReplayViewportChanges(t *testing.T) {
+	initial := traceViewport{Width: 1280, Height: 720, Scale: 1}
+	startup := traceViewport{Width: 960, Height: 540, Scale: 1}
+	retina := traceViewport{Width: 2560, Height: 1440, Scale: 2}
+	for _, tt := range []struct {
+		name    string
+		tick    int
+		current traceViewport
+		wantErr bool
+	}{
+		{name: "startup layout", current: startup},
+		{name: "startup device scale", current: retina},
+		{name: "unchanged", tick: 1, current: initial},
+		{name: "device scale after start", tick: 1, current: retina},
+		{name: "fractional device scale", tick: 1, current: traceViewport{Width: 1920, Height: 1080, Scale: 1.5}},
+		{name: "logical resize", tick: 1, current: startup, wantErr: true},
+		{name: "scale without matching pixels", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 2}, wantErr: true},
+		{name: "portrait layout", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 1, Tall: true}, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var exact ExactReplay
+			check := func(tick int, viewport traceViewport) error {
+				t.Helper()
+				raw, err := json.Marshal(viewport)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return exact.Check("viewport", tick, raw)
+			}
+			if err := check(0, initial); err != nil {
+				t.Fatal(err)
+			}
+			err := check(tt.tick, tt.current)
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "the recording changed the window size") {
+					t.Fatalf("resize: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := check(2, tt.current); err != nil {
+				t.Fatalf("settled layout: %v", err)
+			}
+			changed := tt.current
+			changed.Width += 100
+			if err := check(3, changed); err == nil {
+				t.Fatal("accepted a logical resize after settling")
+			}
+		})
+	}
+}
+
 func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "trace.jsonl")
 	trace := `{"t":"start","tick":0,"exact_version":3,"version":1,"seed":7}
