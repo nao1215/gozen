@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.21.2 - 2026-11-07
+
+Scripted play that only moves on when a screen acts on the input: a press or click that does nothing is retried and then reported, instead of silently drifting from the route.
+
 ### Fixed
 
 - Scripted play (`run --script` and `sim script`) counts an input as consumed only when the receiving screen acts on it; otherwise the input is offered again on the next tick until it is handled or its wait expires, which is reported as an error. This covers inputs during run-only date cards, phone typing, talk, events, author screens and their modals, novel controls (log, rollback, skip, scene skip), choices without a cancel action, battles, maps, dungeons and stages, so a press or click that does nothing no longer advances the script. Picks confirm their target control and respect guide restrictions, holds and drags run their full duration once accepted, and `look` and `snapshot` wait for a tick that reads input. Human input is unchanged.
