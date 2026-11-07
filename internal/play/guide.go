@@ -140,6 +140,9 @@ func (s *authorScreen) guideRects(g *Game, st *data.GuideStep) []image.Rectangle
 func (s *authorScreen) guideStops(g *Game, st *data.GuideStep) []int {
 	actions := s.surfaceActions()
 	ids, _ := s.surfaceTargets(g)
+	if g.db.Game.Screens[s.name].Kind == "entities" {
+		ids = s.tableResidents(g)
+	}
 	var out []int
 	for j, i := range actions {
 		if e := s.entries[i]; e.Mark != "" && slices.Contains(st.Focus, e.Mark) && !s.unavailable(g, i) {
@@ -208,7 +211,7 @@ func (g *Game) updateGuide(s *authorScreen) bool {
 	}
 	rects := s.guideRects(g, st)
 	if len(rects) == 0 {
-		if g.in.ok() || g.in.click {
+		if g.in.ok() || g.in.clicked() {
 			g.advanceGuide(s)
 		}
 		g.in.blockInput()
@@ -225,7 +228,7 @@ func (g *Game) updateGuide(s *authorScreen) bool {
 		blocked = true
 	}
 	stops := s.guideStops(g, st)
-	if in.ok() && !slices.Contains(stops, s.focus) {
+	if in.pressed[btnOK] && !slices.Contains(stops, s.focus) {
 		if len(stops) > 0 {
 			s.focus, s.keyed = stops[0], true
 		}
@@ -240,7 +243,7 @@ func (g *Game) updateGuide(s *authorScreen) bool {
 		keep[btnUp], keep[btnDown] = in.pressed[btnUp], in.pressed[btnDown]
 	}
 	for b := range in.pressed {
-		if in.pressed[b] && !keep[b] {
+		if in.pressed[button(b)] && !keep[b] {
 			blocked = true
 		}
 	}

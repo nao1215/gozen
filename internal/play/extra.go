@@ -268,10 +268,11 @@ func (t *treeView) update(g *Game) {
 	}
 
 	click, raise := false, false
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		g.in.click = false
 		for i, n := range nodes {
 			if g.in.mouse.In(treeNodeRect(n.Col, n.Row)) {
+				g.in.query(true)
 				click = true
 				if i == t.sel {
 					raise = true
@@ -282,6 +283,7 @@ func (t *treeView) update(g *Game) {
 			}
 		}
 		if !click && g.in.mouse.Y < 110 {
+			g.in.query(true)
 			t.member = (t.member + 1) % len(t.ids)
 			t.sel, t.msgT = 0, 0
 			g.sfx("cursor")
@@ -302,7 +304,7 @@ func (t *treeView) update(g *Game) {
 		vert(-1)
 	case g.in.down():
 		vert(1)
-	case g.in.pressed[btnMenu] || g.in.pressed[btnNext]:
+	case g.in.pressedKey(btnMenu) || g.in.pressedKey(btnNext):
 		if g.in.tab() < 0 {
 			t.member = (t.member + len(t.ids) - 1) % len(t.ids)
 		} else {
@@ -593,7 +595,7 @@ func (f *fusion) update(g *Game) {
 		return
 	}
 	if !chose {
-		if g.in.ok() && f.list.sel < len(f.idx) && f.list.items[f.list.sel].disabled {
+		if f.list.sel < len(f.idx) && f.list.items[f.list.sel].disabled && g.in.ok() {
 			f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
 		}
 		return

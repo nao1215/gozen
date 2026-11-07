@@ -7,13 +7,13 @@ import (
 
 func (s *dungeonScene) updateFree(g *Game) {
 	held := func(b button) float64 {
-		if g.in.held[b] || g.in.pressed[b] {
+		if g.in.heldKey(b) || g.in.pressedKey(b) {
 			return 1
 		}
 		return 0
 	}
 	in := dungeon.FreeInput{Forward: held(btnUp) - held(btnDown), Turn: held(btnRight) - held(btnLeft)}
-	if g.in.shift {
+	if g.in.query(g.in.shift) {
 		in.Strafe, in.Turn = in.Turn, 0
 	}
 	state := g.st
@@ -26,12 +26,9 @@ func (s *dungeonScene) updateFree(g *Game) {
 		s.free.Reset()
 		return
 	}
-	if g.in.ok() || g.in.click {
+	if g.in.inspect(g.in.pressed[btnOK] || g.in.click) {
 		s.free.Reset()
-		if cmds := dungeon.Look(g.db, g.st); len(cmds) > 0 {
-			g.sfx("decide")
-			g.events.Start(cmds)
-		}
+		g.in.query(s.examine(g))
 	}
 }
 

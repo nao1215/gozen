@@ -285,11 +285,12 @@ func (g *Game) updateMemo() {
 		}
 		return
 	}
+	in.receiveText()
 	scripted := in.script != nil
 	if !scripted && m.readTyping() {
 		return
 	}
-	save := in.script != nil && in.pressed[btnOK]
+	save := in.script != nil && in.pressedKey(btnOK)
 	cancel := in.script != nil && in.cancel()
 	if !scripted {
 		save = inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)
@@ -317,7 +318,7 @@ func (g *Game) typeMemo(s string) {
 	if p := g.panel; p != nil && p.tab == tabCommand {
 		p.text += s
 	}
-	if w := g.watching(); g.memo == nil && w != nil && w.typing {
+	if w := g.watching(); g.memo == nil && w != nil && (w.typing || w.tips) {
 		w.field.text += s
 	}
 	if l, ok := g.stack[len(g.stack)-1].(*streamLobby); ok && g.memo == nil && l.name != nil {

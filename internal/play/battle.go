@@ -267,13 +267,13 @@ func (s *battleScene) tacticHistoryVisible(g *Game) bool {
 }
 
 func (s *battleScene) update(g *Game) {
-	if s.tacticHistoryVisible(g) && !g.talk.active && (g.in.pressed[btnLog] || g.in.click && g.in.mouse.In(s.reasonButton(g))) {
+	if s.tacticHistoryVisible(g) && !g.talk.active && (g.in.pressedKey(btnLog) || g.in.mouse.In(s.reasonButton(g)) && g.in.clicked()) {
 		g.push(newTacticReasons(g, s.decisions))
 		return
 	}
 	s.tick(g)
 
-	if !s.auto || s.phase != bpPlay || g.in.fast || g.in.held[btnOK] {
+	if !s.auto || s.phase != bpPlay || g.in.fast || g.in.heldKey(btnOK) {
 		s.autoAcc = 0
 		return
 	}
@@ -372,7 +372,7 @@ func (s *battleScene) tick(g *Game) {
 func (s *battleScene) play(g *Game) {
 	if s.stepT > 0 {
 		s.stepT--
-		if g.in.held[btnOK] || g.in.fast {
+		if g.in.heldKey(btnOK) || g.in.fast {
 			s.stepT -= 2
 		}
 		return
@@ -1088,13 +1088,13 @@ func (s *battleScene) updateTarget(g *Game) {
 			hit = i
 		}
 	}
-	if hit >= 0 && (g.in.moved || g.in.click) {
+	if hit >= 0 && (g.in.moved || g.in.clicked()) {
 		t.sel = hit
 	}
 	if old != t.sel {
 		g.sfx("cursor")
 	}
-	if g.in.ok() || (g.in.click && hit >= 0) {
+	if g.in.ok() || (hit >= 0 && g.in.clicked()) {
 		g.sfx("decide")
 		a := t.action
 		a.Target = t.pool[t.sel]

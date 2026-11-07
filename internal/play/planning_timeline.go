@@ -507,13 +507,14 @@ func (s *authorScreen) drawTimelineFilter(g *Game, dst *ebiten.Image, x, y float
 
 func (s *authorScreen) updateTimelineFilter(g *Game) bool {
 	ids := s.timelineAssignees(g)
-	if len(ids) == 0 || !g.in.click {
+	if len(ids) == 0 || !g.in.inspect(g.in.click) {
 		return false
 	}
 	for i, r := range timelineFilterBounds(0, 108) {
 		if !g.in.mouse.In(r) {
 			continue
 		}
+		g.in.query(true)
 		index := slices.Index(ids, s.timelineAssignee)
 		switch i {
 		case 0:
@@ -617,7 +618,7 @@ func timelineLaneSummary(g *Game, lane timelineLane) (string, string) {
 // A group header toggles its inline lanes. If it is near the footer, reveal it
 // at the top rather than clipping details. Collapsing restores the overview.
 func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
-	if !g.in.click || g.in.mouse.X < 16 || g.in.mouse.X >= 248 {
+	if !g.in.inspect(g.in.click) || g.in.mouse.X < 16 || g.in.mouse.X >= 248 {
 		return false
 	}
 	sw, sh := g.screen()
@@ -639,6 +640,7 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 				s.timelineTop += i
 			}
 		}
+		g.in.query(true)
 		s.timelineFocus = 0
 		if s.timelineExpanded != "" {
 			visible, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
@@ -662,20 +664,21 @@ func timelineZoomBounds(x, y, w float64) [2]image.Rectangle {
 }
 
 func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
-	if g.in.pressed[btnMapZoomIn] || g.in.pressed[btnMapZoomOut] {
-		s.timelineZoom = g.in.pressed[btnMapZoomIn]
+	if g.in.pressedKey(btnMapZoomIn) || g.in.pressedKey(btnMapZoomOut) {
+		s.timelineZoom = g.in.pressedKey(btnMapZoomIn)
 		return true
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		w, _ := g.screen()
 		for i, r := range timelineZoomBounds(0, 108, w) {
 			if g.in.mouse.In(r) {
+				g.in.query(true)
 				s.timelineZoom = i == 0
 				return true
 			}
 		}
 	}
-	if g.in.click && s.openCalendarDate(g, s.timelinePointerDate(g)) {
+	if g.in.inspect(g.in.click) && g.in.query(s.openCalendarDate(g, s.timelinePointerDate(g))) {
 		return true
 	}
 	if s.updateTimelineFilter(g) || s.toggleTimelineGroup(g) {
@@ -685,12 +688,12 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 	if len(lanes) == 0 {
 		return false
 	}
-	open := func(lane timelineLane) {
+	open := func(lane timelineLane) bool {
 		if lane.item.Screen != "" {
 			args, err := g.db.BindScreen(data.ScreenCall{Screen: lane.item.Screen, Args: lane.item.Args}, s.env(g))
 			if err != nil {
 				g.events.Log(err)
-				return
+				return false
 			}
 			g.openAuthorScreen(lane.item.Screen, nil, args)
 			if len(g.stack) > 0 {
@@ -699,7 +702,9 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 					child.layoutTimelineCandidates(g)
 				}
 			}
+			return true
 		}
+		return false
 	}
 	if g.in.down() {
 		if s.timelineFocus+1 < len(lanes) {
@@ -724,18 +729,18 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 		}
 		return true
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, lane := range lanes {
 			hit := g.in.mouse.In(lane.bounds) || g.in.mouse.In(lane.labelBounds)
 			if hit {
 				s.timelineFocus = i
-				open(lane)
+				g.in.query(open(lane))
 				return true
 			}
 		}
 	}
-	if g.in.ok() {
-		open(lanes[min(s.timelineFocus, len(lanes)-1)])
+	if g.in.inspect(g.in.pressed[btnOK]) {
+		g.in.query(open(lanes[min(s.timelineFocus, len(lanes)-1)]))
 		return true
 	}
 	return false

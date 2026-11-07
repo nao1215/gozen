@@ -161,7 +161,7 @@ func (m *menu) update(g *Game) {
 			m.member = (m.member + 1) % len(ms)
 			g.sfx("cursor")
 		}
-		if g.in.cancel() || g.in.ok() || g.in.click {
+		if g.in.cancel() || g.in.ok() || g.in.clicked() {
 			g.sfx("cancel")
 			m.mode = ""
 		}
@@ -254,11 +254,11 @@ func (m *menu) updatePicker(g *Game) {
 		g.sfx("cursor")
 	}
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.click) {
+		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
 			m.member = i
 		}
 	}
-	if g.in.ok() || g.in.click {
+	if g.in.ok() || g.in.clicked() {
 		g.sfx("decide")
 		m.picker = false
 		if m.mode == "skill" {
@@ -358,11 +358,11 @@ func (m *menu) updateTarget(g *Game) {
 		g.sfx("cursor")
 	}
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.click) {
+		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
 			m.tsel = i
 		}
 	}
-	if g.in.ok() || g.in.click {
+	if g.in.ok() || g.in.clicked() {
 		kind, id, _ := strings.Cut(m.using, ":")
 		skill, item := id, ""
 		if kind == "item" {
@@ -774,12 +774,14 @@ func (c *confirm) update(g *Game) {
 		c.no = !c.no
 		g.sfx("cursor")
 	}
+	g.in.receivePick(c)
 	accept, refuse := false, g.in.cancel()
 	if g.in.ok() {
 		accept, refuse = !c.no, c.no
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		accept, refuse = g.in.mouse.In(yes), g.in.mouse.In(no)
+		g.in.query(accept || refuse)
 	}
 	switch {
 	case accept:

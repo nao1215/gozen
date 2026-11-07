@@ -128,7 +128,7 @@ func TestPhoneResultBlocksScreenSave(t *testing.T) {
 }
 
 func TestPhoneScriptLinesAndRead(t *testing.T) {
-	for _, command := range []string{"lines chat", "read 4", "wait 40\nlook\nread 4", "wait 40\nsnapshot\nread 4"} {
+	for _, command := range []string{"lines chat", "press ok\npress ok\npress ok", "read 4", "wait 40\nlook\nread 4", "wait 40\nsnapshot\nread 4"} {
 		t.Run(command, func(t *testing.T) {
 			var trace bytes.Buffer
 			_, err := Simulate(context.Background(), Options{
@@ -151,14 +151,28 @@ func TestPhoneScriptInputWaitsForReceiver(t *testing.T) {
 			g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}, {Text: "Next"}}})
 			g.stack = append(g.stack, &authorScreen{running: true})
 			g.phone.age, g.phone.turned = 0, phoneTurn
-			s := &script{cmds: []scriptCmd{{verb: verb, arg: "ok"}, {verb: "wait", n: 1000}}, ready: g.scriptReady}
-			var in input
-			s.step(&in)
+			s := &script{cmds: []scriptCmd{{verb: verb, arg: "ok"}, {verb: "wait", n: 1000}}, ready: g.scriptReady, acknowledge: true}
+			s.step(&g.in)
+			g.updatePhone()
+			g.in.finishOffer()
 			if s.pc != 0 {
 				t.Fatal("input consumed while phone was rising")
 			}
 			g.phone.age = phoneRise
-			s.step(&in)
+			g.phone.typing = phoneTyping
+			for g.phone.typing > 0 {
+				sysKey(g)
+				s.step(&g.in)
+				g.updatePhoneChat(g.phone)
+				g.in.finishOffer()
+				if s.pc != 0 {
+					t.Fatalf("input consumed during typing: remaining=%d", g.phone.typing)
+				}
+			}
+			sysKey(g)
+			s.step(&g.in)
+			g.updatePhoneChat(g.phone)
+			g.in.finishOffer()
 			if s.pc != 1 {
 				t.Fatalf("ready phone did not receive input: pc=%d", s.pc)
 			}

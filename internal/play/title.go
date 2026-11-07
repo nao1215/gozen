@@ -79,12 +79,12 @@ func (g *Game) titleMenu() *list {
 
 func (t *title) update(g *Game) {
 	t.age++
-	if g.in.pressed[btnConfig] {
+	if g.in.pressedKey(btnConfig) {
 		g.sfx("decide")
 		g.push(newConfigScreen(g))
 		return
 	}
-	chose, _ := t.menu.update(g)
+	chose := t.menu.updateChoice(g)
 	if !chose {
 		return
 	}

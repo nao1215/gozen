@@ -819,13 +819,13 @@ const streamBarH = 52.0
 // click).
 func (g *Game) clickedIn(x, y, w, h float64) bool {
 	m := g.in.mouse
-	return g.in.click && !g.in.swiped && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h
+	return !g.in.swiped && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h && g.in.clicked()
 }
 
 // touchIn reports whether the touch held or just lifted began in x, y, w, h.
 func (g *Game) touchIn(x, y, w, h float64) bool {
 	m := g.in.touchFrom
-	return (g.in.touching || g.in.click) && float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h
+	return float64(m.X) >= x && float64(m.X) < x+w && float64(m.Y) >= y && float64(m.Y) < y+h && (g.in.touching || g.in.clicked())
 }
 
 // fling is a scroll by a finger: it follows the finger as it swipes and, when the finger

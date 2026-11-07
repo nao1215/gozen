@@ -136,7 +136,7 @@ func (p *graphPanel) progress() (n, total int) {
 
 func (g *Game) updateGraphs() {
 	p := &g.graphs
-	if g.in.pressed[btnGraphs] {
+	if g.in.pressedKey(btnGraphs) {
 		p.on = !p.on
 	}
 	if !p.on || g.fast != nil || g.st == nil || g.db == nil {

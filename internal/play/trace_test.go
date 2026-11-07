@@ -36,6 +36,9 @@ func wldTracedGame(t *testing.T, script string) (*Game, *bytes.Buffer) {
 
 func TestWldTraceInputLinesCarryMouseDigitsAndFast(t *testing.T) {
 	g, buf := wldTracedGame(t, "wait 3\nclick 120 340\nwait 10\npress 3\nwait 5\nskip 4\nwait 5\nquit\n")
+	// Inject raw values to test serialization, including digits unused by the field.
+	// Receiver acknowledgement is covered by the script integration tests.
+	g.in.script.acknowledge = false
 	screen := wldScreen(g)
 	for i := 0; i < 500 && wldStep(t, g, screen); i++ {
 	}

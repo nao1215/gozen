@@ -233,25 +233,26 @@ func (s *authorScreen) flowBandLeft(g *Game) (float64, bool) {
 
 // goFlow runs a flow stop: the next action finishes this step; either one
 // replaces the screen with the step it goes to, keeping the opener.
-func (s *authorScreen) goFlow(g *Game, st flowStop) {
+func (s *authorScreen) goFlow(g *Game, st flowStop) bool {
 	if !st.enabled {
-		return
+		return false
 	}
 	flow, step := g.db.FlowOf(s.name)
 	if st.next {
 		g.flowFinish(flow, step)
 	}
 	*s = *newAuthorScreen(g, g.db.Game.Flows[flow].Steps[st.step].Screen, s.done, nil)
+	return true
 }
 
 // updateFlowClick runs the flow stop under a click. It reports whether one was.
 func (s *authorScreen) updateFlowClick(g *Game) bool {
-	if !g.in.click {
+	if !g.in.inspect(g.in.click) {
 		return false
 	}
 	for _, st := range s.flowStops(g) {
 		if g.in.mouse.In(st.r) {
-			s.goFlow(g, st)
+			g.in.query(s.goFlow(g, st))
 			return true
 		}
 	}

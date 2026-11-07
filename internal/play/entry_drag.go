@@ -118,19 +118,20 @@ func (s *authorScreen) putDown() bool {
 
 // dropOn drops the carried value on entry i: a refused place runs nothing,
 // an accepting one runs its do through the ordinary activation.
-func (s *authorScreen) dropOn(g *Game, i int) {
+func (s *authorScreen) dropOn(g *Game, i int) bool {
 	c := s.carry
 	if c == nil || s.entries[i].Drop == "" {
-		return
+		return false
 	}
 	if !c.ok[i] {
 		g.emit("screen_refused", traceLine{"screen": s.name, "entry": s.indices[i], "source": c.value})
-		return
+		return true
 	}
 	s.carry = nil
 	g.emit("screen_drop", traceLine{"screen": s.name, "entry": s.indices[i], "source": c.value})
 	s.list.sel = i
 	s.activateWith(g, map[string]any{s.entries[i].Drop: c.value})
+	return true
 }
 
 // togglePeek opens the peek of entry i, or closes it when it is open.
@@ -145,7 +146,7 @@ func (s *authorScreen) togglePeek(g *Game, i int) {
 }
 
 // confirmPart is the OK input on a focused part. It reports whether entry i
-// was one: a carried entry is picked up or put down, a drop place takes what
+// acted: a carried entry is picked up or put down, a drop place takes what
 // is carried, a peek opens or closes.
 func (s *authorScreen) confirmPart(g *Game, i int) bool {
 	e := s.entries[i]
@@ -157,7 +158,7 @@ func (s *authorScreen) confirmPart(g *Game, i int) bool {
 			s.pickUp(g, i)
 		}
 	case e.Drop != "":
-		s.dropOn(g, i)
+		return s.dropOn(g, i)
 	case e.Peek != "":
 		s.togglePeek(g, i)
 	default:
@@ -185,7 +186,7 @@ func (s *authorScreen) onControl(g *Game, p image.Point, cells []image.Rectangle
 func (s *authorScreen) updatePointer(g *Game, actions []int, cells []image.Rectangle) bool {
 	in := &g.in
 	used := false
-	if in.pdown {
+	if in.inspect(in.pdown) {
 		s.press = nil
 		on := s.partAt(in.mouse)
 		switch {
@@ -206,12 +207,13 @@ func (s *authorScreen) updatePointer(g *Game, actions []int, cells []image.Recta
 			s.press = &pointerPress{on: -1, at: in.mouse}
 		}
 		used = s.press != nil
+		in.query(used)
 	}
 	p := s.press
 	if p == nil {
 		return used
 	}
-	if in.pheld && !in.pup {
+	if !in.pup && in.pointerHeld() {
 		d := in.mouse.Sub(p.at)
 		if !p.dragging && p.on >= 0 && s.entries[p.on].Drag != "" && d.X*d.X+d.Y*d.Y >= dragSlop*dragSlop {
 			p.dragging = true
@@ -221,7 +223,7 @@ func (s *authorScreen) updatePointer(g *Game, actions []int, cells []image.Recta
 		}
 		return true
 	}
-	if !in.pup {
+	if !in.pointerUp() {
 		// The press ended unseen (the window lost it): forget it.
 		s.press = nil
 		return used

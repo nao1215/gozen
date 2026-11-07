@@ -102,11 +102,11 @@ func (s *battleScene) addFx(g *Game, kind string, x, y, w, h float64, c color.NR
 	if power >= 2 {
 		base += 8
 	}
-	if !s.auto && !g.in.fast && !g.in.held[btnOK] {
+	if !s.auto && !g.in.fast && !g.in.heldKey(btnOK) {
 		base = base * 3 / 2
 	}
 	dur := g.fxTicks(base)
-	if g.in.fast || g.in.held[btnOK] {
+	if g.in.fast || g.in.heldKey(btnOK) {
 		dur = max(8, dur/2)
 	}
 	s.fxSeq++
@@ -124,7 +124,7 @@ func fxHit(kind string) float64 {
 
 func (s *battleScene) addScreen(g *Game, kind string, x, y float64, c color.NRGBA, alpha float64, dur int) {
 	dur = g.fxTicks(dur)
-	if g.in.fast || g.in.held[btnOK] {
+	if g.in.fast || g.in.heldKey(btnOK) {
 		dur = max(6, dur/2)
 	}
 	s.scr = append(s.scr, screenFx{kind: kind, x: x, y: y, dur: max(6, dur), color: c, alpha: alpha})

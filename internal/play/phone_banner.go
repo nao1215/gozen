@@ -56,7 +56,7 @@ func (g *Game) updateBanners() {
 	x, y := (sw-bannerW)/2, b.top()
 	m := g.in.mouse
 	on := float64(m.X) >= x && float64(m.X) < x+bannerW && float64(m.Y) >= y && float64(m.Y) < y+bannerH
-	if !g.in.click || !on || b.n.Event == "" {
+	if !on || b.n.Event == "" || !g.in.clicked() {
 		return
 	}
 	g.in.click, g.in.pdown, g.in.pup = false, false, false

@@ -125,7 +125,7 @@ func (s *dungeonScene) update(g *Game) {
 		return
 	}
 	in := &g.in
-	if in.held[btnUp] {
+	if in.heldKey(btnUp) {
 		s.holdT++
 	} else {
 		s.holdT = 0
@@ -133,23 +133,33 @@ func (s *dungeonScene) update(g *Game) {
 	sw, _ := g.screen()
 	mx := float64(in.mouse.X)
 	switch {
-	case in.up() && in.wheel == 0, s.holdT > 14 && s.transT == 0:
+	case in.wheel == 0 && in.up(), s.holdT > 14 && s.transT == 0:
 		s.forward(g)
-	case in.down() && in.wheel == 0:
+	case in.wheel == 0 && in.down():
 		s.turn(g, 2, "back")
-	case in.left(), in.click && mx < sw/3:
+	case in.left(), in.clicked() && mx < sw/3:
 		s.turn(g, -1, "left")
-	case in.right(), in.click && mx > sw*2/3:
+	case in.right(), in.clicked() && mx > sw*2/3:
 		s.turn(g, 1, "right")
-	case in.ok(), in.click:
-		s.keep = maps.Clone(g.st.Done)
-		if cmds := dungeon.Look(g.db, g.st); cmds != nil {
-			g.sfx("decide")
-			g.events.Start(cmds)
-		} else if in.click {
+	case in.inspect(in.pressed[btnOK]), in.clicked():
+		if !in.query(s.examine(g)) && in.clicked() {
 			s.forward(g)
 		}
 	}
+}
+
+// examine reports whether there is an interaction to start in either movement mode.
+func (s *dungeonScene) examine(g *Game) bool {
+	keep := maps.Clone(g.st.Done)
+	cmds := dungeon.Look(g.db, g.st)
+	if len(cmds) == 0 {
+		return false
+	}
+	s.keep = keep
+	s.free.Reset()
+	g.sfx("decide")
+	g.events.Start(cmds)
+	return true
 }
 
 func (s *dungeonScene) forward(g *Game) {

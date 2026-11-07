@@ -745,3 +745,142 @@ func TestScriptTimeoutDoesNotConsumeCommand(t *testing.T) {
 		})
 	}
 }
+
+func TestScriptAcknowledgementMatchesInput(t *testing.T) {
+	s := sysScript(t, "press ok")
+	s.acknowledge = true
+	in := input{script: s}
+	for range 3 {
+		in.update()
+		in.cancel()                     // Reading an unrelated key must not consume OK.
+		in.pressed = [numButtons]bool{} // Masking input is not acknowledgement either.
+		in.finishOffer()
+		if s.pc != 0 || s.quit {
+			t.Fatal("unread input was consumed or exhaustion ended the script")
+		}
+	}
+	in.update()
+	if !in.ok() {
+		t.Fatal("pending input was not offered again")
+	}
+	in.finishOffer()
+	if s.pc != 1 {
+		t.Fatal("read input was not acknowledged")
+	}
+	for range 10 {
+		in.update()
+		in.finishOffer()
+	}
+	if !s.quit {
+		t.Fatal("acknowledged final input did not finish the script")
+	}
+}
+
+func TestScriptUnreadInputDeadline(t *testing.T) {
+	s := sysScript(t, "press ok\nquit")
+	s.acknowledge = true
+	in := input{script: s}
+	for range 6001 {
+		in.update()
+		in.finishOffer()
+	}
+	if s.err == nil || s.pc != 0 || s.quit {
+		t.Fatalf("deadline consumed unread input: pc=%d quit=%v err=%v", s.pc, s.quit, s.err)
+	}
+}
+
+func TestScriptModifierNeedsAReceiver(t *testing.T) {
+	s := sysScript(t, "hold shift 1")
+	s.acknowledge = true
+	in := input{script: s}
+	in.update()
+	in.finishOffer()
+	if s.pc != 0 {
+		t.Fatal("unread modifier was consumed")
+	}
+	in.update()
+	if !in.query(in.shift) {
+		t.Fatal("pending modifier was lost")
+	}
+	in.finishOffer()
+	if s.pc != 1 {
+		t.Fatal("read modifier was not acknowledged")
+	}
+}
+
+func TestScriptDeadlineBelongsToEachCommand(t *testing.T) {
+	s := sysScript(t, "look\nlook")
+	release := false
+	s.ready = func(string) bool { return release && s.pc == 0 }
+	for range 6000 {
+		s.step(&input{})
+	}
+	if s.err != nil {
+		t.Fatal(s.err)
+	}
+	release = true
+	s.step(&input{})
+	for range 5999 {
+		s.step(&input{})
+	}
+	if s.err != nil || s.pc != 1 {
+		t.Fatalf("second command inherited the first deadline: pc=%d err=%v", s.pc, s.err)
+	}
+	s.step(&input{})
+	if s.err == nil {
+		t.Fatal("second command exceeded its own deadline")
+	}
+}
+
+func TestScriptStartedGestureFinishesWithoutReads(t *testing.T) {
+	for _, command := range []string{"hold down 2", "drag 10 20 30 40"} {
+		t.Run(command, func(t *testing.T) {
+			s := sysScript(t, command)
+			s.acknowledge = true
+			in := input{script: s}
+			in.update()
+			in.finishOffer()
+			if s.cmds[0].n != s.cmds[0].x && s.cmds[0].verb == "hold" {
+				t.Fatal("unaccepted hold advanced")
+			}
+			if s.cmds[0].verb == "drag" && s.cmds[0].n != dragTicks {
+				t.Fatal("unaccepted drag advanced")
+			}
+			in.update()
+			in.query(true)
+			in.finishOffer()
+			s.ready = func(string) bool { return false }
+			for range dragTicks + 2 {
+				in.update()
+				in.finishOffer()
+			}
+			if s.pc != 1 || s.err != nil {
+				t.Fatalf("started gesture stalled: pc=%d err=%v", s.pc, s.err)
+			}
+		})
+	}
+}
+
+func TestScriptRepeatedActionsStillNeedAcknowledgement(t *testing.T) {
+	for _, command := range []string{"press ok 2", "walk gate", "face north", "until"} {
+		t.Run(command, func(t *testing.T) {
+			s := sysScript(t, command)
+			s.acknowledge = true
+			s.idle = func() bool { return false }
+			s.walk = func(string) (button, bool) { return btnOK, false }
+			in := input{script: s}
+			accepted := false
+			for range 30 {
+				in.update()
+				if !accepted && in.pressed[btnOK] {
+					in.ok()
+					accepted = true
+				}
+				in.finishOffer()
+			}
+			if !accepted || s.pc != 0 || s.blocked == 0 || s.err != nil {
+				t.Fatalf("later unread action escaped acknowledgement: accepted=%v pc=%d blocked=%d err=%v", accepted, s.pc, s.blocked, s.err)
+			}
+		})
+	}
+}

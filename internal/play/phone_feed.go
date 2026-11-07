@@ -186,9 +186,9 @@ func (g *Game) swipePhone(p *phoneView, stops []float64, w, end float64, tap fun
 		p.aim, p.glide = math.Round(at/w)*w, 0
 	}
 	switch {
-	case in.pressed[btnRight] || in.pressed[btnDown] || in.wheel < 0 && p.aim < 0:
+	case in.pressedKey(btnRight) || in.pressedKey(btnDown) || in.wheel < 0 && p.aim < 0:
 		p.aim = p.scrollNext(stops, 1)
-	case in.pressed[btnLeft] || in.pressed[btnUp] || in.wheel > 0 && p.aim < 0:
+	case in.pressedKey(btnLeft) || in.pressedKey(btnUp) || in.wheel > 0 && p.aim < 0:
 		p.aim = p.scrollNext(stops, -1)
 	case in.ok():
 		if p.scroll >= end-1 {
@@ -208,9 +208,9 @@ func (g *Game) scrollPhone(p *phoneView, stops []float64, end float64, tap func(
 	in := &g.in
 	g.dragPhoneAlong(p, false, tap)
 	switch {
-	case in.pressed[btnDown]:
+	case in.pressedKey(btnDown):
 		p.aim = p.scrollNext(stops, 1)
-	case in.pressed[btnUp]:
+	case in.pressedKey(btnUp):
 		p.aim = p.scrollNext(stops, -1)
 	case in.ok():
 		if p.scroll >= end-1 {
@@ -272,14 +272,14 @@ func (g *Game) dragPhoneAlong(p *phoneView, across bool, tap func(image.Point)) 
 		y = float64(in.mouse.X)
 	}
 	switch {
-	case in.pdown:
+	case in.pointerDown():
 		p.grab, p.moved, p.glide, p.aim = y, 0, 0, -1
-	case in.pheld && p.grab >= 0:
+	case p.grab >= 0 && in.pointerHeld():
 		d := y - p.grab
 		p.grab, p.scroll, p.moved = y, p.scroll-d, p.moved+math.Abs(d)
 		p.glide = 0.5*p.glide + 0.5*d
 	}
-	if in.pup && p.grab >= 0 {
+	if p.grab >= 0 && in.pointerUp() {
 		// The pointer may move on the tick it lets go (with no tick held between).
 		d := y - p.grab
 		p.scroll, p.moved = p.scroll-d, p.moved+math.Abs(d)

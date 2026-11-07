@@ -131,7 +131,7 @@ func (g *Game) updateLive() {
 		return
 	}
 	g.live.msgT = max(0, g.live.msgT-1)
-	if g.in.pressed[btnReload] {
+	if g.in.pressedKey(btnReload) {
 		g.askReload()
 		return
 	}

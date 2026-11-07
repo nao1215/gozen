@@ -1815,3 +1815,32 @@ func TestStreamsMissingVoice(t *testing.T) {
 		})
 	}
 }
+
+func TestStreamsNameBlocksEntryClickAcknowledgement(t *testing.T) {
+	g := streamsGame(t, "0")
+	l := sysAs[*streamLobby](t, g.stack[0])
+	bs := g.barButtons(l.entries(g))
+	if len(bs) == 0 || bs[0].lang != "" || l.name == nil {
+		t.Fatal("expected entry button behind the name prompt")
+	}
+	s := sysScript(t, fmt.Sprintf("click %d %d\nwait 1000", int(bs[0].x+2), int(bs[0].y+2)))
+	s.acknowledge = true
+	for range 3 {
+		sysKey(g)
+		s.step(&g.in)
+		l.update(g)
+		g.in.finishOffer()
+		if s.pc != 0 || l.name == nil {
+			t.Fatal("covered entry click was acknowledged")
+		}
+	}
+	l.name = nil
+	g.st.Streams.Viewer = "Pat"
+	sysKey(g)
+	s.step(&g.in)
+	l.update(g)
+	g.in.finishOffer()
+	if s.pc != 1 || !g.events.Running() {
+		t.Fatal("uncovered entry did not act and acknowledge")
+	}
+}

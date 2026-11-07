@@ -98,7 +98,7 @@ func (g *Game) novelButtonRects() []image.Rectangle {
 func (g *Game) novelInput() bool {
 	t := &g.talk
 	if t.hidden {
-		if g.in.ok() || g.in.cancel() || g.in.click || g.in.pressed[btnHide] || g.in.esc || g.in.wheel != 0 {
+		if g.in.ok() || g.in.cancel() || g.in.clicked() || g.in.pressedKey(btnHide) || g.in.esc || g.in.wheel != 0 {
 			t.hidden = false
 		}
 		return true
@@ -124,25 +124,23 @@ func (g *Game) novelInput() bool {
 		}
 	}
 	switch {
-	case press[btnLog]:
-		if len(g.backlog) > 0 {
-			g.logView = &backlogView{}
-			g.logView.top = g.logLastTop()
-		}
+	case len(g.backlog) > 0 && g.in.query(press[btnLog]):
+		g.logView = &backlogView{}
+		g.logView.top = g.logLastTop()
 		return true
-	case press[btnAuto]:
+	case g.in.query(press[btnAuto]):
 		g.autoRead = !g.autoRead
 		return true
-	case press[btnSkip] && t.active:
+	case t.active && g.canToggleSkip() && g.in.query(press[btnSkip]):
 		g.toggleSkip()
 		return true
-	case press[btnSceneSkip] && t.active:
+	case g.sceneSkippable() && g.in.query(press[btnSceneSkip]):
 		g.sceneSkip()
 		return true
-	case press[btnBack] && t.active:
+	case g.canRollBack() && g.in.query(press[btnBack]):
 		g.rollBack()
 		return true
-	case press[btnSave] && t.active && !g.replaying:
+	case t.active && !g.replaying && g.in.query(press[btnSave]):
 		m := newSaveMenu(g, true, func() {})
 		if why := g.saveBlocked(); why != "" {
 			g.sfx("buzzer")
@@ -150,18 +148,18 @@ func (g *Game) novelInput() bool {
 		}
 		g.push(m)
 		return true
-	case press[btnLoad] && t.active && !g.replaying:
+	case t.active && !g.replaying && g.in.query(press[btnLoad]):
 		m := newSaveMenu(g, false, func() {})
 		m.inPlay = true
 		g.push(m)
 		return true
-	case (press[btnHide] || g.in.esc || g.in.rclick) && g.novel() && t.choice == nil:
+	case g.novel() && t.choice == nil && (g.in.query(press[btnHide]) || g.in.esc || g.in.rightClicked()):
 		t.hidden = true
 		return true
-	case press[btnConfig]:
+	case g.in.query(press[btnConfig]):
 		g.push(newConfigScreen(g))
 		return true
-	case press[btnBook] && g.profilesInMenus() && !g.replaying:
+	case g.profilesInMenus() && !g.replaying && g.in.query(press[btnBook]):
 		// the band's button (F6 itself is taken in Update)
 		g.push(newProfiles(g, nil))
 		return true
@@ -556,7 +554,7 @@ func (g *Game) logLastTop() int {
 func (v *backlogView) update(g *Game) {
 	last := g.logLastTop()
 	switch {
-	case g.in.cancel() || g.in.pressed[btnLog] || g.in.ok() || g.in.click:
+	case g.in.cancel() || g.in.pressedKey(btnLog) || g.in.ok() || g.in.clicked():
 		g.logView = nil
 	case g.in.up():
 		v.top = max(0, v.top-1)

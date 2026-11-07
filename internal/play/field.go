@@ -97,7 +97,7 @@ func (f *field) update(g *Game) {
 	if f.dirty {
 		f.rebuild(g)
 	}
-	if loc := g.db.Locations[g.st.Location]; loc != nil && loc.NoMenu && !g.db.Game.NoMenus() && (g.in.rclick || g.menuKey()) {
+	if loc := g.db.Locations[g.st.Location]; loc != nil && loc.NoMenu && !g.db.Game.NoMenus() && (g.in.rightClicked() || g.menuKey()) {
 		g.in.rclick = false
 		g.sfx("decide")
 		g.push(newSysMenu(g))
@@ -108,7 +108,7 @@ func (f *field) update(g *Game) {
 		g.push(newMenu(g))
 		return
 	}
-	chose, _ := f.menu.update(g)
+	chose := f.menu.updateChoice(g)
 	if !chose {
 		return
 	}

@@ -119,6 +119,11 @@ var pads = [numButtons][]ebiten.StandardGamepadButton{
 }
 
 type input struct {
+	// offer exists only between script dispatch and the end of Update. Rendering,
+	// tracing and device polling cannot acknowledge a command.
+	offer                          *scriptOffer
+	observing, readInput, idleRead bool
+
 	pressed [numButtons]bool
 	// pad are the buttons pressed with a pad: a field that takes the keyboard's keys as text
 	// still takes a pad's OK and Cancel.
@@ -291,7 +296,7 @@ func (in *input) touch() {
 
 // menuKey reports whether the menu key opens the game menu now (never with menus: none).
 func (g *Game) menuKey() bool {
-	return !g.db.Game.NoMenus() && g.in.pressed[btnMenu] && !g.in.held[btnOK]
+	return !g.db.Game.NoMenus() && !g.in.held[btnOK] && g.in.pressedKey(btnMenu)
 }
 
 // openList reports whether a map or a painted scene opens its list now: the menu key, the
@@ -301,11 +306,11 @@ func (in *input) openList() bool {
 		in.longUsed = true
 		return true
 	}
-	if in.rclick {
+	if in.rightClicked() {
 		in.rclick = false
 		return true
 	}
-	return in.pressed[btnMenu] && !in.held[btnOK]
+	return !in.held[btnOK] && in.pressedKey(btnMenu)
 }
 
 // toUI is a screen position in the UI's units.
@@ -363,25 +368,25 @@ func (in *input) gamepads() {
 // a script or a replay: only then is text typed with the keyboard and an input method.
 func (in *input) devices() bool { return in.script == nil && in.replay == nil }
 
-func (in *input) ok() bool     { return in.pressed[btnOK] }
-func (in *input) cancel() bool { return in.pressed[btnCancel] || in.rclick }
-func (in *input) up() bool     { return in.pressed[btnUp] || in.wheel > 0 }
-func (in *input) down() bool   { return in.pressed[btnDown] || in.wheel < 0 }
+func (in *input) ok() bool     { return in.pressedKey(btnOK) }
+func (in *input) cancel() bool { return in.pressedKey(btnCancel) || in.rightClicked() }
+func (in *input) up() bool     { return in.pressedKey(btnUp) || in.wheel > 0 }
+func (in *input) down() bool   { return in.pressedKey(btnDown) || in.wheel < 0 }
 
 func (in *input) tab() int {
-	if !in.pressed[btnNext] {
+	if !in.pressedKey(btnNext) {
 		return 0
 	}
-	if in.shift {
+	if in.query(in.shift) {
 		return -1
 	}
 	return 1
 }
 
-func (in *input) left() bool  { return in.pressed[btnLeft] }
-func (in *input) right() bool { return in.pressed[btnRight] }
+func (in *input) left() bool  { return in.pressedKey(btnLeft) }
+func (in *input) right() bool { return in.pressedKey(btnRight) }
 
-func (in *input) advance() bool { return in.ok() || in.click || in.wheel < 0 }
+func (in *input) advance() bool { return in.ok() || in.clicked() || in.wheel < 0 }
 
 type script struct {
 	cmds        []scriptCmd
@@ -392,8 +397,10 @@ type script struct {
 	idle        func() bool
 	graphsReady func() bool
 	ready       func(verb string) bool
+	acknowledge bool
 	err         error
 	blocked     int
+	blockedPC   int
 	limit       int
 	gap         int
 	tps         int
@@ -740,6 +747,12 @@ func (s *script) midEvent(in *input, name string) {
 }
 
 func (s *script) step(in *input) {
+	defer in.markOffer()
+	if in.offer != nil {
+		in.finishOffer()
+	}
+	in.readInput = false
+	in.observing = true
 	in.held = [numButtons]bool{}
 	in.fast = false
 	if s.err != nil {
@@ -751,18 +764,28 @@ func (s *script) step(in *input) {
 	}
 	for s.pc < len(s.cmds) || s.more() {
 		c := &s.cmds[s.pc]
-		if s.ready != nil && !s.ready(c.verb) {
+		if s.blockedPC != s.pc {
+			s.blocked, s.blockedPC = 0, s.pc
+		}
+		// Once accepted, a gesture owns its remaining duration, including release.
+		continuing := c.verb == "hold" && c.n < c.x || c.verb == "drag" && c.n < dragTicks
+		if !continuing && s.ready != nil && !s.ready(c.verb) {
 			s.blocked++
 			if s.blocked > 6000 {
 				s.err = fmt.Errorf("script: %s timed out waiting for input readiness", c.verb)
 			}
 			return
 		}
-		s.blocked = 0
 		deadline := map[string]int{"read": 6000, "until": 3000, "walk": 6000, "face": 6000, "lines": 20000, "play": 40000}[c.verb]
 		if deadline > 0 && s.limit >= deadline {
 			s.err = fmt.Errorf("script: %s timed out after %d ticks", c.verb, deadline)
 			return
+		}
+		if s.acknowledge && !continuing {
+			switch c.verb {
+			case "press", "click", "pick", "hold", "drag", "read", "lines", "play", "until", "walk", "face", "type":
+				in.offer = &scriptOffer{script: s, before: *s, command: *c}
+			}
 		}
 		switch c.verb {
 		case "hold":
@@ -1042,7 +1065,7 @@ func (s *script) step(in *input) {
 			s.wait = 2
 			return
 		case "type":
-			if s.typeText != nil {
+			if !s.acknowledge && s.typeText != nil {
 				s.typeText(c.arg)
 			}
 			s.pc++
@@ -1109,7 +1132,7 @@ func (s *script) step(in *input) {
 			s.pc++
 			continue
 		case "pick":
-			if s.pick != nil {
+			if !s.acknowledge && s.pick != nil {
 				s.pick(in, c.name) // a pick that finds nothing is written to the trace
 				if s.err != nil {
 					return
@@ -1160,6 +1183,9 @@ func (s *script) more() bool {
 
 // surfaceInput reports input that can change an authored surface's focus or geometry.
 func (in *input) surfaceInput() bool {
+	if in.offer != nil && in.offer.command.verb == "pick" {
+		return true
+	}
 	if in.click || in.rclick || in.moved || in.pdown || in.pheld || in.pup || in.wheel != 0 || in.digit != 0 || in.esc {
 		return true
 	}
@@ -1169,4 +1195,97 @@ func (in *input) surfaceInput() bool {
 		}
 	}
 	return false
+}
+
+// scriptOffer makes dispatch transactional: only input acted on by the receiver
+// commits the command's progress. Time spent waiting still counts toward its deadline.
+type scriptOffer struct {
+	script   *script
+	before   script
+	command  scriptCmd
+	accepted bool
+	offered  bool
+	target   any
+}
+
+// inspect records readiness without accepting input used only for a check.
+func (in *input) inspect(value bool) bool {
+	if in.observing {
+		in.readInput = true
+	}
+	return value
+}
+
+// query accepts a true action. Filters and hit-test probes must use inspect
+// until they know the receiver will act on the input.
+func (in *input) query(value bool) bool {
+	if in.observing {
+		in.readInput = true
+	}
+	if value && in.offer != nil && in.offer.command.verb != "pick" {
+		in.offer.accepted = true
+	}
+	return value
+}
+func (in *input) pressedKey(b button) bool { return in.query(in.pressed[b]) }
+func (in *input) heldKey(b button) bool    { return in.query(in.held[b]) }
+func (in *input) clicked() bool            { return in.query(in.click) }
+func (in *input) rightClicked() bool       { return in.query(in.rclick) }
+func (in *input) pointerDown() bool        { return in.query(in.pdown) }
+func (in *input) pointerHeld() bool        { return in.query(in.pheld) }
+func (in *input) pointerUp() bool          { return in.query(in.pup) }
+func (in *input) number() int              { in.query(in.digit != 0); return in.digit }
+
+// receivePick is called at a control's activation path, after early returns.
+// Selection and confirmation happen together, never on a covered control.
+func (in *input) receivePick(target any) {
+	if o := in.offer; o != nil && o.command.verb == "pick" && !o.accepted && o.script.pick != nil {
+		o.target = target
+		o.script.pick(in, o.command.name)
+	}
+}
+
+func (in *input) finishOffer() {
+	o := in.offer
+	in.offer = nil
+	in.observing = false
+	in.idleRead = in.readInput
+	if o == nil {
+		return
+	}
+	if !o.offered {
+		return
+	}
+	in.idleRead = false
+	s := o.script
+	if o.accepted {
+		s.blocked = 0
+		return
+	}
+	limit, err := s.limit, s.err
+	*s = o.before
+	s.limit, s.err = limit, err
+	s.cmds[s.pc] = o.command
+	s.blocked++
+	if s.blocked > 6000 {
+		s.err = fmt.Errorf("script: %s timed out waiting for input acknowledgement", o.command.verb)
+	}
+}
+
+// receiveText acknowledges type only when a text receiver reaches its input path.
+func (in *input) receiveText() {
+	if o := in.offer; o != nil && o.command.verb == "type" && !o.accepted && o.script.typeText != nil {
+		o.script.typeText(o.command.arg)
+		o.accepted = true
+	}
+}
+
+// Save what was offered before a receiver can clear or mask the input fields.
+func (in *input) markOffer() {
+	if o := in.offer; o != nil {
+		o.offered = o.command.verb == "pick" || o.command.verb == "type" || in.click || in.pdown || in.pheld || in.pup || in.digit != 0 || in.shift
+		for b := range in.pressed {
+			o.offered = o.offered || in.pressed[b] || in.held[b]
+		}
+	}
 }

@@ -324,3 +324,20 @@ func TestWldDungeonMadeFloorBannerAndHunters(t *testing.T) {
 		t.Fatal("the hunting foe never appeared on its floor")
 	}
 }
+
+func TestDungeonExamineKeepsPreActionTiles(t *testing.T) {
+	g := wldMaze(t, "fx_maze", 1, 3, 1)
+	s := sysAs[*dungeonScene](t, g.stack[0])
+	tile := dungeon.Front(g.db, g.st).Tile
+	if tile == nil || len(tile.Do) == 0 {
+		t.Fatal("missing interaction fixture")
+	}
+	tile.Trigger, tile.Once = "bump", true
+	before := len(g.st.Done)
+	if !s.examine(g) || len(g.st.Done) != before+1 || len(s.keep) != before {
+		t.Fatal("examination lost the pre-action tile snapshot")
+	}
+	if s.examine(g) {
+		t.Fatal("completed once-only examination acted twice")
+	}
+}

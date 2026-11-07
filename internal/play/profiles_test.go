@@ -188,7 +188,18 @@ func TestProfilesF6(t *testing.T) {
 func profilesF6(t *testing.T, dev bool) {
 	t.Helper()
 	g := bookGame(t, Options{Location: "camp", Development: dev, Script: "wait 10\npress characters\nwait 5\nquit\n"}, "")
-	runToEnd(t, g)
+	if dev {
+		runToEnd(t, g)
+	} else {
+		for range 40 {
+			if err := g.Update(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if g.in.script.pc != 1 {
+			t.Fatal("disabled book key was acknowledged")
+		}
+	}
 	_, open := g.stack[len(g.stack)-1].(*profileScreen)
 	if open != dev {
 		t.Fatalf("dev %v: the book is open %v after F6", dev, open)

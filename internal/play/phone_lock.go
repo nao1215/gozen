@@ -56,9 +56,9 @@ func (g *Game) updatePhoneLock(p *phoneView) {
 	if p.calling() {
 		answer, decline := g.callButtons(p)
 		switch {
-		case in.ok() || in.click && answer.Dist(in.mouse) <= 40:
+		case in.ok() || answer.Dist(in.mouse) <= 40 && in.clicked():
 			p.putDown(-1, p.shown-1, false)
-		case in.click && decline.Dist(in.mouse) <= 40:
+		case decline.Dist(in.mouse) <= 40 && in.clicked():
 			if !p.declineCall() {
 				p.putDown(-1, -1, false)
 			}

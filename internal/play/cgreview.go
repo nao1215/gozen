@@ -403,14 +403,14 @@ func (r *cgReview) say(s string) { r.toast, r.toastT = s, 90 }
 func (r *cgReview) updateView(g *Game) {
 	in := &g.in
 	switch {
-	case in.digit > 0:
+	case in.inspect(in.digit > 0):
 		tags := g.db.Game.CGReview.Tags
 		if in.digit <= len(tags) {
-			r.toggle(g, tags[in.digit-1])
+			r.toggle(g, tags[in.number()-1])
 		}
-	case in.pressed[btnMemo] || in.pressed[btnNext]:
+	case in.pressedKey(btnMemo) || in.pressedKey(btnNext):
 		r.openBox(g)
-	case in.pressed[btnHide]:
+	case in.pressedKey(btnHide):
 		r.hide = !r.hide
 	case in.cancel():
 		r.viewing = false
@@ -422,7 +422,7 @@ func (r *cgReview) updateView(g *Game) {
 			g.sfx("cursor")
 			r.shown(g)
 		}
-	case in.ok() || in.click || in.right() || in.down():
+	case in.ok() || in.clicked() || in.right() || in.down():
 		r.next(g)
 	}
 }
@@ -547,17 +547,18 @@ func (r *cgReview) updateBox(g *Game) {
 		}
 		return
 	}
-	if in.digit > 0 {
+	in.receiveText()
+	if in.inspect(in.digit > 0) {
 		tags := g.db.Game.CGReview.Tags
 		if in.digit <= len(tags) {
-			r.toggle(g, tags[in.digit-1])
+			r.toggle(g, tags[in.number()-1])
 			if r.box != nil {
 				r.refreshBox(g)
 			}
 		}
 		return
 	}
-	if in.pressed[btnMemo] || in.pressed[btnNext] || in.pressed[btnTag] {
+	if in.pressedKey(btnMemo) || in.pressedKey(btnNext) || in.pressedKey(btnTag) {
 		r.box = nil
 		g.sfx("cancel")
 		return

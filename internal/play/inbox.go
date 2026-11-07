@@ -100,7 +100,8 @@ func (g *Game) updateInboxToast(s *authorScreen) bool {
 		s.inboxArmed = false
 		return false
 	}
-	open := g.in.pressed[btnInbox] || g.in.click && g.in.mouse.In(g.inboxToastRect()) || s.inboxArmed && g.in.ok()
+	g.in.receivePick(&s.inboxArmed)
+	open := g.in.pressedKey(btnInbox) || g.in.mouse.In(g.inboxToastRect()) && g.in.clicked() || s.inboxArmed && g.in.ok()
 	s.inboxArmed = false
 	if !open {
 		return false

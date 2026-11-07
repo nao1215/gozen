@@ -251,3 +251,28 @@ func TestBestiaryMenuLanguageAndOverrides(t *testing.T) {
 		})
 	}
 }
+
+func TestBestiaryLockedLineageOKRemainsPending(t *testing.T) {
+	g := ranchGame(t)
+	screen := newBestiary(g, nil)
+	screen.sel = slices.Index(screen.ids, "boss")
+	s := sysScript(t, "press ok")
+	s.acknowledge = true
+	for range 3 {
+		sysKey(g)
+		s.step(&g.in)
+		screen.update(g)
+		g.in.finishOffer()
+		if s.pc != 0 || screen.inTree {
+			t.Fatal("locked lineage acknowledged OK")
+		}
+	}
+	g.st.Vars["bestiary.boss.seen"] = true
+	sysKey(g)
+	s.step(&g.in)
+	screen.update(g)
+	g.in.finishOffer()
+	if s.pc != 1 || !screen.inTree {
+		t.Fatal("pending OK did not open the unlocked lineage")
+	}
+}

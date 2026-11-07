@@ -12,6 +12,7 @@ scenarios:
         do open: board
         wait 10
         pick Next phase
+        press ok
         pick Count
         wait 10
         snapshot
@@ -23,7 +24,7 @@ scenarios:
       exit_code: 0
       file:
         path: card.jsonl
-        contains: ['"counted":1']
+        contains: ['"counted":1', '"date":"2030-01-02"']
 - name: phone lines advance all messages and resume the event
   tags: [graphics]
   steps:
@@ -63,4 +64,27 @@ scenarios:
       exit_code: 0
       file:
         path: phone-sim.jsonl
+        contains: ['"chatted":1']
+- name: consecutive phone presses wait for typing and resume the event
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: phone-press.txt
+      content: |
+        wait 20
+        do open: board
+        wait 10
+        pick Chat
+        press ok
+        press ok
+        press ok
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script phone-press.txt --shots phone-press-shots --save-dir phone-press-saves --trace phone-press.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: phone-press.jsonl
         contains: ['"chatted":1']

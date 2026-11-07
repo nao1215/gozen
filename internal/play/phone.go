@@ -312,11 +312,11 @@ func (g *Game) updatePhone() bool {
 	}
 	in := &g.in
 	// The auto and skip keys work over the phone as over the lines.
-	if in.pressed[btnAuto] {
+	if in.pressedKey(btnAuto) {
 		g.autoRead = !g.autoRead
 		return false
 	}
-	if in.pressed[btnSkip] {
+	if g.canToggleSkip() && in.pressedKey(btnSkip) {
 		g.toggleSkip()
 		return false
 	}

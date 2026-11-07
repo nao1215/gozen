@@ -184,7 +184,7 @@ func (s *galleryScreen) updateCheckModal(g *Game) bool {
 	}
 	chose, cancel := c.box.update(g)
 	switch {
-	case cancel || g.in.pressed[btnTag]:
+	case cancel || g.in.pressedKey(btnTag):
 		c.box = nil
 		g.sfx("cancel")
 	case chose:
@@ -203,7 +203,7 @@ func (s *galleryScreen) updateCheckModal(g *Game) bool {
 
 func (s *galleryScreen) updateCheck(g *Game) {
 	c := s.check
-	if g.in.pressed[btnNext] {
+	if g.in.pressedKey(btnNext) {
 		c.onlyTodo = !c.onlyTodo
 		g.sfx("cursor")
 		s.buildCheck(g)
@@ -213,11 +213,11 @@ func (s *galleryScreen) updateCheck(g *Game) {
 	if s.menu.sel < len(c.rows) {
 		cur = c.rows[s.menu.sel]
 	}
-	if g.in.pressed[btnTag] && cur >= 0 {
+	if cur >= 0 && g.in.pressedKey(btnTag) {
 		s.openVerdict(g, cur)
 		return
 	}
-	chose, _ := s.menu.update(g)
+	chose := s.menu.updateChoice(g)
 	if !chose || cur < 0 || s.menu.sel >= len(c.rows) || c.rows[s.menu.sel] < 0 {
 		return
 	}

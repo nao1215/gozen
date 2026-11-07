@@ -320,7 +320,7 @@ func (s *galleryScreen) update(g *Game) {
 			g.sfx("cancel")
 			return
 		}
-		if chose, _ := s.scenePages.update(g); chose {
+		if chose := s.scenePages.updateChoice(g); chose {
 			sc := g.db.Game.Gallery.Scenes[s.menu.sel]
 			page := s.scenePages.sel
 			s.scenePages = nil
@@ -347,7 +347,7 @@ func (s *galleryScreen) update(g *Game) {
 	if s.view != "" {
 
 		back, fwd := false, false
-		if g.in.click && len(s.pages) > 1 {
+		if len(s.pages) > 1 && g.in.inspect(g.in.click) {
 			r := s.pageLabelRect(g)
 			if g.in.mouse.In(r) {
 				back = g.in.mouse.X < (r.Min.X+r.Max.X)/2
@@ -356,24 +356,24 @@ func (s *galleryScreen) update(g *Game) {
 		}
 		switch {
 		case back && s.page == 0, fwd && s.page+1 >= len(s.pages):
-		case (g.in.left() || back) && s.page > 0:
+		case s.page > 0 && (g.in.left() || g.in.query(back)):
 			s.page--
 			s.view = s.pages[s.page]
 			g.sfx("cursor")
-		case (g.in.ok() || g.in.click || g.in.right()) && s.page+1 < len(s.pages):
+		case s.page+1 < len(s.pages) && (g.in.ok() || g.in.clicked() || g.in.right()):
 
 			s.page++
 			s.view = s.pages[s.page]
 			g.sfx("cursor")
-		case g.in.left() || g.in.right():
-		case g.in.ok() || g.in.cancel() || g.in.click:
+		case g.in.inspect(g.in.pressed[btnLeft] || g.in.pressed[btnRight]):
+		case g.in.ok() || g.in.cancel() || g.in.clicked():
 			s.view, s.pages, s.page = "", nil, 0
 			g.sfx("cancel")
 		}
 		return
 	}
 	clickTab := -1
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, id := range s.tabIDs(g) {
 			if g.in.mouse.In(tabRect(i)) {
 				clickTab = id
@@ -387,6 +387,7 @@ func (s *galleryScreen) update(g *Game) {
 		n := len(ids)
 		switch {
 		case clickTab >= 0:
+			g.in.query(true)
 			s.tab = clickTab
 		case g.in.left():
 			s.tab = ids[(at+n-1)%n]
@@ -422,12 +423,12 @@ func (s *galleryScreen) update(g *Game) {
 		s.updateCheck(g)
 		return
 	}
-	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() && g.in.pressed[btnNext] {
+	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() && g.in.pressedKey(btnNext) {
 		g.sfx("decide")
 		g.push(newCGReview(g))
 		return
 	}
-	chose, _ := s.menu.update(g)
+	chose := s.menu.updateChoice(g)
 	if !chose || len(s.menu.items) == 0 || s.menu.items[s.menu.sel].disabled {
 		return
 	}

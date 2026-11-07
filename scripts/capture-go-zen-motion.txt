@@ -59,6 +59,7 @@ wait 5
 shot full_24
 wait 5
 battle-hp enemy 0 125
-press auto
+# The play command enables battle automation; Auto is a dialogue control.
+wait 8
 play motion 5
 quit

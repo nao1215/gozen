@@ -176,7 +176,7 @@ func (s *sortieScene) update(g *Game) {
 		s.cursor = (s.cursor + 1) % n
 		s.follow(g)
 		g.sfx("cursor")
-	case (in.left() || in.right()) && s.cursor < len(s.all) && slices.Contains(s.picked, s.all[s.cursor]):
+	case s.cursor < len(s.all) && slices.Contains(s.picked, s.all[s.cursor]) && (in.left() || in.right()):
 		step := 1
 		if in.left() {
 			step = -1
@@ -198,7 +198,7 @@ func (s *sortieScene) update(g *Game) {
 		}
 		return
 	}
-	if !in.click {
+	if !in.inspect(in.click) {
 		return
 	}
 	mx, my := float64(in.mouse.X), float64(in.mouse.Y)
@@ -206,6 +206,7 @@ func (s *sortieScene) update(g *Game) {
 	for i := first; i < last; i++ {
 		id := s.all[i]
 		if x, y, w, h := s.rowBox(g, i); inBox(mx, my, x, y, w, h) {
+			in.query(true)
 			s.cursor = i
 			s.toggle(g, id)
 			return
@@ -216,6 +217,7 @@ func (s *sortieScene) update(g *Game) {
 		if !inBox(mx, my, x, y, w, h) || k >= len(s.picked) {
 			continue
 		}
+		in.query(true)
 		id := s.picked[k]
 		switch {
 		case my > y+h-58 && mx < x+w/3: // the tactic's arrows
@@ -234,6 +236,7 @@ func (s *sortieScene) update(g *Game) {
 	}
 	for i := range 2 {
 		if x, y, w, h := s.buttonBox(g, i); inBox(mx, my, x, y, w, h) {
+			in.query(true)
 			if i == 0 && len(s.picked) == 0 {
 				g.sfx("buzzer")
 				return

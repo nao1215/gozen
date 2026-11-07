@@ -131,10 +131,10 @@ func (s *authorScreen) syncRing(i int) {
 }
 
 // rotateRing turns the carousel by d and moves the focus onto its middle.
-func (s *authorScreen) rotateRing(d int, actions []int) {
+func (s *authorScreen) rotateRing(d int, actions []int) bool {
 	members := s.ringMembers()
 	if len(members) == 0 || d == 0 {
-		return
+		return false
 	}
 	s.ringAt = ((s.ringAt+d)%len(members) + len(members)) % len(members)
 	s.ringAnim = float64(d)
@@ -143,6 +143,7 @@ func (s *authorScreen) rotateRing(d int, actions []int) {
 			s.focus = j
 		}
 	}
+	return true
 }
 
 // ringSkipped reports whether a focus stop is a carousel member off the middle:
@@ -242,23 +243,23 @@ func (s *authorScreen) updateCarousel(g *Game, actions []int) bool {
 	if math.Abs(s.ringAnim) < .02 {
 		s.ringAnim = 0
 	}
-	if g.in.left() {
-		s.rotateRing(-1, actions)
+	if g.in.inspect(g.in.pressed[btnLeft]) {
+		g.in.query(s.rotateRing(-1, actions))
 		s.keyed = true
 		return true
 	}
-	if g.in.right() {
-		s.rotateRing(1, actions)
+	if g.in.inspect(g.in.pressed[btnRight]) {
+		g.in.query(s.rotateRing(1, actions))
 		s.keyed = true
 		return true
 	}
-	if !g.in.click {
+	if !g.in.inspect(g.in.click) {
 		return false
 	}
 	band, boxes, arrows := s.carouselLayout()
 	for k, a := range arrows {
 		if g.in.mouse.In(a) {
-			s.rotateRing(2*k-1, actions)
+			g.in.query(s.rotateRing(2*k-1, actions))
 			return true
 		}
 	}
@@ -267,17 +268,16 @@ func (s *authorScreen) updateCarousel(g *Game, actions []int) bool {
 			continue
 		}
 		if box.step != 0 {
-			s.rotateRing(box.step, actions)
+			g.in.query(s.rotateRing(box.step, actions))
 			return true
 		}
-		s.rotateRing(0, actions)
 		for j, i := range actions {
 			if i == box.member {
 				s.focus = j
 			}
 		}
 		s.list.sel = box.member
-		s.activate(g)
+		g.in.query(s.activate(g))
 		return true
 	}
 	// The band itself is not a control: a click on its empty part does nothing.

@@ -67,6 +67,7 @@ func (g *Game) updateLoadNotice() bool {
 		n.list.rowH, n.list.size = 40, sizeS
 		return true
 	}
+	g.in.observing = true
 	ok, cancel := n.list.update(g)
 	if ok || cancel {
 		g.loadNotice = nil

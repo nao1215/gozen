@@ -121,7 +121,7 @@ func (s *shop) updateCount(g *Game) {
 	old := s.count
 
 	minus, plus, box := s.countRects(g)
-	click := g.in.click && g.in.mouse.In(box)
+	click := g.in.mouse.In(box) && g.in.clicked()
 	if g.in.up() || g.in.right() || (click && g.in.mouse.In(plus)) {
 		s.count = min(most, s.count+1)
 	}

@@ -1055,9 +1055,10 @@ func (w *streamWatch) input(g *Game) {
 	if w.typing {
 		// the keys that were text are not Enter or Escape; the send button is pressed even
 		// while a phone's keyboard still composes (sending confirms it)
+		in.receiveText()
 		typed := in.devices() && w.field.readTyping()
 		// a pad's buttons are no text, a composition going on or not
-		send := !in.devices() && in.pressed[btnOK] || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
+		send := !in.devices() && in.pressedKey(btnOK) || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
 		right := lay.colX + lay.colW
 		sent := g.clickedIn(right-150, sh-62, 64, 44)
 		switch {
@@ -1070,7 +1071,7 @@ func (w *streamWatch) input(g *Game) {
 			w.field.composer.Cancel()
 			w.typing = false
 		}
-		if x, y, cw, ch := w.controlRect(g, [2]int{int(ctlComment), 0}); sent || g.clickedIn(x, y, cw, ch) || !in.click || in.swiped || !w.typing {
+		if x, y, cw, ch := w.controlRect(g, [2]int{int(ctlComment), 0}); sent || in.swiped || !w.typing || g.clickedIn(x, y, cw, ch) || !in.clicked() {
 			return
 		}
 		// a click elsewhere, the read-aloud button too, stops typing (the text stays in the
@@ -1123,14 +1124,14 @@ func (w *streamWatch) input(g *Game) {
 		}
 	}
 	switch {
-	case in.pressed[btnNext]:
+	case in.pressedKey(btnNext):
 		w.typing = true
-	case in.pressed[btnHide]:
+	case in.pressedKey(btnHide):
 		g.toggleStreamFull()
-	case in.pressed[btnCaptions]:
+	case in.pressedKey(btnCaptions):
 		g.toggleStreamCaptions()
-	case in.digit > 0 && w.ask != nil && w.mine < 0:
-		w.choose(g, in.digit-1)
+	case w.ask != nil && w.mine < 0 && in.digit <= len(w.ask.Options) && in.number() > 0:
+		w.choose(g, in.number()-1)
 	case in.up():
 		w.focus = (w.focus + len(ctl) - 1) % len(ctl)
 		g.sfx("cursor")
@@ -1174,6 +1175,7 @@ func (w *streamWatch) scrollChat(g *Game) {
 func (w *streamWatch) updateTips(g *Game) {
 	in := &g.in
 	tips := g.db.Streams.Tips
+	in.receiveText()
 	typed := in.devices() && w.field.readTyping()
 	pay := func(i int) {
 		if g.st.Gold < tips[i] {
@@ -1207,7 +1209,7 @@ func (w *streamWatch) updateTips(g *Game) {
 		w.tipAt = (w.tipAt + 1) % len(tips)
 	case in.ok():
 		pay(w.tipAt)
-	case in.cancel() && !inpututil.IsKeyJustPressed(ebiten.KeyBackspace) || in.click && !g.clickedIn(fx, fy, fw, fh):
+	case !inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && in.cancel() || !inBox(float64(in.mouse.X), float64(in.mouse.Y), fx, fy, fw, fh) && in.clicked():
 		// Backspace deletes in the field, and a click on it stays
 		w.field.composer.Confirm()
 		w.tips = false

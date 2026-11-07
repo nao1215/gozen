@@ -100,20 +100,21 @@ func (s *authorScreen) updateCalendar(g *Game) bool {
 		delta = 1
 	}
 	w, _ := g.screen()
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, r := range calendarButtons(w) {
 			if g.in.mouse.In(r) {
+				g.in.query(true)
 				delta = i*2 - 1
 			}
 		}
 	}
 	if delta == 0 {
-		if g.in.click {
+		if g.in.inspect(g.in.click) {
 			_, h := g.screen()
 			v := g.db.Game.Screens[s.name].View
 			for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
 				if g.in.mouse.In(cell.bounds) {
-					return s.openCalendarDate(g, cell.date)
+					return g.in.query(s.openCalendarDate(g, cell.date))
 				}
 			}
 		}

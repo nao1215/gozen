@@ -19,12 +19,17 @@ func (g *Game) skipPasses(s event.Say) bool {
 	return s.Text == "" || g.cfg.SkipAll || g.isRead(s)
 }
 
+// canToggleSkip allows stopping skip even when a choice is waiting.
+func (g *Game) canToggleSkip() bool {
+	return g.skipping || g.talk.choice == nil && (g.phone == nil || !g.phone.asks())
+}
+
 func (g *Game) toggleSkip() {
 	if g.skipping {
 		g.stopSkip("button")
 		return
 	}
-	if g.talk.choice != nil || g.phone != nil && g.phone.asks() {
+	if !g.canToggleSkip() {
 		return // a choice is waiting for the player; skipping would stop here at once
 	}
 	g.skipping = true

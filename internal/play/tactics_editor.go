@@ -239,14 +239,15 @@ func (e *tacticEditor) update(g *Game) {
 		}
 		return
 	}
-	if g.in.pressed[btnLog] {
+	if g.in.pressedKey(btnLog) {
 		g.push(newTacticText(g, e.description(g)))
 		return
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for f, l := range []*list{e.fields, e.options} {
 			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
 				if g.in.mouse.In(l.rowRect(i)) {
+					g.in.query(true)
 					e.choosing = f == 1
 				}
 			}
@@ -256,13 +257,13 @@ func (e *tacticEditor) update(g *Game) {
 		e.choosing = false
 		return
 	}
-	if g.in.right() && e.field(g) <= tacticAction && !e.fields.items[e.fields.sel].disabled {
+	if e.field(g) <= tacticAction && !e.fields.items[e.fields.sel].disabled && g.in.right() {
 		e.choosing = true
 		return
 	}
 	if !e.choosing {
 		old := e.fields.sel
-		chosen, _ := e.fields.update(g)
+		chosen := e.fields.updateChoice(g)
 		if e.fields.sel != old {
 			e.refresh(g)
 		}
@@ -280,7 +281,7 @@ func (e *tacticEditor) update(g *Game) {
 		}
 		return
 	}
-	chosen, _ := e.options.update(g)
+	chosen := e.options.updateChoice(g)
 	if !chosen {
 		return
 	}
@@ -339,7 +340,7 @@ func newTacticText(g *Game, text string) *tacticText {
 func (s *tacticText) overlay() bool { return true }
 func (s *tacticText) update(g *Game) {
 	chosen, cancel := s.lines.update(g)
-	if chosen || cancel || g.in.pressed[btnLog] {
+	if chosen || cancel || g.in.pressedKey(btnLog) {
 		g.pop()
 	}
 }

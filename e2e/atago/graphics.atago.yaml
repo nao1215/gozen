@@ -634,7 +634,7 @@ scenarios:
         do open: calendar
         wait 30
         shot calendar
-        press right
+        # This compact calendar has no month-navigation control.
         wait 20
         press x
         wait 20

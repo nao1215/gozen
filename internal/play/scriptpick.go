@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -22,6 +23,8 @@ type pickable struct {
 	picture  string // the bust picture and dot shown on the control, as the player sees them
 	disabled bool
 	selectIt func()
+	target   any
+	focus    int // keyboard stop for an authored surface; independent of auxiliary controls
 }
 
 // scriptPickables lists the controls of what is on top: a confirmation, the
@@ -34,8 +37,8 @@ func (g *Game) scriptPickables() (kind string, items []pickable) {
 	top := g.stack[len(g.stack)-1]
 	if c, ok := top.(*confirm); ok {
 		return "confirm", []pickable{
-			{label: lang.T("はい"), selectIt: func() { c.no = false }},
-			{label: lang.T("いいえ"), selectIt: func() { c.no = true }},
+			{target: c, label: lang.T("はい"), selectIt: func() { c.no = false }},
+			{target: c, label: lang.T("いいえ"), selectIt: func() { c.no = true }},
 		}
 	}
 	if g.talk.active {
@@ -66,7 +69,7 @@ func listPickables(l *list) []pickable {
 		if it.heading {
 			continue
 		}
-		out = append(out, pickable{label: it.label, disabled: it.disabled, selectIt: func() { l.sel = i }})
+		out = append(out, pickable{target: l, label: it.label, disabled: it.disabled, selectIt: func() { l.sel = i }})
 	}
 	return out
 }
@@ -98,18 +101,25 @@ func (s *authorScreen) pickables(g *Game) []pickable {
 		if d := s.entries[i].Dot; d != "" {
 			picture = strings.TrimSpace(picture + " " + d)
 		}
-		out = append(out, pickable{label: label, detail: s.entries[i].Text, picture: picture, disabled: disabled, selectIt: func() { s.focus = j; s.syncRing(i) }})
+		out = append(out, pickable{target: s, focus: j, label: label, detail: s.entries[i].Text, picture: picture, disabled: disabled, selectIt: func() { s.focus = j; s.syncRing(i) }})
 	}
 	if g.inboxSurface() == s {
 		_, name := g.actorFacePath(g.st.Inbox[0].Who)
-		out = append(out, pickable{label: lang.T("通知") + ": " + name, detail: g.st.Inbox[0].Text, selectIt: func() { s.inboxArmed = true }})
+		out = append(out, pickable{target: &s.inboxArmed, label: lang.T("通知") + ": " + name, detail: g.st.Inbox[0].Text, selectIt: func() { s.inboxArmed = true }})
 	}
 	ids, _ := s.surfaceTargets(g)
+	if def.Kind == "entities" && def.View.Detail != "" {
+		ids = s.tableResidents(g)
+	}
 	for k, id := range ids {
-		out = append(out, pickable{label: "@" + id, selectIt: func() { s.focus = len(actions) + k }})
+		out = append(out, pickable{target: s, focus: len(actions) + k, label: "@" + id, selectIt: func() { s.focus = len(actions) + k }})
+	}
+	rowCount := len(ids)
+	if def.Kind == "entities" {
+		rowCount = len(s.tableResidents(g))
 	}
 	for k, st := range s.flowStops(g) {
-		out = append(out, pickable{label: st.label, disabled: !st.enabled, selectIt: func() { s.focus = len(actions) + len(ids) + k }})
+		out = append(out, pickable{target: s, focus: len(actions) + rowCount + k, label: st.label, disabled: !st.enabled, selectIt: func() { s.focus = len(actions) + rowCount + k }})
 	}
 	return out
 }
@@ -118,6 +128,15 @@ func (s *authorScreen) pickables(g *Game) []pickable {
 // presses OK. A label equal to text wins over one that only contains it.
 func (g *Game) scriptPick(in *input, text string) error {
 	kind, items := g.scriptPickables()
+	if o := in.offer; o != nil {
+		receives := false
+		for _, it := range items {
+			receives = receives || it.target == o.target
+		}
+		if !receives {
+			return nil
+		}
+	}
 	found := -1
 	for i, it := range items {
 		if it.disabled {
@@ -138,8 +157,26 @@ func (g *Game) scriptPick(in *input, text string) error {
 		}
 		return fmt.Errorf("pick %q: no enabled control on %q among %q", text, kind, labels)
 	}
+	if surface, ok := items[found].target.(*authorScreen); ok && g.guideOn(surface) {
+		if step := g.guideStep(surface); step != nil {
+			// Use the keyboard stop, excluding auxiliary controls such as the inbox.
+			if !slices.Contains(surface.guideStops(g, step), items[found].focus) {
+				return nil
+			}
+		}
+	}
+	if in.offer != nil {
+		if items[found].target != in.offer.target {
+			return nil
+		}
+		in.offer.accepted = true
+	}
 	items[found].selectIt()
 	in.pressed[btnOK] = true
+	if in.offer != nil {
+		// The receiver resolved this pick after Update's ordinary input trace.
+		g.traceInput()
+	}
 	return nil
 }
 
@@ -215,31 +252,15 @@ func (s *authorScreen) lookParts(g *Game, line traceLine) {
 	}
 }
 
-// scriptReady keeps input and state observations pending while presentation
-// prevents the receiving screen from updating. Explicit waits and shots still run.
+// Observations wait for a tick in which the foreground queried input without
+// receiving an action. They do not predict any screen's animation or event gates.
 func (g *Game) scriptReady(verb string) bool {
-	switch verb {
-	case "look", "snapshot", "pick", "press", "hold", "click", "drag", "read", "lines", "play", "until", "walk", "face", "type":
-		if g.fadeT > 0 || g.turn != nil || g.turnKey() != g.turnSeen {
-			return false
-		}
-		if len(g.stack) > 0 {
-			switch s := g.stack[len(g.stack)-1].(type) {
-			case *ending:
-				return s.ready()
-			case *gameOver:
-				return s.ready()
-			}
-		}
-		if g.phone != nil {
-			// The phone receives input while its parent screen waits for it.
-			// Picking a screen control must wait until the phone is closed.
-			return verb != "pick" && g.phone.ready()
-		}
+	// Run-only date cards must never receive commands intended for the screen.
+	if g.turn != nil {
+		return false
 	}
-	if verb == "pick" || verb == "look" || verb == "snapshot" {
-		kind, _ := g.scriptPickables()
-		return kind != "busy" && (verb != "pick" || kind != "talk")
+	if verb == "look" || verb == "snapshot" {
+		return g.in.idleRead
 	}
 	return true
 }
