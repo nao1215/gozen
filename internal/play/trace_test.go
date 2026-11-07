@@ -1295,6 +1295,101 @@ func TestTraceStartupFocusPause(t *testing.T) {
 	}
 }
 
+// assertTraceTicks checks every written record, including observations and end.
+func assertTraceTicks(t *testing.T, b []byte) {
+	t.Helper()
+	previous := 0
+	for line := range bytes.Lines(b) {
+		var record traceLine
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatal(err)
+		}
+		tick := int(num(record["tick"]))
+		if tick < previous {
+			t.Fatalf("decreasing tick %d after %d: %s", tick, previous, line)
+		}
+		previous = tick
+	}
+}
+
+func TestTraceMonotonicTicks(t *testing.T) {
+	var buf bytes.Buffer
+	g := &Game{tr: newTracer(&buf), tick: 7}
+	g.emit("snapshot", nil)
+	g.emit("memo_open", traceLine{"tick": 6})
+	g.tick = 6
+	g.emit("memo", nil)
+	g.tick = 8
+	g.emit("snapshot", nil)
+	assertTraceTicks(t, buf.Bytes())
+	for i, record := range traceLines(t, buf.Bytes(), "snapshot", "memo_open", "memo") {
+		if want := []int{7, 7, 7, 8}[i]; int(num(record["tick"])) != want {
+			t.Fatalf("record %d: %v, want tick %d", i, record, want)
+		}
+	}
+}
+
+func TestTraceScriptBeforeMemo(t *testing.T) {
+	for _, command := range []string{"guides off", "snapshot"} {
+		t.Run(command, func(t *testing.T) {
+			var buf bytes.Buffer
+			fsys := gameFiles(t)
+			g := wldOpenWith(t, Options{
+				FS: fsys, Location: "camp", Seed: 7,
+				Trace: &buf, MemoDir: t.TempDir(), NoSound: true, Store: savefile.MemStore(),
+				Script: "wait 5\n" + command + "\npress memo\nwait 10\n",
+			})
+			for range 4 {
+				if err := g.Update(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want, err := json.Marshal(g.traceSummary())
+			if err != nil {
+				t.Fatal(err)
+			}
+			for range 10 {
+				if err := g.Update(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if g.memo == nil {
+				t.Fatal("memo did not open")
+			}
+			g.traceEnd()
+			assertTraceTicks(t, buf.Bytes())
+			markers := traceLines(t, buf.Bytes(), "memo_open")
+			if len(markers) != 1 {
+				t.Fatalf("memo boundaries: %v", markers)
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := loadReplay(path, &Options{Until: 5}); err != nil {
+				t.Fatal(err)
+			}
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			r := wldOpenWith(t, Options{FS: fsys, Replay: path, Until: 5, NoSound: true, Store: savefile.MemStore()})
+			for range 4 {
+				if err := r.Update(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			r.traceEnd()
+			got, err := json.Marshal(r.traceSummary())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, want) || r.rep.diverge != "" || !r.rep.finished {
+				t.Fatalf("earlier target: %s; got %s, want %s", r.rep.report(), got, want)
+			}
+		})
+	}
+}
+
 // Every Update path shares the trace stream contract, including early returns
 // and overlays that consume input before the scene sees it.
 func TestTraceUpdateInputProperties(t *testing.T) {
@@ -1386,7 +1481,7 @@ func TestTraceUpdateInputProperties(t *testing.T) {
 					t.Fatal("phone input was not consumed")
 				}
 				g.traceEnd()
-				previous := 0
+				assertTraceTicks(t, buf.Bytes())
 				inputs := map[int]bool{}
 				for line := range bytes.Lines(buf.Bytes()) {
 					var record traceLine
@@ -1394,10 +1489,6 @@ func TestTraceUpdateInputProperties(t *testing.T) {
 						t.Fatal(err)
 					}
 					tick := int(num(record["tick"]))
-					if tick < previous {
-						t.Fatalf("decreasing tick %d after %d: %s", tick, previous, line)
-					}
-					previous = tick
 					if record["t"] == "input" {
 						if inputs[tick] {
 							t.Fatalf("duplicate input at tick %d", tick)

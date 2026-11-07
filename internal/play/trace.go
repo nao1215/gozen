@@ -43,6 +43,7 @@ type tracer struct {
 	viewport  traceViewport
 	enc       *lineWriter
 	lines     int
+	lastTick  int
 	err       error
 
 	scenes string
@@ -164,6 +165,10 @@ func (g *Game) emit(kind string, fields traceLine) {
 	}
 	line := traceLine{"t": kind, "tick": g.tick}
 	maps.Copy(line, fields)
+	// Editors can freeze the simulation after this update has emitted actions.
+	// Keep their boundary and subsequent observations at the latest record tick.
+	g.tr.lastTick = max(g.tr.lastTick, int(num(line["tick"])))
+	line["tick"] = g.tr.lastTick
 	g.tr.lines++
 	if g.tr.enc != nil && g.tr.err == nil {
 		g.tr.err = g.tr.enc.Encode(line)
