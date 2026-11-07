@@ -9,6 +9,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"image"
 	"io"
 	"os"
 	"path/filepath"
@@ -67,7 +68,7 @@ func TestTraceButtonsRoundTrip(t *testing.T) {
 				}
 				g.traceInput(&want)
 				path := filepath.Join(t.TempDir(), "trace.jsonl")
-				data := append([]byte(`{"t":"start","tick":0,"version":1,"exact_version":1}`+"\n"), buf.Bytes()...)
+				data := append([]byte(`{"t":"start","tick":0,"version":1,"exact_version":2}`+"\n"), buf.Bytes()...)
 				data = append(data, []byte(`{"t":"end","tick":2}`+"\n")...)
 				if err := os.WriteFile(path, data, 0o600); err != nil {
 					t.Fatal(err)
@@ -94,7 +95,7 @@ func TestReplayRejectsEmptyButtonNames(t *testing.T) {
 	for _, field := range []string{"press", "held"} {
 		t.Run(field, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "old.jsonl")
-			data := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1,\"exact_version\":1}\n{\"t\":\"input\",\"tick\":1,%q:[\"\"]}\n{\"t\":\"end\",\"tick\":2}\n", field)
+			data := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1,\"exact_version\":2}\n{\"t\":\"input\",\"tick\":1,%q:[\"\"]}\n{\"t\":\"end\",\"tick\":2}\n", field)
 			if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -711,7 +712,7 @@ func TestTraceRestoresPresentationSettings(t *testing.T) {
 
 func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "trace.jsonl")
-	trace := `{"t":"start","tick":0,"exact_version":1,"version":1,"seed":7}
+	trace := `{"t":"start","tick":0,"exact_version":2,"version":1,"seed":7}
 {"t":"act","tick":3,"name":"window","args":{"width":960,"height":540}}
 {"t":"end","tick":5}
 `
@@ -780,7 +781,7 @@ func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
 	for _, kind := range append(sortedKeys(inexactReplayKinds), "future_kind") {
 		t.Run(kind, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "trace.jsonl")
-			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"exact_version\":1,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
+			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"exact_version\":2,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
 			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -1098,7 +1099,7 @@ func TestTraceResourcesRejectChangedInputs(t *testing.T) {
 }
 
 func TestExactReplayRequiresSourceAuditRevision(t *testing.T) {
-	for _, revision := range []int{0, 2} {
+	for _, revision := range []int{0, 1, 3} {
 		var exact ExactReplay
 		err := exact.Check("start", 0, fmt.Appendf(nil, `{"exact_version":%d}`, revision))
 		if err == nil || !strings.Contains(err.Error(), "record again") {
@@ -1665,5 +1666,134 @@ func TestReplayPickWaitsForReceiver(t *testing.T) {
 	g.replayPick(menu)
 	if g.failure == nil || menu.sel != 0 || g.in.pressed[btnOK] {
 		t.Fatal("disabled replay target accepted")
+	}
+}
+
+// Exercise the JSON boundary, including an empty following tick.
+func TestTracePointerRoundTrip(t *testing.T) {
+	for _, want := range []input{
+		{mouse: image.Pt(23, 45), moved: true},
+		// Returning from touch to a parked mouse changes coordinates without movement.
+		{mouse: image.Pt(23, 45)},
+		{mouse: image.Pt(23, 45), wheel: -0.125},
+		{mouse: image.Pt(23, 45), wheel: 2.75},
+		{mouse: image.Pt(23, 45), click: true, pdown: true},
+		{mouse: image.Pt(23, 45), rclick: true},
+		{mouse: image.Pt(23, 45), pdown: true, pheld: true},
+		{mouse: image.Pt(23, 45), pheld: true},
+		{mouse: image.Pt(23, 45), pup: true},
+		{mouse: image.Pt(23, 45), click: true, moved: true, pup: true},
+		{mouse: image.Pt(23, 45), longPress: true},
+		{fast: true, esc: true, shift: true, digit: 10},
+	} {
+		var buf bytes.Buffer
+		g := &Game{tr: newTracer(&buf), tick: 1}
+		g.traceInput(&want)
+		var line traceLine
+		if err := json.Unmarshal(buf.Bytes(), &line); err != nil {
+			t.Fatal(err)
+		}
+		r := &replay{inputs: map[int]traceLine{1: line}}
+		var got input
+		r.feed(&got, 1)
+		if got.mouse != want.mouse || got.moved != want.moved || got.click != want.click || got.rclick != want.rclick || got.pdown != want.pdown || got.pheld != want.pheld || got.pup != want.pup || got.longPress != want.longPress || got.wheel != want.wheel || got.fast != want.fast || got.esc != want.esc || got.shift != want.shift || got.digit != want.digit {
+			t.Fatalf("round trip: got %+v, want %+v", got, want)
+		}
+		if want.longPress && !got.openList() {
+			t.Fatal("touch long press did not open the list")
+		}
+		r.feed(&got, 2)
+		// Coordinates persist, but all event flags must clear.
+		got.mouse, got.longUsed = image.Point{}, false
+		if got.moved || got.click || got.rclick || got.pdown || got.pheld || got.pup || got.longPress || got.wheel != 0 || got.fast || got.esc || got.shift || got.digit != 0 {
+			t.Fatalf("stale input: %+v", got)
+		}
+	}
+}
+
+func TestTraceParkedPointerConfirmation(t *testing.T) {
+	for _, edge := range []string{"wheel", "held", "release"} {
+		t.Run(edge, func(t *testing.T) {
+			var buf bytes.Buffer
+			original := storyGame(t, Options{}, "schema_version: 4\n")
+			original.tr = newTracer(&buf)
+			result := ""
+			c := newConfirm("Continue?", func() { result = "yes" })
+			c.onNo = func() { result = "no" }
+			c.age = 6
+			original.push(c)
+			_, _, _, _, yes, _ := c.layout(original)
+			at := yes.Min.Add(image.Pt(1, 1))
+			inputs := []input{{mouse: at, moved: true}, {mouse: at}, {mouse: at}, {mouse: at}}
+			inputs[1].pressed[btnRight] = true
+			switch edge {
+			case "wheel":
+				inputs[2].wheel = -0.5
+			case "held":
+				inputs[2].pheld = true
+			case "release":
+				inputs[2].pup = true
+			}
+			inputs[3].pressed[btnOK] = true
+			for i, in := range inputs {
+				original.tick = i + 1
+				original.traceInput(&in)
+				original.in = in
+				c.update(original)
+			}
+			if result != "no" {
+				t.Fatalf("original chose %q", result)
+			}
+			r := &replay{inputs: make(map[int]traceLine)}
+			dec := json.NewDecoder(&buf)
+			for dec.More() {
+				var line traceLine
+				if err := dec.Decode(&line); err != nil {
+					t.Fatal(err)
+				}
+				if line["t"] == "input" {
+					r.inputs[int(num(line["tick"]))] = line
+				}
+			}
+			if err := original.Close(); err != nil {
+				t.Fatal(err)
+			}
+			restored := storyGame(t, Options{}, "schema_version: 4\n")
+			result = ""
+			c = newConfirm("Continue?", func() { result = "yes" })
+			c.onNo = func() { result = "no" }
+			c.age = 6
+			restored.push(c)
+			for tick := 1; tick <= len(inputs); tick++ {
+				r.feed(&restored.in, tick)
+				c.update(restored)
+			}
+			if result != "no" {
+				t.Fatalf("replay chose %q", result)
+			}
+		})
+	}
+}
+
+func TestReplayLegacyPointerRequiresNewRecording(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.jsonl")
+	data := fmt.Sprintf(`{"t":"start","tick":0,"version":%d,"exact_version":1,"setup":{}}
+{"t":"input","tick":1,"mouse":[10,20],"wheel":-0.5}
+{"t":"end","tick":2,"lines":3,"state":{}}
+`, traceVersion)
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 2}); err == nil || !strings.Contains(err.Error(), "record again") {
+		t.Fatalf("ambiguous legacy input accepted for exact reproduction: %v", err)
+	}
+	r, err := loadReplay(path, &Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var in input
+	r.feed(&in, 1)
+	if !in.moved || in.mouse != image.Pt(10, 20) || in.wheel != -0.5 {
+		t.Fatalf("legacy ordinary replay changed: %+v", in)
 	}
 }

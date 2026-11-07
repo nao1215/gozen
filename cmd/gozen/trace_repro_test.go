@@ -22,7 +22,7 @@ import (
 func reproFixture(t *testing.T) string {
 	t.Helper()
 	return traceFile(t,
-		`{"t":"start","tick":0,"exact_version":1,"version":2,"game_dir":"fixture game","seed":18446744073709551615,"event":"intro","flags":["ready"],"setup":{"saves":{},"save_data":{}}}`,
+		`{"t":"start","tick":0,"exact_version":2,"version":2,"game_dir":"fixture game","seed":18446744073709551615,"event":"intro","flags":["ready"],"setup":{"saves":{},"save_data":{}}}`,
 		`{"t":"input","tick":1,"press":["ok"]}`,
 		`{"t":"shot","tick":60,"file":"shots/first.png"}`,
 		`{"t":"view","tick":90,"shot":"shots/view.png"}`,
@@ -115,10 +115,10 @@ func TestReproCommandAndBundle(t *testing.T) {
 
 func TestReproMissingPrerequisites(t *testing.T) {
 	for _, start := range []string{
-		`{"t":"start","tick":0,"exact_version":1,"seed":1}`,
-		`{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":0}`,
-		`{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":1,"setup":{"saves":{"save1.json":"abc"}}}`,
-		`{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":1,"setup":{"unsupported":["review"]}}`,
+		`{"t":"start","tick":0,"exact_version":2,"seed":1}`,
+		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":0}`,
+		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":1,"setup":{"saves":{"save1.json":"abc"}}}`,
+		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":1,"setup":{"unsupported":["review"]}}`,
 	} {
 		if _, _, err := readRepro(traceFile(t, start), "0"); err == nil {
 			t.Fatalf("accepted %s", start)
@@ -132,7 +132,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 		`{"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}`,
 		`{"t":"battle_setup","tick":2,"hp":1}`,
 	} {
-		path := traceFile(t, `{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":7}`, record)
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7}`, record)
 		if _, _, err := readRepro(path, "2"); err == nil || !strings.Contains(err.Error(), "cannot reproduce exactly:") {
 			t.Fatalf("record %s: %v", record, err)
 		}
@@ -143,7 +143,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 }
 
 func TestReproRejectsGuides(t *testing.T) {
-	start := `{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":7,"scripted":false}`
+	start := `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7,"scripted":false}`
 	guide := `{"t":"guide","tick":2,"screen":"board","step":1,"text":"The kiln log first."}`
 	shot := `{"t":"shot","tick":3,"file":"first-visit.png"}`
 	path := traceFile(t, start, guide, shot)
@@ -213,7 +213,7 @@ func TestReproRejectsWindowChanges(t *testing.T) {
 		`{"t":"viewport","tick":2,"width":960,"height":540,"scale":1}`,
 	} {
 		path := traceFile(t,
-			`{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":7,"window":2}`,
+			`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7,"window":2}`,
 			`{"t":"viewport","tick":0,"width":1280,"height":720,"scale":1}`,
 			`{"t":"viewport","tick":1,"width":1280,"height":720,"scale":1}`,
 			change)
@@ -297,7 +297,7 @@ func TestReproRejectsTypedPanelCommands(t *testing.T) {
 }
 
 func TestReproRejectsUnknownFutureRecord(t *testing.T) {
-	path := traceFile(t, `{"t":"start","tick":0,"exact_version":1,"game_dir":"game","seed":7}`, `{"t":"future_kind","tick":2}`)
+	path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7}`, `{"t":"future_kind","tick":2}`)
 	out, stderr := invoke(t, 1, "trace", path, "--repro", "2")
 	if out != "" || !strings.Contains(stderr, "cannot reproduce exactly: future_kind at tick 2") {
 		t.Fatalf("stdout=%s stderr=%s", out, stderr)
@@ -309,7 +309,7 @@ func TestReproRejectsUnknownFutureRecord(t *testing.T) {
 
 func TestReproUnknownGameDirectory(t *testing.T) {
 	for _, field := range []string{"", `,"game_dir":""`} {
-		path := traceFile(t, `{"t":"start","tick":0,"exact_version":1,"seed":7`+field+`}`)
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"seed":7`+field+`}`)
 		out, stderr := invoke(t, 1, "trace", path, "--repro", "0")
 		if out != "" || !strings.Contains(stderr, "game directory is unknown") {
 			t.Fatalf("stdout %q, stderr %q", out, stderr)

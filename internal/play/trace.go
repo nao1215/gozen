@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"io"
 	"io/fs"
 	"log"
@@ -38,6 +39,7 @@ type tracer struct {
 	inAct     bool
 	focusLost bool
 	focusTick int
+	mouse     image.Point
 	viewport  traceViewport
 	enc       *lineWriter
 	lines     int
@@ -212,7 +214,7 @@ func (g *Game) traceStart() error {
 	}
 	g.emit("start", traceLine{
 		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
-		"exact_version": 1, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"exact_version": 2, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"window": o.Window, "fullscreen": g.cfg.Fullscreen, "development": o.Development,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
@@ -418,10 +420,14 @@ func (g *Game) traceInput(in *input) {
 			held = append(held, buttonNames[b])
 		}
 	}
-	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pheld && !in.pup {
+	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pdown && !in.pheld && !in.pup && !in.longPress && in.mouse == g.tr.mouse {
 		return
 	}
-	l := traceLine{}
+	g.tr.mouse = in.mouse
+	l := traceLine{"moved": in.moved, "mouse": []int{in.mouse.X, in.mouse.Y}}
+	if in.longPress {
+		l["long_press"] = true
+	}
 	if in.digit != 0 {
 		l["digit"] = in.digit
 	}
@@ -440,17 +446,11 @@ func (g *Game) traceInput(in *input) {
 	if in.shift {
 		l["shift"] = true
 	}
-	if in.click || in.rclick || in.moved || in.wheel != 0 {
-		l["mouse"] = []int{in.mouse.X, in.mouse.Y}
-	}
 	if in.click {
 		l["click"] = true
 	}
 	if in.rclick {
 		l["rclick"] = true
-	}
-	if in.pheld || in.pup {
-		l["mouse"] = []int{in.mouse.X, in.mouse.Y}
 	}
 	// A press goes down with a click unless a finger began it; only the
 	// difference is written.
@@ -1048,6 +1048,7 @@ func (r *replay) feed(in *input, tick int) {
 	in.pressed, in.held = [numButtons]bool{}, [numButtons]bool{}
 	in.fast, in.click, in.rclick, in.moved, in.wheel = false, false, false, false, 0
 	in.pdown, in.pheld, in.pup = false, false, false
+	in.longPress = false
 	in.esc, in.shift = false, false
 	in.digit = 0
 	l, ok := r.inputs[tick]
@@ -1076,11 +1077,16 @@ func (r *replay) feed(in *input, tick int) {
 	if down, ok := l["pointer_down"].(bool); ok {
 		in.pdown = down
 	}
+	in.longPress = l["long_press"] == true
 	in.wheel = num(l["wheel"])
 	in.digit = int(num(l["digit"]))
 	if m, ok := l["mouse"].([]any); ok && len(m) == 2 {
 		in.mouse.X, in.mouse.Y = int(num(m[0])), int(num(m[1]))
+		// Ordinary replay retains support for older coordinate-only records.
 		in.moved = true
+	}
+	if moved, ok := l["moved"].(bool); ok {
+		in.moved = moved
 	}
 }
 
@@ -1593,7 +1599,7 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 		if err := json.Unmarshal(raw, &start); err != nil {
 			return err
 		}
-		if start.ExactVersion != 1 {
+		if start.ExactVersion != 2 {
 			return errors.New("cannot reproduce exactly: trace lacks the source audit revision; record again")
 		}
 		if len(start.Setup.Unsupported) > 0 {

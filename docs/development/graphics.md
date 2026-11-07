@@ -84,7 +84,7 @@ before its argument. JSON output uses the usual result envelope; its `data`
 contains `game_dir`, the exact integer `seed`, `start_options`, `initial_saves`,
 `initial_memo` when present, `tick`, `until`, `argv`, `command`, and `screenshot`.
 
-New start records include `exact_version: 1`, `game_dir`, `scripted`, device locales,
+New start records include `exact_version: 2`, `game_dir`, `scripted`, device locales,
 book display options, the development mode, window scale and effective fullscreen setting, and, inside `setup`,
 `save_data` (base64 bytes), `save_times`, `resources` (an asset/translation digest), and optional `memo` (the initial save,
 resume cursor and randomness). Existing configuration, read marks, unlocks,
@@ -144,8 +144,8 @@ and future unknown kinds. A mutation after the target does not prevent an
 earlier reproduction. The constructor audit in `trace_test.go` scans all runtime
 `emit` calls and requires each kind to appear in exactly one of the allow-list
 or the explicit non-reproducible list. Dynamic kind constructors fail the audit.
-Older traces without `exact_version: 1` must be recorded again for exact
-reproduction: their missing source markers cannot be reconstructed. Ordinary
+Older traces without `exact_version: 2` must be recorded again for exact
+reproduction: their missing source markers, pointer movement and touch long-press signals cannot be reconstructed. Ordinary
 replay without `--until` retains its older trace support.
 
 #### Script command reproduction audit
@@ -211,7 +211,13 @@ resource fails replay before play starts. Live editing is refused as below.
 
 | Source and runtime owner | Reproduction handling | Contract coverage |
 | --- | --- | --- |
-| Keyboard, gamepad, pointer position/buttons, drag release, wheel, Shift, held controls (`input.go`) | **Recorded** per tick; **restored** by `replay.feed`. Script and streamed script operations use recorded inputs and the action allow-list, independent of reader-goroutine completion. | Input replay tests; `TestTraceReproScriptDirectActions` |
+| Pointer coordinates, movement, click/right click and down/held/up (`input.go`) | **Recorded/restored** independently: `mouse` supplies coordinates; `moved` is an explicit boolean, including false for stationary wheel/held/release events. Coordinate changes without movement (including returning from touch to a parked mouse) also emit a record. Pointer-down without a click is preserved. Revision 1 and older traces are **refused** for exact reproduction; ordinary replay retains legacy behavior. | `TestTracePointerRoundTrip`, `TestTraceParkedPointerConfirmation` |
+| Touch tap, two-finger right click, long press (`input.go`) | **Recorded/restored** as pointer signals plus `long_press`. Live `longUsed` affects later tap suppression, whose resulting click is recorded. Device IDs and duration counters are polling bookkeeping, not replay inputs. | `TestTracePointerRoundTrip` |
+| Touch swipe, origin, began/touching/swiped (`streams.go`, `profiles.go`) | **Refused** at stream initialization (`now`) or profile entry (`profiles`), before these unrecorded gesture fields or direct device polling are consumed. | `TestTraceStreamClockRefused`, `TestTraceProfileDeviceInputRefused` |
+| Wheel deltas (`input.go`) | **Recorded/restored** vertical floating-point deltas without rounding, including fractional and negative values. Horizontal wheel is not consumed by the runtime. | `TestTracePointerRoundTrip` |
+| Keyboard buttons, digits and key repeat (`input.go`) | **Recorded/restored** resolved `press`, `held`, `digit` and `fast` each tick. Repeat pulses and long-held OK are recorded after duration evaluation; replay never polls or recomputes repeat counters. Script scheduling uses recorded ticks and actions. | `TestTraceButtonsRoundTrip`, `TestTracePointerRoundTrip`, `TestTraceReproScriptDirectActions` |
+| Gamepad buttons, analog stick/trigger thresholds (`input.go`) | **Recorded/restored** resolved buttons, held state, repeat pulses and fast mode. Raw axes and device IDs are not consumed downstream. The separate `pad` provenance is only used in stream text fields, already **refused**. | `TestTraceButtonsRoundTrip`; stream text boundary tests |
+| Modifier keys (`input.go`, `play.go`) | **Recorded/restored** Shift, Control-derived fast mode, Escape and Alt+Enter filtering of OK. Fullscreen hotkeys are **refused** at `config_write`; raw editing keys remain behind text/panel refusal boundaries. | `TestTracePointerRoundTrip`, `TestTraceSourceBoundaries/settings` |
 | Script `typeMemo`, unsubmitted text, IME composition/commit, Backspace; stream name/comment/tip fields (`memo.go`, `textfield.go`, `streams_*`) | **Refused** at `text_input` when a field is connected or script text is delivered. `stream_comment` and `stream_tip` are also refused. No submission is required. | `TestTraceStreamTextRefusedBeforeSubmission`, `TestTraceSourceBoundaries/IME` |
 | F8 command field and Frames tab (`devpanel.go`, `meter.go`) | **Refused** at `panel`, before raw typing or `time.Now`/`time.Since` measurements. | `TestReplayRejectsPanelThroughTarget` |
 | F9 memo editor, external editor goroutine, memo timestamp/elapsed seconds, disk writes and filename toast (`memo.go`, `entry_linux.go`, `layer1/memo`) | **Refused** at `memo_open`, before typing or external input; `memo` is also refused. `Game.started` and memo clocks affect only this path. | `TestTraceSourceBoundaries/memo` |
