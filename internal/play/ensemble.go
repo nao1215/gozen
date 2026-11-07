@@ -490,6 +490,7 @@ func (g *Game) callPictures(v data.PlanningView, all []ensembleMember) []string 
 		} else if _, ok := g.db.Game.Planning.Entities[self]; !ok {
 			add(self)
 		}
+		add(v.Call.SelfBackdrop)
 	}
 	return out
 }
@@ -543,6 +544,9 @@ func (g *Game) drawCallSelf(dst *ebiten.Image, v data.PlanningView, self *ensemb
 	_, tile, _, _, _ := callColors(v.Call)
 	rect(dst, r.x, r.y, r.w, r.h, tile)
 	picture := v.Call.Self
+	if bg := v.Call.SelfBackdrop; bg != "" {
+		g.planningBackdrop(dst, bg, false, r.x, r.y, r.w, r.h)
+	}
 	if a := g.db.Actors[v.Call.Self]; a != nil {
 		picture = g.db.FacePicture(a, a.Face, "")
 		if label == "" {
@@ -705,19 +709,51 @@ func (g *Game) callTorso(dst *ebiten.Image, path string, call *data.EnsembleCall
 	}
 	face := g.pics.portraitFace(path, img.Bounds().Size())
 	fh := seenOr(seen, h)
-	scale, left, top := portraitTransform(img.Bounds(), face, x, y+fh*.22, w, fh*.48)
-	cx, cy := x+w/2, y+fh*.46
+	faceTop, faceHeight := callHeadFraming(img.Bounds(), face, g.pics.content(path), y, fh)
+	scale, left, top := portraitTransform(img.Bounds(), face, x, faceTop, w, faceHeight)
+	cx, cy := x+w/2, faceTop+faceHeight/2
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(left-cx, top-cy)
 	op.GeoM.Rotate(angle)
 	op.GeoM.Translate(cx+dx*fh/400, cy+dy*fh/400)
 	clip := image.Rect(int(x*gfx.Scale()), int(y*gfx.Scale()), int((x+w)*gfx.Scale()), int((y+h)*gfx.Scale())).Intersect(dst.Bounds())
+	// Traced at rest and by its main picture: the breathing, the mouth and the blinks
+	// would make every frame differ and the layout never settle.
+	g.traceFigure(path, left, top, scale, false, 1, clip)
 	if !clip.Empty() {
 		if target, ok := dst.SubImage(clip).(*ebiten.Image); ok {
 			gfx.DrawImage(target, img, op)
 		}
 	}
+}
+
+// callHeadFraming places the face of a picture in a call view whose part not under
+// the message window runs from y down fh: its top at 22% of that height and its
+// height 48% of it, unless the opaque part above the face (the top of the picture's
+// opaque part, content: mostly hair, but a hat or a raised hand counts too) would
+// then rise above the view's top. Then the face moves down, by at
+// most a tenth of the height, and if that is not enough it shrinks, so the top of
+// the hair stays a small margin inside the view. A picture whose opaque part
+// already touches its own top edge is drawn cut there and is framed as before.
+func callHeadFraming(bounds, face, content image.Rectangle, y, fh float64) (faceTop, faceHeight float64) {
+	faceTop, faceHeight = y+fh*.22, fh*.48
+	face = faceOr(bounds, face)
+	hair := float64(face.Min.Y - content.Min.Y)
+	if content.Empty() || content.Min.Y <= bounds.Min.Y || hair <= 0 {
+		return faceTop, faceHeight
+	}
+	rise := hair / float64(face.Dy()) // the hair above the face, in face heights
+	margin := fh * .02
+	if faceTop-faceHeight*rise >= y {
+		return faceTop, faceHeight
+	}
+	lowest := y + fh*.32
+	faceTop = min(lowest, y+margin+faceHeight*rise)
+	if faceTop-faceHeight*rise < y+margin {
+		faceHeight = (faceTop - y - margin) / rise
+	}
+	return faceTop, faceHeight
 }
 
 // drawCallControl uses original geometric marks, independent of font glyph coverage.

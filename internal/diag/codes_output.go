@@ -22,7 +22,7 @@ var (
 	})
 	SkipFault = register(1404, "SkipFault", Entry{
 		Summary: "skipping passed a line that was not read",
-		Detail:  "trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read.",
+		Detail:  "trace --check found a line marked not read while skip mode or scene skip was on. Skipping stops before every line not read, unless the player set Text to skip to all (the skip line then carries unread).",
 		Fix:     "Record the trace again with this engine; if it happens again, report it with the trace.",
 		NotYAML: "This requires skip and unread-line events in a runtime trace.",
 	})

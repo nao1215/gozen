@@ -255,6 +255,34 @@ func Fragment(pos vec4, uv vec2, col vec4) vec4 {
 }
 `
 
+// toastOpacityFloor is how opaque a notice's card is at least under ui.material: a
+// guide's line and an inbox notice float over a screen full of text, and glass would
+// let that text show through behind their own. At this opacity the darkest backdrop
+// leaves the light card light enough for the light palette's text and accent to keep
+// a WCAG contrast of 4.5:1.
+const toastOpacityFloor = .94
+
+// toastOpacity is the opacity of a notice's card: the card role's opacity of
+// ui.material, raised to toastOpacityFloor.
+func toastOpacity(m *data.MaterialStyle) float64 {
+	o := m.Opacity
+	if v, ok := m.Opacities["card"]; ok {
+		o = v
+	}
+	return max(toastOpacityFloor, o)
+}
+
+// toastSurface draws the card of a notice (a guide's line, an inbox notice and the
+// message it opens) nearly opaque, so the text under it does not show through.
+// It reports false without ui.material, as materialSurface does.
+func (g *Game) toastSurface(dst *ebiten.Image, x, y, w, h float64, tint color.NRGBA) bool {
+	m := g.db.Game.UI.Material
+	if m == nil {
+		return false
+	}
+	return g.materialSurfaceDeep(dst, x, y, w, h, tint, "card", toastOpacity(m))
+}
+
 // materialOpacity separates quiet content surfaces from floating controls.
 func materialOpacity(kind string, opacity float64) float64 {
 	switch kind {

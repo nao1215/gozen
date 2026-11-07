@@ -488,3 +488,110 @@ func TestGraphicsNovel(t *testing.T) {
 		t.Fatalf("skipping retained the red picture: red=%d blue=%d", r>>8, blue>>8)
 	}
 }
+
+// TestGraphicsTraceLayout records a stage where one figure's hair is pushed above the
+// screen by its framing and another is drawn cut at the top of its own picture: the
+// layout line tells the two apart (source_cut), and measures the line's text on the
+// window behind it.
+func TestGraphicsTraceLayout(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	write := func(path string, b []byte) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	paint := func(name string, opaqueTop int) {
+		img := image.NewNRGBA(image.Rect(0, 0, 200, 600))
+		draw.Draw(img, image.Rect(40, opaqueTop, 160, 600), &image.Uniform{color.NRGBA{R: 200, G: 60, B: 90, A: 255}}, image.Point{}, draw.Src)
+		var b bytes.Buffer
+		if err := png.Encode(&b, img); err != nil {
+			t.Fatal(err)
+		}
+		write("assets/"+name+".png", b.Bytes())
+	}
+	paint("hair", 10) // hair 40 pixels above the head box, inside the picture
+	paint("drawn", 0) // the picture itself starts cut at its top
+	// Both heads are framed at the screen's top edge: the hair of the first goes above it.
+	write("game.yaml", []byte(fmt.Sprintf("schema_version: 8\nid: layout\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n  stage_framing:\n    hair.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n    drawn.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n", testgame.Game)))
+	write("data/layout.yaml", []byte(`events:
+  layout:
+    do:
+      - stand: {who: Left, face: hair.png, at: 0.25}
+      - stand: {who: Right, face: drawn.png, at: 0.75}
+      - say: {who: Left, face: hair.png, text: "Measure this line."}
+`))
+	script := filepath.Join(root, "layout.txt")
+	if err := os.WriteFile(script, []byte("wait 60\nquit\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	trace := filepath.Join(root, "layout.jsonl")
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--seed", "7", "--start", "camp", "--event", "layout", //nolint:gosec // Fixed test host and isolated fixture paths.
+		"--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", trace)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+	b, err := os.ReadFile(trace) //nolint:gosec // A fixed name in this test's temporary directory.
+	if err != nil {
+		t.Fatal(err)
+	}
+	type figure struct {
+		Picture   string     `json:"picture"`
+		Content   [4]float64 `json:"content"`
+		Clip      [4]float64 `json:"clip"`
+		SourceCut []string   `json:"source_cut"`
+	}
+	type text struct {
+		Text  string  `json:"text"`
+		Back  string  `json:"back"`
+		Ratio float64 `json:"ratio"`
+	}
+	var last struct {
+		Figures []figure `json:"figures"`
+		Texts   []text   `json:"texts"`
+	}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
+		if strings.Contains(line, `"t":"layout"`) {
+			if err := json.Unmarshal([]byte(line), &last); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	got := map[string]figure{}
+	for _, f := range last.Figures {
+		got[f.Picture] = f
+	}
+	hair, drawn := got["hair.png"], got["drawn.png"]
+	if hair.Picture == "" || drawn.Picture == "" {
+		t.Fatalf("figures %+v, want hair.png and drawn.png", last.Figures)
+	}
+	// The head box's top stands at the screen's top; 40 source pixels of hair, at a
+	// scale of 1.2, rise 48 units above it.
+	if math.Abs(hair.Content[1]+48) > 6 || hair.Clip[1] != 0 || len(hair.SourceCut) != 1 || hair.SourceCut[0] != "bottom" {
+		t.Fatalf("hair.png %+v, want content top near -48 in a clip at 0, cut only at the bottom of its picture", hair)
+	}
+	if len(drawn.SourceCut) == 0 || drawn.SourceCut[0] != "top" {
+		t.Fatalf("drawn.png %+v, want source_cut top", drawn)
+	}
+	found := false
+	for _, x := range last.Texts {
+		if strings.Contains(x.Text, "Measure this line") {
+			found = true
+			if x.Ratio < 4.5 || !strings.HasPrefix(x.Back, "#") {
+				t.Fatalf("line %+v, want the default light text on the dark window, ratio over 4.5", x)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("texts %+v, want the line", last.Texts)
+	}
+}

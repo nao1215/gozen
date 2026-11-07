@@ -21,7 +21,7 @@ Start a new game with `gozen new <game-dir> --template rpg|novel|campaign`. The 
 
 Use `gozen help --format json` to inspect registered commands and options without loading a game. `gozen book GAME --format json` describes the whole game; add `--section lineage` to select only monster family trees.
 
-For the measurement commands (`sim battle`, `dive`, `floors`, `design`, `campaign`, `routes` and `breed`), `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records.
+For the measurement commands (`sim battle`, `dive`, `floors`, `design`, `campaign`, `routes` and `breed`), `--format json` returns a version-1 result with `command`, `status` and `data`; JSONL emits items and a terminal summary. Keep stdout and stderr separate and check the exit status. To inspect a recorded play, use `gozen trace run.jsonl --format json`, or `gozen trace - --format jsonl` for standard input. Repeat `--only KIND` to select kinds; `--check` rejects these display filters and preserves diagnostic codes in its issue records. `--only layout` selects where the standing pictures and texts were drawn (their rectangles, the opaque part of each picture, the clip, and each text's contrast ratio on what is behind it); gozen does not judge them, so check them in the game's own review.
 
 <!-- verify: run fixture=cave -->
 ```shell

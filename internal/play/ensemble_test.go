@@ -222,9 +222,9 @@ func TestCallGeometryFitsTheScreen(t *testing.T) {
 	}
 }
 
-func callGame(t *testing.T, call string) *Game {
+func callGame(t *testing.T, call string, extra ...map[string]string) *Game {
 	t.Helper()
-	g, _ := btlOpen(t, Options{Location: "camp"}, "ui: {message: novel}\n", "")
+	g, _ := btlOpen(t, Options{Location: "camp"}, "ui: {message: novel}\n", "", extra...)
 	g.db.Game.Planning = &data.Planning{
 		Calendar: data.Calendar{Start: "2030-04-01", End: "2030-04-09", Phases: []string{"morning"}},
 		Entities: map[string]data.Entity{
@@ -637,4 +637,53 @@ func TestCallMutedChoice(t *testing.T) {
 		}
 	}
 	t.Fatal("the muted choice did not run out")
+}
+
+// TestCallHeadFraming keeps the hair inside a call view: a face whose hair fits keeps
+// its framing, a little hair too high moves the face down, much hair moves it down a
+// tenth of the view and shrinks it, and a picture drawn cut at its own top is framed
+// as before.
+func TestCallHeadFraming(t *testing.T) {
+	t.Parallel()
+	bounds := image.Rect(0, 0, 400, 1200)
+	face := image.Rect(150, 200, 250, 300) // 100 pixels high
+	const y, fh = 50.0, 500.0
+	headTop := func(content image.Rectangle, top, height float64) float64 {
+		return top - height*float64(face.Min.Y-content.Min.Y)/float64(face.Dy())
+	}
+	for _, c := range []struct {
+		name    string
+		content image.Rectangle
+		moved   bool
+		shrunk  bool
+	}{
+		{"fits", image.Rect(100, 180, 300, 1200), false, false},
+		// 43 pixels of hair at 2.4 units each: the tip at 56.8, inside the view at 50 but
+		// nearer its top than the margin.
+		{"fits close to the top", image.Rect(100, 157, 300, 1200), false, false},
+		{"a little hair above", image.Rect(100, 150, 300, 1200), true, false},
+		{"much hair above", image.Rect(100, 20, 300, 1200), true, true},
+		{"drawn cut at its top", image.Rect(100, 0, 300, 1200), false, false},
+	} {
+		top, height := callHeadFraming(bounds, face, c.content, y, fh)
+		if moved := top != y+fh*.22; moved != c.moved {
+			t.Errorf("%s: face top %v, moved %v, want moved %v", c.name, top, moved, c.moved)
+		}
+		if shrunk := height < fh*.48; shrunk != c.shrunk {
+			t.Errorf("%s: face height %v, shrunk %v, want %v", c.name, height, shrunk, c.shrunk)
+		}
+		if top > y+fh*.32+1e-9 {
+			t.Errorf("%s: face top %v below a tenth more than its place", c.name, top)
+		}
+		if c.content.Min.Y > 0 && c.moved {
+			if h := headTop(c.content, top, height); h < y+fh*.02-1e-9 {
+				t.Errorf("%s: hair top %v above the view's top %v", c.name, h, y)
+			}
+		}
+	}
+	// No face found: the upper middle quarter stands for it, and the hair still fits.
+	top, height := callHeadFraming(bounds, image.Rectangle{}, image.Rect(100, 0, 300, 1200), y, fh)
+	if top != y+fh*.22 || height != fh*.48 {
+		t.Fatalf("a picture opaque to its top and no face: %v %v, want the plain framing", top, height)
+	}
 }

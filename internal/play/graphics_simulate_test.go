@@ -131,7 +131,7 @@ func simulateComparable(t *testing.T, b []byte) []string {
 			t.Fatalf("%v: %q", err, l)
 		}
 		switch m["t"] {
-		case "shot", "view", "stand", "menu", "music", "start":
+		case "shot", "view", "stand", "layout", "menu", "music", "start":
 			continue
 		case "end":
 			m = maps.Clone(m)

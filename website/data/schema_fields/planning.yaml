@@ -199,6 +199,7 @@ EnsembleCall:
   controls: "Display-only round call controls, at most six. Each is a label, or {label, icon, color} with icon one of mic, camera, share, hand, chat, leave or none. A bare label takes its icon from its place (mic, camera, share, hand, chat, leave) and the last one is filled as the way out."
   self: "Optional small self view in the lower right of the speaker view: a planning entity, a guest actor or a picture path. That participant leaves the strip and the stage. Empty shows none."
   self_label: Optional name under the self view; empty uses the entity's or actor's name.
+  self_backdrop: "Optional picture behind the self view when self is an actor who is not a guest or a picture, filling the view as an entity's backdrop does; small or on the stage. Omitted keeps the plain tile. Needs self; an entity's self view takes the entity's backdrop and a guest's takes guest_backdrops instead."
   self_stage: "Put the self view on the stage, large, while the caller speaks (a line of the call whose speaker is not one of its participants, or the participant self); every participant then stands in the strip. Off by default: the stage keeps whoever spoke last and the small self view shows that the caller speaks. Needs self."
   colors: "Optional call colors {body, tile, speaking, control, leave}. Unset colors keep the built-in look."
   mouth: Base portrait paths mapped to same-canvas open-mouth variants.

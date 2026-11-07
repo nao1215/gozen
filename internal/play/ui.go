@@ -64,6 +64,7 @@ func withAlpha(c color.NRGBA, a uint8) color.NRGBA { c.A = a; return c }
 
 func (g *Game) text(dst *ebiten.Image, s string, x, y, size float64, c color.Color) {
 	gfx.DrawTextLeft(dst, s, x, y, size, c)
+	g.traceLeftText(s, x, y, size, c)
 }
 
 func bar(dst *ebiten.Image, x, y, w, h, rate float64, fill color.NRGBA) {

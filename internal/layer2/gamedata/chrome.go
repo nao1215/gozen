@@ -106,10 +106,15 @@ func (c *checker) callSelf(self string) bool {
 	if c.db.Actors[self] != nil {
 		return true
 	}
+	return c.isEntity(self)
+}
+
+// isEntity reports whether name is a planning entity.
+func (c *checker) isEntity(name string) bool {
 	p := c.db.Game.Planning
 	if p == nil {
 		return false
 	}
-	_, ok := p.Entities[self]
+	_, ok := p.Entities[name]
 	return ok
 }

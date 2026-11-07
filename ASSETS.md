@@ -18,6 +18,7 @@
 | Showcase GIF and screenshots in `docs/images/` | The pictures inside claim no copyright (CC0 1.0); the rest MIT |
 | Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |
 | Original single-row boundary PNG fixtures (`e2e/atago/fixtures/limits/`, generated with a constant RGBA color) | MIT |
+| Original geometric call-framing PNG fixtures (`e2e/atago/fixtures/call/`, a figure of plain rectangles with tall hair and a two-band room) | MIT |
 | CLI synthetic pattern images and catalog (`docs/examples/production/`) | MIT |
 | Procedural pictures of the painted-scene test (`internal/play/testdata/stage/`, made by a script) | MIT |
 | The logo, its icons and the social card (`docs/images/gozen-logo*.svg`, `gozen-favicon*.svg`, `gozen-ogp.png`) | MIT; the letters are outlines from Quicksand Bold, the card text is set in Quicksand and Noto Sans (both SIL Open Font License 1.1, see below) |

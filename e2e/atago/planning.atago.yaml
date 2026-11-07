@@ -376,6 +376,36 @@ scenarios:
         - {path: '$.data[?(@.line == 6 && @.file == "data/world.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
         - {path: '$.data[?(@.line == 7)].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
         - {path: '$.data[?(@.file == "game.yaml")].message', equals: "planning value requires a number; use a numeric expression or an explicit conversion such as int(value)"}
+- name: a call's self backdrop needs a self that is not an entity and a file
+  steps:
+  - fixture: {file: backdrop/assets/me.png, from: fixtures/call/hair.png}
+  - fixture:
+      file: backdrop/game.yaml
+      content: |
+        schema_version: 11
+        id: self-backdrop
+        start: {location: room}
+        planning:
+          calendar: {start: '2030-07-31', end: '2030-08-02', phases: [morning]}
+          entities: {potter: {name: Potter}}
+        screens:
+          picture_self: {title: Call, kind: ensemble, view: {chat: {}, call: {self: me.png, self_backdrop: nowhere.png}}}
+          entity_self: {title: Call, kind: ensemble, view: {chat: {}, call: {self: potter, self_backdrop: me.png}}}
+          no_self: {title: Call, kind: ensemble, view: {chat: {}, call: {self_backdrop: me.png}}}
+  - fixture:
+      file: backdrop/data/world.yaml
+      content: |
+        locations: {room: {name: Workshop}}
+  - run:
+      command: gozen check backdrop --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[?(@.path == "screens.picture_self.view.call.self_backdrop")].message', equals: no file assets/nowhere.png}
+        - {path: '$.data[?(@.path == "screens.entity_self.view.call.self_backdrop")].message', equals: "self \"potter\" is an entity: its view takes the entity's backdrop (view.backdrop)"}
+        - {path: '$.data[?(@.path == "screens.no_self.view.call.self_backdrop")].message', equals: "needs self, the view it is behind"}
+        - {path: '$.data', length: 3}
 - name: rule argument typos fail check before execution
   steps:
   - fixture:

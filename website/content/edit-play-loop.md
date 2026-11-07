@@ -42,7 +42,7 @@ Runs with `--dev` that start somewhere other than the beginning (`--start`, `--s
 | F9 | Write a note: a screenshot, the game state and your comment. |
 | F10 | Tag the picture on screen, when picture review is on. |
 
-The usual keys still work: O or F2 for settings, F11 for full screen, M to mute. In conversations, Q rolls back a line, Ctrl held passes the lines read, N turns skip mode on and off, and Page Down skips a scene whose lines were all read ([novel games](/writing-a-game/#novel-games)); a script presses them with `press back`, `press skip` and `press scene_skip`, and the novel band's save and load with `press save` and `press load`.
+The usual keys still work: O or F2 for settings, F11 for full screen, M to mute. In conversations, Q rolls back a line, Ctrl held passes the lines read, N turns skip mode on and off, and Page Down skips a scene whose lines were all read (any scene when the setting Text to skip is all; [novel games](/writing-a-game/#novel-games)); a script presses them with `press back`, `press skip` and `press scene_skip`, and the novel band's save and load with `press save` and `press load`.
 
 ## F8: the development panel
 
@@ -153,6 +153,14 @@ gozen trace run.jsonl --check    # standing pictures and music that went wrong
 00:00.02 state      0G @camp  Walker Lv1 30/30 5/5
 00:00.33 menu       [Talk: Courier] | Practice | Save journey | Rest | → Explore chamber | ...
 ```
+
+A `layout` line says where the standing pictures and the texts of a screen were drawn, written once the screen has stayed the same for ten ticks (a sixth of a second). Rectangles are `[x, y, width, height]` in UI units: the screen is 720 units high whatever its pixels, and as wide as its shape makes it. A figure (`figures`) has the `picture`, the `rect` its canvas is drawn in, the `content` rect of its opaque part, the `clip` it is drawn into (the screen, or a call's view that cuts it) and `alpha`; `source_cut` names the edges (`top`, `bottom`) the opaque part already touches in the picture file, so a picture drawn cut is told apart from one cut by where it stands. A text (`texts`) has `text`, `rect`, font `size`, `color`, the `back` color behind it read from the finished screen (the median of the pixels that are not the text's color) and `ratio`, the WCAG 2 contrast ratio of the text on it. A text covered by what is drawn over it is left out, and so is a screen while it shakes, flashes or fades. A video call's person is recorded at rest, without its small sway. Moving portraits (puppets) are not listed.
+
+```json
+{"t":"layout","tick":672,"since":662,"figures":[{"picture":"portraits/lead.png","rect":[-196,-10.6,1375.3,2010.1],"content":[81.7,7.1,925.7,1988],"clip":[16,76,916,628],"alpha":1}],"texts":[{"text":"Lead","rect":[130,490,60,42],"size":30,"color":"#82aaa9","back":"#333d48","ratio":4.35}]}
+```
+
+gozen only records these; it does not judge them, because a close-up, a figure leaving the screen or a cut-in may be cut on purpose. A game's own checks read them: a `content` top above its `clip` top with no `top` in `source_cut` is a head cut by the layout, and a `ratio` under 4.5 (3 for large text) is hard to read. The layout is measured only while a trace is written; without `--trace` nothing of it is computed.
 
 A trace can be played again. `--replay` checks that the game goes the same way and reports the first line that differs, with its tick:
 

@@ -619,6 +619,11 @@ type EnsembleCall struct {
 	Self string `yaml:"self"`
 	// SelfLabel names the self view; empty uses the entity's or actor's name.
 	SelfLabel string `yaml:"self_label"`
+	// SelfBackdrop is a picture behind the self view when self is an actor who is not
+	// a guest, or a picture, as an entity's backdrop (view.backdrop) is behind it.
+	// Empty keeps the plain tile. An entity's self view takes its own backdrop, and a
+	// guest's takes guest_backdrops, instead.
+	SelfBackdrop string `yaml:"self_backdrop"`
 	// SelfStage puts the self view on the stage, large, while the caller speaks (a
 	// line of the call whose speaker is not one of its participants); every
 	// participant then stands in the strip. Off, the stage keeps whoever spoke last
@@ -826,6 +831,18 @@ func (c *checker) planningView(w string, v PlanningView, plain bool) {
 			c.file(w+".call.self", v.Call.Self)
 		}
 		c.text(w+".call.self_label", v.Call.SelfLabel, FieldNames)
+		if b := v.Call.SelfBackdrop; b != "" {
+			switch {
+			case v.Call.Self == "":
+				c.errorf(diag.Shape, w+".call.self_backdrop", "needs self, the view it is behind")
+			case c.isEntity(v.Call.Self):
+				c.errorf(diag.Shape, w+".call.self_backdrop", "self %q is an entity: its view takes the entity's backdrop (view.backdrop)", v.Call.Self)
+			case slices.Contains(v.Guests, v.Call.Self):
+				c.errorf(diag.Shape, w+".call.self_backdrop", "self %q is a guest: its view takes guest_backdrops", v.Call.Self)
+			default:
+				c.file(w+".call.self_backdrop", b)
+			}
+		}
 		if v.Call.SelfStage && v.Call.Self == "" {
 			c.errorf(diag.Shape, w+".call.self_stage", "needs self, the view put on the stage")
 		}

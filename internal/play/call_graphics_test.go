@@ -3,12 +3,18 @@
 package play
 
 import (
+	"bytes"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 )
 
 // TestCallDrawsAtSeveralSizes draws the call, with a self view and named
@@ -79,4 +85,74 @@ func TestCallOverlayWindow(t *testing.T) {
 	if after, err := json.Marshal(g.st.Planning); err != nil || string(before) != string(after) {
 		t.Fatalf("drawing changed state: %v", err)
 	}
+}
+
+// hairPNG is a 200 by 600 picture opaque from opaqueTop down: a figure whose hair
+// rises far above a face box at 140 to 220 when opaqueTop is small.
+func hairPNG(t *testing.T, opaqueTop int) string {
+	t.Helper()
+	img := image.NewNRGBA(image.Rect(0, 0, 200, 600))
+	draw.Draw(img, image.Rect(40, opaqueTop, 160, 600), &image.Uniform{color.NRGBA{R: 200, G: 60, B: 90, A: 255}}, image.Point{}, draw.Src)
+	var b bytes.Buffer
+	if err := png.Encode(&b, img); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+// TestGraphicsCallKeepsHairInView draws a picture self view, small and on the stage, whose
+// hair rises well above its face: the hair stays inside the view (the trace's layout
+// figure has its opaque top inside its clip), a picture drawn cut at its own top keeps
+// its framing, and self_backdrop is drawn behind the picture.
+func TestGraphicsCallKeepsHairInView(t *testing.T) {
+	files := map[string]string{"assets/me.png": hairPNG(t, 8), "assets/cut.png": hairPNG(t, 0), "assets/room.png": string(btlPNG(64, 36))}
+	for _, self := range []string{"me.png", "cut.png"} {
+		t.Run(self, func(t *testing.T) { callHair(t, self, files) })
+	}
+}
+
+func callHair(t *testing.T, self string, files map[string]string) {
+	t.Helper()
+	g := callGame(t, "{address: call.example.test, layout: full, captions: overlay, others: side, still: true, self: "+self+", self_stage: true, self_backdrop: room.png}", files)
+	g.pics.mu.Lock()
+	g.pics.found, g.pics.foundRead = map[string]data.FaceBox{self: {Box: &[4]int{60, 140, 140, 220}, Size: [2]int{200, 600}}}, true
+	g.pics.mu.Unlock()
+	sw, sh := g.screen()
+	dst := ebiten.NewImage(int(sw), int(sh))
+	// A first draw warms the pictures the call names (callPictures), so the check
+	// below sees what drawCallSelf draws, not what the preloading reads.
+	(&authorScreen{name: "studio"}).drawCall(g, dst)
+	for _, say := range []event.Say{{Ensemble: "studio", Actor: "weaver", Name: "Weaver", Text: "The loom is strung."}, {Ensemble: "studio", Actor: "me", Name: "Me", Text: "Thank you."}} {
+		g.talk.open(g, say)
+		drawn := map[string]bool{}
+		g.pics.seen = func(path string, _ bool) { drawn[path] = true }
+		g.tr.layout = &layoutFrame{}
+		(&authorScreen{name: "studio"}).drawCall(g, dst)
+		figures := g.tr.layout.figures
+		g.tr.layout, g.pics.seen = nil, nil
+		if !drawn["room.png"] {
+			t.Fatalf("%s, %s speaking: self_backdrop not drawn: %v", self, say.Actor, drawn)
+		}
+		found := false
+		for _, f := range figures {
+			if f.Picture != self {
+				continue
+			}
+			found = true
+			cut := len(f.SourceCut) > 0 && f.SourceCut[0] == "top"
+			if (self == "cut.png") != cut {
+				t.Fatalf("%s: source_cut %v", self, f.SourceCut)
+			}
+			if !cut && f.Content[1] < f.Clip[1] {
+				t.Fatalf("%s, %s speaking: hair top %v above the view's top %v", self, say.Actor, f.Content[1], f.Clip[1])
+			}
+			if cut && f.Content[1] >= f.Clip[1] {
+				t.Fatalf("%s: a picture drawn cut moved down to %v in a view at %v", self, f.Content[1], f.Clip[1])
+			}
+		}
+		if !found {
+			t.Fatalf("%s, %s speaking: no figure in %+v", self, say.Actor, figures)
+		}
+	}
+	dst.Deallocate()
 }
