@@ -731,3 +731,105 @@ screens:
 		})
 	}
 }
+
+// Repeat the comparison spec's complete batch: added is the third job, after
+// the dialogue has populated and released different rendering resources.
+func TestGraphicsScreensCaptureIdenticalPixels(t *testing.T) {
+	root := t.TempDir()
+	artifacts := ""
+	if os.Getenv("GOZEN_REPRO_ARTIFACTS") == "1" {
+		artifacts = t.TempDir()
+		// Save in the test directory first; retain a copy before its cleanup so
+		// failures remain inspectable after go test exits.
+		t.Cleanup(func() {
+			retained, err := os.MkdirTemp("", "capture-pixel-diff-") //nolint:usetesting // Explicit opt-in retention after test cleanup.
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if err := os.CopyFS(retained, os.DirFS(artifacts)); err != nil {
+				t.Error(err)
+			}
+			t.Logf("capture pixel artifacts: %s", retained)
+		})
+	}
+	binary := filepath.Join(root, "gozen")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "../../cmd/gozen") //nolint:gosec // Builds the CLI into the test directory.
+	build.Stdout, build.Stderr = os.Stdout, os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatal(err)
+	}
+	config := filepath.Join(root, "captures.yaml")
+	const jobs = `shots:
+  - {id: same, start: camp, wait: 2}
+  - {id: edited, event: finish, line: 1, wait: 2}
+  - {id: added, start: camp, wait: 2}
+`
+	if err := os.WriteFile(config, []byte(jobs), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	baseline := map[string]image.Image{}
+	for run := range 8 {
+		out := filepath.Join(root, fmt.Sprintf("run-%d", run))
+		ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+		cmd := exec.CommandContext(ctx, binary, "capture", "../../e2e/atago/fixtures/game", "--config", config, "--out", out) //nolint:gosec // Test-owned binary, config and output; neutral repository fixture.
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		if err != nil {
+			t.Fatalf("capture %d: %v\nstdout: %s\nstderr: %s", run, err, &stdout, &stderr)
+		}
+		for _, id := range []string{"same", "edited", "added"} {
+			got := shotImage(t, out, id)
+			if run == 0 {
+				baseline[id] = got
+				continue
+			}
+			want := baseline[id]
+			if got.Bounds() != want.Bounds() {
+				t.Fatalf("run %d job %s: bounds %v, want %v", run, id, got.Bounds(), want.Bounds())
+			}
+			changed := 0
+			var differences strings.Builder
+			var region image.Rectangle
+			for y := got.Bounds().Min.Y; y < got.Bounds().Max.Y; y++ {
+				for x := got.Bounds().Min.X; x < got.Bounds().Max.X; x++ {
+					r, g, b, a := got.At(x, y).RGBA()
+					wr, wg, wb, wa := want.At(x, y).RGBA()
+					if r != wr || g != wg || b != wb || a != wa {
+						changed++
+						if artifacts != "" {
+							fmt.Fprintf(&differences, "(%d,%d) baseline RGBA16=(%d,%d,%d,%d) actual RGBA16=(%d,%d,%d,%d)\n", x, y, wr, wg, wb, wa, r, g, b, a)
+						}
+						region = region.Union(image.Rect(x, y, x+1, y+1))
+					}
+				}
+			}
+			if changed != 0 {
+				if artifacts != "" {
+					prefix := filepath.Join(artifacts, fmt.Sprintf("run-%d-%s", run, id))
+					for _, pic := range []struct {
+						suffix string
+						img    image.Image
+					}{{"baseline", want}, {"actual", got}} {
+						var buf bytes.Buffer
+						if err := png.Encode(&buf, pic.img); err != nil {
+							t.Fatal(err)
+						}
+						if err := os.WriteFile(prefix+"-"+pic.suffix+".png", buf.Bytes(), 0o600); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if err := os.WriteFile(prefix+"-diff.txt", []byte(differences.String()), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				t.Errorf("run %d job %s: %d pixels differ in %v", run, id, changed, region)
+			}
+		}
+	}
+}

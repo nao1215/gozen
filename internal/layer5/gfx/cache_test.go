@@ -118,3 +118,31 @@ func BenchmarkOutlinedTextRetainedSource(b *testing.B) {
 		outlinedText(source[96<<10:], 12, color.NRGBA{A: 255}, color.NRGBA{})
 	}
 }
+
+func TestGlyphPageReuseAndRollover(t *testing.T) {
+	t.Cleanup(Reset)
+	Reset()
+	a, b := ebiten.NewImage(20, 30), ebiten.NewImage(40, 50)
+	first := stableGlyph(a)
+	page := glyphPage
+	if stableGlyph(a) != first {
+		t.Fatal("repeated glyph was copied again")
+	}
+	second := stableGlyph(b)
+	if glyphPage != page || first.Bounds().Overlaps(second.Bounds()) {
+		t.Fatal("glyphs must share a page without overlapping")
+	}
+	if first.Bounds().Dx() != 20 || first.Bounds().Dy() != 30 {
+		t.Fatal("glyph dimensions changed")
+	}
+	// A full page rolls over without retaining old source images.
+	large := ebiten.NewImage(1024, 1024)
+	stableGlyph(large)
+	if glyphPage == page || len(glyphCache) != 1 || glyphCache[a] != nil {
+		t.Fatal("page rollover retained old glyphs")
+	}
+	Reset()
+	if glyphPage != nil || len(glyphCache) != 0 {
+		t.Fatal("reset retained glyph resources")
+	}
+}

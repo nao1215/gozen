@@ -2,6 +2,7 @@
 package gfx
 
 import (
+	"image"
 	"image/color"
 	"math"
 	"strings"
@@ -104,4 +105,50 @@ func outlinedText(s string, size float64, fill, outline color.NRGBA) textImage {
 	t := textImage{img: img, cx: cx, cy: cy}
 	textCache[k] = t
 	return t
+}
+
+// Keep glyphs on one fixed texture so ordinary text still batches. One-pixel
+// gutters isolate linear filtering. The page and source references are bounded
+// and released together on rollover or font replacement.
+var (
+	glyphCache               = map[*ebiten.Image]*ebiten.Image{}
+	glyphPage                *ebiten.Image
+	glyphX, glyphY, glyphRow int
+)
+
+func resetGlyphs() {
+	if glyphPage != nil {
+		glyphPage.Deallocate()
+		glyphPage = nil
+	}
+	clear(glyphCache)
+	glyphX, glyphY, glyphRow = 0, 0, 0
+}
+
+func stableGlyph(src *ebiten.Image) *ebiten.Image {
+	if img := glyphCache[src]; img != nil {
+		return img
+	}
+	w, h := src.Bounds().Dx()+2, src.Bounds().Dy()+2
+	if glyphPage != nil && glyphX+w > glyphPage.Bounds().Dx() {
+		glyphX, glyphY, glyphRow = 0, glyphY+glyphRow, 0
+	}
+	if glyphPage != nil && (len(glyphCache) >= cacheLimit || glyphY+h > glyphPage.Bounds().Dy() || w > glyphPage.Bounds().Dx()) {
+		resetGlyphs()
+	}
+	if glyphPage == nil {
+		glyphPage = ebiten.NewImageWithOptions(image.Rect(0, 0, max(1024, w), max(1024, h)), &ebiten.NewImageOptions{Unmanaged: true})
+	}
+	r := image.Rect(glyphX+1, glyphY+1, glyphX+w-1, glyphY+h-1)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
+	glyphPage.DrawImage(src, op)
+	img, ok := glyphPage.SubImage(r).(*ebiten.Image)
+	if !ok {
+		return src
+	}
+	glyphCache[src] = img
+	glyphX += w
+	glyphRow = max(glyphRow, h)
+	return img
 }
