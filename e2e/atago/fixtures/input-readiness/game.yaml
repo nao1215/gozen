@@ -1,0 +1,27 @@
+schema_version: 11
+id: input-readiness
+title: Studio input readiness
+language: en
+screen: {width: 640, height: 360}
+start: {location: studio}
+planning:
+  calendar:
+    start: '2030-01-01'
+    end: '2030-01-09'
+    phases: [morning, night]
+    looks:
+      night: {label: Night, time: '22:00'}
+  entities: {potter: {name: Potter}}
+  activities: {glaze: {name: Glazing, effort: 2}}
+screens:
+  board:
+    title: Studio
+    entries:
+    - label: Next phase
+      do: [{plan: {op: advance}}]
+    - label: Count
+      do: [{set: {var.counted: 'var.counted+1'}}]
+    - label: Chat
+      do:
+      - phone: {app: chat, messages: [{from: Guide, text: Hello}, {mine: true, text: Ready}, {from: Guide, text: Good night}]}
+      - set: {var.chatted: 1}

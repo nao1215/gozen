@@ -214,3 +214,32 @@ func (s *authorScreen) lookParts(g *Game, line traceLine) {
 		line["flow"], line["step"], line["reached"] = flow, step+1, g.flowReached(flow)+1
 	}
 }
+
+// scriptReady keeps input and state observations pending while presentation
+// prevents the receiving screen from updating. Explicit waits and shots still run.
+func (g *Game) scriptReady(verb string) bool {
+	switch verb {
+	case "look", "snapshot", "pick", "press", "hold", "click", "drag", "read", "lines", "play", "until", "walk", "face", "type":
+		if g.fadeT > 0 || g.turn != nil || g.turnKey() != g.turnSeen {
+			return false
+		}
+		if len(g.stack) > 0 {
+			switch s := g.stack[len(g.stack)-1].(type) {
+			case *ending:
+				return s.ready()
+			case *gameOver:
+				return s.ready()
+			}
+		}
+		if g.phone != nil {
+			// The phone receives input while its parent screen waits for it.
+			// Picking a screen control must wait until the phone is closed.
+			return verb != "pick" && g.phone.ready()
+		}
+	}
+	if verb == "pick" || verb == "look" || verb == "snapshot" {
+		kind, _ := g.scriptPickables()
+		return kind != "busy" && (verb != "pick" || kind != "talk")
+	}
+	return true
+}

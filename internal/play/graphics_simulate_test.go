@@ -32,7 +32,20 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 		args          []string
 		opts          Options
 		script        string
+		state         string
 	}{
+		{
+			name: "date card retains pick", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo open: board\nwait 10\npick Next phase\npick Count\nwait 10\nsnapshot\nshot counted\nquit\n",
+			state:  "counted",
+		},
+		{
+			name: "phone lines finish chat", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo open: board\nwait 10\npick Chat\nlines chat\nsnapshot\nshot chatted\nquit\n",
+			state:  "chatted",
+		},
 		{
 			name: "talk and a choice", fixture: "testdata/novel", font: true,
 			args: []string{"--start", "room"}, opts: Options{Location: "room"},
@@ -97,7 +110,24 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 			if _, err := Simulate(context.Background(), opts, SimulateConfig{}); err != nil {
 				t.Fatal(err)
 			}
-			want, got := simulateComparable(t, ran), simulateComparable(t, sim.Bytes())
+			if c.state != "" {
+				for name, trace := range map[string][]byte{"run": ran, "sim": sim.Bytes()} {
+					lines := bytes.Split(bytes.TrimSpace(trace), []byte("\n"))
+					var end struct {
+						Type  string `json:"t"`
+						State struct {
+							Vars map[string]float64 `json:"vars"`
+						} `json:"state"`
+					}
+					if err := json.Unmarshal(lines[len(lines)-1], &end); err != nil {
+						t.Fatal(err)
+					}
+					if end.Type != "end" || end.State.Vars[c.state] != 1 {
+						t.Fatalf("%s final state: want %s=1: %s", name, c.state, lines[len(lines)-1])
+					}
+				}
+			}
+			want, got := simulateComparable(t, ran, c.state == ""), simulateComparable(t, sim.Bytes(), c.state == "")
 			if len(want) < 10 {
 				t.Fatalf("the run wrote only %d lines to compare", len(want))
 			}
@@ -121,8 +151,9 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 }
 
 // simulateComparable is the trace's lines but those of drawing and music, each with its
-// tick; the end line without its count of lines.
-func simulateComparable(t *testing.T, b []byte) []string {
+// tick when requested; the end line without its count of lines. Presentation
+// readiness can add render-wait ticks without changing the event sequence.
+func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 	t.Helper()
 	var out []string
 	for l := range strings.Lines(string(b)) {
@@ -137,7 +168,11 @@ func simulateComparable(t *testing.T, b []byte) []string {
 			m = maps.Clone(m)
 			delete(m, "lines")
 		}
-		out = append(out, comparableLine(m)+"@"+jsonOf(m["tick"]))
+		line := comparableLine(m)
+		if ticks {
+			line += "@" + jsonOf(m["tick"])
+		}
+		out = append(out, line)
 	}
 	return out
 }

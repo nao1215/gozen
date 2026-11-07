@@ -55,3 +55,78 @@ func TestPhaseTurnCard(t *testing.T) {
 		t.Fatal("a phase without a look showed a card")
 	}
 }
+
+func TestPhaseTurnRetainsScriptPick(t *testing.T) {
+	fsys := wldWorldFiles(t, turnBoard, nil)
+	fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Script: "wait 1000", ShotDir: t.TempDir()})
+	wldFrames(t, g, 30)
+	g.openScreen("studio", func() {})
+	wldFrames(t, g, 4)
+	g.st.Planning.Phase = 1
+	wldFrames(t, g, 2)
+	if g.turn == nil {
+		t.Fatal("date card did not open")
+	}
+	s := g.in.script
+	s.cmds, s.pc, s.wait = []scriptCmd{{verb: "pick", name: "Count"}, {verb: "wait", n: 1000}}, 0, 0
+	wldFrames(t, g, 1)
+	if s.pc != 0 {
+		t.Fatal("pick consumed while date card was showing")
+	}
+	wldFrames(t, g, 100)
+	if g.st.Vars["counted"] != float64(1) {
+		t.Fatalf("counted=%v, want one accepted pick", g.st.Vars["counted"])
+	}
+}
+
+func TestPhaseTurnObservationsAfterPick(t *testing.T) {
+	for _, verb := range []string{"look", "snapshot"} {
+		t.Run(verb, func(t *testing.T) {
+			fsys := wldWorldFiles(t, turnBoard, nil)
+			fsys["game.yaml"].Data = []byte(strings.Replace(string(fsys["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+			g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Script: "wait 1000", ShotDir: t.TempDir()})
+			wldFrames(t, g, 30)
+			g.openScreen("studio", func() {})
+			wldFrames(t, g, 4)
+			s := g.in.script
+			s.cmds, s.pc, s.wait = []scriptCmd{{verb: "pick", name: "Count"}, {verb: verb}, {verb: "wait", n: 1000}}, 0, 0
+			wldFrames(t, g, 3)
+			if g.st.Vars["counted"] != float64(1) {
+				t.Fatal("pick was not accepted")
+			}
+			g.st.Planning.Phase = 1
+			g.fadeT = 20
+			screen, ok := g.stack[len(g.stack)-1].(*authorScreen)
+			if !ok {
+				t.Fatal("studio screen was not open")
+			}
+			screen.running = true
+			observed := false
+			observe := func() {
+				observed = true
+				kind, _ := g.scriptPickables()
+				if kind != "screen:studio" || g.turn != nil || g.fadeT > 0 {
+					t.Fatalf("observation during transition: %s", kind)
+				}
+			}
+			s.look, s.snapshot = observe, observe
+			wldFrames(t, g, 12)
+			if observed || s.pc != 1 {
+				t.Fatal("observation consumed during transition")
+			}
+			for range 200 {
+				screen.running = true
+				wldFrames(t, g, 1)
+			}
+			if observed {
+				t.Fatal("observation consumed while screen event was running")
+			}
+			screen.running = false
+			wldFrames(t, g, 2)
+			if !observed {
+				t.Fatal("ready screen was never observed")
+			}
+		})
+	}
+}

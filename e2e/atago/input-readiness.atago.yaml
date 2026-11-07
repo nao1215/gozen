@@ -1,0 +1,66 @@
+version: '1'
+suite:
+  name: Script input readiness
+scenarios:
+- name: date card retains a pick until the screen accepts it
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: card.txt
+      content: |
+        wait 20
+        do open: board
+        wait 10
+        pick Next phase
+        pick Count
+        wait 10
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script card.txt --shots card-shots --save-dir card-saves --trace card.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: card.jsonl
+        contains: ['"counted":1']
+- name: phone lines advance all messages and resume the event
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: phone.txt
+      content: |
+        wait 20
+        do open: board
+        wait 10
+        pick Chat
+        lines chat
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script phone.txt --shots phone-shots --save-dir phone-saves --trace phone.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: phone.jsonl
+        contains: ['"chatted":1']
+- name: simulated phone lines resume the event
+  steps:
+  - fixture:
+      file: phone-sim.txt
+      content: |
+        wait 20
+        do open: board
+        wait 10
+        pick Chat
+        lines chat
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script phone-sim.txt --save-dir phone-sim-saves --trace phone-sim.jsonl
+  - assert:
+      exit_code: 0
+      file:
+        path: phone-sim.jsonl
+        contains: ['"chatted":1']

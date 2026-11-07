@@ -585,6 +585,7 @@ func New(opts Options) (_ *Game, err error) {
 			return !g.busy()
 		}
 		s.waiting = g.waiting
+		s.ready = g.scriptReady
 		s.graphsReady = g.scriptGraphsReady
 		s.walk = g.walkStep
 		s.arrived = func() bool { a := g.walkArrived(); g.walkGoal = [3]int{}; return a }
@@ -649,6 +650,7 @@ func New(opts Options) (_ *Game, err error) {
 		s.pick = func(in *input, text string) {
 			if err := g.scriptPick(in, text); err != nil {
 				g.emit("pick_error", traceLine{"text": err.Error()})
+				s.err = err
 			}
 		}
 		s.look = g.scriptLook
@@ -962,6 +964,10 @@ func (g *Game) Update() error {
 		}
 	} else {
 		g.in.update()
+	}
+	if s := g.in.script; s != nil && s.err != nil {
+		g.emit("script_error", traceLine{"error": s.err.Error()})
+		return s.err
 	}
 	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
@@ -1782,6 +1788,15 @@ func (g *Game) waiting() (string, int) {
 		return "", 0
 	}
 	if g.tapWaiting() {
+		if p := g.phone; p != nil {
+			if !p.ready() || p.typing > 0 {
+				return "", 0
+			}
+			if p.asks() {
+				return "choice", 0
+			}
+			return "phone", p.age - phoneRise
+		}
 		if g.tapT <= 0 {
 			return "text", -g.tapT
 		}

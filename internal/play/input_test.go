@@ -79,6 +79,9 @@ func sysStepAll(t *testing.T, s *script, limit int) []input {
 		in.click, in.digit = false, 0
 		s.step(in)
 		out = append(out, *in)
+		if s.err != nil {
+			t.Fatal(s.err)
+		}
 		if s.quit {
 			return out
 		}
@@ -395,14 +398,12 @@ func TestScriptReadPressesWhenTheLineIsOld(t *testing.T) {
 	}
 }
 
-// TestScriptReadFinishesWhenIdle and the safety limit.
+// TestScriptReadFinishesWhenIdle stops at an actionable idle screen.
 func TestScriptReadFinishesWhenIdle(t *testing.T) {
 	s := sysScript(t, "read 3\nquit")
 	s.waiting = func() (string, int) { return "", 0 }
 	s.idle = func() bool { return true }
 	sysStepAll(t, s, 5)
-	s2 := sysScript(t, "read 3\nquit")
-	sysStepAll(t, s2, 7000) // no events at all: the limit ends it
 }
 
 // TestScriptUntilPressesOKUntilIdle: `until` keeps pressing ok every sixth tick until the
@@ -420,9 +421,6 @@ func TestScriptUntilPressesOKUntilIdle(t *testing.T) {
 	if presses < 2 || presses > 4 {
 		t.Fatalf("pressed ok %d times", presses)
 	}
-	s2 := sysScript(t, "until\nquit")
-	s2.idle = func() bool { return false }
-	sysStepAll(t, s2, 4000) // gives up after 3000 ticks
 }
 
 // TestScriptWalkWithoutWalker: walk and face are skipped when nothing can walk; with a walker
@@ -723,5 +721,27 @@ func TestTouchHeldFingerMovesThePointer(t *testing.T) {
 	in.touch()
 	if in.touchDone {
 		t.Fatal("touchDone should be cleared when no finger is down")
+	}
+}
+
+func TestScriptTimeoutDoesNotConsumeCommand(t *testing.T) {
+	for _, verb := range []string{"read 4", "lines stalled", "until", "walk gate", "play stalled", "pick blocked", "look", "snapshot"} {
+		t.Run(verb, func(t *testing.T) {
+			s := sysScript(t, verb+"\nquit")
+			s.idle = func() bool { return false }
+			if strings.HasPrefix(verb, "pick") || verb == "look" || verb == "snapshot" {
+				s.ready = func(string) bool { return false }
+			}
+			s.walk = func(string) (button, bool) { return -1, false }
+			for range 40002 {
+				s.step(&input{})
+				if s.err != nil || s.quit {
+					break
+				}
+			}
+			if s.err == nil || s.pc != 0 || s.quit {
+				t.Fatalf("timeout consumed command: pc=%d quit=%v err=%v", s.pc, s.quit, s.err)
+			}
+		})
 	}
 }
