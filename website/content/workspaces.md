@@ -409,13 +409,16 @@ the stage widens to its edge, the controls stand in a slim column at the
 right, and while the caller takes the stage (`self_stage`) the participant
 stands in the small view.
 
-A self view that is a picture or a guest actor (`self: me.png`) stands on the
-plain tile of the call; `self_backdrop: room.png` puts a picture behind it,
-small and on the stage, as an entity's backdrop is behind an entity. A person
-on camera is framed by the face found in the picture; when the hair above it
-would rise above the top of the view, the face moves down a little and, if
-that is not enough, shrinks, so the hair stays inside. A picture whose opaque
-part reaches its own top edge is drawn cut there and is framed as before.
+A self view that is a picture or an actor who is not a guest (`self: me.png`)
+stands on the plain tile of the call; `self_backdrop: room.png` puts a picture
+behind it, small and on the stage, as an entity's backdrop is behind an entity
+(an entity's self view keeps its own backdrop, a guest's its
+`guest_backdrops`). A person on camera is framed by the face found in the
+picture; when the opaque part above the face (mostly hair, but a hat or a
+raised hand counts too) would rise above the top of the view, the face moves
+down a little and, if that is not enough, shrinks, so it stays inside. A
+picture whose opaque part reaches its own top edge is drawn cut there and is
+framed as before.
 
 An event of lines shared by several calls names no `ensemble` in its lines;
 the call that calls it names the screen instead, and the lines of the called

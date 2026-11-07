@@ -38,6 +38,8 @@ func TestToastOpacity(t *testing.T) {
 	}
 	card := color.NRGBA{250, 252, 254, 255}
 	mix := func(v uint8) uint8 { return uint8(float64(v) * toastOpacityFloor) }
+	// An approximation without the shader's edge and sheen; the finished screen is
+	// measured by TestGraphicsToastsStayReadableOnGlass.
 	back := color.NRGBA{mix(card.R), mix(card.G), mix(card.B), 255} // over black
 	light := (&Game{db: &data.DB{}}).lightPalette()
 	for _, ink := range []color.NRGBA{light.text, light.accent} {

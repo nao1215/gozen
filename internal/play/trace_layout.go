@@ -157,7 +157,7 @@ func (g *Game) traceLayoutEnd(screen *ebiten.Image) {
 	// A shaking, flashing or fading screen is not read: what is behind the texts
 	// would be the flash, not the screen.
 	if g.shake > 0 || g.flash > 0 || g.fadeT > 0 || g.freezeT > 0 {
-		tr.layoutN = 0
+		tr.layoutN, tr.layoutPending = 0, ""
 		return
 	}
 	key := f.key()

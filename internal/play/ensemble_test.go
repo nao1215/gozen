@@ -658,6 +658,9 @@ func TestCallHeadFraming(t *testing.T) {
 		shrunk  bool
 	}{
 		{"fits", image.Rect(100, 180, 300, 1200), false, false},
+		// 43 pixels of hair at 2.4 units each: the tip at 56.8, inside the view at 50 but
+		// nearer its top than the margin.
+		{"fits close to the top", image.Rect(100, 157, 300, 1200), false, false},
 		{"a little hair above", image.Rect(100, 150, 300, 1200), true, false},
 		{"much hair above", image.Rect(100, 20, 300, 1200), true, true},
 		{"drawn cut at its top", image.Rect(100, 0, 300, 1200), false, false},
@@ -672,7 +675,7 @@ func TestCallHeadFraming(t *testing.T) {
 		if top > y+fh*.32+1e-9 {
 			t.Errorf("%s: face top %v below a tenth more than its place", c.name, top)
 		}
-		if c.content.Min.Y > 0 {
+		if c.content.Min.Y > 0 && c.moved {
 			if h := headTop(c.content, top, height); h < y+fh*.02-1e-9 {
 				t.Errorf("%s: hair top %v above the view's top %v", c.name, h, y)
 			}

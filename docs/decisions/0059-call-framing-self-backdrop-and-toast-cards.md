@@ -27,13 +27,16 @@ built on gozen, none of them the game's own:
    at most a tenth of the height (the face's top from 22% to 32%); if that is not
    enough the face shrinks until it fits. A picture whose opaque part touches its
    own top edge is drawn cut there (`source_cut: top` in the trace) and keeps the
-   old framing. The rule is the minimal one: no picture that fitted moves.
-2. `call.self_backdrop` names a picture drawn behind a self view that is a guest
-   actor or a picture, small and on the stage, as an entity's backdrop
+   old framing. The rule is the minimal one: no picture whose opaque top was
+   inside the view moves. The top is that of the whole opaque part, so a hat or a
+   raised hand above the face counts as hair does.
+2. `call.self_backdrop` names a picture drawn behind a self view that is an actor
+   who is not a guest, or a picture, small and on the stage, as an entity's backdrop
    (`view.backdrop`) is drawn behind an entity. Omitted, the view keeps the plain
    tile: the look of every existing game stays, and it is also what an entity with
    no backdrop value shows. `check` refuses it without `self`, for a missing file,
-   and when `self` is an entity, whose view takes the entity's own backdrop.
+   and when `self` is an entity or a guest, whose views take the entity's own
+   backdrop and `guest_backdrops`.
 3. The card under a notice (a guide's line, an inbox notification and the bubble
    it opens) is drawn at the card role's opacity raised to 0.94. At 0.94 the
    light card over a black backdrop still keeps the light palette's text and

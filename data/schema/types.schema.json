@@ -9251,7 +9251,7 @@
           "x-type": "string"
         },
         "self_backdrop": {
-          "description": "Optional picture behind the self view when self is a guest actor or a picture, filling the view as an entity's backdrop does; small or on the stage. Omitted keeps the plain tile. Needs self; an entity's self view takes the entity's backdrop instead.",
+          "description": "Optional picture behind the self view when self is an actor who is not a guest or a picture, filling the view as an entity's backdrop does; small or on the stage. Omitted keeps the plain tile. Needs self; an entity's self view takes the entity's backdrop and a guest's takes guest_backdrops instead.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

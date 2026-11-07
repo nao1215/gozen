@@ -119,6 +119,9 @@ func callHair(t *testing.T, self string, files map[string]string) {
 	g.pics.mu.Unlock()
 	sw, sh := g.screen()
 	dst := ebiten.NewImage(int(sw), int(sh))
+	// A first draw warms the pictures the call names (callPictures), so the check
+	// below sees what drawCallSelf draws, not what the preloading reads.
+	(&authorScreen{name: "studio"}).drawCall(g, dst)
 	for _, say := range []event.Say{{Ensemble: "studio", Actor: "weaver", Name: "Weaver", Text: "The loom is strung."}, {Ensemble: "studio", Actor: "me", Name: "Me", Text: "Thank you."}} {
 		g.talk.open(g, say)
 		drawn := map[string]bool{}

@@ -711,7 +711,7 @@ func (g *Game) callTorso(dst *ebiten.Image, path string, call *data.EnsembleCall
 	fh := seenOr(seen, h)
 	faceTop, faceHeight := callHeadFraming(img.Bounds(), face, g.pics.content(path), y, fh)
 	scale, left, top := portraitTransform(img.Bounds(), face, x, faceTop, w, faceHeight)
-	cx, cy := x+w/2, y+fh*.46
+	cx, cy := x+w/2, faceTop+faceHeight/2
 	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(left-cx, top-cy)
@@ -730,8 +730,9 @@ func (g *Game) callTorso(dst *ebiten.Image, path string, call *data.EnsembleCall
 
 // callHeadFraming places the face of a picture in a call view whose part not under
 // the message window runs from y down fh: its top at 22% of that height and its
-// height 48% of it, unless the hair above the face (the picture's opaque part,
-// content) would then rise above the view's top. Then the face moves down, by at
+// height 48% of it, unless the opaque part above the face (the top of the picture's
+// opaque part, content: mostly hair, but a hat or a raised hand counts too) would
+// then rise above the view's top. Then the face moves down, by at
 // most a tenth of the height, and if that is not enough it shrinks, so the top of
 // the hair stays a small margin inside the view. A picture whose opaque part
 // already touches its own top edge is drawn cut there and is framed as before.
@@ -744,7 +745,7 @@ func callHeadFraming(bounds, face, content image.Rectangle, y, fh float64) (face
 	}
 	rise := hair / float64(face.Dy()) // the hair above the face, in face heights
 	margin := fh * .02
-	if faceTop-faceHeight*rise >= y+margin {
+	if faceTop-faceHeight*rise >= y {
 		return faceTop, faceHeight
 	}
 	lowest := y + fh*.32
