@@ -339,7 +339,7 @@ func TestPhoneTimedOutcomes(t *testing.T) {
 		outcomes []string
 	}{
 		{`{app: lock, timeout: 2, timeout_result: retry, var: var.outcome}`, []string{"open", "dismiss", "retry"}},
-		{`{app: page, timeout: 2, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "expired"}},
+		{`{app: page, timeout: 2, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "expired", "open"}},
 		{`{app: banner, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss"}},
 		{`{app: banner, timeout: 2, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss", "expired"}},
 	} {

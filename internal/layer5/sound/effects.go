@@ -21,6 +21,57 @@ var effects = map[string][]byte{}
 // session that has ended are dropped.
 var effectsGen int
 
+// builtinEffectSeconds is shared by synthesis and silent simulation.
+var builtinEffectSeconds = map[string]float64{
+	"cursor":    0.05,
+	"decide":    0.18,
+	"cancel":    0.14,
+	"buzzer":    0.25,
+	"hit":       0.2,
+	"crit":      0.35,
+	"magic":     0.6,
+	"heal":      0.9,
+	"buff":      0.5,
+	"debuff":    0.5,
+	"item":      1.2,
+	"fall":      0.5,
+	"win":       1.4,
+	"escape":    0.4,
+	"step":      0.12,
+	"cutin":     0.9,
+	"encounter": 0.8,
+	"boss":      1.6,
+	"stairs":    0.7,
+	"chest":     1.0,
+	"blast":     0.45,
+	"miss":      0.22,
+	"switch":    0.16,
+	"solve":     1.6,
+	"push":      0.32,
+	"thud":      0.25,
+	"unlock":    0.7,
+	"door":      0.6,
+	"punch":     0.13,
+	"tink":      0.18,
+	"break":     0.4,
+	"throw":     0.25,
+	"lift":      0.14,
+	"hurt":      0.3,
+	"gameover":  2.0,
+	"pop":       0.2,
+	"boom":      1.4,
+	"charge":    0.35,
+	"shoot":     0.18,
+	"key":       0.6,
+	"heart":     0.5,
+	"levelup":   1.1,
+	"treasure":  1.1,
+	"tip":       0.9,
+	"fanfare":   1.8,
+}
+
+var effectDurations = map[string]float64{}
+
 var Effects = []string{
 	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
 
@@ -144,66 +195,66 @@ func synthEffects() map[string][]byte {
 	//nolint:gosec // Deterministic synthetic audio noise, not a secret.
 	rng := rand.New(rand.NewPCG(11, 12))
 	noise := func() float64 { return rng.Float64()*2 - 1 }
-	effects["cursor"] = synth(0.05, func(t float64) float64 { return tone(t, 1320) * env(t, 0.002, 0.012) * 0.25 })
-	effects["decide"] = synth(0.18, func(t float64) float64 {
+	effects["cursor"] = synth(builtinEffectSeconds["cursor"], func(t float64) float64 { return tone(t, 1320) * env(t, 0.002, 0.012) * 0.25 })
+	effects["decide"] = synth(builtinEffectSeconds["decide"], func(t float64) float64 {
 		return (tone(t, 880)*step(0.06-t) + tone(t, 1320)*step(t-0.06)) * env(t, 0.003, 0.08) * 0.3
 	})
-	effects["cancel"] = synth(0.14, func(t float64) float64 {
+	effects["cancel"] = synth(builtinEffectSeconds["cancel"], func(t float64) float64 {
 		return (tone(t, 660)*step(0.05-t) + tone(t, 440)*step(t-0.05)) * env(t, 0.003, 0.06) * 0.3
 	})
-	effects["buzzer"] = synth(0.25, func(t float64) float64 { return square(t, 140) * env(t, 0.005, 0.12) * 0.18 })
+	effects["buzzer"] = synth(builtinEffectSeconds["buzzer"], func(t float64) float64 { return square(t, 140) * env(t, 0.005, 0.12) * 0.18 })
 	lp := 0.0
-	effects["hit"] = synth(0.2, func(t float64) float64 {
+	effects["hit"] = synth(builtinEffectSeconds["hit"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.35
 		return (lp*0.8 + tone(t, 90*math.Exp(-t*8))*0.7) * env(t, 0.001, 0.05)
 	})
-	effects["crit"] = synth(0.35, func(t float64) float64 {
+	effects["crit"] = synth(builtinEffectSeconds["crit"], func(t float64) float64 {
 		return (noise()*0.6 + tone(t, 70*math.Exp(-t*5))*0.9 + tone(t, 1800)*0.2) * env(t, 0.001, 0.09)
 	})
-	effects["magic"] = synth(0.6, func(t float64) float64 {
+	effects["magic"] = synth(builtinEffectSeconds["magic"], func(t float64) float64 {
 		f := 600 + 900*t
 		return (tone(t, f)*0.5 + tone(t, f*1.5)*0.3) * env(t, 0.02, 0.2) * (0.7 + 0.3*tone(t, 18)) * 0.35
 	})
-	effects["heal"] = synth(0.9, arpeggio([]float64{783.99, 987.77, 1174.66, 1567.98}, 0.07, 0.25, 0.16))
-	effects["buff"] = synth(0.5, func(t float64) float64 {
+	effects["heal"] = synth(builtinEffectSeconds["heal"], arpeggio([]float64{783.99, 987.77, 1174.66, 1567.98}, 0.07, 0.25, 0.16))
+	effects["buff"] = synth(builtinEffectSeconds["buff"], func(t float64) float64 {
 		return tone(t, 440*math.Pow(2, t*2)) * env(t, 0.01, 0.2) * 0.3
 	})
-	effects["debuff"] = synth(0.5, func(t float64) float64 {
+	effects["debuff"] = synth(builtinEffectSeconds["debuff"], func(t float64) float64 {
 		return tone(t, 660*math.Pow(2, -t*2)) * env(t, 0.01, 0.2) * 0.3
 	})
-	effects["item"] = synth(1.2, arpeggio([]float64{1046.5, 1318.5, 1568, 2093}, 0.08, 0.2, 0.14))
-	effects["fall"] = synth(0.5, func(t float64) float64 {
+	effects["item"] = synth(builtinEffectSeconds["item"], arpeggio([]float64{1046.5, 1318.5, 1568, 2093}, 0.08, 0.2, 0.14))
+	effects["fall"] = synth(builtinEffectSeconds["fall"], func(t float64) float64 {
 		return math.Sin(2*math.Pi*110*math.Exp(-t*3)*t) * env(t, 0.003, 0.15) * 0.7
 	})
-	effects["win"] = synth(1.4, arpeggio([]float64{587.33, 739.99, 880, 1174.66}, 0.09, 0.35, 0.18))
-	effects["escape"] = synth(0.4, func(t float64) float64 {
+	effects["win"] = synth(builtinEffectSeconds["win"], arpeggio([]float64{587.33, 739.99, 880, 1174.66}, 0.09, 0.35, 0.18))
+	effects["escape"] = synth(builtinEffectSeconds["escape"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.1 + t)
 		return lp * math.Sin(math.Pi*t/0.4) * 0.6
 	})
-	effects["step"] = synth(0.12, func(t float64) float64 {
+	effects["step"] = synth(builtinEffectSeconds["step"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.2
 		return lp * env(t, 0.005, 0.03) * 0.5
 	})
-	effects["cutin"] = synth(0.9, func(t float64) float64 {
+	effects["cutin"] = synth(builtinEffectSeconds["cutin"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.05 + 0.4*math.Min(1, t*3))
 		whoosh := lp * math.Sin(math.Pi*math.Min(1, t/0.45)) * 0.7 * step(0.45-t)
 		ring := arpeggio([]float64{1318.5, 1760, 2637}, 0.05, 0.3, 0.12)(math.Max(0, t-0.3)) * step(t-0.3)
 		return whoosh + ring
 	})
-	effects["encounter"] = synth(0.8, func(t float64) float64 {
+	effects["encounter"] = synth(builtinEffectSeconds["encounter"], func(t float64) float64 {
 		f := 220 * math.Pow(2, t*3)
 		glass := (tone(t, f) + tone(t, f*1.51)*0.5) * env(t, 0.01, 0.25) * 0.22
 		lp += (noise() - lp) * 0.6
 		crack := lp * env(math.Max(0, t-0.35), 0.001, 0.08) * step(t-0.35) * 0.8
 		return glass + crack
 	})
-	effects["boss"] = synth(1.6, func(t float64) float64 {
+	effects["boss"] = synth(builtinEffectSeconds["boss"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.03
 		drum := tone(t, 50*math.Exp(-t*1.5)) * env(t, 0.002, 0.5)
 		low := (square(t, 55)*0.15 + tone(t, 82.4)*0.3) * env(t, 0.05, 0.6)
 		return (drum*0.8 + low + lp*1.5*env(t, 0.01, 0.4)) * 0.6
 	})
-	effects["stairs"] = synth(0.7, func(t float64) float64 {
+	effects["stairs"] = synth(builtinEffectSeconds["stairs"], func(t float64) float64 {
 		v := 0.0
 		for i := range 4 {
 			u := t - float64(i)*0.15
@@ -214,15 +265,15 @@ func synthEffects() map[string][]byte {
 		}
 		return v * 0.6
 	})
-	effects["chest"] = synth(1.0, func(t float64) float64 {
+	effects["chest"] = synth(builtinEffectSeconds["chest"], func(t float64) float64 {
 		creak := square(t, 180+t*300) * env(t, 0.01, 0.08) * 0.08 * step(0.2-t)
 		return creak + arpeggio([]float64{1046.5, 1568, 2093, 2637}, 0.06, 0.25, 0.13)(math.Max(0, t-0.15))*step(t-0.15)
 	})
-	effects["blast"] = synth(0.45, func(t float64) float64 {
+	effects["blast"] = synth(builtinEffectSeconds["blast"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.5 - 0.4*math.Min(1, t*3))
 		return (lp*0.7 + tone(t, 120*math.Exp(-t*4))*0.6 + tone(t, 900+400*t)*0.15) * env(t, 0.002, 0.12)
 	})
-	effects["miss"] = synth(0.22, func(t float64) float64 {
+	effects["miss"] = synth(builtinEffectSeconds["miss"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.05 + t*2)
 		return lp * math.Sin(math.Pi*t/0.22) * 0.5
 	})
@@ -236,20 +287,20 @@ func makeActionEffects(effects map[string][]byte, noise func() float64) {
 		k := math.Log(f1/f0) / dur
 		return math.Sin(2 * math.Pi * f0 * (math.Exp(k*t) - 1) / k)
 	}
-	effects["switch"] = synth(0.16, func(t float64) float64 {
+	effects["switch"] = synth(builtinEffectSeconds["switch"], func(t float64) float64 {
 		return (square(t, 1200)*step(0.04-t) + square(t, 1800)*step(t-0.04)) * env(t, 0.002, 0.05) * 0.12
 	})
 
-	effects["solve"] = synth(1.6, arpeggio([]float64{783.99, 739.99, 622.25, 440, 415.30, 659.25, 830.61, 1046.5}, 0.11, 0.35, 0.13))
-	effects["push"] = synth(0.32, func(t float64) float64 {
+	effects["solve"] = synth(builtinEffectSeconds["solve"], arpeggio([]float64{783.99, 739.99, 622.25, 440, 415.30, 659.25, 830.61, 1046.5}, 0.11, 0.35, 0.13))
+	effects["push"] = synth(builtinEffectSeconds["push"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.05
 		return (lp*1.6 + tone(t, 55)*0.3) * math.Sin(math.Pi*t/0.32) * 0.8
 	})
-	effects["thud"] = synth(0.25, func(t float64) float64 {
+	effects["thud"] = synth(builtinEffectSeconds["thud"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.15
 		return (lp*0.6 + tone(t, 70*math.Exp(-t*6))) * env(t, 0.002, 0.06) * 0.8
 	})
-	effects["unlock"] = synth(0.7, func(t float64) float64 {
+	effects["unlock"] = synth(builtinEffectSeconds["unlock"], func(t float64) float64 {
 		v := (tone(t, 2600) + tone(t, 3900)*0.5) * env(t, 0.001, 0.015) * 0.3
 		u := t - 0.12
 		if u > 0 {
@@ -257,18 +308,18 @@ func makeActionEffects(effects map[string][]byte, noise func() float64) {
 		}
 		return v + arpeggio([]float64{880, 1108.73, 1318.51}, 0.07, 0.2, 0.1)(math.Max(0, t-0.25))*step(t-0.25)
 	})
-	effects["door"] = synth(0.6, func(t float64) float64 {
+	effects["door"] = synth(builtinEffectSeconds["door"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.08
 		return (lp + square(t, 60+t*80)*0.15) * math.Sin(math.Pi*t/0.6) * 0.7
 	})
-	effects["punch"] = synth(0.13, func(t float64) float64 {
+	effects["punch"] = synth(builtinEffectSeconds["punch"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.1 + t*4)
 		return lp * math.Sin(math.Pi*t/0.13) * 0.7
 	})
-	effects["tink"] = synth(0.18, func(t float64) float64 {
+	effects["tink"] = synth(builtinEffectSeconds["tink"], func(t float64) float64 {
 		return (tone(t, 2400) + tone(t, 3610)*0.6) * env(t, 0.001, 0.04) * 0.25
 	})
-	effects["break"] = synth(0.4, func(t float64) float64 {
+	effects["break"] = synth(builtinEffectSeconds["break"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.6
 		v := lp * env(t, 0.001, 0.08) * 0.8
 		for i, at := range []float64{0.05, 0.11, 0.19} {
@@ -278,36 +329,36 @@ func makeActionEffects(effects map[string][]byte, noise func() float64) {
 		}
 		return v
 	})
-	effects["throw"] = synth(0.25, func(t float64) float64 {
+	effects["throw"] = synth(builtinEffectSeconds["throw"], func(t float64) float64 {
 		lp += (noise() - lp) * (0.05 + t)
 		return lp * math.Sin(math.Pi*t/0.25) * 0.6
 	})
-	effects["lift"] = synth(0.14, func(t float64) float64 { return sweep(t, 300, 700, 0.14) * env(t, 0.005, 0.07) * 0.3 })
-	effects["hurt"] = synth(0.3, func(t float64) float64 {
+	effects["lift"] = synth(builtinEffectSeconds["lift"], func(t float64) float64 { return sweep(t, 300, 700, 0.14) * env(t, 0.005, 0.07) * 0.3 })
+	effects["hurt"] = synth(builtinEffectSeconds["hurt"], func(t float64) float64 {
 		f := 600 * math.Exp(-t*4)
 		return square(t, f) * env(t, 0.002, 0.12) * 0.16
 	})
-	effects["gameover"] = synth(2.0, arpeggio([]float64{659.25, 587.33, 523.25, 493.88, 392}, 0.22, 0.5, 0.15))
-	effects["pop"] = synth(0.2, func(t float64) float64 {
+	effects["gameover"] = synth(builtinEffectSeconds["gameover"], arpeggio([]float64{659.25, 587.33, 523.25, 493.88, 392}, 0.22, 0.5, 0.15))
+	effects["pop"] = synth(builtinEffectSeconds["pop"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.3
 		return (sweep(t, 400, 1400, 0.2)*0.4 + lp*0.3) * env(t, 0.002, 0.06)
 	})
-	effects["boom"] = synth(1.4, func(t float64) float64 {
+	effects["boom"] = synth(builtinEffectSeconds["boom"], func(t float64) float64 {
 		lp += (noise() - lp) * 0.04
 		return (lp*2.2 + tone(t, 45*math.Exp(-t))*0.6) * env(t, 0.005, 0.4)
 	})
-	effects["charge"] = synth(0.35, func(t float64) float64 { return square(t, 180+t*900) * env(t, 0.01, 0.2) * 0.1 })
-	effects["shoot"] = synth(0.18, func(t float64) float64 { return sweep(t, 1400, 300, 0.18) * env(t, 0.002, 0.08) * 0.3 })
-	effects["key"] = synth(0.6, arpeggio([]float64{1567.98, 2093}, 0.08, 0.15, 0.14))
-	effects["heart"] = synth(0.5, arpeggio([]float64{1046.5, 1318.51, 1567.98}, 0.05, 0.12, 0.12))
-	effects["levelup"] = synth(1.1, func(t float64) float64 {
+	effects["charge"] = synth(builtinEffectSeconds["charge"], func(t float64) float64 { return square(t, 180+t*900) * env(t, 0.01, 0.2) * 0.1 })
+	effects["shoot"] = synth(builtinEffectSeconds["shoot"], func(t float64) float64 { return sweep(t, 1400, 300, 0.18) * env(t, 0.002, 0.08) * 0.3 })
+	effects["key"] = synth(builtinEffectSeconds["key"], arpeggio([]float64{1567.98, 2093}, 0.08, 0.15, 0.14))
+	effects["heart"] = synth(builtinEffectSeconds["heart"], arpeggio([]float64{1046.5, 1318.51, 1567.98}, 0.05, 0.12, 0.12))
+	effects["levelup"] = synth(builtinEffectSeconds["levelup"], func(t float64) float64 {
 		v := arpeggio([]float64{523.25, 659.25, 783.99, 1046.5}, 0.07, 0.3, 0.13)(t)
 		if u := t - 0.3; u > 0 {
 			v += (tone(u, 1046.5) + tone(u, 1318.51)*0.6 + tone(u, 1567.98)*0.5) * env(u, 0.01, 0.4) * 0.09
 		}
 		return v
 	})
-	effects["treasure"] = synth(1.1, func(t float64) float64 {
+	effects["treasure"] = synth(builtinEffectSeconds["treasure"], func(t float64) float64 {
 		v := arpeggio([]float64{523.25, 659.25, 783.99, 1046.5, 1318.51}, 0.055, 0.14, 0.12)(t)
 		if u := t - 0.3; u > 0 {
 			v += (tone(u, 523.25) + tone(u, 783.99)*0.7 + tone(u, 1046.5)*0.5) * env(u, 0.01, 0.3) * 0.08
@@ -315,14 +366,14 @@ func makeActionEffects(effects map[string][]byte, noise func() float64) {
 		return v
 	})
 	// a stream's tip: two bright coin pings and a shimmer
-	effects["tip"] = synth(0.9, func(t float64) float64 {
+	effects["tip"] = synth(builtinEffectSeconds["tip"], func(t float64) float64 {
 		v := arpeggio([]float64{1567.98, 2093}, 0.07, 0.25, 0.13)(t)
 		if u := t - 0.16; u > 0 {
 			v += (tone(u, 2637.02) + tone(u, 3135.96)*0.5) * env(u, 0.005, 0.45) * 0.06
 		}
 		return v
 	})
-	effects["fanfare"] = synth(1.8, func(t float64) float64 {
+	effects["fanfare"] = synth(builtinEffectSeconds["fanfare"], func(t float64) float64 {
 		v := arpeggio([]float64{440, 554.37, 659.25, 880}, 0.12, 0.6, 0.12)(t)
 		if u := t - 0.55; u > 0 {
 			v += (tone(u, 880) + tone(u, 1108.73)*0.6 + tone(u, 1318.51)*0.5) * env(u, 0.01, 0.5) * 0.1

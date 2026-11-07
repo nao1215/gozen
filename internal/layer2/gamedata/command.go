@@ -651,6 +651,16 @@ func (p PhoneCue) Results() []PhoneResult {
 			out = append(out, PhoneResult{Row: -2, Notice: -2, ID: id})
 		}
 	}
+	// Append a page's ordinary close after all existing outcomes, including
+	// timeout, so button and saved result indices remain unchanged.
+	if p.App == "page" && p.Timeout > 0 && len(p.Rows) > 0 {
+		for _, r := range out {
+			if r.Row >= 0 {
+				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
+				break
+			}
+		}
+	}
 	// Append mixed-lock outcomes after existing results to preserve saved indices.
 	if calls {
 		for _, n := range p.Notices {

@@ -92,3 +92,29 @@ func TestNewFailureReleasesRun(t *testing.T) {
 		})
 	}
 }
+
+// Layout must work without a display, including after offscreen drawing. The
+// real loop supplies the device scale; scripted layouts deliberately ignore it.
+func TestLayoutDeviceScale(t *testing.T) {
+	g := sysInn(t, Options{})
+	g.db.Game.Screen.Native = true
+	g.rendering = true
+	if g.deviceScale != nil {
+		t.Fatal("New installed a display query before startup")
+	}
+	w, h := g.Layout(960, 540)
+	if w != 960 || h != 540 {
+		t.Fatalf("offscreen layout = %dx%d", w, h)
+	}
+	calls := 0
+	g.deviceScale = func() float64 { calls++; return 2 }
+	fw, fh := g.LayoutF(960, 540)
+	if fw != 1920 || fh != 1080 || calls != 1 {
+		t.Fatalf("device layout = %gx%g, queries = %d", fw, fh, calls)
+	}
+	g.in.script = &script{}
+	g.layout(960, 540)
+	if calls != 1 {
+		t.Fatal("scripted layout queried the display")
+	}
+}

@@ -178,6 +178,7 @@ resource fails replay before play starts. Live editing is refused as below.
 | Voice decode goroutines, browser speech completion, stream unanswered-comment files | **Refused** by stream initialization and `voice`/`stream_error`, before their timing or I/O can affect a supported target. | Stream clock/text boundary tests; existing stream voice timeout tests |
 | Dialogue voice duration/auto-wait (`voice.go`) | **Refused** at `voice`, including missing clips. This avoids accepting voice-dependent timing under different playback/seek conditions. | `TestTraceSourceBoundaries/voice` |
 | Boss fanfare completion (`battle_drama.go`) | **Refused** at `audio_timing` before polling the audio player's state. | `TestTraceSourceBoundaries/audio_timing` |
+| Sound-length waits (`sfx.wait`, `layer5/sound`) | **Restored**: muted startup reads custom stream lengths without PCM decoding or playback; built-in durations share the synthesis definitions. Mute does not shorten waits. | `TestEffectDurationsWithoutPlayback`, `TestTraceUnmutedSFXWaitMutedReproduction` |
 | SFX variation clock and unseeded random pitch/volume (`layer5/sound/vary.go`), effect-player completion | **Restored screen state**: these affect audio samples/player cleanup only, with no feedback into game state or pixels. Exact audio is outside this contract. | Sound variation tests; muted graphics reproduction tests |
 | Gameplay/collection RNG, legacy-save parsing, music-room background shuffle (`play.go`, `rpg`, `gallery_music.go`) | **Recorded/restored** seed; traced runs replace seed zero before any RNG is created. Music-room wall-clock fallback and RPG unseeded fallbacks are not used by a supported recording's gameplay. Save-validation-only RNG does not change the live state. | Same-seed trace tests; `TestTraceMusicRoomSeedRestored` |
 | Puppet animation RNG and display previews (`puppets.go`, `meters.go`, `layer5/puppet`) | **Restored** from stable actor hashes or a clone of the game RNG. Simulation ticks advance animation; Draw does not advance it. | `TestEnemyPuppetMotionDoesNotDependOnDrawing`, graphics seek comparison |
@@ -219,6 +220,13 @@ the same pose. `TestGraphicsSeekMatchesPlayback` in `internal/layer5/puppet`
 compares complete motion state (including phases), poses and pixels after 90
 updates with and without intermediate draws. Run it with the `graphics` tag in
 the same display environment.
+
+Round doll face textures also stay off the automatic atlas: map tokens and
+campaign portraits scale them with linear filtering. `TestGraphicsScreensRepro`
+compares both the ordinary campaign and a longer warmed-up run against seeking,
+with exact pixels and no tolerance. Offscreen layout defaults to device scale 1;
+only `StartRendering` installs the monitor query, and layout tests can inject a
+scale without initializing GLFW.
 
 ## Balance display
 

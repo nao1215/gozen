@@ -265,7 +265,10 @@ func StopFade(seconds float64) {
 func EffectSeconds(name string) float64 {
 	mu.Lock()
 	defer mu.Unlock()
-	return float64(len(effects[name])/8) / SampleRate
+	if seconds, ok := effectDurations[name]; ok {
+		return seconds
+	}
+	return float64(int(builtinEffectSeconds[name]*SampleRate)) / SampleRate
 }
 
 func Jump(mood string) {

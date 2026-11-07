@@ -1044,3 +1044,69 @@ func TestReplayPreservesMultipleSaveClocksWithinTick(t *testing.T) {
 		t.Fatal("accepted extra write")
 	}
 }
+
+// Audio uses the real PCM mixer without opening an audio device. Its trace
+// must reproduce at every tick with the muted startup used by printed commands.
+func TestTraceUnmutedSFXWaitMutedReproduction(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append([]byte("schema_version: 4\n"), fsys["game.yaml"].Data...)
+	fsys["data/sound.yaml"] = &fstest.MapFile{Data: []byte(`events:
+  sound_wait:
+    do:
+      - sfx: {name: decide, wait: true}
+      - sfx: {name: custom, wait: true}
+      - say: "Finished."
+`)}
+	fsys["assets/sfx/custom.wav"] = &fstest.MapFile{Data: testgame.Wav(0.75)}
+	var trace, audio bytes.Buffer
+	g, err := New(Options{FS: fsys, Location: "camp", Event: "sound_wait", Seed: 7, Audio: &audio, Trace: &trace, Store: savefile.MemStore(), headless: true, Script: "wait 1000\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type frame struct {
+		Wait int
+		Line string
+	}
+	var frames []frame
+	for range 100 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		frames = append(frames, frame{g.waitT, at(g)})
+	}
+	g.traceEnd()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if audio.Len() == 0 || frames[len(frames)-1].Line != "Finished." {
+		t.Fatal("recording did not play through sound waits")
+	}
+	path := filepath.Join(t.TempDir(), "sound.jsonl")
+	if err := os.WriteFile(path, trace.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 100}); err != nil {
+		t.Fatalf("exact reproduction refused: %v", err)
+	}
+	g, err = New(Options{FS: fsys, Replay: path, NoSound: true, Store: savefile.MemStore()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	for tick, want := range frames {
+		if err := g.Update(); err != nil {
+			t.Fatalf("frame %d, tick %d, limit %d: %v", tick, g.tick, g.rep.limit, err)
+		}
+		if got := (frame{g.waitT, at(g)}); got != want {
+			t.Fatalf("tick %d: muted %+v, recorded %+v", tick, got, want)
+		}
+	}
+	g.traceEnd()
+	if g.rep.diverge != "" || !g.rep.finished {
+		t.Fatalf("replay: %s", g.rep.report())
+	}
+}

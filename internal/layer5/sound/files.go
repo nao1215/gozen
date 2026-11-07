@@ -16,7 +16,14 @@ import (
 
 const SfxDir = "assets/sfx"
 
-func LoadEffects(fsys fs.FS) int {
+func LoadEffects(fsys fs.FS) int { return loadEffects(fsys, false) }
+
+// LoadEffectDurations loads only stream lengths for play's muted sessions.
+// It creates no players or PCM buffers; unreadable effects are logged and skipped
+// just as in LoadEffects. Close releases the session's custom durations.
+func LoadEffectDurations(fsys fs.FS) int { return loadEffects(fsys, true) }
+
+func loadEffects(fsys fs.FS, lengthsOnly bool) int {
 	if fsys == nil {
 		return 0
 	}
@@ -35,33 +42,50 @@ func LoadEffects(fsys fs.FS) int {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
 		}
-		pcm, err := DecodeEffect(b, ext)
+		var pcm []byte
+		var seconds float64
+		if lengthsOnly {
+			var stream effectStream
+			stream, err = decodeEffectStream(b, ext)
+			if err == nil {
+				seconds = float64(stream.Length()/4) / SampleRate
+			}
+		} else {
+			pcm, err = DecodeEffect(b, ext)
+			seconds = ClipSeconds(pcm)
+		}
 		if err != nil {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
 		}
 		mu.Lock()
-		effects[strings.TrimSuffix(e.Name(), path.Ext(e.Name()))] = pcm
+		name := strings.TrimSuffix(e.Name(), path.Ext(e.Name()))
+		effectDurations[name] = seconds
+		if !lengthsOnly {
+			effects[name] = pcm
+		}
 		mu.Unlock()
 		n++
 	}
 	return n
 }
 
-func DecodeEffect(b []byte, ext string) ([]byte, error) {
-	var r io.Reader
+type effectStream interface {
+	io.Reader
+	Length() int64
+}
+
+func decodeEffectStream(b []byte, ext string) (effectStream, error) {
 	if ext == ".wav" {
-		s, err := wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
-		if err != nil {
-			return nil, err
-		}
-		r = s
-	} else {
-		s, err := vorbis.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
-		if err != nil {
-			return nil, err
-		}
-		r = s
+		return wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+	}
+	return vorbis.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+}
+
+func DecodeEffect(b []byte, ext string) ([]byte, error) {
+	r, err := decodeEffectStream(b, ext)
+	if err != nil {
+		return nil, err
 	}
 	raw, err := io.ReadAll(r)
 	if err != nil {

@@ -208,6 +208,13 @@ func (g *Game) StartRendering() {
 	}
 	g.loopStarted = true
 	g.rendering = true
+	// Only the real loop may query the display. Offscreen layouts use unit scale.
+	g.deviceScale = func() float64 {
+		if m := ebiten.Monitor(); m != nil {
+			return m.DeviceScaleFactor()
+		}
+		return 1
+	}
 	// A browser keeps running unfocused: an embedded page can start without focus and would
 	// never begin, and the browser already slows a hidden tab. Scripted captures keep running.
 	g.pauseUnfocused = runtime.GOOS != "js" && g.opts.Script == "" && g.opts.Autopilot == nil
@@ -339,6 +346,7 @@ type Game struct {
 
 	quit           bool
 	loopStarted    bool
+	deviceScale    func() float64 // Installed by startup; nil for offscreen layout.
 	rendering      bool
 	pauseUnfocused bool      // Set only by the desktop loop (StartRendering), not a browser or offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
@@ -681,6 +689,9 @@ func New(opts Options) (_ *Game, err error) {
 		}
 	}
 
+	if opts.Audio == nil && opts.NoSound {
+		sound.LoadEffectDurations(opts.FS)
+	}
 	silentBGM := opts.Audio == nil && opts.NoSound && opts.Trace != nil
 	if opts.Audio != nil || !opts.NoSound || silentBGM {
 		if !silentBGM {
@@ -841,8 +852,8 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 	case g.rep != nil && g.rep.scripted:
 		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
 	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
-		if m := ebiten.Monitor(); m != nil {
-			dsf = m.DeviceScaleFactor()
+		if g.deviceScale != nil {
+			dsf = g.deviceScale()
 		}
 	}
 	g.fitView(w, h, dsf)

@@ -1687,3 +1687,74 @@ func TestPhoneTimedMixedLockOutcomes(t *testing.T) {
 		})
 	}
 }
+
+func TestPhoneSharedClosePaths(t *testing.T) {
+	for _, app := range []string{"lock", "page", "banner"} {
+		for _, action := range []string{"escape", "ok", "timeout", "outside", "skip"} {
+			t.Run(app+"/"+action, func(t *testing.T) {
+				cue := data.PhoneCue{App: app, Var: "var.result", Timeout: 10}
+				if app == "banner" {
+					cue.Notices = []data.PhoneNotice{{Text: "Notice"}}
+				}
+				if app == "page" {
+					cue.Rows = []data.PhoneRow{{Button: "First", ID: "first"}, {Button: "Second", ID: "second"}, {Text: strings.Repeat("Bottom section.\n", 80)}}
+				}
+				g := phoneGame(t, cue)
+				phoneTicks(g, phoneRise)
+				if app == "page" {
+					rows, end := g.pageView(g.phone)
+					g.phone.scroll = end
+					if end <= rows[1].top+rows[1].h {
+						t.Fatal("buttons must be above the viewport")
+					}
+					results := cue.Results()
+					if results[0].ID != "first" || results[1].ID != "second" || results[2].ID != "dismiss" || results[3].ID != "expired" {
+						t.Fatalf("existing indices changed: %+v", results)
+					}
+				}
+				g.in = input{}
+				want := ""
+				switch action {
+				case "escape":
+					g.in.esc = true
+					want = "dismiss"
+				case "ok":
+					g.in.pressed[btnOK] = true
+					want = "open"
+				case "timeout":
+					g.phone.age = phoneRise + 599
+					want = "expired"
+				case "outside":
+					g.in = input{click: true, mouse: image.Pt(1, 500)}
+					if app == "lock" {
+						want = "open"
+					}
+				case "skip":
+					g.skipping = true
+					g.in.fast = true
+				}
+				g.updatePhone()
+				if want == "" {
+					if g.phone.closing != 0 || g.phone.answer() != -1 {
+						t.Fatal("non-closing input chose an outcome")
+					}
+					g.in = input{}
+					g.phone.age = phoneRise + 599
+					g.updatePhone()
+					want = "expired"
+				}
+				idx := g.phone.answer()
+				results := cue.Results()
+				if idx < 0 || idx >= len(results) || results[idx].ID != want {
+					t.Fatalf("answer %d, want %s; results %+v", idx, want, results)
+				}
+				if len(cue.Do(results[idx])) == 0 {
+					t.Fatal("outcome does not assign var")
+				}
+				if !phoneTicks(g, phoneRise) || g.phone.answer() != idx {
+					t.Fatal("closing changed outcome")
+				}
+			})
+		}
+	}
+}

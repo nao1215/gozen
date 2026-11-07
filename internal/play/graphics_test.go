@@ -408,7 +408,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "timed-fade", "campaign", "battle-puppet", "native-window", "native-script", "guides"} {
+	for _, mode := range []string{"novel", "timed-fade", "campaign", "campaign-warm", "battle-puppet", "native-window", "native-script", "guides"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
@@ -416,6 +416,9 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			game := filepath.Join(dir, "game")
 			fixture := mode
+			if mode == "campaign-warm" {
+				fixture = "campaign"
+			}
 			if mode == "timed-fade" || strings.HasPrefix(mode, "native-") || mode == "guides" {
 				fixture = "novel"
 			}
@@ -434,6 +437,11 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			start := []string{"--start", "war"}
 			body := "wait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			if mode == "campaign-warm" {
+				// Exercise atlas promotion after many intermediate portrait draws;
+				// seeking skips those draws but must retain exact pixel equality.
+				body = "wait 180\npress ok\nwait 180\nshot frame\nquit\n"
+			}
 			if fixture == "novel" {
 				writeNovelFigure(t, game)
 			}

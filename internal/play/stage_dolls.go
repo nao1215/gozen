@@ -185,7 +185,10 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	img := ebiten.NewImageFromImage(b.sheet)
 	c.sheets[key] = img
 	if b.face != nil {
-		c.faces[key] = ebiten.NewImageFromImage(b.face)
+		// These icons are linearly scaled by map tokens and portraits. Automatic
+		// atlas promotion changes float32 sampling coordinates with draw history,
+		// making playback and seeking round edge pixels differently.
+		c.faces[key] = ebiten.NewImageFromImageWithOptions(b.face, &ebiten.NewImageFromImageOptions{Unmanaged: true})
 	}
 	return img
 }
