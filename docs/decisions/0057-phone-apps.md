@@ -1,6 +1,6 @@
 # ADR 0057: A phone on the screen
 
-Status: Accepted and implemented (2026-11-06).
+Status: Partly changed by [ADR 0060](0060-general-phone-outcomes.md): shared timeouts and game-wide phone colors.
 
 ## Authors and the problem
 
@@ -78,7 +78,7 @@ the player's hand and cannot play anything.
 
 ## Consequences
 
-The phone is drawn by the engine in fixed, neutral colors, so it reads as a
+The phone is drawn by the engine in neutral colors by default, so it reads as a
 phone in every game and needs no assets of its own; the apps are not copies of
 any one product. A game with a clock may keep `var.clock_minutes`, which the
 status bar shows. The phone is drawn from canvases it owns and frees when it is

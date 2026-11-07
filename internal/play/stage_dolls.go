@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -24,8 +26,7 @@ import (
 type sceneCache struct {
 	mu      sync.Mutex
 	baked   map[string]baked // baked, not yet on the GPU
-	pending map[string]bool
-	wg      sync.WaitGroup
+	pending map[string]chan struct{}
 	// slots lets as many dolls bake at once as there are threads, in the order asked for:
 	// in a browser, one after another, so that the first ones show soon.
 	slots chan struct{}
@@ -47,7 +48,7 @@ type baked struct {
 func (g *Game) scenes() *sceneCache {
 	if g.sceneCache == nil {
 		g.sceneCache = &sceneCache{
-			baked: map[string]baked{}, pending: map[string]bool{}, slots: make(chan struct{}, runtime.GOMAXPROCS(0)),
+			baked: map[string]baked{}, pending: map[string]chan struct{}{}, slots: make(chan struct{}, runtime.GOMAXPROCS(0)),
 			sheets: map[string]*ebiten.Image{}, faces: map[string]*ebiten.Image{}, renderers: map[string]*stage.Renderer{},
 		}
 	}
@@ -97,8 +98,31 @@ func (sp dollSpec) key() string {
 }
 
 // waitsForDolls is whether the screen waits for the dolls instead of showing them as they
-// come (scripted runs and recordings: the same pictures every time).
-func (g *Game) waitsForDolls() bool { return g.opts.Script != "" || g.opts.Video != nil }
+// come. Replay seeking and trace screenshots need the same completed pictures
+// as scripted captures; ordinary interactive play remains asynchronous.
+func (g *Game) waitsForDolls() bool {
+	return g.opts.Script != "" || g.opts.Video != nil || g.opts.Until > 0 ||
+		g.opts.TraceShots || g.autoShot != "" ||
+		g.in.script != nil && g.in.script.shot != ""
+}
+
+// waitDoll waits only for the requested picture, sharing one deadline across a
+// draw. No simulation updates run here. A timeout must fail the capture instead
+// of silently recording a timing-dependent placeholder.
+func (g *Game) waitDoll(done <-chan struct{}) bool {
+	if g.pictureDeadline.IsZero() {
+		g.pictureDeadline = time.Now().Add(10 * time.Second)
+	}
+	timer := time.NewTimer(time.Until(g.pictureDeadline))
+	defer timer.Stop()
+	select {
+	case <-done:
+		return true
+	case <-timer.C:
+		g.failure = errors.New("picture load timed out")
+		return false
+	}
+}
 
 // dollSheet is the baked sheet of a doll, or nil while it is being baked.
 func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
@@ -112,10 +136,13 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	}
 	c.mu.Lock()
 	b, done := c.baked[key]
-	if !done && !c.pending[key] {
-		c.pending[key] = true
-		c.wg.Go(func() {
-			if pace.OneThread && g.drawn != nil && !g.waitsForDolls() {
+	if !done && c.pending[key] == nil {
+		loaded := make(chan struct{})
+		c.pending[key] = loaded
+		wait := g.waitsForDolls()
+		go func() {
+			defer close(loaded)
+			if pace.OneThread && g.drawn != nil && !wait {
 				<-g.drawn // one thread: the first frame first
 			}
 			c.slots <- struct{}{}
@@ -134,11 +161,14 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 			c.mu.Lock()
 			c.baked[key] = out
 			c.mu.Unlock()
-		})
+		}()
 	}
+	loaded := c.pending[key]
 	c.mu.Unlock()
 	if !done && g.waitsForDolls() {
-		c.wg.Wait()
+		if !g.waitDoll(loaded) {
+			return nil
+		}
 		c.mu.Lock()
 		b, done = c.baked[key]
 		c.mu.Unlock()

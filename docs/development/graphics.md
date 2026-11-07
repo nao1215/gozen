@@ -105,7 +105,12 @@ actions alongside input; campaign `order` and `end_turn` use the same `do` path.
 
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep
-their existing pacing. Data edits, live reloads and unsupported review starts
+their existing pacing. Seeking and screenshot recording (including
+`--trace-shots` without a script) wait for the faces and doll sheets requested
+by the current screen. The wait shares a ten-second deadline per draw and does
+not advance simulation ticks; a timeout fails the run instead of saving a
+placeholder. Ordinary interactive play keeps loading these pictures asynchronously.
+Data edits, live reloads and unsupported review starts
 are rejected. Old traces without a game directory or required save bytes report
 what must be recorded again; ordinary replay of older traces is unchanged.
 

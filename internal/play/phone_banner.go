@@ -40,7 +40,7 @@ func (b phoneBanner) top() float64 {
 // updateBanners ages the banner on the screen, drops it at its end, and opens
 // its event on a click on it (taking the click from the scene).
 func (g *Game) updateBanners() {
-	if len(g.banners) == 0 {
+	if len(g.banners) == 0 || g.phone != nil && g.phone.cue.Var != "" && g.phone.cue.App == "banner" {
 		return
 	}
 	b := &g.banners[0]
@@ -72,10 +72,13 @@ func (g *Game) updateBanners() {
 }
 
 func (g *Game) drawBanners(dst *ebiten.Image) {
-	if len(g.banners) == 0 {
+	if len(g.banners) == 0 || g.phone != nil && g.phone.cue.Var != "" && g.phone.cue.App == "banner" {
 		return
 	}
-	b := g.banners[0]
+	g.drawBanner(dst, g.banners[0])
+}
+
+func (g *Game) drawBanner(dst *ebiten.Image, b phoneBanner) {
 	sw, _ := g.screen()
 	x, y := (sw-bannerW)/2, b.top()
 	gfx.FillRoundRect(dst, float32(x), float32(y+3), bannerW, bannerH, 20, phoneVeil)
@@ -117,5 +120,18 @@ func (g *Game) reopen(opened []bannerOpen) {
 			continue
 		}
 		g.evOpened = append(g.evOpened, o)
+	}
+}
+
+// updatePhoneBanner resolves keyboard or pointer input; expiry is shared with pages and locks.
+func (g *Game) updatePhoneBanner(p *phoneView) {
+	sw, _ := g.screen()
+	m := g.in.mouse
+	on := float64(m.X) >= (sw-bannerW)/2 && float64(m.X) < (sw+bannerW)/2 && m.Y >= 14 && float64(m.Y) < 14+bannerH
+	switch {
+	case g.in.cancel() || g.in.esc:
+		p.putDown(-4, -4, false)
+	case g.in.ok() || on && g.in.clicked():
+		p.putDown(-3, -3, false)
 	}
 }

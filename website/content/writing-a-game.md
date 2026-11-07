@@ -475,7 +475,88 @@ A chat shows its first message when the phone comes up, and each press brings th
 
 For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
 
-A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK (or a click on the green button) answers it and Cancel (or the red one) declines, and the next notice rings again when it is a call too. A call with `ring: 8` stops ringing after eight seconds unanswered and puts the phone down with `missed`, setting the call's `missed` (written as the `set` command), even when more notices would follow; without `ring` it rings until it is answered or declined. `var` keeps what the phone was put down with (a button's `id` or label, `answer`, `decline` or `missed`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
+Lock screens, pages and banners share `timeout` (seconds after the entrance),
+`timeout_result` (default `expired`) and `var`. If no outcome is chosen before
+the deadline, the phone closes, stores the timeout result and continues the
+event. Input wins on the deadline tick. Page buttons keep their IDs; Cancel
+returns `dismiss` (or `decline` for a call), and finishing a plain lock or page
+returns `open`. Scrolling does not extend the deadline. Auto and Skip cannot
+answer a phone that keeps a result. Outcomes are saved for replay.
+Existing incoming-call `ring` / `missed` remain unchanged: their timer starts
+when that notice arrives, and their assignments still run when it rings out.
+
+<!-- verify: load group=phone-outcomes -->
+```yaml
+events:
+  phone_deadlines:
+    - phone:
+        app: lock
+        time: "07:00"
+        var: var.lock_result
+        timeout: 8
+        timeout_result: later
+    - phone:
+        app: page
+        var: var.page_result
+        timeout: 15
+        timeout_result: unread
+        rows: [{text: A note for today.}, {button: Continue, id: read}]
+    - phone:
+        app: banner
+        var: var.notice
+        timeout: 4
+        notices: [{app: Mail, title: New message, text: Open the message?}]
+    - if: var.notice == "open"
+      then: [{phone: {app: page, title: Mail, rows: [{text: Welcome!}]}}]
+```
+
+A banner with `var` waits until Enter or a click on the banner returns `open`,
+Esc/Cancel returns `dismiss`, or the shared timeout returns `expired` (or the
+specified `timeout_result`). It takes exactly one notice without `event`;
+branch after the cue instead. Without `timeout` it waits for input. Banners
+without `var` retain the asynchronous notification/event behavior.
+
+Repetition belongs in ordinary event YAML. This example rings again after a
+short wait whenever the call is left unanswered; answering or declining ends
+the loop. There is no alarm, snooze or vibration mode. The existing
+`effect: shake` can precede a phone cue to shake the whole scene briefly;
+it does not repeat or add a phone vibration.
+
+<!-- verify: load group=phone-outcomes -->
+```yaml
+events:
+  ring_again:
+    - phone:
+        app: lock
+        var: var.call_result
+        timeout: 8
+        timeout_result: later
+        notices: [{app: Phone, title: Studio, call: true}]
+    - if: var.call_result == "later"
+      then:
+        - wait: 2
+        - call: ring_again
+```
+
+Phone colors are game-wide `ui` settings in `game.yaml`, independent of dungeon
+asset themes. No per-page flag is needed. `phone_background` fills page bodies,
+`phone_text` and `phone_muted` color their text, and `phone_accent` colors owner
+chat bubbles, the chat back mark and page controls. An explicit page `color`
+still wins for its controls. Defaults remain white (`#ffffff`), dark ink
+(`#1d1f24`), muted ink (`#808690`) and blue (`#3d8bf2`). Bubble and button labels
+remain white; choose an accent with sufficient contrast.
+
+<!-- verify: load group=phone-outcomes as=game.yaml -->
+```yaml
+schema_version: 11
+ui:
+  phone_background: "#182430"
+  phone_text: "#ffffff"
+  phone_muted: "#bec8d2"
+  phone_accent: "#6750a4"
+```
+
+A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK (or a click on the green button) answers it and Cancel (or the red one) declines, and the next notice rings again when it is a call too. A call with `ring: 8` stops ringing after eight seconds unanswered and puts the phone down with `missed`, setting the call's `missed` (written as the `set` command), even when more notices would follow; without `ring` it rings until it is answered or declined. `var` keeps what the phone was put down with (a button's `id` or label, `answer`, `decline` or `missed`), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` without `var` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
 
 <!-- verify: parse a fragment of an event; the pictures are the author's files -->
 ```yaml

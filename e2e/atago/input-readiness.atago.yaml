@@ -88,3 +88,142 @@ scenarios:
       file:
         path: phone-press.jsonl
         contains: ['"chatted":1']
+
+- name: simulated-phone_timeout waits and expires before continuing
+  steps:
+  - fixture:
+      file: simulated-phone_timeout.txt
+      content: |
+        wait 20
+        do call: phone_timeout
+        wait 130
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script simulated-phone_timeout.txt --save-dir simulated-phone_timeout-saves --trace simulated-phone_timeout.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: simulated-phone_timeout.jsonl
+        contains: ['"timeout":"retry"', '"finished":1']
+
+- name: simulated-phone_waiting_banner waits and expires before continuing
+  steps:
+  - fixture:
+      file: simulated-phone_waiting_banner.txt
+      content: |
+        wait 20
+        do call: phone_waiting_banner
+        wait 130
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script simulated-phone_waiting_banner.txt --save-dir simulated-phone_waiting_banner-saves --trace simulated-phone_waiting_banner.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: simulated-phone_waiting_banner.jsonl
+        contains: ['"notice":"expired"', '"finished":1']
+
+- name: displayed-phone_timeout waits and expires before continuing
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: displayed-phone_timeout.txt
+      content: |
+        wait 20
+        do call: phone_timeout
+        wait 130
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script displayed-phone_timeout.txt --shots displayed-phone_timeout-shots --save-dir displayed-phone_timeout-saves --trace displayed-phone_timeout.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: displayed-phone_timeout.jsonl
+        contains: ['"timeout":"retry"', '"finished":1']
+
+- name: displayed-phone_waiting_banner waits and expires before continuing
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: displayed-phone_waiting_banner.txt
+      content: |
+        wait 20
+        do call: phone_waiting_banner
+        wait 130
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script displayed-phone_waiting_banner.txt --shots displayed-phone_waiting_banner-shots --save-dir displayed-phone_waiting_banner-saves --trace displayed-phone_waiting_banner.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: displayed-phone_waiting_banner.jsonl
+        contains: ['"notice":"expired"', '"finished":1']
+
+- name: page-timeout stores the outcome before continuing
+  steps:
+  - fixture:
+      file: page-timeout.txt
+      content: |
+        wait 20
+        do call: phone_page
+        wait 130
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script page-timeout.txt --save-dir page-timeout-saves --trace page-timeout.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: page-timeout.jsonl
+        contains: ['"page":"unread"', '"finished":1']
+
+- name: banner-open stores the outcome before continuing
+  steps:
+  - fixture:
+      file: banner-open.txt
+      content: |
+        wait 20
+        do call: phone_waiting_banner
+        wait 25
+        press ok
+        wait 30
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script banner-open.txt --save-dir banner-open-saves --trace banner-open.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: banner-open.jsonl
+        contains: ['"notice":"open"', '"finished":1']
+
+- name: banner-dismiss stores the outcome before continuing
+  steps:
+  - fixture:
+      file: banner-dismiss.txt
+      content: |
+        wait 20
+        do call: phone_waiting_banner
+        wait 25
+        press cancel
+        wait 30
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script banner-dismiss.txt --save-dir banner-dismiss-saves --trace banner-dismiss.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: banner-dismiss.jsonl
+        contains: ['"notice":"dismiss"', '"finished":1']

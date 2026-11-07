@@ -15310,7 +15310,7 @@
     },
     "PhoneCue": {
       "additionalProperties": false,
-      "description": "A phone over the scene; the event waits until it is put down (a banner does not wait).",
+      "description": "A phone over the scene; the event waits until it is put down (a banner waits when var is set).",
       "properties": {
         "app": {
           "description": "chat, feed, video, page, lock or banner; names the one list the phone shows.",
@@ -15492,6 +15492,32 @@
           },
           "x-type": "string"
         },
+        "timeout": {
+          "description": "Seconds after the entrance without a chosen outcome, for lock, page or banner. Requires var; zero disables it. Input wins ties; scrolling does not extend it.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "timeout_result": {
+          "description": "Value stored in var when timeout expires; default expired. Requires a positive timeout.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "title": {
           "description": "Interpolated header of the app (a page's app bar).",
           "type": "string",
@@ -15519,7 +15545,7 @@
           "x-type": "string"
         },
         "var": {
-          "description": "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call. A feed has none: its posts keep their likes with set.",
+          "description": "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer, decline or missed for a call, open/dismiss for a result banner, or timeout_result on expiry. A feed has none: its posts keep their likes with set.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -26160,6 +26186,62 @@
             "version": "10"
           },
           "x-type": "[NovelWindow](#novelwindow)"
+        },
+        "phone_accent": {
+          "description": "Phone owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "phone_background": {
+          "description": "Game-wide phone page body color; default white (#ffffff), with no per-cue flag.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "phone_muted": {
+          "description": "Phone page caption and secondary text color; default #808690.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "phone_text": {
+          "description": "Phone page body text color; default #1d1f24.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
         },
         "profile_book": {
           "$ref": "#/$defs/ProfileBook",

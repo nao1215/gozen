@@ -187,7 +187,7 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		if app != p.App && keys[app] == keys[p.App] {
 			continue
 		}
-		if app == p.App && !has {
+		if app == p.App && !has && (app != "lock" || p.Timeout <= 0) {
 			c.errorf(diag.Shape, where+"."+keys[app], lang.T("app %s には %s が必要です"), app, keys[app])
 		}
 		if app != p.App && has {
@@ -195,6 +195,7 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		}
 	}
 	c.text(where+".title", p.Title, names)
+	c.phoneTimed(where, p)
 	c.phoneFeed(where, p)
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
@@ -244,6 +245,31 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	}
 }
 
+// phoneTimed checks opt-in outcomes and rejects combinations with ignored keys.
+func (c *checker) phoneTimed(w string, p PhoneCue) {
+	if p.Timeout != 0 || p.TimeoutResult != "" {
+		if p.App != "lock" && p.App != "page" && p.App != "banner" {
+			c.errorf(diag.Shape, w+".timeout", "timeout needs app lock, page or banner")
+		}
+		if p.Var == "" {
+			c.errorf(diag.Shape, w+".var", "timeout needs var to keep its outcome")
+		}
+		if !finiteNumber(p.Timeout) || p.Timeout <= 0 || p.Timeout > maxPhoneSeconds {
+			c.errorf(diag.OutOfRange, w+".timeout", "timeout must be finite positive seconds up to %g", maxPhoneSeconds)
+		}
+	}
+	if p.App == "banner" && p.Var != "" {
+		if len(p.Notices) != 1 {
+			c.errorf(diag.Shape, w+".notices", "a result banner needs exactly one notice")
+		}
+		for _, n := range p.Notices {
+			if n.Event != "" {
+				c.errorf(diag.Shape, w+".notices", "a result banner uses var instead of event; branch after the phone")
+			}
+		}
+	}
+}
+
 // phoneFeed checks the feed's own fields: scroll is down or across, and
 // neither scroll nor browse is set on another app, which would ignore them.
 func (c *checker) phoneFeed(where string, p PhoneCue) {
@@ -284,6 +310,9 @@ func (c *checker) phoneLikes(where string, p PhoneCue) {
 
 // hasPhoneResult tells that the phone has something to keep: a page's button or a lock screen's call.
 func hasPhoneResult(p PhoneCue) bool {
+	if p.Timeout > 0 || p.App == "banner" {
+		return true
+	}
 	for _, r := range p.Rows {
 		if r.Button != "" {
 			return true

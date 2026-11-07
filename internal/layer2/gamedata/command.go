@@ -504,7 +504,8 @@ type MessageCue struct {
 // PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
 // default) or landscape; App is chat, feed, video, page or lock and names the
 // one list the phone shows: Messages, Posts, Video, Rows or Notices; banner
-// shows its Notices as banners at the top of the screen without waiting. Title is
+// shows its Notices at the top of the screen, waiting for an outcome when Var
+// is set and otherwise letting the event continue. Title is
 // the app's header (interpolated). A page has either a URL in a browser's
 // address bar or a Title on an app bar of Color (#rrggbb). A lock screen shows
 // Time (the phone's clock when empty) and Date over its notices, which arrive
@@ -514,22 +515,26 @@ type MessageCue struct {
 // across, shows a post a screen swiped sideways; Browse makes it only looked
 // at, a tap liking nothing.
 type PhoneCue struct {
-	Hold     string         `yaml:"hold"`
-	App      string         `yaml:"app"`
-	Title    string         `yaml:"title"`
-	URL      string         `yaml:"url"`
-	Color    string         `yaml:"color"`
-	Time     string         `yaml:"time"`
-	Date     string         `yaml:"date"`
-	Auto     bool           `yaml:"auto"`
-	Var      string         `yaml:"var"`
-	Scroll   string         `yaml:"scroll"`
-	Browse   bool           `yaml:"browse"`
-	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
-	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
-	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`
-	Rows     []PhoneRow     `yaml:"rows" json:",omitempty"`
-	Notices  []PhoneNotice  `yaml:"notices" json:",omitempty"`
+	// Timeout ends a lock, page or banner after these seconds without an outcome.
+	// TimeoutResult is stored in Var (default expired); zero disables the timer.
+	Timeout       float64        `yaml:"timeout"`
+	TimeoutResult string         `yaml:"timeout_result"`
+	Hold          string         `yaml:"hold"`
+	App           string         `yaml:"app"`
+	Title         string         `yaml:"title"`
+	URL           string         `yaml:"url"`
+	Color         string         `yaml:"color"`
+	Time          string         `yaml:"time"`
+	Date          string         `yaml:"date"`
+	Auto          bool           `yaml:"auto"`
+	Var           string         `yaml:"var"`
+	Scroll        string         `yaml:"scroll"`
+	Browse        bool           `yaml:"browse"`
+	Messages      []PhoneMessage `yaml:"messages" json:",omitempty"`
+	Posts         []PhonePost    `yaml:"posts" json:",omitempty"`
+	Video         *PhoneVideo    `yaml:"video" json:",omitempty"`
+	Rows          []PhoneRow     `yaml:"rows" json:",omitempty"`
+	Notices       []PhoneNotice  `yaml:"notices" json:",omitempty"`
 }
 
 // PhoneRow is one row of a page, stacked top to bottom: Text (paragraphs, of
@@ -588,7 +593,8 @@ type PhoneNotice struct {
 // PhoneResult is one way the phone can be put down that the story keeps: a
 // page's button (Row), a call answered (Notice), the last call declined (both
 // -1) or a call with a ring that rang out (Notice, Missed). ID is what the
-// phone's Var receives and Set what it sets.
+// phone's Var receives and Set what it sets. Matching Row and Notice values
+// -2, -3 and -4 identify shared expiry, open and dismiss outcomes for play.
 type PhoneResult struct {
 	Row, Notice int
 	ID          string
@@ -628,6 +634,21 @@ func (p PhoneCue) Results() []PhoneResult {
 		if n.Call && n.Ring > 0 && p.App == "lock" {
 			out = append(out, PhoneResult{Row: -1, Notice: i, ID: "missed", Set: n.Missed, Missed: true})
 			keeps = keeps || len(n.Missed) > 0
+		}
+	}
+	if p.App == "banner" && p.Var != "" || p.Timeout > 0 {
+		if !calls {
+			if len(out) == 0 {
+				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
+			}
+			out = append(out, PhoneResult{Row: -4, Notice: -4, ID: "dismiss"})
+		}
+		if p.Timeout > 0 {
+			id := p.TimeoutResult
+			if id == "" {
+				id = "expired"
+			}
+			out = append(out, PhoneResult{Row: -2, Notice: -2, ID: id})
 		}
 	}
 	if !keeps {

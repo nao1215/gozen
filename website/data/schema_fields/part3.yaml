@@ -302,7 +302,9 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
-  _: "A phone over the scene; the event waits until it is put down (a banner does not wait)."
+  timeout: "Seconds after the entrance without a chosen outcome, for lock, page or banner. Requires var; zero disables it. Input wins ties; scrolling does not extend it."
+  timeout_result: "Value stored in var when timeout expires; default expired. Requires a positive timeout."
+  _: "A phone over the scene; the event waits until it is put down (a banner waits when var is set)."
   hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
   app: "chat, feed, video, page, lock or banner; names the one list the phone shows."
   title: "Interpolated header of the app (a page's app bar)."
@@ -311,7 +313,7 @@ PhoneCue:
   time: "Interpolated clock of the lock screen (the phone's clock when empty)."
   date: "Interpolated date under the lock screen's clock."
   auto: "True brings the lock screen's notices by themselves, one every second and a half."
-  var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer or decline for a call. A feed has none: its posts keep their likes with set."
+  var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer, decline or missed for a call, open/dismiss for a result banner, or timeout_result on expiry. A feed has none: its posts keep their likes with set."
   scroll: "How a feed moves: down (the default), a column scrolled up and down, or across, a post a screen swiped sideways."
   browse: "True makes a feed only looked at: a tap or a click likes no post."
   messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."

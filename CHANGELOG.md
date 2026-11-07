@@ -6,6 +6,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Phone lock screens, pages and result banners share `timeout`, `timeout_result` and `var`, preserving call `ring`/`missed`. Result banners wait for keyboard or pointer open/dismiss outcomes. Game-wide `ui.phone_background`, `phone_text`, `phone_muted` and `phone_accent` customize page bodies and owner chat bubbles; default visuals stay unchanged.
+
 - `gozen trace --repro TICK|TIME|PNG` prints a command to retake a recorded screen; `--format json` reports the reproduction bundle and `--out DIR` writes a cut trace, initial saves and a portable reproduction script. Traces preserve initial save bytes, slot times and memo starts, and `run --replay --until` seeks with batched updates.
 
 ## v0.21.2 - 2026-11-07

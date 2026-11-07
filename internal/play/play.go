@@ -452,11 +452,12 @@ type Game struct {
 	// evOpened are the events a phone banner's click opened while the event
 	// ran, each with the line it was clicked at (a save and a roll back queue
 	// them again).
-	evOpened  []bannerOpen
-	fast      *fastTo
-	untilShot bool
-	quick     []*memoBox
-	quickN    int
+	evOpened        []bannerOpen
+	fast            *fastTo
+	untilShot       bool
+	pictureDeadline time.Time
+	quick           []*memoBox
+	quickN          int
 
 	live liveState
 
@@ -1122,6 +1123,10 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	if g.waitsForDolls() {
+		g.pictureDeadline = time.Now().Add(10 * time.Second)
+		defer func() { g.pictureDeadline = time.Time{} }()
+	}
 	g.pics.beginFrame()
 	g.beginMaterialFrame()
 	g.rendering = true
@@ -1286,6 +1291,9 @@ func (g *Game) saveShot(screen *ebiten.Image, name string) {
 }
 
 func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
+	if g.failure != nil {
+		return
+	}
 	if name == "" || name == "." || name == ".." || filepath.Base(name) != name || strings.ContainsAny(name, "/\\") {
 		g.failure = errors.New("screenshot: invalid basename")
 		return
@@ -2349,7 +2357,7 @@ func (g *Game) Handle(e event.Effect) {
 		g.Image(e.Picture)
 	case event.PhoneEffect:
 		g.pics.warm(phonePictures(e.Phone)...)
-		if e.Phone.App == "banner" {
+		if e.Phone.App == "banner" && e.Phone.Var == "" {
 			if g.fast != nil {
 				break // a replay reads on: the click it had is in the cursor
 			}

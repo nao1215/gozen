@@ -28,6 +28,10 @@ TitleMenu:
   _: "Schema 10: the title screen's menu."
   hide_disabled: "Leave out the entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default."
 UIStyle:
+  phone_background: "Game-wide phone page body color; default white (#ffffff), with no per-cue flag."
+  phone_text: "Phone page body text color; default #1d1f24."
+  phone_muted: "Phone page caption and secondary text color; default #808690."
+  phone_accent: "Phone owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette."
   title: "Schema 10: the title screen's menu. Omitted, every entry is shown and the ones that cannot be chosen are grayed."
   profile_book: "Schema 10: the character book's title and layout (list or grid). Omission keeps Characters as a list."
   material: Optional layered panel finish; omission retains classic windows.

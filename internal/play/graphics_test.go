@@ -380,6 +380,16 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		t.Skip("printed POSIX shell command requires sh")
 	}
 	root := t.TempDir()
+	// Opt-in artifacts survive t.TempDir cleanup so a coordinator can inspect
+	// intermittent pixel differences after running the real graphics loop.
+	if os.Getenv("GOZEN_REPRO_ARTIFACTS") == "1" {
+		var err error
+		root, err = os.MkdirTemp("", "screens-repro-") //nolint:usetesting // Explicitly retained for inspection after the test exits.
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("reproduction artifacts: %s", root)
+	}
 	binary := filepath.Join(root, "gozen")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "../../cmd/gozen") //nolint:gosec // Builds the CLI into the test directory.
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
@@ -475,7 +485,23 @@ func TestGraphicsScreensRepro(t *testing.T) {
 					original := shotImage(t, filepath.Dir(originalPath), strings.TrimSuffix(filepath.Base(originalPath), ".png"))
 					reproduced := shotImage(t, filepath.Dir(result.Data.Screenshot), strings.TrimSuffix(filepath.Base(result.Data.Screenshot), ".png"))
 					if !reflect.DeepEqual(original, reproduced) {
-						t.Fatalf("%s reproduced PNG pixels differ", mode)
+						var changed image.Rectangle
+						count, maxDelta := 0, 0
+						for y := original.Bounds().Min.Y; y < original.Bounds().Max.Y; y++ {
+							for x := original.Bounds().Min.X; x < original.Bounds().Max.X; x++ {
+								r, g, b, a := original.At(x, y).RGBA()
+								rr, gg, bb, aa := reproduced.At(x, y).RGBA()
+								if r == rr && g == gg && b == bb && a == aa {
+									continue
+								}
+								count++
+								changed = changed.Union(image.Rect(x, y, x+1, y+1))
+								for _, delta := range []int{int(r) - int(rr), int(g) - int(gg), int(b) - int(bb), int(a) - int(aa)} {
+									maxDelta = max(maxDelta, delta, -delta)
+								}
+							}
+						}
+						t.Fatalf("%s target %q: %d pixels differ in %v, max channel delta %d/65535; bounds %v/%v; original %s; reproduced %s", mode, target, count, changed, maxDelta, original.Bounds(), reproduced.Bounds(), originalPath, result.Data.Screenshot)
 					}
 				}
 			}
