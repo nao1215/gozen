@@ -56,12 +56,13 @@ func (g *Game) profileGrid() bool {
 // bookKey opens the book with F6 over whatever is on the screen (the book itself closes
 // with F6 in its update), when the menus offer it.
 func (g *Game) bookKey() {
-	if !g.in.pressed[btnBook] || !g.profilesInMenus() || g.memo != nil || g.replaying || g.panelModal() || len(g.stack) == 0 {
+	if !g.in.inspect(g.in.pressed[btnBook]) || !g.profilesInMenus() || g.memo != nil || g.replaying || g.panelModal() || len(g.stack) == 0 {
 		return
 	}
 	if _, open := g.stack[len(g.stack)-1].(*profileScreen); open {
 		return
 	}
+	g.in.query(true)
 	g.in.pressed[btnBook] = false
 	g.sfx("decide")
 	g.push(newProfiles(g, nil))
@@ -295,16 +296,17 @@ func (s *profileScreen) listFaceButtons(g *Game, id string) []image.Rectangle {
 	return s.faceButtons(g, s.faceLabels(g, id))
 }
 
-func (s *profileScreen) pick(g *Game, i int) {
+func (s *profileScreen) pick(g *Game, i int) bool {
 	if i == s.sel {
-		return
+		return false
 	}
 	s.sel, s.face = i, 0
 	g.sfx("cursor")
+	return true
 }
 
 func (s *profileScreen) update(g *Game) {
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.in.pressed[btnNext] {
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.in.pressedKey(btnNext) {
 		s.chart = !s.chart
 		g.sfx("cursor")
 	}
@@ -317,8 +319,8 @@ func (s *profileScreen) update(g *Game) {
 		return
 	}
 	n := len(s.ids)
-	if g.in.cancel() || g.in.pressed[btnBook] {
-		if s.chartPage && !g.in.pressed[btnBook] {
+	if g.in.cancel() || g.in.pressedKey(btnBook) {
+		if s.chartPage && !g.in.inspect(g.in.pressed[btnBook]) {
 			s.chart, s.focusBack, s.chartPage = true, true, false
 			g.sfx("cancel")
 			return
@@ -339,25 +341,26 @@ func (s *profileScreen) update(g *Game) {
 	swipe := s.swipe(g)
 	// L and R of a pad are the buttons of the log and auto; A on a keyboard is both left
 	// and auto, so auto counts only without left.
-	back := g.in.left() || g.in.pressed[btnLog] || swipe > 0 || g.in.click && g.in.mouse.In(prev)
-	fwd := g.in.right() || g.in.pressed[btnAuto] && !g.in.pressed[btnLeft] || swipe < 0 || g.in.click && g.in.mouse.In(next)
+	back := g.in.inspect(g.in.pressed[btnLeft]) || g.in.inspect(g.in.pressed[btnLog]) || swipe > 0 || g.in.mouse.In(prev) && g.in.inspect(g.in.click)
+	fwd := g.in.inspect(g.in.pressed[btnRight]) || !g.in.pressed[btnLeft] && g.in.inspect(g.in.pressed[btnAuto]) || swipe < 0 || g.in.mouse.In(next) && g.in.inspect(g.in.click)
 	switch {
-	case back || g.in.up():
-		s.pick(g, (s.sel+n-1)%n)
-	case fwd || g.in.down():
-		s.pick(g, (s.sel+1)%n)
-	case g.in.ok() && len(faces) > 1 && s.opened(g, id):
+	case back || g.in.inspect(g.in.pressed[btnUp]) || g.in.wheel > 0:
+		g.in.query(s.pick(g, (s.sel+n-1)%n))
+	case fwd || g.in.inspect(g.in.pressed[btnDown]) || g.in.wheel < 0:
+		g.in.query(s.pick(g, (s.sel+1)%n))
+	case len(faces) > 1 && s.opened(g, id) && g.in.ok():
 		s.face = (s.face + 1) % len(faces)
 		g.sfx("cursor")
-	case g.in.click:
+	case g.in.inspect(g.in.click):
 		for i := s.top; i < min(n, s.top+s.rows(g)); i++ {
 			if g.in.mouse.In(s.rowRect(g, i)) {
-				s.pick(g, i)
+				g.in.query(s.pick(g, i))
 			}
 		}
 		if s.opened(g, id) {
 			for i, r := range s.listFaceButtons(g, id) {
 				if g.in.mouse.In(r) && i != s.face {
+					g.in.query(true)
 					s.face = i
 					g.sfx("cursor")
 				}
@@ -381,7 +384,7 @@ func (s *profileScreen) update(g *Game) {
 // sideways, and twice as far sideways as up or down.
 func (s *profileScreen) swipe(g *Game) int {
 	sw, _ := g.screen()
-	if g.in.click && float64(g.in.mouse.X) > sw*0.17 && float64(g.in.mouse.X) < sw*0.55 {
+	if float64(g.in.mouse.X) > sw*0.17 && float64(g.in.mouse.X) < sw*0.55 && g.in.clicked() {
 		s.press, s.last, s.pressed = g.in.mouse, g.in.mouse, true
 		return 0
 	}

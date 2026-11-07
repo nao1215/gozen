@@ -109,3 +109,87 @@ func BenchmarkFreeSpaceController(b *testing.B) {
 		})
 	}
 }
+
+func TestFreeSpaceOKNeedsExamine(t *testing.T) {
+	for _, expire := range []bool{false, true} {
+		t.Run(map[bool]string{false: "retry", true: "timeout"}[expire], func(t *testing.T) {
+			g := wldOpenWith(t, Options{FS: freePlayFixture(t), Location: "inn"})
+			wldFrames(t, g, 25)
+			scene := sysAs[*dungeonScene](t, g.stack[0])
+			before := *g.st.SpacePose
+			s := sysScript(t, "press ok\nwait 1000")
+			s.acknowledge = true
+			n := 3
+			if expire {
+				n = 6002
+			}
+			for range n {
+				sysKey(g)
+				s.step(&g.in)
+				scene.update(g)
+				g.in.finishOffer()
+				if s.pc != 0 || *g.st.SpacePose != before || g.talk.active {
+					t.Fatal("idle examination acknowledged or acted")
+				}
+				if s.err != nil {
+					break
+				}
+			}
+			if expire {
+				if s.err == nil || !strings.Contains(s.err.Error(), "acknowledgement") {
+					t.Fatalf("idle examination did not expire: %v", s.err)
+				}
+				return
+			}
+			g.st.SpacePose.X, g.st.SpacePose.Z = 5.5, 7.5
+			g.st.Pos.X, g.st.Pos.Y = 5, 7
+			tile := dungeon.Front(g.db, g.st).Tile
+			if tile == nil {
+				t.Fatal("missing front tile")
+			}
+			tile.Trigger = "bump"
+			tile.Do = []data.Command{{Say: &data.Say{Text: "A marker."}}}
+			sysKey(g)
+			s.step(&g.in)
+			scene.update(g)
+			g.in.finishOffer()
+			if s.pc != 1 || !g.events.Running() {
+				t.Fatal("pending OK did not start examination")
+			}
+		})
+	}
+}
+
+func TestFreeSpaceHumanEmptyExamineResetsAcceleration(t *testing.T) {
+	for _, click := range []bool{false, true} {
+		t.Run(map[bool]string{false: "OK", true: "click"}[click], func(t *testing.T) {
+			fixture := freePlayFixture(t)
+			fixture["data/world.yaml"].Data = bytes.Replace(fixture["data/world.yaml"].Data,
+				[]byte("acceleration: 0}"), []byte("acceleration: 0.1, stages: [{after: 0.05, speed: 3.2}]}"), 1)
+			g := wldOpenWith(t, Options{FS: fixture, Location: "inn"})
+			wldFrames(t, g, 25)
+			g.in.script = nil
+			scene := sysAs[*dungeonScene](t, g.stack[0])
+			sysKey(g)
+			g.in.held[btnUp] = true
+			for range 10 {
+				scene.updateFree(g)
+			}
+			before := g.st.SpacePose.Z
+			g.in.pressed[btnOK], g.in.click = !click, click
+			scene.updateFree(g)
+			if distance := before - g.st.SpacePose.Z; distance <= 1.6/60 {
+				t.Fatalf("fixture did not accelerate: distance %g", distance)
+			}
+			if g.events.Running() || g.talk.active {
+				t.Fatal("fixture unexpectedly examined a target")
+			}
+			g.in.pressed[btnOK], g.in.click = false, false
+			before = g.st.SpacePose.Z
+			scene.updateFree(g)
+			if distance := before - g.st.SpacePose.Z; math.Abs(distance-1.6/60) > 1e-8 {
+				t.Fatalf("empty examination did not reset acceleration: distance %g, want %g", distance, 1.6/60)
+			}
+		})
+	}
+}

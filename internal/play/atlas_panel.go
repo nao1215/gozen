@@ -96,12 +96,14 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 			return true
 		}
 		if inPlate(s.selectionPanelBox(g), x, y) {
-			if in.click {
+			if in.inspect(in.click) {
 				buttons := s.panelButtons(g)
 				switch {
 				case inPlate(buttons[0], x, y):
+					in.query(true)
 					s.goTo(g, s.choices[s.sel])
 				case inPlate(buttons[1], x, y):
+					in.query(true)
 					s.panelHidden = true
 				}
 				return true
@@ -120,7 +122,7 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 			s.focusPoint(c.Point)
 		}
 	}
-	if in.pressed[btnNext] && s.location(g).Map.Camera == nil && len(s.choices) > 0 {
+	if s.location(g).Map.Camera == nil && len(s.choices) > 0 && in.pressedKey(btnNext) {
 		s.sel = (s.sel + 1) % len(s.choices)
 		s.panelHidden = false
 		return true

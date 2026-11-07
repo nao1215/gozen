@@ -135,18 +135,18 @@ func (b *orderBar) update(g *Game) {
 			hit = i
 		}
 	}
-	if hit >= 0 && (in.moved || in.click) {
+	if hit >= 0 && (in.moved || in.clicked()) {
 		b.sel = hit
 	}
 	if b.sel != old {
 		g.sfx("cursor")
 	}
-	if in.click && hit < 0 && !inPlate(win, x, y) { // a click off the row closes it
+	if hit < 0 && !inPlate(win, x, y) && in.clicked() { // a click off the row closes it
 		g.sfx("cancel")
 		g.pop()
 		return
 	}
-	if in.ok() || in.click && hit >= 0 {
+	if in.ok() || hit >= 0 && in.clicked() {
 		g.sfx("decide")
 		g.pop()
 		g.events.Start(b.items[b.sel].do)
@@ -255,7 +255,7 @@ func (s *atlasScene) updateEndTurn(g *Game) bool {
 		return false
 	}
 	in := &g.in
-	if !in.pressed[btnEndTurn] && !(in.click && inPlate(r, float64(in.mouse.X), float64(in.mouse.Y))) {
+	if !in.pressedKey(btnEndTurn) && !(inPlate(r, float64(in.mouse.X), float64(in.mouse.Y)) && in.clicked()) {
 		return false
 	}
 	g.sfx("decide")

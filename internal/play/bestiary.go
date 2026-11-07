@@ -21,12 +21,13 @@ func (g *Game) bestiaryInMenus() bool {
 }
 
 func (g *Game) bestiaryKey() {
-	if !g.in.pressed[btnBestiary] || !g.opts.Development || !g.bestiaryInMenus() || g.memo != nil || g.replaying || g.panelModal() || len(g.stack) == 0 {
+	if !g.in.inspect(g.in.pressed[btnBestiary]) || !g.opts.Development || !g.bestiaryInMenus() || g.memo != nil || g.replaying || g.panelModal() || len(g.stack) == 0 {
 		return
 	}
 	if _, open := g.stack[len(g.stack)-1].(*bestiaryScreen); open {
 		return
 	}
+	g.in.query(true)
 	g.in.pressed[btnBestiary] = false
 	g.sfx("decide")
 	g.push(newBestiary(g, nil))
@@ -168,7 +169,7 @@ func (s *bestiaryScreen) updateTree(g *Game) {
 		s.history = append(s.history, lineageView{s.root, s.cur})
 		s.root, s.cur = tiles[s.cur].node.Species, 0
 		g.sfx("decide")
-	case g.in.pressed[btnBack]:
+	case g.in.pressedKey(btnBack):
 		if i := slices.Index(s.ids, tiles[s.cur].node.Species); i >= 0 && g.bestiarySeen(tiles[s.cur].node.Species) {
 			s.sel, s.inTree = i, false
 			s.history = nil
@@ -217,11 +218,11 @@ func lineageNeighbor(tiles []lineageTile, current int, left, right, up, down boo
 }
 
 func (s *bestiaryScreen) update(g *Game) {
-	if s.inTree && !g.in.pressed[btnBestiary] {
+	if s.inTree && !g.in.inspect(g.in.pressed[btnBestiary]) {
 		s.updateTree(g)
 		return
 	}
-	if g.in.cancel() || g.in.pressed[btnBestiary] {
+	if g.in.cancel() || g.in.pressedKey(btnBestiary) {
 		g.sfx("cancel")
 		g.pop()
 		if s.done != nil {
@@ -240,13 +241,20 @@ func (s *bestiaryScreen) update(g *Game) {
 		s.sel = (s.sel + len(s.ids) - 1) % len(s.ids)
 		g.sfx("cursor")
 	}
-	if g.in.right() || g.in.ok() {
-		if g.bestiarySeen(s.ids[s.sel]) && s.lineage.Tree(s.ids[s.sel], s.choice) != nil {
-			s.inTree, s.cur, s.root = true, 0, s.ids[s.sel]
-			s.history = nil
-			g.sfx("decide")
-		}
+	if g.in.inspect(g.in.pressed[btnRight] || g.in.pressed[btnOK]) {
+		g.in.query(s.openLineage(g))
 	}
+}
+
+// openLineage reports whether the selected, seen species has an ancestry view.
+func (s *bestiaryScreen) openLineage(g *Game) bool {
+	if !g.bestiarySeen(s.ids[s.sel]) || s.lineage.Tree(s.ids[s.sel], s.choice) == nil {
+		return false
+	}
+	s.inTree, s.cur, s.root = true, 0, s.ids[s.sel]
+	s.history = nil
+	g.sfx("decide")
+	return true
 }
 
 func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {

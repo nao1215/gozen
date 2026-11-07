@@ -14,10 +14,11 @@ func (g *Game) updateTag() bool {
 		}
 	}
 	if g.tag != nil && g.tag.box != nil {
+		g.in.observing = true
 		g.tag.updateBox(g)
 		return g.tag != nil && g.tag.box != nil
 	}
-	if !g.in.pressed[btnTag] || g.rep != nil || g.auto != nil || g.db == nil || !g.cgReviewEnabled() || g.reviewOpen() != nil || g.tagKeyTaken() {
+	if g.rep != nil || g.auto != nil || g.db == nil || !g.cgReviewEnabled() || g.reviewOpen() != nil || g.tagKeyTaken() || !g.in.pressedKey(btnTag) {
 		return false
 	}
 	page := shownPicture(g.cg)

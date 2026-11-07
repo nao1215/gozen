@@ -84,7 +84,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 		return
 	}
 	// A click on a picture in the chat opens it.
-	if in := &g.in; in.click {
+	if in := &g.in; in.clicked() {
 		for i, r := range p.pics {
 			if r.has(g, p, in.mouse.X, in.mouse.Y) {
 				p.viewPic = p.cue.Messages[i].Picture

@@ -145,23 +145,26 @@ func TestEndScreenScriptWaitsForInput(t *testing.T) {
 			g.stack = []scene{tc.screen}
 			g.fadeT = 0
 			g.turnSeen = g.turnKey()
-			s := &script{cmds: []scriptCmd{{verb: "press", arg: "ok"}, {verb: "wait", n: 1000}}, ready: g.scriptReady}
-			for tick := 0; tick <= tc.lockout; tick++ {
+			s := &script{cmds: []scriptCmd{{verb: "press", arg: "ok"}, {verb: "wait", n: 1000}}, ready: g.scriptReady, acknowledge: true}
+			for tick := range tc.lockout {
 				g.in = input{}
 				s.step(&g.in)
-				if s.pc != 0 || g.in.pressed[btnOK] {
-					t.Fatalf("input consumed during lockout at tick %d: pc=%d", tick, s.pc)
-				}
 				tc.screen.update(g)
+				g.in.finishOffer()
+				if s.pc != 0 {
+					t.Fatalf("input consumed during lockout at tick %d", tick)
+				}
 				if g.stack[len(g.stack)-1] != tc.screen {
 					t.Fatal("screen closed during lockout")
 				}
 			}
 			s.step(&g.in)
-			if s.pc != 1 || !g.in.pressed[btnOK] {
+			tc.screen.update(g)
+			g.in.finishOffer()
+			if s.pc != 1 {
 				t.Fatalf("ready screen did not receive OK: pc=%d", s.pc)
 			}
-			tc.screen.update(g)
+
 			if _, ok := g.stack[len(g.stack)-1].(*title); !ok {
 				t.Fatalf("OK opened %T, want title", g.stack[len(g.stack)-1])
 			}

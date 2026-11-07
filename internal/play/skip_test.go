@@ -224,7 +224,15 @@ func TestSceneSkipNeedsEveryLineRead(t *testing.T) {
 	delete(g.read, source("A light in the distance."))
 	var out bytes.Buffer
 	g.tr = newTracer(&out)
-	runToEnd(t, g)
+	var updateErr error
+	for range 6100 {
+		if updateErr = g.Update(); updateErr != nil {
+			break
+		}
+	}
+	if updateErr == nil || !strings.Contains(updateErr.Error(), "timed out waiting for input acknowledgement") || g.in.script.pc != 1 {
+		t.Fatalf("blocked scene skip must stay pending and time out: pc=%d err=%v", g.in.script.pc, updateErr)
+	}
 	if skips := traceLines(t, out.Bytes(), "skip"); len(skips) != 0 || g.evLines != 1 {
 		t.Fatalf("skipped %v to line %d", skips, g.evLines)
 	}

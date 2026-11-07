@@ -129,8 +129,9 @@ func (l *streamLobby) updateName(g *Game) {
 	in := &g.in
 	// the keys that were text are not Enter; the button is pressed even while a phone's
 	// keyboard still composes (taking the name confirms it)
+	in.receiveText()
 	typed := in.devices() && l.name.readTyping()
-	ok := !in.devices() && in.pressed[btnOK] || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
+	ok := !in.devices() && in.pressedKey(btnOK) || in.devices() && (in.pad[btnOK] || !typed && (inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter)))
 	sw, _ := g.screen()
 	if _, by, _ := nameBox(g); !ok && !g.clickedIn(sw/2-60, by+nameOK, 120, 40) {
 		return
@@ -372,7 +373,7 @@ func (l *streamLobby) update(g *Game) {
 	now := g.streamNow()
 	in := &g.in
 	if g.desk.away > 0 {
-		if in.ok() || in.cancel() || in.click {
+		if in.ok() || in.cancel() || in.clicked() {
 			g.desk.away = 0
 			g.sfx("decide")
 		}
@@ -427,9 +428,11 @@ func (l *streamLobby) update(g *Game) {
 	if l.name != nil {
 		// the bar's languages are pressed while the name is asked (the name typed stays)
 		bs := g.barButtons(l.entries(g))
-		if i := g.barClick(bs); i >= 0 && bs[i].lang != "" {
-			g.switchLanguage(bs[i].lang)
-			return
+		for _, b := range bs {
+			if b.lang != "" && g.clickedIn(b.x, b.y, b.w, barButtonH) {
+				g.switchLanguage(b.lang)
+				return
+			}
 		}
 		l.updateName(g)
 		return

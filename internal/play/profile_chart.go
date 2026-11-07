@@ -265,9 +265,9 @@ func (s *profileScreen) chartPoint(g *Game, p image.Point) (float64, float64) {
 	return sw/2 + (float64(p.X)-s.camX)*s.zoom, (sh+profileBand-50)/2 + (float64(p.Y)-s.camY)*s.zoom
 }
 
-func (s *profileScreen) chartMove(points []image.Point, dx, dy int) {
+func (s *profileScreen) chartMove(points []image.Point, dx, dy int) bool {
 	if len(points) == 0 {
-		return
+		return false
 	}
 	from := points[s.sel]
 	best, pick := math.MaxFloat64, s.sel
@@ -289,12 +289,14 @@ func (s *profileScreen) chartMove(points []image.Point, dx, dy int) {
 			best, pick = score, i
 		}
 	}
+	changed := s.sel != pick
 	s.sel = pick
+	return changed
 }
 
 func (s *profileScreen) updateChart(g *Game) {
-	if g.in.cancel() || g.in.pressed[btnBook] {
-		if s.focus >= 0 && !g.in.pressed[btnBook] {
+	if g.in.cancel() || g.in.pressedKey(btnBook) {
+		if s.focus >= 0 && !g.in.pressedKey(btnBook) {
 			s.focusBack = true
 			g.sfx("cancel")
 		} else {
@@ -320,12 +322,12 @@ func (s *profileScreen) updateChart(g *Game) {
 			s.focusFrame++
 		}
 		clickedFocus := false
-		if g.in.click && s.focusFrame == chartFocusFrames {
+		if s.focusFrame == chartFocusFrames && g.in.inspect(g.in.click) {
 			shown, _ := s.chartDisplay(g, points)
 			x, y := s.chartPoint(g, shown[s.focus])
 			clickedFocus = g.in.mouse.In(image.Rect(int(x-43*s.zoom), int(y-43*s.zoom), int(x+43*s.zoom), int(y+43*s.zoom)))
 		}
-		if (g.in.ok() || clickedFocus) && s.focusFrame == chartFocusFrames && !s.focusBack && s.opened(g, s.current()) {
+		if s.focusFrame == chartFocusFrames && !s.focusBack && s.opened(g, s.current()) && (g.in.ok() || g.in.query(clickedFocus)) {
 			s.face, s.chart, s.chartPage = 0, false, true
 			g.sfx("decide")
 		}
@@ -335,14 +337,14 @@ func (s *profileScreen) updateChart(g *Game) {
 	}
 	old := s.sel
 	switch {
-	case g.in.left():
-		s.chartMove(points, -1, 0)
-	case g.in.right():
-		s.chartMove(points, 1, 0)
-	case g.in.up():
-		s.chartMove(points, 0, -1)
-	case g.in.down():
-		s.chartMove(points, 0, 1)
+	case g.in.inspect(g.in.pressed[btnLeft]):
+		g.in.query(s.chartMove(points, -1, 0))
+	case g.in.inspect(g.in.pressed[btnRight]):
+		g.in.query(s.chartMove(points, 1, 0))
+	case g.in.inspect(g.in.pressed[btnUp]) || g.in.wheel > 0:
+		g.in.query(s.chartMove(points, 0, -1))
+	case g.in.inspect(g.in.pressed[btnDown]) || g.in.wheel < 0:
+		g.in.query(s.chartMove(points, 0, 1))
 	}
 	if old != s.sel {
 		g.sfx("cursor")
@@ -353,17 +355,18 @@ func (s *profileScreen) updateChart(g *Game) {
 	if g.in.wheel < 0 {
 		s.zoom = max(0.55, s.zoom/1.12)
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, p := range points[:len(s.ids)] {
 			x, y := s.chartPoint(g, p)
 			if g.in.mouse.In(image.Rect(int(x-43*s.zoom), int(y-43*s.zoom), int(x+43*s.zoom), int(y+43*s.zoom))) && s.opened(g, s.ids[i]) {
+				g.in.query(true)
 				s.sel, s.focus, s.focusFrame = i, i, 0
 				g.sfx("decide")
 				break
 			}
 		}
 	}
-	if s.focus < 0 && g.in.ok() && s.opened(g, s.current()) {
+	if s.focus < 0 && s.opened(g, s.current()) && g.in.ok() {
 		s.focus, s.focusFrame = s.sel, 0
 		g.sfx("decide")
 	}

@@ -244,7 +244,7 @@ func (s *tacticsScreen) update(g *Game) {
 		s.updatePresets(g)
 		return
 	}
-	if g.in.pressed[btnLog] && len(s.currentRows(g)) > 0 {
+	if len(s.currentRows(g)) > 0 && g.in.pressedKey(btnLog) {
 		g.push(newTacticText(g, s.description(g)))
 		return
 	}
@@ -255,16 +255,18 @@ func (s *tacticsScreen) update(g *Game) {
 	}
 
 	lists := []*list{s.members, s.rows, s.actions}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for f, l := range lists {
 			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
 				if g.in.mouse.In(l.rowRect(i)) {
+					g.in.query(true)
 					s.focus = f
 				}
 			}
 		}
 	}
-	if d := g.in.tab(); d != 0 && len(s.ids) > 0 {
+	if len(s.ids) > 0 && g.in.inspect(g.in.pressed[btnNext]) {
+		d := g.in.tab()
 		s.members.sel = (s.members.sel + d + len(s.ids)) % len(s.ids)
 		s.members.scroll()
 		s.rows.sel, s.rows.top = 0, 0
@@ -281,7 +283,7 @@ func (s *tacticsScreen) update(g *Game) {
 		return
 	}
 	oldMember := s.members.sel
-	chosen, _ := lists[s.focus].update(g)
+	chosen := lists[s.focus].updateChoice(g)
 	if s.members.sel != oldMember {
 		s.rows.sel, s.rows.top = 0, 0
 	}
@@ -361,7 +363,8 @@ func (s *tacticsScreen) updatePresets(g *Game) {
 		s.close(g)
 		return
 	}
-	if d := g.in.tab(); d != 0 && len(s.ids) > 0 {
+	if len(s.ids) > 0 && g.in.inspect(g.in.pressed[btnNext]) {
+		d := g.in.tab()
 		s.members.sel = (s.members.sel + d + len(s.ids)) % len(s.ids)
 		s.refresh(g)
 		return
@@ -371,16 +374,17 @@ func (s *tacticsScreen) updatePresets(g *Game) {
 		return
 	}
 	lists := []*list{s.members, s.presets}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for f, l := range lists {
 			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
 				if g.in.mouse.In(l.rowRect(i)) {
+					g.in.query(true)
 					s.focus = f
 				}
 			}
 		}
 	}
-	chosen, _ := lists[s.focus].update(g)
+	chosen := lists[s.focus].updateChoice(g)
 	if chosen {
 		if s.focus == 0 {
 			s.focus = 1

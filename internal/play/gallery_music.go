@@ -261,12 +261,12 @@ func musicButtons(sw, sh float64) [3]image.Rectangle {
 func (s *galleryScreen) updateMusic(g *Game) {
 	r := s.music
 	if r.hidden {
-		if g.in.ok() || g.in.cancel() || g.in.click || g.in.pressed[btnHide] {
+		if g.in.ok() || g.in.cancel() || g.in.clicked() || g.in.pressedKey(btnHide) {
 			r.hidden = false
 		}
 		return
 	}
-	if g.in.pressed[btnHide] {
+	if g.in.pressedKey(btnHide) {
 		r.hidden = true
 		return
 	}
@@ -276,12 +276,13 @@ func (s *galleryScreen) updateMusic(g *Game) {
 		s.syncMusicList()
 		return
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		sw, sh := g.screen()
 		for i, b := range musicButtons(sw, sh) {
 			if !g.in.mouse.In(b) {
 				continue
 			}
+			g.in.query(true)
 			g.sfx("decide")
 			switch i {
 			case 0:
@@ -299,7 +300,7 @@ func (s *galleryScreen) updateMusic(g *Game) {
 			return
 		}
 	}
-	chose, _ := s.menu.update(g)
+	chose := s.menu.updateChoice(g)
 	if !chose {
 		return
 	}

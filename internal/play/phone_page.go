@@ -130,7 +130,7 @@ func (g *Game) updatePhonePage(p *phoneView) {
 			}
 		}
 	})
-	if in := &g.in; in.pressed[btnUp] || in.pressed[btnDown] {
+	if in := &g.in; in.pressedKey(btnUp) || in.pressedKey(btnDown) {
 		g.focusInView(p, rows, true)
 	}
 }
@@ -186,19 +186,19 @@ func (g *Game) pageKeys(p *phoneView, rows []pageRow, end float64) bool {
 	}
 	var d int
 	switch {
-	case in.pressed[btnRight] || in.pressed[btnNext]:
+	case in.pressedKey(btnRight) || in.pressedKey(btnNext):
 		d = 1
-	case in.pressed[btnLeft]:
+	case in.pressedKey(btnLeft):
 		d = -1
-	case in.ok():
+	case in.inspect(in.pressed[btnOK]):
 		g.focusInView(p, rows, false)
 		switch {
 		case p.focus >= 0 && p.keyed:
 			p.putDown(p.focus, -1, false)
-			return true
+			return in.query(true)
 		case p.focus >= 0:
 			p.keyed = true
-			return true
+			return in.query(true)
 		}
 		return false
 	default:

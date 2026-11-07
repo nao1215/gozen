@@ -108,6 +108,10 @@ func TestGuideLeadsOnceAndBlocksTheRest(t *testing.T) {
 		t.Fatal("a line with until went on before it held", g.guide)
 	}
 	wldPlay(t, g, "pick Rest\nwait 6\npick Work\nwait 6\n", 40)
+	if g.in.script.pc != 0 || g.st.Vars["worked"] != 1.0 {
+		t.Fatal("restricted pick or its successor ran")
+	}
+	wldPlay(t, g, "pick Work\nwait 6\n", 30)
 	if g.guide == nil || g.guide.step != 1 || g.st.Vars["worked"] != 2.0 {
 		t.Fatal("until did not end the line", g.guide, g.st.Vars["worked"])
 	}

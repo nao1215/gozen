@@ -168,14 +168,19 @@ func (l *list) step(d int) {
 }
 
 func (l *list) update(g *Game) (chose, cancel bool) {
-	in := &g.in
-	n := len(l.items)
-	if in.cancel() {
+	if g.in.cancel() {
 		g.sfx("cancel")
 		return false, true
 	}
+	return l.updateChoice(g), false
+}
+
+// updateChoice handles selection when the caller has no cancel action.
+func (l *list) updateChoice(g *Game) bool {
+	in := &g.in
+	n := len(l.items)
 	if n == 0 {
-		return false, false
+		return false
 	}
 	old := l.sel
 	if in.up() {
@@ -190,22 +195,23 @@ func (l *list) update(g *Game) (chose, cancel bool) {
 			hit = i
 		}
 	}
-	if hit >= 0 && (in.moved || in.click) {
+	if hit >= 0 && (in.moved || in.clicked()) {
 		l.sel = hit
 	}
 	if l.sel != old {
 		g.sfx("cursor")
 	}
 	l.scroll()
-	if in.ok() || (in.click && hit >= 0) {
+	in.receivePick(l)
+	if in.ok() || (hit >= 0 && in.clicked()) {
 		if l.items[l.sel].disabled || l.items[l.sel].heading {
 			g.sfx("buzzer")
-			return false, false
+			return false
 		}
 		g.sfx("decide")
-		return true, false
+		return true
 	}
-	return false, false
+	return false
 }
 
 func (l *list) scroll() {

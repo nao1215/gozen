@@ -135,11 +135,12 @@ func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, 
 func (s *authorScreen) updateEntityTable(g *Game) {
 	v := g.db.Game.Screens[s.name].View
 	all := s.tableResidents(g)
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, r := range s.entityTableHeaders(g) {
 			if !g.in.mouse.In(r) {
 				continue
 			}
+			g.in.query(true)
 			if s.residentSort != i+1 {
 				s.residentSort, s.residentDescending = i+1, true
 			} else if s.residentDescending {
@@ -161,9 +162,10 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 		} else if g.in.wheel > 0 {
 			delta = -1
 		}
-		if g.in.click && pages > 1 {
+		if pages > 1 && g.in.inspect(g.in.click) {
 			for i, r := range entityDetailButtons(detail) {
 				if g.in.mouse.In(r) {
+					g.in.query(true)
 					delta = 2*i - 1
 				}
 			}
@@ -173,13 +175,9 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 			return
 		}
 	}
-	var actions []int
-	for i, e := range s.entries {
-		if e.Target.ID == "" && len(e.Bounds) == 4 {
-			actions = append(actions, i)
-		}
-	}
-	count := len(all) + len(actions)
+	actions := s.surfaceActions()
+	flow := s.flowStops(g)
+	count := len(all) + len(actions) + len(flow)
 	if count == 0 {
 		s.target = ""
 		return
@@ -202,31 +200,39 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 	if g.in.wheel == 0 && g.in.up() {
 		s.focus = (s.focus + count - 1) % count
 	}
+	g.in.receivePick(s)
 	ids, cells, _ := s.entityTableLayout(g)
 	rowFocus := s.focus - len(actions)
-	if moved && rowFocus >= 0 && !slices.Contains(ids, all[rowFocus]) {
+	if moved && rowFocus >= 0 && rowFocus < len(all) && !slices.Contains(ids, all[rowFocus]) {
 		s.residentTop = rowFocus
 	}
 	chosen := ""
-	if g.in.ok() {
+	confirmable := rowFocus < 0 || rowFocus < len(all) && v.Detail != "" || rowFocus >= len(all) && flow[rowFocus-len(all)].enabled
+	if confirmable && g.in.inspect(g.in.pressed[btnOK]) {
 		if rowFocus < 0 {
 			s.list.sel = actions[s.focus]
-			s.activate(g)
+			g.in.query(s.activate(g))
 			return
 		}
+		if rowFocus >= len(all) {
+			g.in.query(s.goFlow(g, flow[rowFocus-len(all)]))
+			return
+		}
+		g.in.query(true)
 		chosen = all[rowFocus]
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for j, i := range actions {
 			if g.in.mouse.In(entryBounds(s.entries[i])) {
 				s.focus = j
 				s.list.sel = i
-				s.activate(g)
+				g.in.query(s.activate(g))
 				return
 			}
 		}
 		for i, r := range cells {
 			if g.in.mouse.In(r) {
+				g.in.query(true)
 				chosen = ids[i]
 				s.focus = len(actions) + slices.Index(all, chosen)
 				break

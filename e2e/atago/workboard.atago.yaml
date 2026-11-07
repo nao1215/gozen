@@ -64,6 +64,25 @@ scenarios:
       file:
         path: flow-resume.jsonl
         contains: ['"on":"screen:rest_board"', '"reached":4']
+- name: guide rejects an outside click without acknowledging it
+  steps:
+  - fixture:
+      file: blocked-guide.txt
+      content: |
+        wait 20
+        guides on
+        do open: look_board
+        wait 10
+        click 100 200
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/workboard" --start workshop --script blocked-guide.txt --trace blocked-guide.jsonl
+  - assert:
+      exit_code: 1
+      stderr: {contains: 'click timed out waiting for input acknowledgement'}
+      file:
+        path: blocked-guide.jsonl
+        contains: ['"t":"guide_blocked"', '"t":"script_error"']
 - name: guide focus drag refusal and message call preserve authored state
   steps:
   - fixture:
@@ -74,8 +93,6 @@ scenarios:
         guides on
         do open: look_board
         wait 10
-        click 100 200
-        wait 8
         look
         pick Onward
         wait 10

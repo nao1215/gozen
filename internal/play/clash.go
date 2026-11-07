@@ -234,7 +234,7 @@ func (s *clashScene) slot(g *Game, side, i int) (float64, float64) {
 func (s *clashScene) update(g *Game) {
 	s.age++
 	in := &g.in
-	if in.pressed[btnAuto] {
+	if in.pressedKey(btnAuto) {
 		s.auto = !s.auto
 	}
 	for side := range 2 {
@@ -285,13 +285,13 @@ func (s *clashScene) update(g *Game) {
 	s.bands = bs
 	if s.cut != nil {
 		s.cut.t++
-		if s.cut.t >= clashCutTicks || ((in.ok() || in.click) && s.cut.t > 10) || g.skipping {
+		if s.cut.t >= clashCutTicks || (s.cut.t > 10 && (in.ok() || in.clicked())) || g.skipping {
 			s.cut = nil
 		}
 		return
 	}
 	if s.over {
-		if in.ok() || in.click || (s.auto && s.wait <= 0) || g.replaying || g.skipping {
+		if in.ok() || in.clicked() || (s.auto && s.wait <= 0) || g.replaying || g.skipping {
 			g.pop()
 			s.done()
 			return
@@ -299,7 +299,7 @@ func (s *clashScene) update(g *Game) {
 		s.wait--
 		return
 	}
-	if (in.ok() || in.click) && s.age > 10 { // not the press that began the march
+	if s.age > 10 && (in.ok() || in.clicked()) { // not the press that began the march
 		s.fast = true
 	}
 	s.wait--

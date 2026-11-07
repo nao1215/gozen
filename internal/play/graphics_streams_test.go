@@ -146,8 +146,9 @@ func TestGraphicsScreensStreams(t *testing.T) {
 				t.Error("no band of the tip over the stage")
 			}
 		}},
-		// the tips: the field of their message over the amounts, empty with its hint
-		{"tipbox", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\nclick 1162 683\nwait 10\nshot tipbox\npress hide\nwait 20\nshot tipbox_full\nquit\n", nil, func(t *testing.T, root string) {
+		// The tips: the message field over the amounts. Close the modal before
+		// toggling fullscreen, then reopen it; the modal does not handle Hide.
+		{"tipbox", "0", "gap 1\nwait 30\ntype Pat\npress ok\nwait 30\npress ok\nwait 60\nclick 1162 683\nwait 10\nshot tipbox\npress cancel\npress hide\nclick 1162 683\nwait 20\nshot tipbox_full\nquit\n", nil, func(t *testing.T, root string) {
 			page := [3]uint32{0xf4, 0xf4, 0xf6}
 			for _, name := range []string{"tipbox", "tipbox_full"} {
 				if img := shotImage(t, root, name); !near(img, 918, 488, page) || !near(img, 910, 488, white) {

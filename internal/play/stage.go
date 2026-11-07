@@ -202,7 +202,7 @@ func (s *stageScene) update(g *Game) {
 		g.push(newStageList(g, s))
 		return
 	}
-	if in.click {
+	if in.clicked() {
 		pw, ph := g.pixels()
 		p := s.r.PointOf(float64(in.mouse.X)*g.ui, float64(in.mouse.Y)*g.ui, pw, ph)
 		if e, ok := s.entryAt(g, p); ok { // someone or something: walk there and talk or look
@@ -212,16 +212,16 @@ func (s *stageScene) update(g *Game) {
 		}
 	}
 	var dx, dy float64
-	if in.held[btnLeft] {
+	if in.heldKey(btnLeft) {
 		dx--
 	}
-	if in.held[btnRight] {
+	if in.heldKey(btnRight) {
 		dx++
 	}
-	if in.held[btnUp] {
+	if in.heldKey(btnUp) {
 		dy++
 	}
-	if in.held[btnDown] {
+	if in.heldKey(btnDown) {
 		dy--
 	}
 	speed := s.location(g).Stage.WalkSpeed
@@ -259,7 +259,7 @@ func (s *stageScene) update(g *Game) {
 		}
 	}
 	s.reach, s.reachOK = s.near(g)
-	if in.ok() && s.goal == nil {
+	if s.goal == nil && s.reachOK && in.ok() {
 		s.interact(g)
 	}
 }

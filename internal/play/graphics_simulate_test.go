@@ -37,7 +37,7 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 		{
 			name: "date card retains pick", fixture: "../../e2e/atago/fixtures/input-readiness",
 			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
-			script: "wait 20\ndo open: board\nwait 10\npick Next phase\npick Count\nwait 10\nsnapshot\nshot counted\nquit\n",
+			script: "wait 20\ndo open: board\nwait 10\npick Next phase\npress ok\npick Count\nwait 10\nsnapshot\nshot counted\nquit\n",
 			state:  "counted",
 		},
 		{

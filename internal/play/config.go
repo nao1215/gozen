@@ -251,19 +251,20 @@ func (s *configScreen) update(g *Game) {
 	l := s.list
 	last := len(l.items) - 1
 	d, wrap := 0, false
-	if g.in.left() {
+	if l.sel != last && g.in.left() {
 		d = -1
 	}
-	if g.in.right() {
+	if l.sel != last && g.in.right() {
 		d = 1
 	}
 
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
 			r := l.rowRect(i)
 			if !g.in.mouse.In(r) || i == last {
 				continue
 			}
+			g.in.query(true)
 			l.sel = i
 			x := float64(g.in.mouse.X)
 			switch {
@@ -278,7 +279,7 @@ func (s *configScreen) update(g *Game) {
 		}
 	}
 
-	if d == 0 && g.in.ok() && l.sel != last {
+	if d == 0 && l.sel != last && g.in.ok() {
 		d, wrap = 1, true
 	}
 	if d != 0 && l.sel != last {

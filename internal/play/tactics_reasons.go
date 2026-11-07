@@ -185,15 +185,16 @@ func (s *tacticReasons) description(g *Game) string {
 }
 
 func (s *tacticReasons) update(g *Game) {
-	if g.in.cancel() || g.in.pressed[btnLog] {
+	if g.in.cancel() || g.in.pressedKey(btnLog) {
 		g.pop()
 		return
 	}
 	lists := []*list{s.history, s.rules}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for f, l := range lists {
 			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
 				if g.in.mouse.In(l.rowRect(i)) {
+					g.in.query(true)
 					s.focus = f
 				}
 			}
@@ -204,7 +205,7 @@ func (s *tacticReasons) update(g *Game) {
 		return
 	}
 	old := s.history.sel
-	chosen, _ := lists[s.focus].update(g)
+	chosen := lists[s.focus].updateChoice(g)
 	if old != s.history.sel {
 		s.refresh(g)
 	}

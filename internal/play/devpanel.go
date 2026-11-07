@@ -141,6 +141,9 @@ func (g *Game) panelRows() int {
 func (g *Game) updatePanel() {
 	p := g.panel
 	in := &g.in
+	if p.tab == tabCommand {
+		in.receiveText()
+	}
 	if p.tab == tabCommand && in.script == nil && in.replay == nil {
 		p.text += string(ebiten.AppendInputChars(nil))
 		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && p.text != "" {
@@ -154,22 +157,22 @@ func (g *Game) updatePanel() {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 			g.closePanel()
 		}
-		if in.pressed[btnLeft] || in.pressed[btnRight] {
-			g.panelTab(in.pressed[btnRight])
+		if in.pressedKey(btnLeft) || in.pressedKey(btnRight) {
+			g.panelTab(in.pressedKey(btnRight))
 		}
 		return
 	}
 	switch {
-	case in.pressed[btnLeft] || in.pressed[btnRight]:
-		g.panelTab(in.pressed[btnRight])
+	case in.pressedKey(btnLeft) || in.pressedKey(btnRight):
+		g.panelTab(in.pressedKey(btnRight))
 	case in.cancel() || in.esc:
 		g.closePanel()
 	case in.up():
 		p.sel = max(0, p.sel-1)
 	case in.down():
 		p.sel = min(max(0, g.panelRows()-1), p.sel+1)
-	case in.ok():
-		g.panelAct(1)
+	case in.inspect(in.pressed[btnOK]):
+		in.query(g.panelAct(1))
 	}
 }
 
@@ -190,33 +193,38 @@ func (g *Game) panelTab(next bool) {
 }
 
 // panelAct acts on the selected row: a flag flips, a number steps, an event starts.
-func (g *Game) panelAct(d int) {
+func (g *Game) panelAct(d int) bool {
 	p := g.panel
 	switch p.tab {
 	case tabState:
 		rows := g.stateRows()
 		if p.sel >= len(rows) {
-			return
+			return false
 		}
 		name := rows[p.sel]
 		kind, _, _ := strings.Cut(name, ".")
 		switch kind {
 		case "flag":
 			g.devDo(fmt.Sprintf("- set: {%s: %t}", name, g.stateValue(name) != "true"))
+			return true
 		case "var", "item", "gold":
 			if _, err := strconv.ParseFloat(g.stateValue(name), 64); err == nil || g.stateValue(name) == "-" {
 				g.devDo(fmt.Sprintf("- set: {%s: \"%s + %d\"}", name, name, d))
+				return true
 			}
 		}
 	case tabScenes:
 		if evs := g.panelEvents(); p.sel < len(evs) {
 			g.devJump(evs[p.sel], 1)
+			return true
 		}
 	case tabCommand:
 		// A script types the line (type) and presses OK; a player presses Enter.
 		g.devDo(p.text)
+		return true
 	case tabFlags, tabFrames, numTabs:
 	}
+	return false
 }
 
 // devDo runs a list of YAML commands as the panel and the script do: a list of sets runs

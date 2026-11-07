@@ -199,3 +199,45 @@ func TestPointerReleaseOutsidePartCancelsTap(t *testing.T) {
 		t.Fatal("releasing outside the peek opened it")
 	}
 }
+
+func TestDropOKNeedsCarriedEntry(t *testing.T) {
+	for _, expire := range []bool{false, true} {
+		t.Run(map[bool]string{false: "retry", true: "timeout"}[expire], func(t *testing.T) {
+			g := openDragBoard(t, nil)
+			board := top(t, g)
+			board.focus = 2 // Shelf, with nothing carried.
+			s := sysScript(t, "press ok\nwait 1000")
+			s.acknowledge = true
+			n := 3
+			if expire {
+				n = 6002
+			}
+			for range n {
+				sysKey(g)
+				s.step(&g.in)
+				board.update(g)
+				g.in.finishOffer()
+				if s.pc != 0 || g.st.Vars["got"] != nil || board.running {
+					t.Fatal("empty drop acknowledged or activated")
+				}
+				if s.err != nil {
+					break
+				}
+			}
+			if expire {
+				if s.err == nil || !strings.Contains(s.err.Error(), "acknowledgement") {
+					t.Fatalf("empty drop did not expire: %v", s.err)
+				}
+				return
+			}
+			board.pickUp(g, 0)
+			sysKey(g)
+			s.step(&g.in)
+			board.update(g)
+			g.in.finishOffer()
+			if s.pc != 1 || board.carry != nil || !board.running {
+				t.Fatal("pending OK did not drop the carried entry")
+			}
+		})
+	}
+}

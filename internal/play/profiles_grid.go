@@ -182,7 +182,7 @@ func (s *profileScreen) closeBook(g *Game) {
 }
 
 func (s *profileScreen) updateGrid(g *Game) {
-	if g.in.cancel() || g.in.pressed[btnBook] || g.in.click && g.in.mouse.In(s.gridBack()) {
+	if g.in.cancel() || g.in.pressedKey(btnBook) || g.in.mouse.In(s.gridBack()) && g.in.clicked() {
 		s.closeBook(g)
 		return
 	}
@@ -194,27 +194,28 @@ func (s *profileScreen) updateGrid(g *Game) {
 	id := s.current()
 	faces := s.shownFaces(g, id)
 	switch {
-	case g.in.left() || g.in.pressed[btnLog]:
-		s.pick(g, (s.sel+n-1)%n)
-	case g.in.right() || g.in.pressed[btnAuto] && !g.in.pressed[btnLeft]:
-		s.pick(g, (s.sel+1)%n)
-	case g.in.up():
-		s.pick(g, s.gridStep(cells, -1))
-	case g.in.down():
-		s.pick(g, s.gridStep(cells, 1))
-	case g.in.ok() && len(faces) > 1 && s.opened(g, id):
+	case g.in.inspect(g.in.pressed[btnLeft]) || g.in.inspect(g.in.pressed[btnLog]):
+		g.in.query(s.pick(g, (s.sel+n-1)%n))
+	case g.in.inspect(g.in.pressed[btnRight]) || !g.in.pressed[btnLeft] && g.in.inspect(g.in.pressed[btnAuto]):
+		g.in.query(s.pick(g, (s.sel+1)%n))
+	case g.in.inspect(g.in.pressed[btnUp]) || g.in.wheel > 0:
+		g.in.query(s.pick(g, s.gridStep(cells, -1)))
+	case g.in.inspect(g.in.pressed[btnDown]) || g.in.wheel < 0:
+		g.in.query(s.pick(g, s.gridStep(cells, 1)))
+	case len(faces) > 1 && s.opened(g, id) && g.in.ok():
 		s.face = (s.face + 1) % len(faces)
 		g.sfx("cursor")
-	case g.in.click:
+	case g.in.inspect(g.in.click):
 		_, top, _, h := s.gridArea(g)
 		for i := range s.ids {
 			if r, ok := s.gridCard(g, cells, i); ok && g.in.mouse.In(r) && float64(r.Min.Y) >= top-1 && float64(r.Max.Y) <= top+h+1 {
-				s.pick(g, i)
+				g.in.query(s.pick(g, i))
 			}
 		}
 		if s.opened(g, id) {
 			for i, r := range s.gridFaceButtons(g, id) {
 				if g.in.mouse.In(r) && i != s.face {
+					g.in.query(true)
 					s.face = i
 					g.sfx("cursor")
 				}

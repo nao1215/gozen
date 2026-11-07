@@ -287,15 +287,16 @@ func (s *authorScreen) updateCandidatePage(g *Game) bool {
 	_, pages := s.candidateTextPage()
 	sw, _ := g.screen()
 	delta := 0
-	if g.in.pressed[btnLeft] {
+	if g.in.pressedKey(btnLeft) {
 		delta = -1
 	}
-	if g.in.pressed[btnRight] {
+	if g.in.pressedKey(btnRight) {
 		delta = 1
 	}
-	if g.in.click && pages > 1 {
+	if pages > 1 && g.in.inspect(g.in.click) {
 		for i, r := range s.candidatePageButtons(g) {
 			if g.in.mouse.In(r) {
+				g.in.query(true)
 				delta = 2*i - 1
 			}
 		}
@@ -401,8 +402,8 @@ func (s *authorScreen) update(g *Game) {
 		g.recordScreen(s)
 		return
 	}
-	if (g.in.pressed[btnSave] || g.in.pressed[btnLoad]) && !g.guideOn(s) {
-		menu := newSaveMenu(g, g.in.pressed[btnSave], func() {})
+	if !g.guideOn(s) && (g.in.pressedKey(btnSave) || g.in.pressedKey(btnLoad)) {
+		menu := newSaveMenu(g, g.in.pressedKey(btnSave), func() {})
 		menu.inPlay = true
 		g.push(menu)
 		return
@@ -438,7 +439,7 @@ func (s *authorScreen) update(g *Game) {
 	if s.list.sel != oldSelection {
 		s.candidatePage = 0
 	}
-	if cancel || (g.in.click && g.in.mouse.In(s.backBounds(g))) {
+	if cancel || (g.in.mouse.In(s.backBounds(g)) && g.in.clicked()) {
 		g.recordScreenAnswer(-1)
 		if s.leave(g) {
 			return
@@ -459,20 +460,20 @@ func (s *authorScreen) refresh(g *Game) {
 	*s = *n
 }
 
-func (s *authorScreen) activate(g *Game) { s.activateWith(g, nil) }
+func (s *authorScreen) activate(g *Game) bool { return s.activateWith(g, nil) }
 
 // activateWith runs the selected entry with extra bindings added to its row's
 // arguments (a drop's carried value).
-func (s *authorScreen) activateWith(g *Game, extra map[string]any) {
+func (s *authorScreen) activateWith(g *Game, extra map[string]any) bool {
 	def := g.db.Game.Screens[s.name]
 	if def == nil || s.list.sel >= len(s.indices) {
 		s.refresh(g)
-		return
+		return false
 	}
 	index := s.indices[s.list.sel]
 	if index >= len(def.Entries) {
 		s.refresh(g)
-		return
+		return false
 	}
 	g.recordScreenAnswer(s.list.sel)
 	entry := def.Entries[index]
@@ -488,10 +489,10 @@ func (s *authorScreen) activateWith(g *Game, extra map[string]any) {
 			g.emit("screen_refused", traceLine{"screen": s.name, "entry": index})
 		}
 		s.refresh(g)
-		return
+		return true
 	}
 	if len(entry.Do) == 0 && entry.Destination == "" {
-		return
+		return false
 	}
 	s.destination, s.homed = entry.Destination, false
 	// Suspend the opener so entry commands run immediately and have their own
@@ -506,6 +507,7 @@ func (s *authorScreen) activateWith(g *Game, extra map[string]any) {
 	}
 	s.startEvent(g, fmt.Sprintf("screen:%s:%d", s.name, index), args)
 	g.emit("screen_action", traceLine{"screen": s.name, "entry": index})
+	return true
 }
 
 // facesSquare reports whether this screen cuts faces as rounded squares: its
@@ -640,11 +642,11 @@ func entryBounds(e data.ScreenEntry) image.Rectangle {
 	return image.Rect(e.Bounds[0], e.Bounds[1], e.Bounds[0]+e.Bounds[2], e.Bounds[1]+e.Bounds[3])
 }
 
-func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
+func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) bool {
 	s.target = id
 	s.popupArmed = false
 	if g.db.Game.Screens[s.name].Kind == "entities" {
-		return
+		return true
 	}
 	s.popupIndices = nil
 	var items []listItem
@@ -657,7 +659,7 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 	if len(items) == 0 {
 		s.target = ""
 		s.popup = nil
-		return
+		return false
 	}
 	sw, sh := g.screen()
 	rows := max(1, min(6, len(items), int((sh-128)/44)))
@@ -674,6 +676,7 @@ func (s *authorScreen) openTarget(g *Game, id string, r image.Rectangle) {
 		s.popup.y = max(88, min(float64(r.Min.Y)+40, sh-100-144-s.popup.height()))
 	}
 	s.popup.size = 22
+	return true
 }
 
 // goingHome turns opening a home screen from the action of the screen on top
@@ -787,7 +790,7 @@ func (s *authorScreen) updateSurface(g *Game) {
 	}
 	if s.popup != nil {
 		r := image.Rect(int(s.popup.x), int(s.popup.y), int(s.popup.x+s.popup.w), int(s.popup.y+s.popup.height()))
-		if g.in.click && !g.in.mouse.In(r) {
+		if !g.in.mouse.In(r) && g.in.clicked() {
 			s.popup = nil
 			s.target = ""
 			return
@@ -810,7 +813,7 @@ func (s *authorScreen) updateSurface(g *Game) {
 				return
 			}
 			s.popup = nil
-			s.activate(g)
+			g.in.query(s.activate(g))
 		}
 		return
 	}
@@ -880,11 +883,11 @@ func (s *authorScreen) updateSurface(g *Game) {
 	if s.updatePointer(g, actions, cells) {
 		return
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, r := range cells {
 			if g.in.mouse.In(r) {
 				s.focus = len(actions) + i
-				s.openTarget(g, ids[i], r)
+				g.in.query(s.openTarget(g, ids[i], r))
 				return
 			}
 		}
@@ -892,23 +895,29 @@ func (s *authorScreen) updateSurface(g *Game) {
 			if s.entries[i].Carousel == "" && !pointerPart(s.entries[i]) && g.in.mouse.In(entryBounds(s.entries[i])) {
 				s.focus = j
 				s.list.sel = i
-				s.activate(g)
+				g.in.query(s.activate(g))
 				return
 			}
 		}
 	}
-	if g.in.ok() {
+	g.in.receivePick(s)
+	confirmable := true
+	if k := s.focus - len(actions) - len(ids); k >= 0 && k < len(flow) {
+		confirmable = flow[k].enabled
+	}
+	if confirmable && g.in.inspect(g.in.pressed[btnOK]) {
 		if s.focus < len(actions) {
-			if s.confirmPart(g, actions[s.focus]) {
+			if pointerPart(s.entries[actions[s.focus]]) {
+				g.in.query(s.confirmPart(g, actions[s.focus]))
 				return
 			}
 			s.list.sel = actions[s.focus]
-			s.activate(g)
+			g.in.query(s.activate(g))
 		} else if k := s.focus - len(actions) - len(ids); k >= 0 && k < len(flow) {
-			s.goFlow(g, flow[k])
+			g.in.query(s.goFlow(g, flow[k]))
 		} else if s.focus-len(actions) < len(ids) {
 			i := s.focus - len(actions)
-			s.openTarget(g, ids[i], cells[i])
+			g.in.query(s.openTarget(g, ids[i], cells[i]))
 		}
 	}
 }
@@ -1208,9 +1217,10 @@ func (s *authorScreen) updateTabs(g *Game) bool {
 	} else if g.in.right() {
 		next = (selected + 1) % len(tabs)
 	}
-	if g.in.click {
+	if g.in.inspect(g.in.click) {
 		for i, r := range s.tabBounds(g) {
 			if g.in.mouse.In(r) {
+				g.in.query(true)
 				next = i
 			}
 		}

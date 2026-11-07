@@ -373,13 +373,13 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 				t.held, t.micR = nil, 0
 				return true, quiet
 			}
-			chose, _ := t.choice.update(g)
-			if chose || g.in.click && t.micR > 0 && t.mic.Dist(g.in.mouse) <= t.micR {
+			chose := t.choice.updateChoice(g)
+			if chose || t.micR > 0 && t.mic.Dist(g.in.mouse) <= t.micR && g.in.clicked() {
 				t.choice, t.held = t.held, nil
 			}
 			return false, -1
 		}
-		chose, _ := t.choice.update(g)
+		chose := t.choice.updateChoice(g)
 		if chose {
 			t.active, t.closed = false, g.tick
 			if k := t.choice.sel; k < len(t.keys) && !g.live.quiet {
@@ -392,7 +392,7 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 		return false, -1
 	}
 
-	if g.skipping && (g.in.ok() || g.in.click) {
+	if g.skipping && (g.in.ok() || g.in.clicked()) {
 		g.stopSkip("input")
 		return false, -1
 	}
@@ -402,7 +402,7 @@ func (t *talk) update(g *Game) (done bool, answer int) {
 		if fast {
 			t.shown = t.total
 		}
-		if g.in.advance() && t.age > 4 {
+		if t.age > 4 && g.in.advance() {
 			t.shown = t.total
 		}
 		return false, -1

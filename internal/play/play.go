@@ -586,6 +586,7 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		s.waiting = g.waiting
 		s.ready = g.scriptReady
+		s.acknowledge = true
 		s.graphsReady = g.scriptGraphsReady
 		s.walk = g.walkStep
 		s.arrived = func() bool { a := g.walkArrived(); g.walkGoal = [3]int{}; return a }
@@ -969,24 +970,28 @@ func (g *Game) Update() error {
 		g.emit("script_error", traceLine{"error": s.err.Error()})
 		return s.err
 	}
+	defer g.in.finishOffer()
+	g.in.observing = false
 	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
-	if g.opts.Development && g.in.pressed[btnPanel] && g.memo == nil {
+	if g.opts.Development && g.memo == nil && g.in.pressedKey(btnPanel) {
 		g.togglePanel()
 	}
 	g.bookKey()
 	g.bestiaryKey()
 	if g.panelModal() {
+		g.in.observing = true
 		g.updatePanel()
 		g.traceInput()
 		return nil
 	}
 
-	if g.opts.MemoDir != "" && g.memo == nil && g.in.pressed[btnMemo] && g.rep == nil && g.auto == nil && g.db != nil && !g.memoKeyTaken() {
+	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
 		g.openMemo()
 	}
 	if g.memo != nil {
+		g.in.observing = true
 		g.updateMemo()
 		g.tick--
 		return nil
@@ -1066,6 +1071,7 @@ func (g *Game) Update() error {
 	if g.stepTurn() {
 		return nil
 	}
+	g.in.observing = true
 	if g.logView != nil {
 		g.logView.update(g)
 	} else if len(g.stack) > 0 {
@@ -1865,12 +1871,17 @@ func (g *Game) pump() bool {
 	case event.Wait:
 		if g.birth != nil && g.birth.waiting {
 			b := g.birth
+			if !b.ready && g.in.offer != nil {
+				// A retried script command is a fresh gesture, not a held key.
+				// Leave one release tick without acknowledging its pending input.
+				g.in.pressed[btnOK], g.in.held[btnOK] = false, false
+			}
 			if b.age >= b.viewEnd() && g.in.cancel() {
 				b.details = !b.details
 				g.in.pressed[btnCancel] = false
 				g.in.pressed[btnMenu] = false
 			}
-			if !g.in.held[btnOK] && !g.in.ok() {
+			if !g.in.inspect(g.in.held[btnOK] || g.in.pressed[btnOK]) {
 				b.ready = true
 			}
 			if b.age < b.duration() && b.skipT == 0 && b.ready && g.in.ok() {
@@ -1879,7 +1890,7 @@ func (g *Game) pump() bool {
 				b.ready = false
 			}
 			g.waitT = max(1, b.duration()-b.age)
-			if b.age >= b.duration() && b.ready && g.in.ok() && !b.details {
+			if b.age >= b.duration() && b.ready && !b.details && g.in.ok() {
 				g.waitT = 0
 				g.req = nil
 				b.ready = false

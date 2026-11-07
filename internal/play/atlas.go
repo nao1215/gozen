@@ -267,14 +267,16 @@ func clampAxis(c, size, k, lo, span, full float64) float64 {
 	return (lo + span/2 - off) / k
 }
 
-func (s *atlasScene) panCamera(g *Game, dx, dy float64) {
+func (s *atlasScene) panCamera(g *Game, dx, dy float64) bool {
 	k, _, _, ok := s.fit(g)
 	if !ok {
-		return
+		return false
 	}
+	before := s.cameraCenter
 	pw, ph := g.pixels()
 	s.cameraCenter = s.cameraCenter.Add(geom.Pt{X: dx * pw / k, Y: dy * ph / k})
 	s.fit(g)
+	return s.cameraCenter != before
 }
 
 func (s *atlasScene) zoomCamera(g *Game, factor float64) {
@@ -307,7 +309,8 @@ func (s *atlasScene) cameraPointVisible(g *Game, p geom.Pt) bool {
 	return x >= 0 && x <= w && y >= 0 && y <= h
 }
 
-func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) {
+func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
+	before, hidden, center := s.sel, s.panelHidden, s.cameraCenter
 	from := s.at
 	if s.sel >= 0 && s.sel < len(s.choices) {
 		from = s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt()
@@ -333,6 +336,7 @@ func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) {
 	if len(s.choices) > 0 {
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 	}
+	return s.sel != before || s.panelHidden != hidden || s.cameraCenter != center
 }
 
 // cameraButtons are in screen coordinates, independent of the map transform; none when
@@ -349,16 +353,16 @@ func (s *atlasScene) cameraButtons(g *Game) []plateBox {
 	return boxes
 }
 
-func (s *atlasScene) cameraAction(g *Game, n int) {
+func (s *atlasScene) cameraAction(g *Game, n int) bool {
 	switch n {
 	case 0:
-		s.panCamera(g, -.2, 0)
+		return s.panCamera(g, -.2, 0)
 	case 1:
-		s.panCamera(g, .2, 0)
+		return s.panCamera(g, .2, 0)
 	case 2:
-		s.panCamera(g, 0, -.2)
+		return s.panCamera(g, 0, -.2)
 	case 3:
-		s.panCamera(g, 0, .2)
+		return s.panCamera(g, 0, .2)
 	case 4:
 		s.zoomCamera(g, 1/1.25)
 	case 5:
@@ -368,6 +372,7 @@ func (s *atlasScene) cameraAction(g *Game, n int) {
 	case 7:
 		s.resetCamera(g, false)
 	}
+	return true
 }
 
 func (s *atlasScene) updateCamera(g *Game) bool {
@@ -375,32 +380,32 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 		return false
 	}
 	in := &g.in
-	if in.click {
+	if in.inspect(in.click) {
 		x, y := float64(in.mouse.X), float64(in.mouse.Y)
 		for i, b := range s.cameraButtons(g) {
 			if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
-				s.cameraAction(g, i)
+				in.query(s.cameraAction(g, i))
 				return true
 			}
 		}
 	}
 	switch {
-	case in.pressed[btnMapZoomIn] || in.wheel > 0:
+	case in.pressedKey(btnMapZoomIn) || in.wheel > 0:
 		s.zoomCamera(g, 1.25)
 		return true
-	case in.pressed[btnMapZoomOut] || in.wheel < 0:
+	case in.pressedKey(btnMapZoomOut) || in.wheel < 0:
 		s.zoomCamera(g, 1/1.25)
 		return true
-	case in.pressed[btnMapOverview]:
+	case in.pressedKey(btnMapOverview):
 		s.resetCamera(g, true)
 		return true
-	case in.pressed[btnMapFocus]:
+	case in.pressedKey(btnMapFocus):
 		s.resetCamera(g, false)
 		return true
-	case in.pressed[btnMapPan]:
+	case in.pressedKey(btnMapPan):
 		s.cameraPan = !s.cameraPan
 		return true
-	case in.pressed[btnNext] && len(s.choices) > 0:
+	case len(s.choices) > 0 && in.pressedKey(btnNext):
 		s.sel = (s.sel + 1) % len(s.choices)
 		s.panelHidden = false
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
@@ -408,20 +413,20 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 	}
 	if s.cameraPan {
 		dx, dy := 0.0, 0.0
-		if in.held[btnLeft] || in.pressed[btnLeft] {
+		if in.inspect(in.held[btnLeft] || in.pressed[btnLeft]) {
 			dx--
 		}
-		if in.held[btnRight] || in.pressed[btnRight] {
+		if in.inspect(in.held[btnRight] || in.pressed[btnRight]) {
 			dx++
 		}
-		if in.held[btnUp] || in.pressed[btnUp] {
+		if in.inspect(in.held[btnUp] || in.pressed[btnUp]) {
 			dy--
 		}
-		if in.held[btnDown] || in.pressed[btnDown] {
+		if in.inspect(in.held[btnDown] || in.pressed[btnDown]) {
 			dy++
 		}
 		if dx != 0 || dy != 0 {
-			s.panCamera(g, dx*.015, dy*.015)
+			in.query(s.panCamera(g, dx*.015, dy*.015))
 			return true
 		}
 	}
@@ -534,8 +539,9 @@ func (s *atlasScene) update(g *Game) {
 		g.push(newEntryListOf(g, s.take, s.listed))
 		return
 	}
-	if in.click {
+	if in.inspect(in.click) {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
+			in.query(true)
 			if s.location(g).Map.SelectionPanel != nil {
 				s.focusPoint(c.Point)
 				return
@@ -549,17 +555,17 @@ func (s *atlasScene) update(g *Game) {
 	}
 	var want geom.Pt
 	switch {
-	case in.up():
+	case in.inspect(in.pressed[btnUp]) || in.wheel > 0:
 		want = geom.Pt{Y: -1}
-	case in.down():
+	case in.inspect(in.pressed[btnDown]) || in.wheel < 0:
 		want = geom.Pt{Y: 1}
-	case in.left():
+	case in.inspect(in.pressed[btnLeft]):
 		want = geom.Pt{X: -1}
-	case in.right():
+	case in.inspect(in.pressed[btnRight]):
 		want = geom.Pt{X: 1}
 	}
 	if want != (geom.Pt{}) {
-		s.selectToward(g, want)
+		in.query(s.selectToward(g, want))
 		return
 	}
 	if in.ok() {
@@ -582,10 +588,9 @@ func (s *atlasScene) listed(e world.Entry) bool {
 
 // selectToward selects the choice whose way out of the token's point is nearest the way
 // (another than the one selected when the way is the same).
-func (s *atlasScene) selectToward(g *Game, want geom.Pt) {
+func (s *atlasScene) selectToward(g *Game, want geom.Pt) bool {
 	if a := s.location(g).Map; a.Camera != nil || a.SelectionPanel != nil || a.Activation == "instant" {
-		s.selectCameraPoint(g, want)
-		return
+		return s.selectCameraPoint(g, want)
 	}
 	best, bd := s.sel, 0.3
 	for i, c := range s.choices {
@@ -600,7 +605,9 @@ func (s *atlasScene) selectToward(g *Game, want geom.Pt) {
 	if best != s.sel {
 		g.sfx("cursor")
 		s.sel = best
+		return true
 	}
+	return false
 }
 
 // firstStep is where the way to a choice first heads (its first road's first bend).

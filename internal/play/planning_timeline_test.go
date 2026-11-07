@@ -793,3 +793,45 @@ func TestTimelineDrawingKeepsPublicReportAndSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestTimelineGroupClickAcknowledgesExpansion(t *testing.T) {
+	for _, count := range []int{2, 20} {
+		t.Run(strconv.Itoa(count), func(t *testing.T) {
+			db := testgame.Load(t, nil)
+			db.Game.Planning = &data.Planning{
+				Calendar:   data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}},
+				Activities: map[string]data.Activity{},
+			}
+			row := data.TimelineRow{Label: "Crafts"}
+			for i := range count {
+				id := strconv.Itoa(i)
+				db.Game.Planning.Activities[id] = data.Activity{Name: "Item " + id, Effort: 10}
+				row.Items = append(row.Items, data.TimelineItem{Activity: id})
+			}
+			db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true, Rows: []data.TimelineRow{row}}}}
+			g := &Game{db: db, st: testgame.State(db, 1)}
+			a := newAuthorScreen(g, "tasks", nil, nil)
+			s := sysScript(t, "click 24 168\nwait 1000")
+			s.acknowledge = true
+			for range 6002 {
+				g.in = input{}
+				s.step(&g.in)
+				a.toggleTimelineGroup(g)
+				g.in.finishOffer()
+				if count == 2 {
+					if s.pc != 1 || a.timelineExpanded == "" {
+						t.Fatal("expansion did not act and acknowledge")
+					}
+					return
+				}
+				if s.pc != 0 || a.timelineExpanded != "" {
+					t.Fatal("oversized group acknowledged without expanding")
+				}
+				if s.err != nil {
+					return
+				}
+			}
+			t.Fatal("unhandled group click did not expire")
+		})
+	}
+}
