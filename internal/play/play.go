@@ -2471,9 +2471,16 @@ func (s *seekLoop) Update() error {
 		if err := s.Game.Update(); err != nil {
 			return err
 		}
-		// Draw before recorded input so hit regions belong to the current screen.
+		// Events can freeze the previous frame after a timed wait. Keep drawing
+		// while an event advances so lastView is the frame before the transition.
+		// Direct actions, like inputs, can also start a transition on the next tick.
 		_, inputNext := s.rep.inputs[s.tick+1]
-		if !s.drew || s.untilShot || inputNext || time.Now().After(deadline) {
+		_, actNext := s.rep.acts[s.tick+1]
+		eventRunning := s.events != nil && s.events.Running()
+		if b := s.currentBattle(); b != nil && b.runner != nil && b.runner.Running() {
+			eventRunning = true
+		}
+		if !s.drew || s.untilShot || inputNext || actNext || eventRunning || time.Now().After(deadline) {
 			return nil
 		}
 	}

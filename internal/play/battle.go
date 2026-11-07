@@ -1516,7 +1516,7 @@ func (s *battleScene) stepFoePictures(g *Game) {
 			s.foeFade[u] = pictureFade{from: old, ticks: 18}
 		}
 		s.foeImages[u] = path
-		if fade := s.foeFade[u]; !fade.form || fade.ticks <= 16 {
+		if fade := s.foeFade[u]; !g.opts.headless && (!fade.form || fade.ticks <= 16) {
 			if p := g.enemyPuppet(u, path, s.shownHP[u]); p != nil {
 				p.Motion.Step()
 				p.Motion.Speak(s.actor == u)

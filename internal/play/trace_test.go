@@ -387,8 +387,9 @@ func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
 	if fast.tick != 99 || !bytes.Equal(got, want) {
 		t.Fatalf("seek at %d: %s; want %s", fast.tick, got, want)
 	}
-	if calls >= 99 {
-		t.Fatalf("seek did not batch: %d calls", calls)
+	// This event-driven replay now draws each tick; idle batching is checked separately.
+	if calls > 100 {
+		t.Fatalf("seek did not reach its target promptly: %d calls", calls)
 	}
 	fast.autoShot = "" // A successful target Draw releases the stop handshake.
 	for range 3 {
@@ -449,5 +450,17 @@ func TestTraceRejectsScriptMutations(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestTraceReproBatchesIdleTicks(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: gameFiles(t), Location: "camp", Until: 100})
+	g.rep = &replay{partial: true}
+	loop := &seekLoop{Game: g, drew: true}
+	if err := loop.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if g.tick <= 1 {
+		t.Fatalf("idle seek did not batch: tick %d", g.tick)
 	}
 }

@@ -408,14 +408,18 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "campaign", "battle-puppet"} {
+	for _, mode := range []string{"novel", "timed-fade", "campaign", "battle-puppet"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			game := filepath.Join(dir, "game")
-			source := os.DirFS(filepath.Join("testdata", mode))
+			fixture := mode
+			if mode == "timed-fade" {
+				fixture = "novel"
+			}
+			source := os.DirFS(filepath.Join("testdata", fixture))
 			if mode == "battle-puppet" {
 				source = enemyPuppetFiles(t)
 			}
@@ -434,6 +438,24 @@ func TestGraphicsScreensRepro(t *testing.T) {
 				writeNovelFigure(t, game)
 				start = []string{"--start", "room"}
 				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			}
+			if mode == "timed-fade" {
+				writeNovelFigure(t, game)
+				// Change the screen after seeking has begun, animate it, then trigger a
+				// fade without input. Capture while the pre-transition image is frozen.
+				event := `events:
+  timed_fade:
+    do:
+      - wait: {seconds: 0.2, skip: false}
+      - image: {file: fig.png, fade: 0.2}
+      - wait: {seconds: 0.5, skip: false}
+      - effect: fade
+`
+				if err := os.WriteFile(filepath.Join(game, "data", "timed_fade.yaml"), []byte(event), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				start = []string{"--start", "room"}
+				body = "wait 40\ndo call: timed_fade\nwait 50\nshot frame\nquit\n"
 			}
 			if mode == "battle-puppet" {
 				start = []string{"--start", "field", "--party", "scout,guide", "--battle", "one"}
