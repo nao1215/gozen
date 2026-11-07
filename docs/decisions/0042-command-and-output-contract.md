@@ -145,6 +145,11 @@ Shared report serialization and error classification belong to CLI infrastructur
 not game rules. Move existing implementations when sharing them; do not add wrappers
 or a second output framework.
 
+Clarification (2026-11-08): a reproduction bundle (`gozen trace --repro`) may
+write another command's argv and a shell script as output artifacts for the user
+to run later. Handlers must not execute those artifacts, invoke another command's
+parser, or re-enter CLI dispatch; bundle generation uses a shared typed operation.
+
 Capture takes the game's filesystem, typed capture jobs and settings directly.
 Run Ebitengine once for the batch; close each internal game before constructing
 the next. Wait for pending Draw/screenshot writes and trace closure before judging

@@ -691,11 +691,12 @@ func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
 	e := world.Entry{Kind: world.Exit, Choice: &c, Spot: c.Point}
 	s.queue = e.Commands(g.db, g.st)
 	s.dirty = true
-	kind := "travel"
+	fields := traceLine{"location": s.loc, "from": s.here, "to": c.Point, "roads": c.Roads}
 	if s.location(g).Map.Activation == "instant" {
-		kind = "activate"
+		g.emit("activate", fields)
+	} else {
+		g.emit("travel", fields)
 	}
-	g.emit(kind, traceLine{"location": s.loc, "from": s.here, "to": c.Point, "roads": c.Roads})
 }
 
 // startRoad sets the token walking the road of a cross command (false when it has none).

@@ -542,7 +542,13 @@ type TitleMenu struct {
 
 // UIStyle are the colors of the windows.
 type UIStyle struct {
-	Material *MaterialStyle `yaml:"material"`
+	// Phone colors are consumed by play for page bodies/text and owner bubbles.
+	// Unset preserves the white page, dark text and blue accent.
+	PhoneBackground Color          `yaml:"phone_background"`
+	PhoneText       Color          `yaml:"phone_text"`
+	PhoneMuted      Color          `yaml:"phone_muted"`
+	PhoneAccent     Color          `yaml:"phone_accent"`
+	Material        *MaterialStyle `yaml:"material"`
 	// Chrome recolors the title bar and browser decoration of windowed planning
 	// surfaces and calls (schema_version 10).
 	Chrome *ChromeStyle `yaml:"chrome"`

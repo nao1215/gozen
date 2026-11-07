@@ -331,3 +331,38 @@ events:
 		t.Fatalf("flags %v", st.Flags)
 	}
 }
+
+// Timed outcomes resume only after an answer and can immediately ring again.
+func TestPhoneTimedOutcomes(t *testing.T) {
+	for _, tc := range []struct {
+		cue      string
+		outcomes []string
+	}{
+		{`{app: lock, timeout: 2, timeout_result: retry, var: var.outcome}`, []string{"open", "dismiss", "retry"}},
+		{`{app: page, timeout: 2, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "expired"}},
+		{`{app: banner, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss"}},
+		{`{app: banner, timeout: 2, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss", "expired"}},
+	} {
+		for i, outcome := range tc.outcomes {
+			t.Run(outcome, func(t *testing.T) {
+				db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 11\nid: timed-phone\n" + testgame.Game, "data/timed.yaml": "events:\n  timed:\n    - phone: " + tc.cue + "\n    - say: '{var.outcome}'\n    - phone: " + tc.cue + "\n"})
+				st := testgame.State(db, 1)
+				r := event.New(db, st, &phoneHost{})
+				r.Start(db.Events["timed"].Do)
+				if tap, ok := r.Next().(event.Tap); !ok || tap.Results != len(tc.outcomes) {
+					t.Fatalf("not waiting with outcomes: %+v", tap)
+				}
+				if st.Vars["outcome"] != nil {
+					t.Fatal("outcome chosen before input")
+				}
+				r.Answer(i)
+				if say, ok := r.Next().(event.Say); !ok || say.Text != outcome {
+					t.Fatalf("outcome: %+v", say)
+				}
+				if tap, ok := r.Next().(event.Tap); !ok || tap.Results != len(tc.outcomes) {
+					t.Fatalf("did not ring again: %+v", tap)
+				}
+			})
+		}
+	}
+}

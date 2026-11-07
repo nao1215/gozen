@@ -258,6 +258,9 @@ func (g *Game) startBattle(troop string, done func(int)) *battleScene {
 	s.troop = troop
 	s.openTick = g.tick
 	g.push(s)
+	if g.tick == 0 {
+		s.stepFoePictures(g)
+	}
 	return s
 }
 
@@ -751,7 +754,7 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 	}
 	if st.Amount > 0 {
 		if st.Target.Enemy && st.Stat != "mp" {
-			if p := g.puppets.live["enemy."+st.Target.EID]; p != nil {
+			if p := g.puppets.enemies[st.Target]; p != nil {
 				p.Motion.SetHealth(float64(st.HP) / float64(max(1, st.Target.MHP())))
 				p.Motion.Hit()
 			}
@@ -837,7 +840,7 @@ func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
 		return
 	}
 	if u.Def != nil {
-		if p := g.puppets.live["enemy."+u.EID]; p != nil {
+		if p := g.puppets.enemies[u]; p != nil {
 			if kind != "hit" || p.Rig().Spec.Motion.Hit != "soft_only" {
 				if r, ok := p.Rig().Spec.ReactionOf(map[string]string{"act": "hop", "hit": "shake"}[kind]); ok {
 					p.Motion.React(r)
@@ -860,7 +863,7 @@ func (s *battleScene) softOnlyHit(g *Game, u *battle.Unit) bool {
 	if u == nil || !u.Enemy {
 		return false
 	}
-	p := g.puppets.live["enemy."+u.EID]
+	p := g.puppets.enemies[u]
 	return p != nil && p.Rig().Spec.Motion.Hit == "soft_only"
 }
 
@@ -1482,16 +1485,20 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 	}
 }
 
-func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
-	boxes := s.foeBoxes(g)
+// stepFoePictures prepares the visible enemies once per simulation tick. Drawing
+// only consumes this state, including when replay skips intermediate frames.
+func (s *battleScene) stepFoePictures(g *Game) {
+	for u, p := range g.puppets.enemies {
+		if !slices.Contains(s.b.Foes, u) || s.gone[u] >= 40 || u.Def.Puppet == "" {
+			p.Close()
+			delete(g.puppets.enemies, u)
+		}
+	}
 	for _, u := range s.b.Foes {
-
 		gone, isGone := s.gone[u]
 		if isGone && gone >= 40 {
 			continue
 		}
-		box := boxes[u]
-		r := box.rect
 		path := u.PictureAt(s.shownHP[u])
 		if f := u.Face(); f != "" {
 			path = u.Def.Faces[f]
@@ -1515,70 +1522,26 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			s.foeFade[u] = pictureFade{from: old, ticks: 18}
 		}
 		s.foeImages[u] = path
-		cs := &ebiten.ColorScale{}
-		tint(cs, u.Def.Image)
-		a := float32(1)
-		for _, pending := range s.queue {
-			if pending.Kind == battle.Merge && pending.Target == u {
-				a = 0
-				break
-			}
-		}
-		if s.mergeTarget == u && s.mergeTicks > 12 {
-			a = float32(24-s.mergeTicks) / 12
-		}
-		if isGone {
-			a = 1 - float32(gone)/40
-			if !u.Fled {
-				cs.Scale(1, 0.5, 0.5, 1)
-			}
-		}
-		x := box.cx
-		if n := s.shakeU[u]; n > 0 && !s.softOnlyHit(g, u) {
-			x += math.Sin(float64(n)*2.1) * float64(n) * 0.9
-		}
-		bob := 0.0
-		phase := float64(g.tick+u.Index*19) / 25
-		switch u.Def.Motion {
-		case "bob":
-			bob -= math.Sin(phase) * 3
-		case "sway":
-			x += math.Sin(phase) * 3
-		}
-		if s.actor == u {
-			bob += 10 // a short step toward the party
-		}
-		fh := box.h * s.chargeScale(u)
-		if u.Def.Motion == "breathe" {
-			fh *= 1 + 0.012*math.Sin(phase)
-		}
-		fade := s.foeFade[u]
-		if fade.form && fade.ticks > 16 {
-			shadow := &ebiten.ColorScale{}
-			shadow.Scale(0.08, 0.08, 0.12, 1)
-			g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a, false, shadow)
-		} else {
-			newAlpha := a
-			if fade.form && fade.ticks > 0 {
-				newAlpha *= float32(16-fade.ticks) / 16
-			}
+		if fade := s.foeFade[u]; !g.opts.headless && (!fade.form || fade.ticks <= 16) {
 			if p := g.enemyPuppet(u, path, s.shownHP[u]); p != nil {
+				p.Motion.Step()
 				p.Motion.Speak(s.actor == u)
-				g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false, nil)
-			} else {
-				g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)
-			}
-			if fade.ticks > 0 && fade.from != "" && fade.from != path {
-				divisor := float32(18)
-				if fade.form {
-					divisor = 16
-				}
-				g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a*float32(fade.ticks)/divisor, false, cs)
 			}
 		}
-		if n := s.flashU[u]; n > 0 && n%4 < 2 {
-			g.drawStandingAdd(dst, path, x, box.bottom+bob, fh)
+	}
+}
+
+func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
+	boxes := s.foeBoxes(g)
+	for _, u := range s.b.Foes {
+
+		gone, isGone := s.gone[u]
+		if isGone && gone >= 40 {
+			continue
 		}
+		box := boxes[u]
+		r := box.rect
+		s.drawFoePicture(g, dst, u, box, gone, isGone)
 
 		aimed := s.target != nil && s.target.enemies && s.target.pool[s.target.sel] == u
 		if !u.Def.Boss && !isGone && !aimed && len(s.shownStates(u)) > 0 {
@@ -1602,6 +1565,74 @@ func (s *battleScene) drawFoes(g *Game, dst *ebiten.Image) {
 			x := sw/2 + (float64(member.Index)-float64(oldCount-1)/2)*min(180, (sw-foeLeft)/float64(oldCount))
 			g.drawStanding(dst, member.Picture(), x, sh*0.66, 160, 1, false, nil)
 		}
+	}
+}
+
+// drawFoePicture applies motion, fades and hit effects to one visible foe.
+func (s *battleScene) drawFoePicture(g *Game, dst *ebiten.Image, u *battle.Unit, box foeBox, gone int, isGone bool) {
+	path := s.foeImages[u]
+	cs := &ebiten.ColorScale{}
+	tint(cs, u.Def.Image)
+	a := float32(1)
+	for _, pending := range s.queue {
+		if pending.Kind == battle.Merge && pending.Target == u {
+			a = 0
+			break
+		}
+	}
+	if s.mergeTarget == u && s.mergeTicks > 12 {
+		a = float32(24-s.mergeTicks) / 12
+	}
+	if isGone {
+		a = 1 - float32(gone)/40
+		if !u.Fled {
+			cs.Scale(1, 0.5, 0.5, 1)
+		}
+	}
+	x := box.cx
+	if n := s.shakeU[u]; n > 0 && !s.softOnlyHit(g, u) {
+		x += math.Sin(float64(n)*2.1) * float64(n) * 0.9
+	}
+	bob := 0.0
+	phase := float64(g.tick+u.Index*19) / 25
+	switch u.Def.Motion {
+	case "bob":
+		bob -= math.Sin(phase) * 3
+	case "sway":
+		x += math.Sin(phase) * 3
+	}
+	if s.actor == u {
+		bob += 10 // a short step toward the party
+	}
+	fh := box.h * s.chargeScale(u)
+	if u.Def.Motion == "breathe" {
+		fh *= 1 + 0.012*math.Sin(phase)
+	}
+	fade := s.foeFade[u]
+	if fade.form && fade.ticks > 16 {
+		shadow := &ebiten.ColorScale{}
+		shadow.Scale(0.08, 0.08, 0.12, 1)
+		g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a, false, shadow)
+	} else {
+		newAlpha := a
+		if fade.form && fade.ticks > 0 {
+			newAlpha *= float32(16-fade.ticks) / 16
+		}
+		if p := g.puppets.enemies[u]; u.Def.Puppet != "" && p != nil {
+			g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false, nil)
+		} else {
+			g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)
+		}
+		if fade.ticks > 0 && fade.from != "" && fade.from != path {
+			divisor := float32(18)
+			if fade.form {
+				divisor = 16
+			}
+			g.drawStanding(dst, fade.from, x, box.bottom+bob, fh, a*float32(fade.ticks)/divisor, false, cs)
+		}
+	}
+	if n := s.flashU[u]; n > 0 && n%4 < 2 {
+		g.drawStandingAdd(dst, path, x, box.bottom+bob, fh)
 	}
 }
 

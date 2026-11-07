@@ -124,7 +124,11 @@ func (p *Puppet) compose(l *layer, pose Pose) {
 			l.base = ebiten.NewImageFromImage(small)
 		}
 		b := l.base.Bounds()
-		l.canvas = ebiten.NewImage(b.Dx(), b.Dy())
+		// The mesh samples fractional coordinates with linear filtering. Keep
+		// its source off the automatic atlas: promotion after earlier draws
+		// changes float32 texture coordinates and can round a channel differently
+		// from a first draw at the same pose (as in replay seeking).
+		l.canvas = ebiten.NewImageWithOptions(image.Rect(0, 0, b.Dx(), b.Dy()), &ebiten.NewImageOptions{Unmanaged: true})
 	}
 	c := l.canvas
 	c.Clear()

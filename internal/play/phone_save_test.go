@@ -271,3 +271,41 @@ func TestPhoneSaveAfterPutDownUnread(t *testing.T) {
 		t.Fatalf("loaded at %q, vars %v: %v", at(h), h.st.Vars, h.failure)
 	}
 }
+
+func TestPhoneTimedSaveReplay(t *testing.T) {
+	for _, cue := range []string{
+		`{app: lock, var: var.outcome, timeout: 0.1, timeout_result: retry}`,
+		`{app: banner, var: var.outcome, timeout: 0.1, notices: [{text: Hello}]}`,
+		`{app: page, var: var.outcome, timeout: 0.1, timeout_result: retry, rows: [{button: Read}]}`,
+	} {
+		g, _ := btlOpen(t, Options{Location: "camp"}, "schema_version: 11\nui: {message: novel}\n", "events:\n  timed:\n    - phone: "+cue+"\n    - say: '{var.outcome}'\n    - say: End\n")
+		g.enterAt = ""
+		g.events.Start(g.db.Events["timed"].Do)
+		g.pump()
+		for range 90 {
+			g.in = input{}
+			g.pump()
+		}
+		want := "retry"
+		if g.db.Events["timed"].Do[0].Phone.App == "banner" {
+			want = "expired"
+		}
+		if at(g) != want || g.st.Vars["outcome"] != want {
+			t.Fatalf("before save: %q, %v", at(g), g.st.Vars)
+		}
+		if err := g.save(0); err != nil {
+			t.Fatal(err)
+		}
+		st, err := g.load(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.loadSavedGame(st)
+		if g.failure != nil || at(g) != want || g.st.Vars["outcome"] != want || g.phone != nil {
+			t.Fatalf("replayed: %q, %v, phone %v, error %v", at(g), g.st.Vars, g.phone != nil, g.failure)
+		}
+		if err := g.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

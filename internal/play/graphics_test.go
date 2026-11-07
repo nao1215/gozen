@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/image/font/gofont/goregular"
 )
 
 // hostBin is testdata/host, built once by TestMain for every scenario.
@@ -366,6 +368,286 @@ func TestGraphicsScreensCasualtyPolicy(t *testing.T) {
 			st := save.State
 			if st.Actors["guide"].HP != want || st.Actors["scout"].HP <= 1 || st.Vars["losses"] != float64(1) || st.LastBattle.Result != "lose" || len(st.LastBattle.HP) != 1 || st.LastBattle.HP["guide"] != 0 {
 				t.Fatalf("saved outcome: %+v", st)
+			}
+		})
+	}
+}
+
+// TestGraphicsScreensRepro runs the exact printed shell command, then compares
+// pixels rather than PNG compression. Each CLI process owns one graphics loop.
+func TestGraphicsScreensRepro(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("printed POSIX shell command requires sh")
+	}
+	root := t.TempDir()
+	// Opt-in artifacts survive t.TempDir cleanup so a coordinator can inspect
+	// intermittent pixel differences after running the real graphics loop.
+	if os.Getenv("GOZEN_REPRO_ARTIFACTS") == "1" {
+		var err error
+		root, err = os.MkdirTemp("", "screens-repro-") //nolint:usetesting // Explicitly retained for inspection after the test exits.
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("reproduction artifacts: %s", root)
+	}
+	binary := filepath.Join(root, "gozen")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "../../cmd/gozen") //nolint:gosec // Builds the CLI into the test directory.
+	build.Stdout, build.Stderr = os.Stdout, os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatal(err)
+	}
+	run := func(t *testing.T, args ...string) string {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, binary, args...) //nolint:gosec // This test owns the CLI binary and its fixture arguments.
+		var out, diag bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &out, &diag
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("gozen %v: %v\n%s\n%s", args, err, &out, &diag)
+		}
+		return out.String()
+	}
+	for _, mode := range []string{"novel", "timed-fade", "campaign", "battle-puppet", "native-window", "native-script", "guides"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := filepath.Join(root, mode)
+			if err := os.Mkdir(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			game := filepath.Join(dir, "game")
+			fixture := mode
+			if mode == "timed-fade" || strings.HasPrefix(mode, "native-") || mode == "guides" {
+				fixture = "novel"
+			}
+			source := os.DirFS(filepath.Join("testdata", fixture))
+			if mode == "battle-puppet" {
+				source = enemyPuppetFiles(t)
+			}
+			if err := os.CopyFS(game, source); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(game, "assets"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			start := []string{"--start", "war"}
+			body := "wait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			if fixture == "novel" {
+				writeNovelFigure(t, game)
+			}
+			if mode == "novel" {
+				start = []string{"--start", "room"}
+				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			}
+			if mode == "timed-fade" {
+				// Change the screen after seeking has begun, animate it, then trigger a
+				// fade without input. Capture while the pre-transition image is frozen.
+				event := `events:
+  timed_fade:
+    do:
+      - wait: {seconds: 0.2, skip: false}
+      - image: {file: fig.png, fade: 0.2}
+      - wait: {seconds: 0.5, skip: false}
+      - effect: fade
+`
+				if err := os.WriteFile(filepath.Join(game, "data", "timed_fade.yaml"), []byte(event), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				start = []string{"--start", "room"}
+				body = "wait 40\ndo call: timed_fade\nwait 50\nshot frame\nquit\n"
+			}
+			if mode == "battle-puppet" {
+				start = []string{"--start", "field", "--party", "scout,guide", "--battle", "one"}
+				body = "wait 90\nshot frame\nquit\n"
+			}
+			if strings.HasPrefix(mode, "native-") || mode == "guides" {
+				gameRoot, err := os.OpenRoot(game)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := gameRoot.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				b, err := gameRoot.ReadFile("game.yaml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				b = bytes.Replace(b, []byte("schema_version: 4"), []byte("schema_version: 11"), 1)
+				b = bytes.Replace(b, []byte("screen: {"), []byte("screen: {native: true, "), 1)
+				if mode == "guides" {
+					b = append(b, []byte(`
+planning:
+  calendar: {start: '2030-01-01', end: '2030-01-09', phases: [morning]}
+screens:
+  board:
+    title: Board
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+    - {label: Hours, style: plate, bounds: [40, 150, 200, 100]}
+    guide:
+      steps:
+      - {who: reader, text: 'Read the board.'}
+`)...)
+				}
+				if err := gameRoot.WriteFile("game.yaml", b, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				start = []string{"--start", "room", "--window", "2"}
+				body = "window 960 540\nwait 40\nshot frame\nquit\n"
+				if mode == "guides" {
+					body = "wait 40\nguides on\ndo open: board\nwait 40\nshot frame\nquit\n"
+				}
+			}
+			script := filepath.Join(dir, "input.txt")
+			// Let the opening settle, then capture an ordinary scripted frame.
+			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			trace := filepath.Join(dir, "run.jsonl")
+			recordArgs := []string{"run", game, "--dev", "--mute", "--seed", "7", "--shots", dir, "--trace", trace, "--trace-shots", "--save-dir", filepath.Join(dir, "saves")}
+			if mode == "native-window" {
+				recordArgs = append(recordArgs, "--until", "75")
+			} else {
+				recordArgs = append(recordArgs, "--script", script)
+			}
+			run(t, append(recordArgs, start...)...)
+			if mode == "battle-puppet" {
+				for j, mutation := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1"} {
+					input := filepath.Join(dir, fmt.Sprintf("mutation-%d.txt", j))
+					log := filepath.Join(dir, fmt.Sprintf("mutation-%d.jsonl", j))
+					if err := os.WriteFile(input, []byte("wait 40\n"+mutation+"\nwait 5\nshot mutation\nquit\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					run(t, append([]string{"run", game, "--dev", "--mute", "--seed", "7", "--script", input, "--trace", log, "--shots", dir, "--save-dir", filepath.Join(dir, "mutation-saves")}, start...)...)
+					for _, args := range [][]string{
+						{"trace", log, "--repro", "mutation.png"},
+						{"run", game, "--dev", "--mute", "--replay", log},
+					} {
+						cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Test-owned CLI and trace.
+						var stdout, stderr bytes.Buffer
+						cmd.Stdout, cmd.Stderr = &stdout, &stderr
+						kind := "unsupported_script"
+						if strings.HasPrefix(mutation, "battle-hp ") {
+							kind = "battle_setup"
+						}
+						err := cmd.Run()
+						var exit *exec.ExitError
+						if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "cannot reproduce exactly: "+kind+" at tick ") {
+							t.Fatalf("%s: gozen %v: %v\n%s\n%s", mutation, args, err, &stdout, &stderr)
+						}
+					}
+				}
+			}
+			targets := []string{"frame.png", "60"}
+			if mode == "guides" || mode == "native-script" {
+				targets = []string{"frame.png", "frame.png"}
+			}
+			if mode == "native-window" {
+				targets = []string{"until_000075.png", "until_000075.png"}
+			}
+
+			data, err := os.ReadFile(trace) //nolint:gosec // Reads this test's own trace.
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, line := range traceLines(t, data, "view") {
+				if shot, ok := line["shot"].(string); ok && shot != "" {
+					targets = append(targets, shot)
+					break
+				}
+			}
+			for i, target := range targets {
+				args := []string{"trace", trace, "--repro", target, "--format", "json"}
+				if mode == "campaign" || (i == 1 && (mode == "guides" || strings.HasPrefix(mode, "native-"))) {
+					args = append(args, "--out", filepath.Join(dir, fmt.Sprintf("bundle-%d", i)))
+				}
+				if mode == "native-script" || mode == "guides" {
+					cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Test-owned CLI and fixture arguments.
+					var stdout, stderr bytes.Buffer
+					cmd.Stdout, cmd.Stderr = &stdout, &stderr
+					err := cmd.Run()
+					var exit *exec.ExitError
+					want := "cannot reproduce exactly: the recording changed the window size [GZN1401]"
+					if mode == "guides" {
+						guides := traceLines(t, data, "guide")
+						if len(guides) == 0 {
+							t.Fatal("recording has no guide to refuse")
+						}
+						want = fmt.Sprintf("cannot reproduce exactly: guide at tick %v [GZN1401]", guides[0]["tick"])
+					}
+					if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 {
+						t.Fatalf("reproduction refusal: %v stdout=%s stderr=%s", err, &stdout, &stderr)
+					}
+					var diagnostic struct {
+						Version  int    `json:"version"`
+						Command  string `json:"command"`
+						Severity string `json:"severity"`
+						Code     string `json:"code"`
+						Message  string `json:"message"`
+					}
+					if err := json.Unmarshal(stderr.Bytes(), &diagnostic); err != nil {
+						t.Fatalf("reproduction diagnostic: %v: %s", err, &stderr)
+					}
+					if diagnostic.Version != 1 || diagnostic.Command != "trace" || diagnostic.Severity != "error" || diagnostic.Code != "GZN1401" || diagnostic.Message != want {
+						t.Fatalf("unexpected reproduction diagnostic: %s", &stderr)
+					}
+					continue
+				}
+				out := run(t, args...)
+				var result struct {
+					Data struct {
+						Command    string `json:"command"`
+						Screenshot string `json:"screenshot"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal([]byte(out), &result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Data.Command == "" {
+					t.Fatalf("missing command: %s", out)
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+				cmd := exec.CommandContext(ctx, "sh", "-c", result.Data.Command) //nolint:gosec // Executes the command generated from this test's own trace.
+				cmd.Env = append(os.Environ(), "PATH="+root+string(os.PathListSeparator)+os.Getenv("PATH"))
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				err := cmd.Run()
+				cancel()
+				if err != nil {
+					t.Fatalf("reproduce: %v\n%s\n%s", err, &stdout, &stderr)
+				}
+				if strings.HasSuffix(target, ".png") {
+					originalPath := target
+					if !filepath.IsAbs(originalPath) {
+						originalPath = filepath.Join(dir, target)
+					}
+					original := shotImage(t, filepath.Dir(originalPath), strings.TrimSuffix(filepath.Base(originalPath), ".png"))
+					reproduced := shotImage(t, filepath.Dir(result.Data.Screenshot), strings.TrimSuffix(filepath.Base(result.Data.Screenshot), ".png"))
+					if !reflect.DeepEqual(original, reproduced) {
+						var changed image.Rectangle
+						count, maxDelta := 0, 0
+						for y := original.Bounds().Min.Y; y < original.Bounds().Max.Y; y++ {
+							for x := original.Bounds().Min.X; x < original.Bounds().Max.X; x++ {
+								r, g, b, a := original.At(x, y).RGBA()
+								rr, gg, bb, aa := reproduced.At(x, y).RGBA()
+								if r == rr && g == gg && b == bb && a == aa {
+									continue
+								}
+								count++
+								changed = changed.Union(image.Rect(x, y, x+1, y+1))
+								for _, delta := range []int{int(r) - int(rr), int(g) - int(gg), int(b) - int(bb), int(a) - int(aa)} {
+									maxDelta = max(maxDelta, delta, -delta)
+								}
+							}
+						}
+						t.Fatalf("%s target %q: %d pixels differ in %v, max channel delta %d/65535; bounds %v/%v; original %s; reproduced %s", mode, target, count, changed, maxDelta, original.Bounds(), reproduced.Bounds(), originalPath, result.Data.Screenshot)
+					}
+				}
 			}
 		})
 	}

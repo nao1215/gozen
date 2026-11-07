@@ -1328,7 +1328,7 @@ func (r *Runner) run(c *data.Command) Request {
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
 		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
-		if c.Phone.App == "banner" {
+		if c.Phone.App == "banner" && c.Phone.Var == "" {
 			break
 		}
 		if likes := c.Phone.Liking(); len(likes) > 0 {

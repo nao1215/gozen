@@ -164,7 +164,7 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 	// The header goes over the messages that scroll up under it.
 	defer func() {
 		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
-		gfx.DrawTextLeft(dst, "<", 18, 44, 22, phoneMine)
+		gfx.DrawTextLeft(dst, "<", 18, 44, 22, g.phoneAccent())
 	}()
 	clear(p.pics)
 	top, maxW := phoneFeedTop, w*0.68
@@ -246,7 +246,7 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 	default:
 		fill, ink := phoneBubble, phoneInk
 		if m.Mine {
-			fill, ink = phoneMine, phoneOnVideo
+			fill, ink = g.phoneAccent(), phoneOnVideo
 		}
 		// A message many screens tall draws only its part on the screen.
 		screenH := float64(dst.Bounds().Dy()) / gfx.Scale()

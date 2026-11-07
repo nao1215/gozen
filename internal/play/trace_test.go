@@ -3,15 +3,25 @@ package play
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/nao1215/gozen/internal/savefile"
+	"testing/fstest"
+	"time"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/savefile"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 // More of what a trace records: the inputs with the mouse, the kinds of requests, the scene
@@ -291,5 +301,354 @@ func TestWldTraceStandLinesNameThePictureOverThePortraits(t *testing.T) {
 	last := traceLines(t, buf.Bytes(), "stand")
 	if l := last[len(last)-1]; l["cg"] != nil || l["hides"] != false {
 		t.Fatalf("after the picture went: %v", l)
+	}
+}
+
+func TestTraceReproRestoresSavesAndMemo(t *testing.T) {
+	g := wldOpenWith(t, Options{Location: "camp", Seed: 7, FS: wldWorldFiles(t, "", nil)})
+	g.st.Gold = 123
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "initial.save")
+	if err := os.WriteFile(path, saved, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := &replayStore{Store: savefile.MemStore(), times: map[string]time.Time{"save1.json": time.Unix(123, 0)}}
+	if err := store.Store.Write("save1.json", saved); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	g = wldOpenWith(t, Options{Seed: 7, FS: wldWorldFiles(t, "", nil), FromMemo: path, Store: store, Trace: &buf, Script: "wait 5\nquit\n"})
+	for range 30 {
+		if !wldStep(t, g, wldScreen(g)) {
+			break
+		}
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	trace := filepath.Join(t.TempDir(), "run.jsonl")
+	if err := os.WriteFile(trace, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	g = wldOpenWith(t, Options{FS: wldWorldFiles(t, "", nil), Replay: trace, Store: savefile.MemStore()})
+	if g.st.Gold != 123 {
+		t.Fatalf("restored gold %d", g.st.Gold)
+	}
+	got, err := g.storeRead("save1.json")
+	if err != nil || !bytes.Equal(got, saved) {
+		t.Fatalf("save: %s, %v", got, err)
+	}
+	if got, ok := g.storeTime("save1.json"); !ok || !got.Equal(time.Unix(123, 0)) {
+		t.Fatalf("slot time: %v %v", got, ok)
+	}
+	if report := wldReplay(t, g); strings.Contains(report, "diverged") {
+		t.Fatal(report)
+	}
+}
+
+func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
+	trace := wldRecord(t, wldRecordScript)
+	normal, err := wldReplayGame(t, trace, func(o *Options) { o.Until = 100 })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for normal.tick < 99 {
+		if err := normal.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := json.Marshal(normal.traceSummary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := normal.Close(); err != nil {
+		t.Fatal(err)
+	}
+	fast, err := wldReplayGame(t, trace, func(o *Options) { o.Until = 100 })
+	if err != nil {
+		t.Fatal(err)
+	}
+	loop := &seekLoop{Game: fast, drew: true}
+	calls := 0
+	for !fast.untilShot {
+		if err := loop.Update(); err != nil {
+			t.Fatal(err)
+		}
+		calls++
+	}
+	got, err := json.Marshal(fast.traceSummary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fast.tick != 99 || !bytes.Equal(got, want) {
+		t.Fatalf("seek at %d: %s; want %s", fast.tick, got, want)
+	}
+	// This event-driven replay now draws each tick; idle batching is checked separately.
+	if calls > 100 {
+		t.Fatalf("seek did not reach its target promptly: %d calls", calls)
+	}
+	fast.autoShot = "" // A successful target Draw releases the stop handshake.
+	for range 3 {
+		if err := loop.Update(); errors.Is(err, errQuit) {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if strings.Contains(ReplayReport, "diverged") {
+		t.Fatal(ReplayReport)
+	}
+}
+
+func TestTraceReproScriptDirectActions(t *testing.T) {
+	trace := wldRecord(t, "wait 5\ndo set: {gold: 123}\nwait 5\ndo call: ev_auto\nwait 40\nquit\n")
+	for _, kind := range []string{"dev_set", "dev_do", "jump"} {
+		if len(traceLines(t, trace, kind)) != 0 {
+			t.Fatalf("redundant mutation record %s", kind)
+		}
+	}
+	var exact ExactReplay
+	for line := range bytes.SplitSeq(bytes.TrimSpace(trace), []byte("\n")) {
+		var header struct {
+			Kind string `json:"t"`
+			Tick int    `json:"tick"`
+		}
+		if err := json.Unmarshal(line, &header); err != nil {
+			t.Fatal(err)
+		}
+		if err := exact.Check(header.Kind, header.Tick, line); err != nil {
+			t.Fatal(err)
+		}
+	}
+	acts := traceLines(t, trace, "act")
+	if len(acts) < 2 {
+		t.Fatalf("direct script actions missing: %s", trace)
+	}
+	g, err := wldReplayGame(t, trace, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report := wldReplay(t, g); strings.Contains(report, "diverged") {
+		t.Fatal(report)
+	}
+	if g.st.Gold != 123 {
+		t.Fatalf("script state: %d", g.st.Gold)
+	}
+}
+
+func TestTraceRejectsScriptMutations(t *testing.T) {
+	for _, script := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1", "battle-log off"} {
+		t.Run(script, func(t *testing.T) {
+			files := gameFiles(t)
+			for name, body := range testgame.MonsterFiles() {
+				files[name] = &fstest.MapFile{Data: []byte(body)}
+			}
+			files["game.yaml"].Data = append(files["game.yaml"].Data, []byte("\nfonts: {regular: test.ttf}\n")...)
+			var buf bytes.Buffer
+			g := wldOpenWith(t, Options{FS: files, Location: "field", Battle: "one", Development: true, Trace: &buf, Script: "wait 40\n" + script + "\nwait 2\nquit\n"})
+			for range 100 {
+				if err := g.Update(); errors.Is(err, errQuit) {
+					break
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, until := range []int{0, 44} {
+				_, err := loadReplay(path, &Options{Until: until})
+				if err == nil || !strings.Contains(err.Error(), "cannot reproduce exactly:") {
+					t.Fatalf("until %d: %v\n%s", until, err, &buf)
+				}
+			}
+		})
+	}
+}
+
+func TestTraceReproBatchesIdleTicks(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: gameFiles(t), Location: "camp", Until: 100})
+	g.rep = &replay{partial: true}
+	loop := &seekLoop{Game: g, drew: true}
+	if err := loop.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if g.tick <= 1 {
+		t.Fatalf("idle seek did not batch: tick %d", g.tick)
+	}
+}
+
+func TestTraceRecordsViewportChanges(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("schema_version: 11\nscreen: {width: 640, height: 360, native: true}\n")...)
+	var buf bytes.Buffer
+	g, err := New(Options{FS: fsys, Trace: &buf, Seed: 7, Window: 2, Fullscreen: true, NoSound: true, headless: true, Store: savefile.MemStore()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.in.script = nil
+	g.layout(1280, 720)
+	g.layout(1280, 720) // unchanged layouts must not add records
+	g.tick = 3
+	g.layout(900, 600)
+	g.traceEnd()
+	if got := len(traceLines(t, buf.Bytes(), "viewport")); got != 2 {
+		t.Fatalf("viewport records: %d", got)
+	}
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	opts := Options{Development: true}
+	rep, err := loadReplay(path, &opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Window != 2 || !opts.Fullscreen || !rep.setup.Config.Fullscreen || opts.Development {
+		t.Fatalf("lost start window/fullscreen: %+v", opts)
+	}
+}
+
+func TestTraceRejectsInjectedState(t *testing.T) {
+	g, _ := wldTracedGame(t, "wait 5\n")
+	g.opts.State = g.st
+	var buf bytes.Buffer
+	g.tr = newTracer(&buf)
+	if err := g.traceStart(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), `"unsupported":["injected state"]`) {
+		t.Fatal(buf.String())
+	}
+}
+
+func TestTraceRestoresPresentationSettings(t *testing.T) {
+	for _, saved := range []bool{false, true} {
+		t.Run(strconv.FormatBool(saved), func(t *testing.T) {
+			fsys := wldWorldFiles(t, "written_in: en\nlanguages: [en, ja]\nui: {accent: '#123456'}\n", map[string]string{"lang/ja.yaml": twoLanguageWords})
+			store := savefile.MemStore()
+			if saved {
+				if err := store.Write("config.json", []byte(`{"language":"en","window":3,"text_speed":4}`)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var buf bytes.Buffer
+			g := wldOpenWith(t, Options{FS: fsys, Trace: &buf, Store: store, Locales: []string{"ja-JP"}, Location: "camp", Flags: []string{"ready"}, BookAsPlayed: true})
+			wantLanguage, wantTheme, wantConfig := g.language(), g.th, g.cfg
+			g.traceEnd()
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			replayed := wldOpenWith(t, Options{FS: fsys, Replay: path, Store: savefile.MemStore(), Locales: []string{"en-US"}})
+			if replayed.language() != wantLanguage || replayed.th != wantTheme || !reflect.DeepEqual(replayed.cfg, wantConfig) || !replayed.opts.BookAsPlayed || !reflect.DeepEqual(replayed.opts.Flags, []string{"ready"}) {
+				t.Fatal("replay lost language, theme, settings, book display or flags")
+			}
+		})
+	}
+}
+
+func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	trace := `{"t":"start","tick":0,"version":1,"seed":7}
+{"t":"act","tick":3,"name":"window","args":{"width":960,"height":540}}
+{"t":"end","tick":5}
+`
+	if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 4}); err == nil || !strings.Contains(err.Error(), "the recording changed the window size") {
+		t.Fatalf("resize: %v", err)
+	}
+}
+
+func TestTraceRecordKindsHaveExactReplayClassification(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{"repro": true} // The trace CLI adds this seek boundary.
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			method, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || method.Sel.Name != "emit" {
+				return true
+			}
+			literal, ok := call.Args[0].(*ast.BasicLit)
+			if !ok || literal.Kind != token.STRING {
+				t.Errorf("%s: trace constructor must use a literal kind so the replay audit can enumerate it", name)
+				return true
+			}
+			kind, err := strconv.Unquote(literal.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen[kind] = true
+			return true
+		})
+	}
+	for kind := range seen {
+		if exactReplayKinds[kind] == inexactReplayKinds[kind] {
+			t.Errorf("record %q must be in exactly one replay classification", kind)
+		}
+	}
+	for _, group := range []map[string]bool{exactReplayKinds, inexactReplayKinds} {
+		for kind := range group {
+			if !seen[kind] {
+				t.Errorf("stale classification %q", kind)
+			}
+		}
+	}
+}
+
+func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
+	for _, kind := range append(sortedKeys(inexactReplayKinds), "future_kind") {
+		t.Run(kind, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
+			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := loadReplay(path, &Options{Until: 2}); err != nil {
+				t.Fatal(err)
+			}
+			_, err := loadReplay(path, &Options{Until: 3})
+			want := fmt.Sprintf("cannot reproduce exactly: %s at tick 2", kind)
+			if err == nil || err.Error() != want {
+				t.Fatalf("got %v; want %s", err, want)
+			}
+		})
 	}
 }
