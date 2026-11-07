@@ -1031,8 +1031,30 @@ func (g *Game) Update() error {
 	}
 	defer g.in.finishOffer()
 	g.in.observing = false
-	// Record raw input before overlays can consume clicks or pointer edges.
-	g.traceInput()
+	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.panelModal() && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
+		g.openMemo()
+	}
+	if g.memo != nil {
+		g.in.observing = true
+		g.tick--
+		g.updateMemo()
+		return nil
+	}
+	if g.updateTag() {
+		g.tick--
+		return nil
+	}
+	if g.tr != nil {
+		// Preserve physical input before overlays consume it. Receivers and
+		// autopilot can add presses later; emit their union once per tick.
+		raw := g.in
+		defer func() {
+			for b := range numButtons {
+				raw.pressed[b] = raw.pressed[b] || g.in.pressed[b]
+			}
+			g.traceInput(&raw)
+		}()
+	}
 	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
@@ -1047,19 +1069,6 @@ func (g *Game) Update() error {
 		return nil
 	}
 
-	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
-		g.openMemo()
-	}
-	if g.memo != nil {
-		g.in.observing = true
-		g.updateMemo()
-		g.tick--
-		return nil
-	}
-	if g.updateTag() {
-		g.tick--
-		return nil
-	}
 	if g.updateLoadNotice() {
 		g.traceTick()
 		return nil
@@ -1070,8 +1079,6 @@ func (g *Game) Update() error {
 	}
 	if g.auto != nil && len(g.stack) > 0 {
 		g.auto.step(g)
-		// Autopilot synthesizes input after the physical input was recorded.
-		g.traceInput()
 	}
 	if g.rep != nil {
 		g.rep.doActs(g)

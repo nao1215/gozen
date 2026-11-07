@@ -173,10 +173,6 @@ func (g *Game) scriptPick(in *input, text string) error {
 	}
 	items[found].selectIt()
 	in.pressed[btnOK] = true
-	if in.offer != nil {
-		// The receiver resolved this pick after Update's ordinary input trace.
-		g.traceInput()
-	}
 	return nil
 }
 

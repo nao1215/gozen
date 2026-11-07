@@ -1150,3 +1150,169 @@ func TestTraceStartupFocusPause(t *testing.T) {
 		})
 	}
 }
+
+// Every Update path shares the trace stream contract, including early returns
+// and overlays that consume input before the scene sees it.
+func TestTraceUpdateInputProperties(t *testing.T) {
+	for _, mode := range []string{"normal", "autopilot", "memo", "banners", "phone"} {
+		for seed := uint64(1); seed <= 3; seed++ {
+			t.Run(fmt.Sprintf("%s/%d", mode, seed), func(t *testing.T) {
+				fsys := gameFiles(t)
+				fsys["game.yaml"].Data = append([]byte("schema_version: 11\n"), fsys["game.yaml"].Data...)
+				fsys["data/trace.yaml"] = &fstest.MapFile{Data: []byte(`events:
+  banners:
+    - say: Ready.
+    - phone: {app: banner, notices: [{title: Notice, event: opened}]}
+  phone:
+    - say: Ready.
+    - phone: {app: banner, var: var.result, notices: [{title: Dismiss me}]}
+  opened:
+    - set: {flag.opened: true}
+  autoplay:
+    - say: Line 0.
+    - say: Line 1.
+    - say: Line 2.
+    - say: Line 3.
+    - say: Line 4.
+    - say: Line 5.
+    - say: Line 6.
+    - say: Line 7.
+    - say: Line 8.
+    - say: Line 9.
+    - say: Line 10.
+    - say: Line 11.
+`)}
+				var buf bytes.Buffer
+				opts := Options{FS: fsys, Location: "camp", Seed: seed, Trace: &buf, NoSound: true, Store: savefile.MemStore()}
+				switch mode {
+				case "autopilot":
+					opts.Autopilot = &Autopilot{Seconds: 10}
+					opts.Event = "autoplay"
+				case "memo":
+					opts.MemoDir = t.TempDir()
+				case "banners", "phone":
+					opts.Event = mode
+				}
+				g, err := New(opts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := g.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				physical := &replay{inputs: map[int]traceLine{}}
+				for tick := 1; tick <= 140; tick++ {
+					physical.inputs[tick] = traceLine{"mouse": []any{float64(100 + uint64(tick)*seed), float64(300)}, "held": []any{"left"}}
+				}
+				physical.inputs[20]["press"] = []any{"ok"}
+				if mode == "banners" {
+					sw, _ := g.screen()
+					physical.inputs[60] = traceLine{"click": true, "pointer_up": true, "mouse": []any{sw / 2, float64(40)}}
+				}
+				if mode == "phone" {
+					physical.inputs[100]["press"] = []any{"cancel", "menu"}
+					physical.inputs[100]["esc"] = true
+				}
+				if mode == "memo" {
+					physical.inputs[6]["press"] = []any{"memo"}
+				}
+				g.in.replay = physical
+				for frame := range 140 {
+					beforeTick := g.tick
+					beforeInputs := len(traceLines(t, buf.Bytes(), "input"))
+					if err := g.Update(); err != nil {
+						t.Fatal(err)
+					}
+					if g.tick == beforeTick && len(traceLines(t, buf.Bytes(), "input")) != beforeInputs {
+						t.Fatal("editor input leaked into simulation records")
+					}
+					if mode == "memo" && frame == 10 {
+						if g.memo == nil || g.tick != 5 {
+							t.Fatal("F9 did not freeze the simulation")
+						}
+						physical.inputs[6]["press"] = []any{"cancel"}
+					}
+				}
+				if mode == "banners" && !g.st.Flags["opened"] {
+					t.Fatal("banner input was not consumed")
+				}
+				if mode == "phone" && g.st.Vars["result"] != "dismiss" {
+					t.Fatal("phone input was not consumed")
+				}
+				g.traceEnd()
+				previous := 0
+				inputs := map[int]bool{}
+				for line := range bytes.Lines(buf.Bytes()) {
+					var record traceLine
+					if err := json.Unmarshal(line, &record); err != nil {
+						t.Fatal(err)
+					}
+					tick := int(num(record["tick"]))
+					if tick < previous {
+						t.Fatalf("decreasing tick %d after %d: %s", tick, previous, line)
+					}
+					previous = tick
+					if record["t"] == "input" {
+						if inputs[tick] {
+							t.Fatalf("duplicate input at tick %d", tick)
+						}
+						inputs[tick] = true
+					}
+				}
+				if mode == "autopilot" {
+					combined := false
+					for _, record := range traceLines(t, buf.Bytes(), "input") {
+						if num(record["tick"]) != 20 && len(strs(record["press"])) > 0 && len(strs(record["held"])) > 0 && record["mouse"] != nil {
+							combined = true
+						}
+					}
+					if !combined {
+						t.Fatal("no combined physical and autopilot input")
+					}
+				}
+				if mode == "memo" && len(traceLines(t, buf.Bytes(), "memo_open")) != 1 {
+					t.Fatal("expected one memo boundary")
+				}
+				path := filepath.Join(t.TempDir(), "trace.jsonl")
+				if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				replayOpts := Options{FS: fsys, Replay: path, NoSound: true, Store: savefile.MemStore()}
+				frames := 140
+				if mode == "memo" {
+					// Reproduce tick 4, before the memo boundary at tick 5.
+					replayOpts.Until, frames = 5, 4
+					if _, err := loadReplay(path, &Options{Until: 6}); err == nil || !strings.Contains(err.Error(), "memo_open") {
+						t.Fatalf("missing memo boundary rejection: %v", err)
+					}
+				}
+				if _, err := loadReplay(path, &replayOpts); err != nil {
+					t.Fatal(err)
+				}
+				if err := g.Close(); err != nil {
+					t.Fatal(err)
+				}
+				r, err := New(replayOpts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() {
+					if err := r.Close(); err != nil {
+						t.Error(err)
+					}
+				}()
+				for range frames {
+					if err := r.Update(); err != nil {
+						t.Fatal(err)
+					}
+				}
+				r.traceEnd()
+				if r.rep.diverge != "" || !r.rep.finished {
+					t.Fatalf("replay: %s", r.rep.report())
+				}
+			})
+		}
+	}
+}

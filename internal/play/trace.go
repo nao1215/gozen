@@ -400,11 +400,10 @@ var buttonNames = [numButtons]string{
 	btnBack: "back", btnSave: "save", btnLoad: "load", btnPanel: "panel",
 }
 
-func (g *Game) traceInput() {
+func (g *Game) traceInput(in *input) {
 	if g.tr == nil {
 		return
 	}
-	in := &g.in
 	var press, held []string
 	for b := range numButtons {
 		if in.pressed[b] {
