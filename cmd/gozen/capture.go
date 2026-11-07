@@ -76,21 +76,24 @@ type shotGIF struct {
 }
 
 type shotResult struct {
-	N        int      `json:"n"`
-	ID       string   `json:"id"`
-	Status   string   `json:"status"`
-	Reason   string   `json:"reason,omitempty"`
-	Artifact string   `json:"artifact,omitempty"`
-	Frames   int      `json:"frames"`
-	Seed     uint64   `json:"seed"`
-	Size     string   `json:"size,omitempty"`
-	Line     string   `json:"line,omitempty"`
-	Pictures []string `json:"pictures,omitempty"`
-	item     shotItem
+	N        int             `json:"n"`
+	ID       string          `json:"id"`
+	Status   string          `json:"status"`
+	Reason   string          `json:"reason,omitempty"`
+	Artifact string          `json:"artifact,omitempty"`
+	Frames   int             `json:"frames"`
+	Seed     uint64          `json:"seed"`
+	Size     string          `json:"size,omitempty"`
+	Line     string          `json:"line,omitempty"`
+	Pictures []string        `json:"pictures,omitempty"`
+	Screen   json.RawMessage `json:"screen,omitempty"`
+	*ShotDiff
+	item shotItem
 }
 
 func (c *command) capture() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen capture")
+	against := fl.String("against", "", "compare with previous capture output `DIR`")
 	config := fl.String("config", "", "capture job YAML `FILE`; required")
 	overlay := fl.String("overlay", "", "approved replacement asset `DIR`")
 	raw := fl.Bool("raw", false, "skip approval checks for local review")
@@ -192,10 +195,18 @@ func (c *command) capture() clihelp.Operation {
 			}
 			jobs, items = append(jobs, j), append(items, it)
 		}
+		var previous []shotResult
+		if *against != "" {
+			previous, err = readPreviousShots(*against)
+			if err != nil {
+				return err
+			}
+		}
+		var summary *captureDiffSummary
 		var results []shotResult
 		failed := 0
-		err = cli.Publish(*out, []string{gameDir, *config, *overlay}, func(stage string) error {
-			cfg := play.CaptureConfig{Output: stage, Timeout: *timeout}
+		err = cli.Publish(*out, []string{gameDir, *config, *overlay, *against}, func(stage string) error {
+			cfg := play.CaptureConfig{Output: stage, Timeout: *timeout, Structure: *against != ""}
 			if gate != nil {
 				cfg.CheckAsset = gate.Check
 			}
@@ -204,12 +215,18 @@ func (c *command) capture() clihelp.Operation {
 				return err
 			}
 			for i, r := range rendered {
-				row := shotResult{N: i + 1, ID: r.ID, Status: "ok", Artifact: r.Artifact, Size: fmt.Sprintf("%dx%d", r.Width, r.Height), Frames: r.Frames, Seed: r.Seed, Pictures: r.Pictures, item: items[i]}
+				row := shotResult{N: i + 1, ID: r.ID, Status: "ok", Artifact: r.Artifact, Size: fmt.Sprintf("%dx%d", r.Width, r.Height), Frames: r.Frames, Seed: r.Seed, Pictures: r.Pictures, Screen: r.Screen, item: items[i]}
 				if r.Err != nil {
 					row.Status, row.Reason = "failed", r.Err.Error()
 					failed++
 				}
 				results = append(results, row)
+			}
+			if *against != "" {
+				results, summary, err = compareShots(stage, *against, results, previous)
+				if err != nil {
+					return err
+				}
 			}
 			return writeShotIndex(stage, list, results, *raw)
 		})
@@ -229,17 +246,21 @@ func (c *command) capture() clihelp.Operation {
 				}
 			}
 			if err := c.report.Result(c.out, status, struct {
-				Items     []shotResult `json:"items"`
-				Succeeded int          `json:"succeeded"`
-				Failed    int          `json:"failed"`
-			}{results, len(results) - failed, failed}); err != nil {
+				Items      []shotResult        `json:"items"`
+				Succeeded  int                 `json:"succeeded"`
+				Failed     int                 `json:"failed"`
+				Comparison *captureDiffSummary `json:"comparison,omitempty"`
+			}{results, len(jobs) - failed, failed, summary}); err != nil {
 				return err
 			}
 		} else {
 			for _, r := range results {
 				c.out.Printf("%s %s %s\n", r.ID, r.Status, r.Reason)
 			}
-			c.out.Printf("%s: %d captured, %d failed\n", *out, len(results)-failed, failed)
+			c.out.Printf("%s: %d captured, %d failed\n", *out, len(jobs)-failed, failed)
+			if summary != nil {
+				c.out.Printf("comparison: %d changed, %d unchanged, %d new, %d removed\n", summary.Changed, summary.Unchanged, summary.New, summary.Removed)
+			}
 		}
 		if failed > 0 {
 			return cliio.ErrReported
@@ -350,7 +371,7 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 		title = lang.T("スクリーンショット")
 	}
 	appendText(&b, "<!doctype html><meta charset=utf-8><title>"+e(title)+"</title>\n<style>body{font-family:sans-serif;background:#222;color:#ddd;margin:24px}"+
-		"table{border-collapse:collapse}td,th{border:1px solid #555;padding:6px;vertical-align:top}img{width:480px}a{color:#9cf}.w{color:#fc6}.f{color:#f77}</style>\n")
+		"table{border-collapse:collapse}td,th{border:1px solid #555;padding:6px;vertical-align:top}img{width:480px}.images{white-space:nowrap}.images img{vertical-align:top}.images p{white-space:normal}a{color:#9cf}.w{color:#fc6}.f{color:#f77}</style>\n")
 
 	appendText(&b, "<h1>"+e(title)+"</h1>\n")
 
@@ -372,10 +393,28 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 	}
 	row := func(r shotResult) {
 		it := r.item
-		appendText(&b, "<tr><td>"+strconv.Itoa(r.N)+"</td><td>")
+		appendText(&b, "<tr><td>"+strconv.Itoa(r.N)+"</td><td class=images>")
 
+		if r.ShotDiff != nil && r.Previous != "" {
+			appendf(&b, "<span>Old</span><img src=%q loading=lazy>", e(r.Previous))
+		}
 		if r.Status == "ok" {
+			if r.ShotDiff != nil {
+				appendText(&b, "<span>New</span>")
+			}
 			appendf(&b, "<a href=%q><img src=%q loading=lazy></a>", r.Artifact, r.Artifact)
+		}
+		if r.ShotDiff != nil {
+			if r.Highlight != "" {
+				appendf(&b, "<span>Difference</span><img src=%q loading=lazy>", e(r.Highlight))
+			}
+			appendf(&b, "<p>%s: %d pixels (%g)</p>", e(r.Change), r.DiffPixels, r.DiffRatio)
+			if r.Structure != nil {
+				data, marshalErr := json.MarshalIndent(r.Structure, "", "  ")
+				if marshalErr == nil {
+					appendText(&b, "<pre>"+e(string(data))+"</pre>")
+				}
+			}
 		}
 		appendText(&b, "</td><td><b>"+e(it.Title)+"</b><br>id "+e(it.ID))
 
@@ -422,6 +461,23 @@ func writeShotIndex(out string, list *shotList, rs []shotResult, raw bool) error
 		}
 		appendText(&b, "</td></tr>\n")
 	}
+	if len(rs) > 0 && rs[0].ShotDiff != nil {
+		appendText(&b, "<h2>Changed screens</h2><table>")
+		for _, r := range rs {
+			if r.Changed {
+				row(r)
+			}
+		}
+		appendText(&b, "</table><details><summary>Unchanged screens</summary><table>")
+		for _, r := range rs {
+			if !r.Changed {
+				row(r)
+			}
+		}
+		appendText(&b, "</table></details>")
+		return os.WriteFile(filepath.Join(out, "index.html"), []byte(b.String()), 0o600)
+	}
+
 	for _, st := range []struct{ status, head string }{{"ok", lang.T("撮れた物")}, {"approval_wait", lang.T("承認待ち（制作記録と素材を確かめて撮り直す）")}, {"failed", lang.T("撮れなかった物")}} {
 		if n[st.status] == 0 {
 			continue

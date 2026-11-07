@@ -12,6 +12,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- `gozen capture --against DIR` reports image and available screen-structure differences by job ID, with changed-first HTML, previous images and pixel highlights. Differences never change the capture exit status.
+
 - Traces record changed screen structure through the existing layout collector: controls and disabled reasons, text, standing pictures, backgrounds and the open phone app. `trace --only screen` shows the structure, and reproduction JSON includes the latest recorded screen.
 
 - Phone lock screens, pages and result banners share `timeout`, `timeout_result` and `var`, preserving call `ring`/`missed`. Result banners wait for keyboard or pointer open/dismiss outcomes. Game-wide `ui.phone_background`, `phone_text`, `phone_muted` and `phone_accent` customize page bodies and owner chat bubbles; default visuals stay unchanged.

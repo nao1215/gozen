@@ -186,3 +186,28 @@ func TestScreenTracingOff(t *testing.T) {
 		t.Fatalf("tracing off allocated %g", allocs)
 	}
 }
+
+func TestCaptureRetainsScreenOnlyWhenRequested(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		var out bytes.Buffer
+		g := &Game{tr: newTracer(&out), opts: Options{capture: &captureStartup{structure: enabled}}}
+		f := &layoutFrame{texts: []layoutText{{Text: "Welcome"}}}
+		g.traceScreenEnd(f)
+		if enabled != (len(g.opts.capture.screen) > 0) {
+			t.Fatal("capture structure opt-in not respected")
+		}
+		if !enabled {
+			continue
+		}
+		first := string(g.opts.capture.screen)
+		g.traceScreenEnd(f)
+		if string(g.opts.capture.screen) != first {
+			t.Fatal("unchanged draw lost structure")
+		}
+		f.texts[0].Text = "Goodbye"
+		g.traceScreenEnd(f)
+		if string(g.opts.capture.screen) == first {
+			t.Fatal("changed draw retained old structure")
+		}
+	}
+}

@@ -660,3 +660,66 @@ scenarios:
       image: {path: shots/calendar.png, format: png}
   - assert:
       image: {path: shots/assembly.png, format: png}
+
+- name: capture differences state facts and never fail
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: before.yaml
+      content: |
+        shots:
+          - {id: same, start: camp, wait: 2}
+          - {id: edited, start: camp, wait: 2}
+          - {id: removed, start: camp, wait: 2}
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config before.yaml --out before
+      timeout: 45s
+  - assert: {exit_code: 0, stderr: {equals: ''}}
+  - fixture:
+      file: after.yaml
+      content: |
+        shots:
+          - {id: same, start: camp, wait: 2}
+          - {id: edited, event: finish, line: 1, wait: 2}
+          - {id: added, start: camp, wait: 2}
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config after.yaml --out after --against before --format json
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.failed, equals: 0}
+        - {path: $.data.succeeded, equals: 3}
+        - {path: $.data.comparison.changed, equals: 3}
+        - {path: $.data.comparison.unchanged, equals: 1}
+        - {path: '$.data.items[0].changed', equals: false}
+        - {path: '$.data.items[1].diff_pixels', gt: 0}
+        - {path: '$.data.items[2].change', equals: new}
+        - {path: '$.data.items[3].change', equals: removed}
+  - assert:
+      image: {path: after/edited.diff.png, format: png, width: 960, height: 540}
+  - assert:
+      file:
+        path: after/index.html
+        contains: ['edited.previous.png', '<details>', 'edited.diff.png']
+  - run:
+      command: gozen capture "${specdir}/fixtures/game" --config after.yaml --out again --against after --format json
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: '$.data.items[0].id', equals: same}
+        - {path: '$.data.items[0].diff_pixels', equals: 0}
+        - {path: '$.data.items[0].changed', equals: false}
+        - {path: '$.data.items[1].id', equals: edited}
+        - {path: '$.data.items[1].diff_pixels', equals: 0}
+        - {path: '$.data.items[1].changed', equals: false}
+        - {path: '$.data.items[2].id', equals: added}
+        - {path: '$.data.items[2].diff_pixels', equals: 0}
+        - {path: '$.data.items[2].changed', equals: false}
+        - {path: $.data.comparison.changed, equals: 0}
+        - {path: $.data.comparison.unchanged, equals: 3}

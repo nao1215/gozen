@@ -366,14 +366,14 @@ var pages = map[string]clihelp.Page{
 	"capture": {
 		Summary: "capture PNG images and animated GIFs from a game",
 		Usage:   []string{"gozen capture GAME --config FILE --out DIR [OPTIONS]"},
-		About:   "Runs the YAML capture jobs in one graphics loop with isolated state and saves. Writes PNG or GIF images, shots.json and index.html. Failed jobs remain in the report and cause exit 1. Existing output directories are preserved.",
+		About:   "Runs the YAML capture jobs in one graphics loop with isolated state and saves. Writes PNG or GIF images, shots.json and index.html. Failed jobs remain in the report and cause exit 1. Existing output directories are preserved. --against compares a previous capture by job ID; differences are facts and never cause a failure exit.",
 		Examples: []clihelp.Example{
 			{"capture a list of views", "gozen capture game --config captures.yaml --out promo"},
 			{"capture one job and report JSON", "gozen capture game --config captures.yaml --out promo --only opening --format json"},
 			{"run unattended on Linux", "xvfb-run -a gozen capture game --config captures.yaml --out promo"},
 		},
 		Groups: []clihelp.Group{
-			{Title: "Input", Flags: []string{"config", "only", "overlay", "raw", "timeout"}},
+			{Title: "Input", Flags: []string{"config", "only", "overlay", "raw", "timeout", "against"}},
 			{Title: "Output", Flags: []string{"out", "format"}},
 			general,
 		},

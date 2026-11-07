@@ -1,6 +1,7 @@
 package play
 
 import (
+	"encoding/json"
 	"fmt"
 	"hash/maphash"
 	"image"
@@ -114,11 +115,19 @@ func (g *Game) traceScreenEnd(f *layoutFrame) {
 	if !g.tr.screenChanged(f) {
 		return
 	}
-	g.emit("screen", traceLine{
+	record := traceLine{
 		"controls": f.controls, "texts": f.texts,
 		"figures": f.figures, "cast": f.cast, "backgrounds": f.backgrounds,
 		"phone": f.phone, "speaker": f.speaker,
-	})
+	}
+	if c := g.opts.capture; c != nil && c.structure {
+		var err error
+		c.screen, err = json.Marshal(record)
+		if err != nil {
+			g.tr.err = err
+		}
+	}
+	g.emit("screen", record)
 }
 
 // layoutFigure is one standing picture as drawn: rectangles in UI units of the screen.

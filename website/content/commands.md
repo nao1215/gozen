@@ -791,7 +791,7 @@ options can appear on several image tools; their effect depends on the action.
 | --- | --- | --- |
 | `gozen` | Play, check, simulate, and package Gozen games | `--help`, `-h`, `--version` |
 | `gozen book` | Write the game synopsis as Markdown or structured data | `--help`, `-h`, `--format`, `--section` |
-| `gozen capture` | Capture PNG images and animated GIFs from a game | `--help`, `-h`, `--config`, `--overlay`, `--raw`, `--out`, `-o`, `--only`, `--timeout`, `--format` |
+| `gozen capture` | Capture PNG images and animated GIFs from a game | `--help`, `-h`, `--config`, `--overlay`, `--raw`, `--out`, `-o`, `--only`, `--timeout`, `--against`, `--format` |
 | `gozen check` | Check the definitions, assets, and text layout of a game | `--help`, `-h`, `--only`, `--format`, `--strict`, `--baseline`, `--write-baseline` |
 | `gozen export` | Export a playable game with a prebuilt runtime | `--help`, `-h`, `--runtime`, `--target`, `--out`, `-o`, `--reuse`, `--format` |
 | `gozen faces` | Find the faces for the balloons and icons | `--help`, `-h`, `--model`, `--ort`, `--min`, `--preview` |
