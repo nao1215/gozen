@@ -604,8 +604,18 @@ screens:
 	}
 	var disabled, phone, standing bool
 	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
+		// Payload fields belong to their record kind: input_result.phone is a
+		// boolean, whereas screen.phone names the open app.
+		var header struct {
+			Kind string `json:"t"`
+		}
+		if err := json.Unmarshal([]byte(line), &header); err != nil {
+			t.Fatal(err)
+		}
+		if header.Kind != "screen" {
+			continue
+		}
 		var record struct {
-			Kind     string          `json:"t"`
 			Phone    string          `json:"phone"`
 			Controls []screenControl `json:"controls"`
 			Texts    []layoutText    `json:"texts"`
@@ -613,9 +623,6 @@ screens:
 		}
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			t.Fatal(err)
-		}
-		if record.Kind != "screen" {
-			continue
 		}
 		for _, c := range record.Controls {
 			if c.Label == "Mountain trail" && !c.Enabled && c.Reason == "The gate is closed." && c.Rect[2] > 0 {

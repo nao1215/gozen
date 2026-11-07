@@ -2771,3 +2771,32 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		})
 	}
 }
+
+// The outcome is emitted before finishOffer discards the receiver result.
+func TestTraceInputOutcome(t *testing.T) {
+	var b bytes.Buffer
+	g := &Game{tr: newTracer(&b), evName: "gate"}
+	g.in.offer = &scriptOffer{offered: true, command: scriptCmd{verb: "press"}}
+	g.traceInputOutcome(true)
+	g.tick = 20
+	g.in.offer.accepted = true
+	g.traceInputOutcome(true)
+	lines := traceLines(t, b.Bytes(), "input_result")
+	if len(lines) != 2 || lines[0]["accepted"] != false || lines[1]["accepted"] != true ||
+		lines[1]["phone"] != true || lines[1]["event"] != "gate" {
+		t.Fatalf("outcomes: %v", lines)
+	}
+	b.Reset()
+	g.in.offer = nil
+	g.auto = &autopilot{}
+	g.talk.active = true
+	g.talk.choice = &list{}
+	g.traceInputOutcome(false)
+	g.traceInputOutcome(false)
+	g.talk.active = false
+	g.traceInputOutcome(false)
+	lines = traceLines(t, b.Bytes(), "autoplay_wait")
+	if len(lines) != 2 || lines[0]["waiting"] != "choice" || lines[1]["waiting"] != "" {
+		t.Fatalf("wait transitions: %v", lines)
+	}
+}

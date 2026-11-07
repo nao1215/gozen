@@ -30,6 +30,7 @@ type layoutFrame struct {
 	controls    []screenControl
 	backgrounds []string
 	phone       string
+	phoneCall   bool
 	speaker     string
 	cast        []standFig
 }
@@ -95,6 +96,7 @@ func (f *layoutFrame) digest(seed maphash.Seed) uint64 {
 		add(maphash.Comparable(seed, v))
 	}
 	add(maphash.String(seed, f.phone))
+	add(maphash.Comparable(seed, f.phoneCall))
 	add(maphash.String(seed, f.speaker))
 	return h.Sum64()
 }
@@ -118,7 +120,7 @@ func (g *Game) traceScreenEnd(f *layoutFrame) {
 	record := traceLine{
 		"controls": f.controls, "texts": f.texts,
 		"figures": f.figures, "cast": f.cast, "backgrounds": f.backgrounds,
-		"phone": f.phone, "speaker": f.speaker,
+		"phone": f.phone, "phone_call": f.phoneCall, "speaker": f.speaker,
 	}
 	if c := g.opts.capture; c != nil && c.structure {
 		var err error

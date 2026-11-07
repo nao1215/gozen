@@ -273,6 +273,27 @@ func TestCaptureBatchFinishPublication(t *testing.T) {
 	}
 }
 
+func TestCaptureDrawOnlySamples(t *testing.T) {
+	for _, state := range []struct {
+		name                    string
+		due, finished, sampling bool
+	}{
+		{name: "preparation"},
+		{name: "between GIF samples", sampling: true},
+		{name: "completed", due: true, finished: true},
+	} {
+		t.Run(state.name, func(t *testing.T) {
+			// An unsampled callback must not enter Game.Draw at all. The empty
+			// game deliberately has no scene or image resources to render.
+			b := &captureBatch{game: &Game{}, due: state.due, finished: state.finished, sampling: state.sampling}
+			b.Draw(nil)
+			if b.game.rendering || b.due != state.due || b.finished != state.finished {
+				t.Fatal("unsampled draw changed the capture state")
+			}
+		})
+	}
+}
+
 // Preparation and sampled structure must not depend on how often the display draws.
 func TestCaptureStructureIndependentOfDrawCadence(t *testing.T) {
 	for _, job := range []CaptureJob{

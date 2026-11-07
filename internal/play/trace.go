@@ -37,6 +37,7 @@ import (
 )
 
 type tracer struct {
+	autoWaiting string
 	performance *tracePerformance
 	// inAct suppresses redundant panel mutation records already replayed by act.
 	inAct     bool
@@ -601,7 +602,11 @@ func (g *Game) traceRequest(r event.Request) { g.traceRequestIn(r, false) }
 func (g *Game) traceBattleRequest(r event.Request) { g.traceRequestIn(r, true) }
 
 func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
+	if g.tr == nil {
+		return
+	}
 	mark := func(l traceLine) traceLine {
+		l["event"] = g.evName
 		if inBattle {
 			l["in_battle"] = true
 		}
@@ -694,6 +699,7 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 		}
 		if g.phone != nil {
 			g.tr.layout.phone = g.phone.cue.App
+			g.tr.layout.phoneCall = g.phone.calling()
 		}
 		if g.talk.active && !g.talk.hidden {
 			g.tr.layout.speaker = g.talk.say.Name
@@ -1543,4 +1549,19 @@ func (g *Game) traceShotPath(name string) string {
 		return path
 	}
 	return abs
+}
+
+// traceInputOutcome runs before finishOffer clears the receiver's acknowledgement.
+// It is installed only while tracing, so ordinary updates do no additional work.
+func (g *Game) traceInputOutcome(phone bool) {
+	if o := g.in.offer; o != nil && o.offered {
+		g.emit("input_result", traceLine{"accepted": o.accepted, "command": o.command.verb, "phone": phone, "event": g.evName})
+	}
+	if g.auto != nil {
+		what, _ := g.waiting()
+		if what != g.tr.autoWaiting {
+			g.tr.autoWaiting = what
+			g.emit("autoplay_wait", traceLine{"waiting": what, "event": g.evName})
+		}
+	}
 }

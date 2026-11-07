@@ -389,3 +389,68 @@ The picture `docs/images/go-zen-balance.jpg` is remade by `make docs-images` ([R
 The `balance` scene of `make graphics` takes the same display and checks that the color of the win-rate bar appears at the top right.
 
 The input command `wait-graphs` takes no arguments and requires an open development balance panel. It waits for all measurements rather than a fixed frame count, and a closed panel or measurement error fails the run. While this command waits, measurement uses a 12 ms budget per update instead of the normal interactive 3 ms budget; the trials, seeds and results remain the same. The capture runner's process timeout bounds this wait.
+
+### Play metrics from traces
+
+`gozen trace run.jsonl --metrics` reports facts, never verdicts. Use
+`--format json` for the usual result envelope, or `--format jsonl` for one
+summary. Standard input (`-`) is supported. Metrics consume the entire trace;
+display filters, `--check` and `--repro` cannot be combined with them.
+`--top N` (default 10, positive) limits repeated lines; `--stall-seconds S`
+(default 5, finite and positive) selects the minimum observation duration.
+Neither repetition nor a long interval changes exit status.
+
+- Text per decision counts nonempty logical lines from `say.text` and Unicode
+  code points excluding line separators. CRLF is treated as LF. Speaker names,
+  choice labels and screen text are excluded: successive typewriter frames must
+  not multiply the dialogue count. This measures offered text, not proof that
+  the player read it.
+- A decision boundary is an `answer`, an accepted menu `decision`, or an
+  accepted scripted `input_result` while the phone was open. Same-tick records
+  count once. A later phone result following recorded phone actions does not
+  add another decision. A phone result without those records remains a boundary
+  (it can include a timeout; the report calls it `phone_result`).
+  Older traces cannot supply unrecorded menu decisions or intermediate phone actions.
+- Each span gives its start/end tick and last recorded event, characters and
+  lines. The first span begins at the first record; the final unfinished span
+  ends at the last record and is reported separately. The longest read-only
+  stretch is the longest time between these boundaries, including the final
+  span; character count breaks ties, then the first occurrence wins. Unknown
+  events are omitted. Simulation seconds are ticks divided by 60, not wall time.
+- Identical lines are counted exactly, across speakers and events, without
+  whitespace normalization. Repeated lines are sorted by descending count and
+  then text; at most their first three occurrence ticks are retained.
+- Climax spacing lists observed battle scene entries, battle cut-ins, audible
+  song/module changes, stand CG changes, screen background changes and
+  `screen.phone_call` entries. Initial song/CG/background values establish
+  baselines. Coincident signals share a moment; subsequent moments give the
+  interval from the previous one. Picture size or emotional intensity is not
+  inferred. The report lists its signals explicitly.
+- Stalls report unchanged state snapshots, unchanged screen structures and
+  inputs without subsequent observable progress. Repeated equal state records
+  do not reset the timer. Explicit `input_result.accepted: false` spans and
+  `autoplay_wait` spans are reported separately when present. A paused screen
+  or an input without a recorded effect is not necessarily a fault or rejected
+  input. Screen records attached to observations are the last available at
+  their start, or null; there is no screen reconstruction for older traces.
+  Screen/state progress can differ, so their intervals can overlap.
+- Existing `section` records are retained with their original names, tick
+  boundaries and frame counts. They are not used to invent per-tick frame
+  numbers or wall-clock durations.
+
+The reader scans JSONL once with the existing 16 MiB record limit and rejects
+decreasing ticks. It retains output rows, the latest relevant observations and
+one counter per distinct dialogue line, rather than every input or screen frame.
+Memory therefore grows with distinct text and report rows, not only with the
+selected top N. A malformed record or failed read still fails the command.
+
+Recording adds `decision` only for accepted non-dialogue list selections and cancellations;
+dialogue uses the existing `answer`. Scripted input outcomes are recorded before
+the receiver acknowledgement is cleared, and autoplay waiting records occur
+only when the waiting reason changes. `input_result.phone` is a boolean saying
+whether the phone was open when input was offered; `screen.phone` remains the
+app name or an empty string. Readers must select `t` before decoding fields
+specific to a record kind. `say` carries its event name and
+`screen.phone_call` distinguishes incoming lock-screen calls from ordinary phone
+screens. These collectors run only with tracing; metric aggregation is entirely
+in the CLI reader.

@@ -171,6 +171,9 @@ func (l *list) step(d int) {
 func (l *list) update(g *Game) (chose, cancel bool) {
 	if g.in.cancel() {
 		g.sfx("cancel")
+		if g.tr != nil && l != g.talk.choice {
+			g.emit("decision", traceLine{"kind": "menu_cancel", "event": g.evName})
+		}
 		return false, true
 	}
 	return l.updateChoice(g), false
@@ -210,6 +213,9 @@ func (l *list) updateChoice(g *Game) bool {
 			return false
 		}
 		g.sfx("decide")
+		if g.tr != nil && l != g.talk.choice {
+			g.emit("decision", traceLine{"kind": "menu", "index": l.sel, "label": l.items[l.sel].label, "event": g.evName})
+		}
 		return true
 	}
 	return false

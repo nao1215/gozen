@@ -88,6 +88,7 @@ func TestScreenChanges(t *testing.T) {
 		func() { f.texts[0].Text = "Next" },
 		func() { f.figures[0].Picture = "other.png" },
 		func() { f.phone = "page" },
+		func() { f.phoneCall = true },
 		func() { f.backgrounds = []string{"room.png"} },
 		func() { f.speaker = "Guide" },
 		func() { f.controls = nil; f.texts = nil; f.figures = nil },

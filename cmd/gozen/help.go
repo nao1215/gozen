@@ -337,9 +337,10 @@ var pages = map[string]clihelp.Page{
 		Summary: "print or check a JSON Lines trace of a play",
 		Usage:   []string{"gozen trace [OPTIONS] <trace.jsonl>"},
 		About: "Prints a trace written by the game's --trace in time order. With --check, lists the " +
-			"faults of the standing pictures and the music instead and exits 1 if there are any. Use - for standard input. Check mode does not accept display filters.",
+			"faults of the standing pictures and the music instead and exits 1 if there are any. Use - for standard input. Check mode does not accept display filters. --metrics reports text, decision intervals, repeated lines, signal spacing and unchanged observations as facts, never verdicts. Metrics use the entire trace; seconds are ticks / 60.",
 		Examples: []clihelp.Example{
 			{"print a trace", "gozen trace run.jsonl"},
+			{"measure a play without judging it", "gozen trace run.jsonl --metrics --format json"},
 			{"retake a recorded screenshot", "gozen trace run.jsonl --repro shots/view_000120.png --out repro"},
 			{"print only dialog and battles between seconds 10 and 60", "gozen trace run.jsonl --only say --only battle --from 10 --to 60"},
 			{"check pictures and music", "gozen trace run.jsonl --check"},
@@ -347,6 +348,7 @@ var pages = map[string]clihelp.Page{
 		Groups: []clihelp.Group{
 			{Title: "Filter", Flags: []string{"only", "from", "to", "input"}},
 			{Title: "Check", Flags: []string{"check", "music-late"}},
+			{Title: "Measurements", Flags: []string{"metrics", "top", "stall-seconds"}},
 			{Title: "Reproduction", Flags: []string{"repro", "out"}},
 			{Title: "Output", Flags: []string{"format"}},
 			general,

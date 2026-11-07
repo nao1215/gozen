@@ -286,13 +286,13 @@ func (b *captureBatch) updateTick() error {
 }
 
 func (b *captureBatch) Draw(screen *ebiten.Image) {
-	if b.game == nil {
+	// The display can call Draw zero or many times between updates. Render only
+	// sampled ticks, so preparation and completed jobs cannot warm GPU caches or
+	// mutate draw-owned state according to the display's timing.
+	if b.game == nil || !b.due || b.finished {
 		return
 	}
 	b.game.Draw(screen)
-	if !b.due || b.finished {
-		return
-	}
 	b.due = false
 	if b.cfg.Structure {
 		b.result.Screen = b.game.opts.capture.screen

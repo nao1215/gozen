@@ -1,0 +1,10 @@
+{"t":"start","tick":0,"event":"gate"}
+{"t":"screen","tick":0,"texts":[{"text":"Welcome"}],"phone":""}
+{"t":"say","tick":10,"text":"Welcome"}
+{"t":"answer","tick":60,"index":0}
+{"t":"say","tick":70,"text":"Welcome"}
+{"t":"decision","tick":120,"kind":"menu","label":"Continue"}
+{"t":"scene","tick":180,"stack":["field","battle"]}
+{"t":"battle","tick":240,"cutin":"Scout"}
+{"t":"section","tick":600,"name":"gate","from_tick":0,"frames":300,"ticks":600}
+{"t":"end","tick":600}

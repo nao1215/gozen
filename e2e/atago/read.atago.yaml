@@ -436,3 +436,29 @@ scenarios:
       exit_code: 0
       stderr:
         equals: ''
+- name: trace metrics reports facts from a recorded play
+  steps:
+  - run:
+      command: gozen trace "${specdir}/fixtures/metrics.jsonl" --metrics --top 1 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: '$.data.text_per_decision[0].characters', equals: 7}
+        - {path: $.data.longest_read_only.ticks, equals: 480}
+        - {path: '$.data.repeated_text[0].count', equals: 2}
+        - {path: '$.data.climax_spacing[1].interval_ticks', equals: 60}
+        - {path: '$.data.stalls[0].kind', equals: same_screen}
+        - {path: '$.data.stalls[0].screen.tick', equals: 0}
+        - {path: '$.data.sections[0].frames', equals: 300}
+  - run:
+      command: gozen trace "${specdir}/fixtures/metrics.jsonl" --metrics
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        contains:
+        - 'facts, never verdicts'
+        - '2x "Welcome"'
+        - 'same_screen'

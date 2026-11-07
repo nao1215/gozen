@@ -1053,6 +1053,9 @@ func (g *Game) Update() error {
 			}
 		}()
 	}
+	if g.tr != nil {
+		defer g.traceInputOutcome(g.phone != nil)
+	}
 	g.in.observing = false
 	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.panelModal() && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
 		g.openMemo()

@@ -54,6 +54,6 @@ options can appear on several image tools; their effect depends on the action.
 | `gozen theme` | Inspect and install dungeon themes | `--help`, `-h` |
 | `gozen theme add` | Copy a dungeon theme into a game | `--help`, `-h`, `--name`, `--force` |
 | `gozen theme list` | List the dungeon themes | `--help`, `-h`, `--format` |
-| `gozen trace` | Print or check a JSON Lines trace of a play | `--help`, `-h`, `--only`, `--format`, `--from`, `--to`, `--input`, `--check`, `--music-late`, `--repro`, `--out` |
+| `gozen trace` | Print or check a JSON Lines trace of a play | `--help`, `-h`, `--metrics`, `--top`, `--stall-seconds`, `--only`, `--format`, `--from`, `--to`, `--input`, `--check`, `--music-late`, `--repro`, `--out` |
 | `gozen trial` | Build a trial tree with the reachable part | `--help`, `-h`, `--out`, `-o`, `--config`, `--overlay`, `--inspect`, `--list`, `--dry-run`, `-n` |
 | `gozen version` | Print the gozen version | `--help`, `-h` |
