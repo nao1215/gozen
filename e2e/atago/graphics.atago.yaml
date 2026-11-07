@@ -457,6 +457,13 @@ scenarios:
       exit_code: 0
       stdout: {contains: [Welcome., Welcome back.]}
       stderr: {equals: ''}
+  - run:
+      command: gozen trace story.jsonl --format json --only layout
+  - assert:
+      exit_code: 0
+      stdout:
+        json: {path: "$.data.records[0].t", equals: layout}
+      stderr: {equals: ''}
 - name: capture the office sample's management screens in a window
   tags: [graphics]
   steps:

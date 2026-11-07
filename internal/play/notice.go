@@ -119,7 +119,13 @@ func (b *noticeBoard) draw(g *Game, dst *ebiten.Image) {
 		gfx.FillRect(dst, float32(cx-w/2), float32(top), float32(w), float32(h), withAlpha(g.th.window, uint8(200*a)), false)
 
 		for k, l := range lines {
-			gfx.DrawTextOutlineColor(dst, l, cx, y-size*0.55+lh*float64(k), size, g.th.text, g.th.window, float32(a))
+			ly := y - size*0.55 + lh*float64(k)
+			gfx.DrawTextOutlineColor(dst, l, cx, ly, size, g.th.text, g.th.window, float32(a))
+			if g.tr != nil && a >= 1 {
+				// The outlined text is centered on cx; ly is its top.
+				lw := gfx.TextWidth(l, size)
+				g.traceText(l, cx-lw/2, ly, lw, lh, size, g.th.text)
+			}
 		}
 		y += h + 6
 	}

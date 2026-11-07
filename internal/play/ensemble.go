@@ -713,6 +713,9 @@ func (g *Game) callTorso(dst *ebiten.Image, path string, call *data.EnsembleCall
 	op.GeoM.Rotate(angle)
 	op.GeoM.Translate(cx+dx*fh/400, cy+dy*fh/400)
 	clip := image.Rect(int(x*gfx.Scale()), int(y*gfx.Scale()), int((x+w)*gfx.Scale()), int((y+h)*gfx.Scale())).Intersect(dst.Bounds())
+	// Traced at rest and by its main picture: the breathing, the mouth and the blinks
+	// would make every frame differ and the layout never settle.
+	g.traceFigure(path, left, top, scale, false, 1, clip)
 	if !clip.Empty() {
 		if target, ok := dst.SubImage(clip).(*ebiten.Image); ok {
 			gfx.DrawImage(target, img, op)

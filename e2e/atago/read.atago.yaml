@@ -185,6 +185,32 @@ scenarios:
         contains: music-late
       stderr:
         contains: issues
+- name: trace prints layout lines and does not judge them
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: '{"t":"layout","tick":120,"since":110,"figures":[{"picture":"lead.png","rect":[0,-40,400,800],"content":[40,-30,320,790],"clip":[0,0,1280,720],"alpha":1}],"texts":[{"text":"Pale","rect":[10,10,40,20],"size":15,"color":"#f0f4f8","back":"#e0e0e0","ratio":1.2},{"text":"Clear","rect":[10,40,40,20],"size":15,"color":"#f0f4f8","back":"#202020","ratio":15.1}]}
+
+        {"t":"end","tick":240}
+
+        '
+  - run:
+      command: gozen trace trace.jsonl --only layout
+  - assert:
+      exit_code: 0
+      stdout:
+        contains:
+        - 1 figures, 2 texts
+        - lead.png
+        - lowest contrast 1.20 "Pale"
+      stderr:
+        equals: ''
+  - run:
+      command: gozen trace trace.jsonl --check
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''
 - name: malformed trace structures fail without panic
   steps:
   - fixture:

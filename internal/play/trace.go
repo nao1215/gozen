@@ -50,6 +50,13 @@ type tracer struct {
 	menu         string
 	view         string
 
+	// layout gathers the frame's figures and texts (trace_layout.go).
+	layout        *layoutFrame
+	layoutPending string
+	layoutN       int
+	layoutAt      int
+	layoutLast    string
+
 	pending   string
 	pendingN  int
 	pendingAt int
@@ -450,6 +457,7 @@ func (g *Game) traceFrameStart() {
 	}
 	g.tr.drawn, g.tr.missing, g.tr.lists = map[string]bool{}, map[string]bool{}, nil
 	g.tr.stand = &standFrame{}
+	g.tr.layout = &layoutFrame{}
 	g.pics.seen = func(path string, ok bool) {
 		g.tr.drawn[path] = true
 		if !ok {
@@ -464,6 +472,7 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 	}
 	g.pics.seen = nil
 	g.traceStandEnd()
+	g.traceLayoutEnd(screen)
 
 	drawn := sortedKeys(g.tr.drawn)
 	key := strings.Join(drawn, "|")

@@ -65,6 +65,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0055](0055-screen-guides.md) | First-visit screen guides (lit places, other places refused, recorded across plays) and header faces | Accepted and implemented | |
 | [0056](0056-compact-yaml-authoring.md) | Compact events, single-item commands and enabled-by-default tactics (the migration command was dropped on 2026-11-06) | Accepted | |
 | [0057](0057-phone-apps.md) | A phone on the screen: a chat, a photo feed and a video held upright or on its side, with puppets in its clips | Accepted and implemented | |
+| [0058](0058-layout-records-in-traces.md) | Where a trace says standing pictures and texts were drawn, with the contrast behind each text; gozen records and does not judge | Accepted and implemented | |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

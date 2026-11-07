@@ -643,6 +643,7 @@ func (g *Game) drawStanding(dst *ebiten.Image, path string, cx, bottom, h float6
 	}
 	op.GeoM.Scale(s, s)
 	op.GeoM.Translate(cx-iw*s/2, bottom-h)
+	g.traceFigure(path, cx-iw*s/2, bottom-h, s, flip, alpha, dst.Bounds())
 	if cs != nil {
 		op.ColorScale = *cs
 	}

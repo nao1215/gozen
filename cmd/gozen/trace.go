@@ -182,6 +182,8 @@ func (c *command) traceCmd() clihelp.Operation {
 				if sh := str(l["shot"]); sh != "" {
 					what += "  [" + sh + "]"
 				}
+			case "layout":
+				what = layoutText(l)
 			case "state":
 				var ps []string
 				party, ok := l["party"].([]any)
@@ -368,4 +370,33 @@ func useTraceLanguage(start map[string]any) error {
 		language = lang.English
 	}
 	return lang.Use(language, nil)
+}
+
+// layoutText sums up a layout line: the pictures drawn and the text of the lowest
+// contrast, the two things a reader of the trace looks for first.
+func layoutText(l map[string]any) string {
+	figures, _ := l["figures"].([]any) //nolint:errcheck // A missing list is an empty one.
+	texts, _ := l["texts"].([]any)     //nolint:errcheck // A missing list is an empty one.
+	var pics []string
+	for _, f := range figures {
+		if m, ok := f.(map[string]any); ok {
+			pics = append(pics, str(m["picture"]))
+		}
+	}
+	what := fmt.Sprintf("%d figures, %d texts", len(figures), len(texts))
+	if len(pics) > 0 {
+		what += "  " + strings.Join(pics, " ")
+	}
+	low, lowText := 0.0, ""
+	for _, t := range texts {
+		if m, ok := t.(map[string]any); ok {
+			if r := num(m["ratio"]); lowText == "" || r < low {
+				low, lowText = r, str(m["text"])
+			}
+		}
+	}
+	if lowText != "" {
+		what += fmt.Sprintf("  lowest contrast %.2f %q", low, lowText)
+	}
+	return what
 }

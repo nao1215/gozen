@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A trace (`run --trace`) has `layout` lines: once a screen has stayed the same for ten ticks, where its standing pictures and texts were drawn. A figure gives its picture, the rectangle of its canvas, the rectangle of its opaque part, the screen or the frame that clips it, and `source_cut`, the edges the opaque part already touches in the picture file. A text gives its rectangle, size and color, the color behind it read from the finished screen and the WCAG contrast ratio. gozen records them and does not judge them, so a game's own checks can find a head cut by its frame or a text hard to read without gozen deciding what is intended. Nothing of it is computed without `--trace`. `gozen trace` prints a line of each with the pictures and the text of the lowest contrast.
+
 ## v0.20.0 - 2026-11-07
 
 A lock screen call that rings out to a `missed` result, a choice that waits behind an Unmute button so keeping quiet is an answer, and Skip that stops at phones that keep a result.
