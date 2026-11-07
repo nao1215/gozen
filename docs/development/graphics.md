@@ -102,6 +102,15 @@ uses the original trace and writes to `<trace>.repro-<tick>/`.
 
 Script `do`, `jump`, `guides`, and `window` operations are recorded as direct
 actions alongside input; campaign `order` and `end_turn` use the same `do` path.
+Script `recruit`, `guarantee-recruit`, and `battle-log` emit `unsupported_script`
+with an `operation` name; `battle-hp` emits `battle_setup`. Replay and reproduction
+reject targets that include these mutations. Record older scripts again: older
+traces did not identify the recruitment mutations.
+
+Replays still default guides off (ADR 0055). Reproduction refuses a trace that
+shows a first-visit `guide` without an earlier explicit `guides on` action,
+because its screenshot and accepted input cannot be reproduced exactly. Scripts
+that explicitly use `guides on` continue to replay that action.
 
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep
@@ -117,7 +126,15 @@ what must be recorded again; ordinary replay of older traces is unchanged.
 Run the PNG comparison with `go test -tags=graphics ./internal/play -run
 '^TestGraphicsScreensRepro$' -count=1` from a desktop (wrap with
 `xvfb-run --auto-servernum --error-file=/dev/stderr` on Linux). It records neutral
-novel and campaign fixtures and executes the printed reproduction command.
+novel, campaign and battle-puppet fixtures and executes the printed reproduction
+command. Pixel comparisons remain exact. Enemy puppet motion advances in simulation
+updates, independent of drawing. The puppet's composed mesh texture is unmanaged:
+automatic atlas promotion after earlier draws changes float32 source coordinates
+used by linear filtering, so drawing history can affect channel rounding even at
+the same pose. `TestGraphicsSeekMatchesPlayback` in `internal/layer5/puppet`
+compares complete motion state (including phases), poses and pixels after 90
+updates with and without intermediate draws. Run it with the `graphics` tag in
+the same display environment.
 
 ## Balance display
 

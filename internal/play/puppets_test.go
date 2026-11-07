@@ -3,8 +3,12 @@ package play
 import (
 	"io/fs"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 // stagePuppetData stands two actors who share the example puppet, lets the first talk and
@@ -153,5 +157,63 @@ func TestStagePuppetsLeaveTheBoxWindow(t *testing.T) {
 	}
 	if p := box.puppets.live["streamer"]; p == nil || p.Reduce {
 		t.Fatal("the box window's speaker puppet")
+	}
+}
+
+// enemyPuppetFiles is shared by the motion contract and real PNG reproduction.
+func enemyPuppetFiles(t *testing.T) fstest.MapFS {
+	t.Helper()
+	files := gameFiles(t)
+	for name, body := range testgame.MonsterFiles() {
+		files[name] = &fstest.MapFile{Data: []byte(body)}
+	}
+	files["game.yaml"].Data = []byte(strings.Replace(string(files["game.yaml"].Data), "schema_version: 6", "schema_version: 7", 1) + "\nfonts: {regular: test.ttf}\n")
+	files["data/main.yaml"].Data = []byte(strings.Replace(string(files["data/main.yaml"].Data), "    name: Mote\n    image: x.png", "    puppet: streamer/puppet.yaml\n    name: Mote\n    image: streamer/streamer.png", 1))
+	for _, name := range []string{"puppet.yaml", "streamer.png", "surprised.png", "eyes_closed.png", "mouth_closed.png", "mouth_half.png"} {
+		body, err := fs.ReadFile(os.DirFS("../../examples/puppet/assets/streamer"), name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files["assets/streamer/"+name] = &fstest.MapFile{Data: body}
+	}
+	return files
+}
+
+func TestEnemyPuppetMotionDoesNotDependOnDrawing(t *testing.T) {
+	open := func() *Game {
+		g := wldOpenWith(t, Options{FS: enemyPuppetFiles(t), Location: "field", Battle: "one", Party: []string{"scout", "guide"}})
+		return g
+	}
+	drawn := open()
+	for range 90 {
+		if err := drawn.Update(); err != nil {
+			t.Fatal(err)
+		}
+		drawn.Draw(btlImage())
+	}
+	wantMotion := drawn.puppets.live["enemy.mote"].Motion
+	want := wantMotion.Pose()
+	if err := drawn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	skipped := open()
+	for range 90 {
+		if err := skipped.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gotMotion := skipped.puppets.live["enemy.mote"].Motion
+	if !reflect.DeepEqual(gotMotion, wantMotion) {
+		t.Fatal("motion state differs without draws (including time, phases, springs and RNG)")
+	}
+	got := gotMotion.Pose()
+	if got != want {
+		t.Fatalf("motion without draws %+v; with draws %+v", got, want)
+	}
+	for range 3 {
+		skipped.Draw(btlImage())
+	}
+	if after := skipped.puppets.live["enemy.mote"].Motion.Pose(); after != got {
+		t.Fatalf("repeated drawing advanced motion: %+v -> %+v", got, after)
 	}
 }

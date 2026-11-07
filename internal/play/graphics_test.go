@@ -408,14 +408,18 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "campaign"} {
+	for _, mode := range []string{"novel", "campaign", "battle-puppet"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
 				t.Fatal(err)
 			}
 			game := filepath.Join(dir, "game")
-			if err := os.CopyFS(game, os.DirFS(filepath.Join("testdata", mode))); err != nil {
+			source := os.DirFS(filepath.Join("testdata", mode))
+			if mode == "battle-puppet" {
+				source = enemyPuppetFiles(t)
+			}
+			if err := os.CopyFS(game, source); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.MkdirAll(filepath.Join(game, "assets"), 0o700); err != nil {
@@ -431,6 +435,10 @@ func TestGraphicsScreensRepro(t *testing.T) {
 				start = []string{"--start", "room"}
 				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
 			}
+			if mode == "battle-puppet" {
+				start = []string{"--start", "field", "--party", "scout,guide", "--battle", "one"}
+				body = "wait 90\nshot frame\nquit\n"
+			}
 			script := filepath.Join(dir, "input.txt")
 			// Let the opening settle, then capture an ordinary scripted frame.
 			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
@@ -438,6 +446,27 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			trace := filepath.Join(dir, "run.jsonl")
 			run(t, append([]string{"run", game, "--dev", "--mute", "--seed", "7", "--script", script, "--shots", dir, "--trace", trace, "--trace-shots", "--save-dir", filepath.Join(dir, "saves")}, start...)...)
+			if mode == "battle-puppet" {
+				for j, mutation := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1"} {
+					input := filepath.Join(dir, fmt.Sprintf("mutation-%d.txt", j))
+					log := filepath.Join(dir, fmt.Sprintf("mutation-%d.jsonl", j))
+					if err := os.WriteFile(input, []byte("wait 40\n"+mutation+"\nwait 5\nshot mutation\nquit\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					run(t, append([]string{"run", game, "--dev", "--mute", "--seed", "7", "--script", input, "--trace", log, "--shots", dir, "--save-dir", filepath.Join(dir, "mutation-saves")}, start...)...)
+					for _, args := range [][]string{
+						{"trace", log, "--repro", "mutation.png"},
+						{"run", game, "--dev", "--mute", "--replay", log},
+					} {
+						cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Test-owned CLI and trace.
+						var stdout, stderr bytes.Buffer
+						cmd.Stdout, cmd.Stderr = &stdout, &stderr
+						if err := cmd.Run(); err == nil || !strings.Contains(stderr.String(), "unsupported script operation") {
+							t.Fatalf("%s: gozen %v: %v\n%s\n%s", mutation, args, err, &stdout, &stderr)
+						}
+					}
+				}
+			}
 			targets := []string{"frame.png", "60"}
 			data, err := os.ReadFile(trace) //nolint:gosec // Reads this test's own trace.
 			if err != nil {

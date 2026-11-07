@@ -11,11 +11,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
-	"github.com/nao1215/gozen/internal/savefile"
-
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/savefile"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 // More of what a trace records: the inputs with the mouse, the kinds of requests, the scene
@@ -417,5 +418,36 @@ func TestTraceReproScriptDirectActions(t *testing.T) {
 	}
 	if g.st.Gold != 123 {
 		t.Fatalf("script state: %d", g.st.Gold)
+	}
+}
+
+func TestTraceRejectsScriptMutations(t *testing.T) {
+	for _, script := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1", "battle-log off"} {
+		t.Run(script, func(t *testing.T) {
+			files := gameFiles(t)
+			for name, body := range testgame.MonsterFiles() {
+				files[name] = &fstest.MapFile{Data: []byte(body)}
+			}
+			files["game.yaml"].Data = append(files["game.yaml"].Data, []byte("\nfonts: {regular: test.ttf}\n")...)
+			var buf bytes.Buffer
+			g := wldOpenWith(t, Options{FS: files, Location: "field", Battle: "one", Development: true, Trace: &buf, Script: "wait 40\n" + script + "\nwait 2\nquit\n"})
+			for range 100 {
+				if err := g.Update(); errors.Is(err, errQuit) {
+					break
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, until := range []int{0, 44} {
+				_, err := loadReplay(path, &Options{Until: until})
+				if err == nil || !strings.Contains(err.Error(), "unsupported script operation") {
+					t.Fatalf("until %d: %v\n%s", until, err, &buf)
+				}
+			}
+		})
 	}
 }

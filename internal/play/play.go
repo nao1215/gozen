@@ -610,6 +610,7 @@ func New(opts Options) (_ *Game, err error) {
 				return
 			}
 			g.currentBattle().hideTacticLog = !enabled
+			g.emit("unsupported_script", traceLine{"operation": "battle-log"})
 		}
 		s.battleHP = func(team string, index, hp int) {
 			if !g.opts.Development {
@@ -642,6 +643,7 @@ func New(opts Options) (_ *Game, err error) {
 				g.failure = errors.New("script: recruit needs a development session")
 				return
 			}
+			g.emit("unsupported_script", traceLine{"operation": "recruit"})
 			if _, ok := g.st.Recruit(species, level, 0, nil); !ok {
 				g.failure = fmt.Errorf("script: cannot recruit %s", species)
 			}
@@ -657,6 +659,7 @@ func New(opts Options) (_ *Game, err error) {
 				return
 			}
 			e.Recruit.Chance = 1
+			g.emit("unsupported_script", traceLine{"operation": "guarantee-recruit"})
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
@@ -969,6 +972,12 @@ func (g *Game) Update() error {
 		return nil
 	}
 	g.tick++
+	defer func(tick int) {
+		// Memo and tag editors roll the tick back while they hold the game.
+		if g.tick == tick {
+			g.stepBattlePictures()
+		}
+	}(g.tick)
 	g.in.tick = g.tick
 	if g.noticesShown() {
 		g.notices.update(g.noticeVisible())
@@ -1120,6 +1129,19 @@ func (g *Game) Update() error {
 		g.updateMusic()
 	}
 	return nil
+}
+
+// stepBattlePictures follows the same visible stack as Draw, including battles
+// behind overlays. It also runs on ticks that end early for fades or guides.
+func (g *Game) stepBattlePictures() {
+	for _, s := range slices.Backward(g.stack) {
+		if b, ok := s.(*battleScene); ok {
+			b.stepFoePictures(g)
+		}
+		if o, ok := s.(overlay); !ok || !o.overlay() {
+			break
+		}
+	}
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {

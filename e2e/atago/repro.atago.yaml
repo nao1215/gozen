@@ -22,3 +22,48 @@ scenarios:
         contains: '"tick":60'
       stderr:
         equals: ''
+- name: refuse reproduction after recruit
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"unsupported_script","tick":2,"operation":"recruit"}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'unsupported script operation'
+- name: refuse reproduction after guarantee-recruit
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'unsupported script operation'
+- name: refuse reproduction after battle-hp
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"battle_setup","tick":2,"hp":1}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'unsupported script operation'

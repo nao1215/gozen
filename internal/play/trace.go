@@ -700,6 +700,14 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 					return nil, fmt.Errorf(lang.T("replay で再現できない開始条件 %v"), r.setup.Unsupported)
 				}
 			}
+		case "unsupported_script", "battle_setup":
+			if !r.partial || tick < o.Until {
+				op := l["operation"]
+				if k == "battle_setup" {
+					op = "battle-hp"
+				}
+				return nil, fmt.Errorf("replay: unsupported script operation %v at tick %d", op, tick)
+			}
 		case "end":
 			r.end = l
 			if r.version == traceVersion {

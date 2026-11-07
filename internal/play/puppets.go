@@ -112,7 +112,6 @@ func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppe
 		p.Motion.SetFace(i)
 	}
 	p.Motion.SetHealth(float64(hp) / float64(max(1, u.MHP())))
-	p.Motion.Step()
 	return p
 }
 

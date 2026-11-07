@@ -43,40 +43,9 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 	if err != nil {
 		return b, nil, err
 	}
-	var records []reproRecord
-	sc := bufio.NewScanner(bytes.NewReader(src))
-	sc.Buffer(make([]byte, 65536), 1<<24)
-	last := 0
-	for sc.Scan() {
-		var h struct {
-			Kind string `json:"t"`
-			Tick *int   `json:"tick"`
-			Shot string `json:"shot"`
-			File string `json:"file"`
-		}
-		if err := json.Unmarshal(sc.Bytes(), &h); err != nil {
-			return b, nil, err
-		}
-		if h.Tick == nil || *h.Tick < last || h.Kind == "" {
-			return b, nil, errors.New("invalid trace order or tick")
-		}
-		if len(records) == 0 && (h.Kind != "start" || *h.Tick != 0) {
-			return b, nil, errors.New("trace needs a start record")
-		}
-		if len(records) > 0 && h.Kind == "start" {
-			return b, nil, errors.New("duplicate start record")
-		}
-		if h.Kind == "shot" {
-			h.Shot = h.File
-		}
-		records = append(records, reproRecord{bytes.Clone(sc.Bytes()), h.Kind, *h.Tick, h.Shot})
-		last = *h.Tick
-	}
-	if err := sc.Err(); err != nil {
+	records, err := readReproRecords(src)
+	if err != nil {
 		return b, nil, err
-	}
-	if len(records) == 0 {
-		return b, nil, errors.New("empty trace")
 	}
 	var start struct {
 		GameDir string `json:"game_dir"`
@@ -103,7 +72,7 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 	if len(start.Setup.Saves) > 0 && start.Setup.Data == nil {
 		return b, nil, errors.New("trace contains save digests but no initial save bytes; record again with --trace")
 	}
-	tick, err := reproTick(target, records, last)
+	tick, err := reproTick(target, records, records[len(records)-1].tick)
 	if err != nil {
 		return b, nil, err
 	}
@@ -115,13 +84,80 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 	for _, key := range []string{"t", "tick", "game", "game_dir", "seed", "setup", "fingerprint", "screen", "version"} {
 		delete(b.StartOptions, key)
 	}
+	cut, err := cutReproRecords(records, tick)
+	return b, cut, err
+}
+
+func readReproRecords(src []byte) ([]reproRecord, error) {
+	var records []reproRecord
+	sc := bufio.NewScanner(bytes.NewReader(src))
+	sc.Buffer(make([]byte, 65536), 1<<24)
+	last := 0
+	for sc.Scan() {
+		var h struct {
+			Kind string `json:"t"`
+			Tick *int   `json:"tick"`
+			Shot string `json:"shot"`
+			File string `json:"file"`
+		}
+		if err := json.Unmarshal(sc.Bytes(), &h); err != nil {
+			return nil, err
+		}
+		if h.Tick == nil || *h.Tick < last || h.Kind == "" {
+			return nil, errors.New("invalid trace order or tick")
+		}
+		if len(records) == 0 && (h.Kind != "start" || *h.Tick != 0) {
+			return nil, errors.New("trace needs a start record")
+		}
+		if len(records) > 0 && h.Kind == "start" {
+			return nil, errors.New("duplicate start record")
+		}
+		if h.Kind == "shot" {
+			h.Shot = h.File
+		}
+		records = append(records, reproRecord{bytes.Clone(sc.Bytes()), h.Kind, *h.Tick, h.Shot})
+		last = *h.Tick
+	}
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, errors.New("empty trace")
+	}
+	return records, nil
+}
+
+// cutReproRecords validates replayable actions through tick and adds the seek boundary.
+func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 	var cut bytes.Buffer
+	guides := false
 	for _, r := range records {
 		if r.tick > tick {
 			break
 		}
 		if r.kind == "live_reload" {
-			return b, nil, errors.New("cannot reproduce across live reload; record again after the edit")
+			return nil, errors.New("cannot reproduce across live reload; record again after the edit")
+		}
+		if r.kind == "battle_setup" {
+			return nil, fmt.Errorf("cannot reproduce unsupported script operation battle-hp at tick %d", r.tick)
+		}
+		if r.kind == "unsupported_script" {
+			return nil, fmt.Errorf("cannot reproduce unsupported script operation at tick %d: %s", r.tick, r.raw)
+		}
+		if r.kind == "act" {
+			var act struct {
+				Name string `json:"name"`
+				On   bool   `json:"on"`
+			}
+			if err := json.Unmarshal(r.raw, &act); err != nil {
+				return nil, err
+			}
+			if act.Name == "guides" {
+				guides = act.On
+			}
+		}
+		if r.kind == "guide" && !guides {
+			return nil, errors.New("cannot reproduce exactly: first-visit guide appeared without explicit guides on; replays default guides off")
 		}
 		if r.kind == "end" {
 			continue
@@ -131,7 +167,7 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 	}
 	// A sparse trace still needs an explicit boundary for --until validation.
 	fmt.Fprintf(&cut, "{\"t\":\"repro\",\"tick\":%d}\n", tick)
-	return b, cut.Bytes(), nil
+	return cut.Bytes(), nil
 }
 
 func reproTick(target string, records []reproRecord, last int) (int, error) {

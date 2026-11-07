@@ -116,3 +116,40 @@ func TestReproMissingPrerequisites(t *testing.T) {
 		}
 	}
 }
+
+func TestReproRejectsUnsupportedMutations(t *testing.T) {
+	for _, record := range []string{
+		`{"t":"unsupported_script","tick":2,"operation":"recruit"}`,
+		`{"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}`,
+		`{"t":"battle_setup","tick":2,"hp":1}`,
+	} {
+		path := traceFile(t, `{"t":"start","tick":0,"game_dir":"game","seed":7}`, record)
+		if _, _, err := readRepro(path, "2"); err == nil || !strings.Contains(err.Error(), "unsupported script operation") {
+			t.Fatalf("record %s: %v", record, err)
+		}
+		if _, _, err := readRepro(path, "1"); err != nil {
+			t.Fatalf("target before mutation: %v", err)
+		}
+	}
+}
+
+func TestReproFirstVisitGuideRequiresExplicitAction(t *testing.T) {
+	start := `{"t":"start","tick":0,"game_dir":"game","seed":7,"scripted":false}`
+	guide := `{"t":"guide","tick":2,"screen":"board","step":1,"text":"The kiln log first."}`
+	shot := `{"t":"shot","tick":3,"file":"first-visit.png"}`
+	path := traceFile(t, start, guide, shot)
+	for _, bundle := range []bool{false, true} {
+		args := []string{"trace", path, "--repro", "first-visit.png"}
+		if bundle {
+			args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
+		}
+		_, stderr := invoke(t, 1, args...)
+		if !strings.Contains(stderr, "first-visit guide") || !strings.Contains(stderr, "guides off") {
+			t.Fatal(stderr)
+		}
+	}
+	path = traceFile(t, start, `{"t":"act","tick":1,"name":"guides","on":true}`, guide, shot)
+	if _, _, err := readRepro(path, "first-visit.png"); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -182,3 +182,33 @@ func TestGuideCompletionReloadsFromGallery(t *testing.T) {
 		t.Fatal("completed guide reappeared after reopening the gallery")
 	}
 }
+
+func TestInteractiveFirstVisitGuideIsTraced(t *testing.T) {
+	files := wldWorldFiles(t, guideBoard, nil)
+	files["game.yaml"].Data = []byte(strings.Replace(string(files["game.yaml"].Data), "schema_version: 4", "schema_version: 10", 1))
+	var buf bytes.Buffer
+	g, err := New(Options{FS: files, NoSound: true, Seed: 7, Trace: &buf, SaveDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.newGame()
+	g.openScreen("look_board", func() {})
+	wldFrames(t, g, 4)
+	if g.testRun() || g.guideScripted || g.guide == nil {
+		t.Fatal("interactive first visit did not show its default guide")
+	}
+	if len(traceLines(t, buf.Bytes(), "guide")) == 0 || len(traceLines(t, buf.Bytes(), "act")) != 0 {
+		t.Fatalf("interactive guide must be detectable without a guides action: %s", &buf)
+	}
+	// Replays keep the ADR 0055 default, even for this same screen.
+	g.rep = &replay{}
+	if g.guidesOn() {
+		t.Fatal("replay unexpectedly enabled guides")
+	}
+	g.rep = nil
+}
