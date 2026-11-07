@@ -414,7 +414,7 @@ func (g *Game) stopWatching(p *phoneView) {
 
 // phoneAuto lets the auto mode read a chat as it reads lines.
 func (g *Game) phoneAuto(p *phoneView) bool {
-	return p.cue.Timeout == 0 && g.autoRead && p.age%int(120*g.cfg.autoScale()+1) == 0
+	return g.autoRead && p.age%int(120*g.cfg.autoScale()+1) == 0 && !p.asks()
 }
 
 // Default phone colors: a light app on a dark body. Page theme and the

@@ -322,3 +322,37 @@ func TestPhoneMixedLockResultIndices(t *testing.T) {
 		t.Fatalf("results = %+v, want %+v", got, want)
 	}
 }
+
+func TestPhonePageResultIndices(t *testing.T) {
+	cue := data.PhoneCue{App: "page", Var: "var.result", Rows: []data.PhoneRow{
+		{Text: "Notice"}, {Button: "First", ID: "first"}, {Button: "Second"},
+	}}
+	buttons := []data.PhoneResult{
+		{Row: 1, Notice: -1, ID: "first"},
+		{Row: 2, Notice: -1, ID: "Second"},
+	}
+	for _, timeout := range []float64{0, 10} {
+		cue.Timeout = timeout
+		want := append([]data.PhoneResult{}, buttons...)
+		want = append(want, data.PhoneResult{Row: -4, Notice: -4, ID: "dismiss"})
+		if timeout > 0 {
+			want = append(want, data.PhoneResult{Row: -2, Notice: -2, ID: "expired"})
+		}
+		want = append(want, data.PhoneResult{Row: -3, Notice: -3, ID: "open"})
+		if got := cue.Results(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("timeout %g: results = %+v, want %+v", timeout, got, want)
+		}
+	}
+}
+
+func TestPhoneUntimedVarRequirements(t *testing.T) {
+	for _, cue := range []string{
+		`{app: page, var: var.result, rows: [{text: Note}]}`,
+		`{app: lock, var: var.result, notices: [{text: Note}]}`,
+	} {
+		_, err := testgame.TryLoad(map[string]string{"data/z.yaml": "events: {e: {do: [{phone: " + cue + "}]}}"})
+		if err == nil || !strings.Contains(err.Error(), "var needs a page button or a call") {
+			t.Fatalf("%s: expected a missing outcome diagnostic, got %v", cue, err)
+		}
+	}
+}

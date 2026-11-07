@@ -1634,7 +1634,7 @@ func TestPhoneTimeoutAfterLandscapeEntrance(t *testing.T) {
 }
 
 func TestPhoneTimedMixedLockOutcomes(t *testing.T) {
-	for _, action := range []string{"dismiss before call", "open after call", "complete after decline", "decline", "answer", "timeout"} {
+	for _, action := range []string{"dismiss before call", "open after call", "complete after decline", "decline", "answer", "timeout", "timeout during call"} {
 		t.Run(action, func(t *testing.T) {
 			cue := data.PhoneCue{App: "lock", Var: "var.result", Timeout: 10, Notices: []data.PhoneNotice{
 				{Text: "Note"}, {Call: true, Title: "Caller"}, {Text: "Receipt"},
@@ -1672,7 +1672,10 @@ func TestPhoneTimedMixedLockOutcomes(t *testing.T) {
 				g.phone.shown = 2
 				g.in.pressed[btnOK] = true
 				want = "answer"
-			case "timeout":
+			case "timeout", "timeout during call":
+				if action == "timeout during call" {
+					g.phone.shown = 2
+				}
 				g.phone.age = phoneRise + 599
 				want = "expired"
 			}
@@ -1756,5 +1759,68 @@ func TestPhoneSharedClosePaths(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestPhoneUntimedMixedLockAutoWaits(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "lock", Var: "var.result", Notices: []data.PhoneNotice{
+		{Call: true, Title: "Caller"}, {Text: "Receipt"},
+	}})
+	g.autoRead = true
+	phoneTicks(g, phoneRise+300)
+	if !g.phone.calling() || g.phone.closing != 0 || g.phone.answer() != -1 {
+		t.Fatal("Auto answered the call")
+	}
+	phonePress(g, btnCancel)
+	if g.phone.calling() || g.phone.shown != 2 {
+		t.Fatal("decline did not advance to the ordinary notice")
+	}
+	phoneTicks(g, 300)
+	if g.phone.closing != 0 || g.phone.answer() != -1 {
+		t.Fatal("Auto chose the ordinary notice's outcome")
+	}
+	phonePress(g, btnOK)
+	idx := g.phone.answer()
+	if idx < 0 || g.phone.cue.Results()[idx].ID != "open" {
+		t.Fatalf("player completion answered %d, want open", idx)
+	}
+}
+
+func TestPhoneUntimedPageOutcomes(t *testing.T) {
+	for _, action := range []string{"cancel", "escape", "button", "open"} {
+		t.Run(action, func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: "page", Var: "var.result", Rows: []data.PhoneRow{
+				{Button: "Read", ID: "read"}, {Text: strings.Repeat("Bottom section.\n", 80)},
+			}})
+			g.autoRead, g.skipping = true, true
+			phoneTicks(g, phoneRise+300)
+			if g.phone.closing != 0 || g.phone.answer() != -1 {
+				t.Fatal("Auto or Skip chose an untimed page outcome")
+			}
+			want := "dismiss"
+			switch action {
+			case "cancel":
+				phonePress(g, btnCancel)
+			case "escape":
+				g.in = input{esc: true}
+				g.updatePhone()
+			case "button":
+				g.phone.focus, g.phone.keyed = 0, true
+				phonePress(g, btnOK)
+				want = "read"
+			case "open":
+				_, end := g.pageView(g.phone)
+				g.phone.scroll = end
+				phonePress(g, btnOK)
+				want = "open"
+			}
+			idx := g.phone.answer()
+			if idx < 0 || g.phone.cue.Results()[idx].ID != want {
+				t.Fatalf("answer %d, want %s", idx, want)
+			}
+			if !phoneTicks(g, phoneRise) || g.phone.answer() != idx {
+				t.Fatal("closing changed outcome")
+			}
+		})
 	}
 }

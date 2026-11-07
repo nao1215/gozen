@@ -16,6 +16,15 @@ Existing incoming-call `ring` and `missed` keep their timing, assignments and
 result order. A banner with `var` waits for open, dismiss or timeout; Enter and
 click open it, and Cancel dismisses it. Existing asynchronous banners remain.
 
+A timeout requires `var`. Untimed pages with `var` still require a button,
+and untimed locks with `var` require a call. Page dismissal returns `dismiss`
+with or without a timeout; completion without a button returns `open`. New
+close outcomes are appended without changing existing button, call or expiry
+indices. In a mixed lock, declining a call advances to the next notice; only
+declining the final call closes with `decline`. Ordinary notices can close
+with `open` or `dismiss`. Auto, Skip and Ctrl never choose a kept outcome;
+authored timeouts and call rings still expire. Input wins on the deadline tick.
+
 Phone page and owner-bubble colors belong to the existing game-wide `ui`
 settings, with the current white and blue defaults. No per-page theme flag or
 background-picture feature is needed. Keyboard operability and configurable

@@ -677,6 +677,7 @@ func TestScriptSkipAcknowledgement(t *testing.T) {
 			g.talk.choice = nil
 			if g.phone != nil {
 				g.phone.cue.Rows = nil
+				g.phone.cue.Var = ""
 			}
 			g.cfg.SkipAll = true
 			offer()

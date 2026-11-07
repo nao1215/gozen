@@ -84,15 +84,15 @@ events:
 	r := event.New(db, st, &phoneHost{})
 	r.Log = func(err error) { t.Error(err) }
 	r.Start(db.Events["e"].Do)
-	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 2 {
-		t.Fatalf("the page did not wait with its two buttons: %+v", tap)
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 4 {
+		t.Fatalf("the page did not wait with its two buttons and close outcomes: %+v", tap)
 	}
 	r.Answer(0)
 	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
 		t.Fatalf("the lock screen did not wait with two answers and a decline: %+v", tap)
 	}
 	r.Answer(1)
-	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 1 {
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
 		t.Fatalf("the last page did not wait: %+v", tap)
 	}
 	r.Answer(-1)
@@ -332,14 +332,15 @@ events:
 	}
 }
 
-// Timed outcomes resume only after an answer and can immediately ring again.
-func TestPhoneTimedOutcomes(t *testing.T) {
+// Shared outcomes resume only after an answer and can immediately show another phone.
+func TestPhoneSharedOutcomes(t *testing.T) {
 	for _, tc := range []struct {
 		cue      string
 		outcomes []string
 	}{
 		{`{app: lock, timeout: 2, timeout_result: retry, var: var.outcome}`, []string{"open", "dismiss", "retry"}},
 		{`{app: page, timeout: 2, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "expired", "open"}},
+		{`{app: page, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "open"}},
 		{`{app: banner, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss"}},
 		{`{app: banner, timeout: 2, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss", "expired"}},
 	} {

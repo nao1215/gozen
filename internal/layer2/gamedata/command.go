@@ -636,7 +636,7 @@ func (p PhoneCue) Results() []PhoneResult {
 			keeps = keeps || len(n.Missed) > 0
 		}
 	}
-	if p.App == "banner" && p.Var != "" || p.Timeout > 0 {
+	if (p.App == "banner" || p.App == "page") && p.Var != "" || p.Timeout > 0 {
 		if !calls {
 			if len(out) == 0 {
 				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
@@ -653,7 +653,7 @@ func (p PhoneCue) Results() []PhoneResult {
 	}
 	// Append a page's ordinary close after all existing outcomes, including
 	// timeout, so button and saved result indices remain unchanged.
-	if p.App == "page" && p.Timeout > 0 && len(p.Rows) > 0 {
+	if p.App == "page" && (p.Var != "" || p.Timeout > 0) {
 		for _, r := range out {
 			if r.Row >= 0 {
 				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
