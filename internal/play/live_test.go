@@ -2,12 +2,16 @@ package play
 
 import (
 	"image/color"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/testgame"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -366,5 +370,100 @@ func TestWldLiveReloadAtTheTitle(t *testing.T) {
 	}
 	if g.live.msg != lang.T("読み直した") {
 		t.Fatalf("notice %q", g.live.msg)
+	}
+}
+
+func TestLiveReloadRefreshesSoundWait(t *testing.T) {
+	for _, muted := range []bool{true, false} {
+		name := "muted"
+		if !muted {
+			name = "recorded"
+		}
+		t.Run(name, func(t *testing.T) {
+			dir := wldDisk(t, "", map[string]string{
+				"data/sound.yaml": `events:
+  sound_wait:
+    do:
+      - sfx: {name: custom, wait: true}
+      - say: "Finished."
+`,
+				"assets/sfx/custom.wav": string(testgame.Wav(0.25)),
+			})
+			opts := Options{FS: os.DirFS(dir), LiveDir: dir, Development: true, Location: "camp"}
+			if !muted {
+				opts.Audio = io.Discard
+			}
+			g := wldOpenWith(t, opts)
+			wldFrames(t, g, 10)
+			checkWait := func(seconds float64) {
+				t.Helper()
+				wldStartEvent(t, g, "sound_wait")
+				wldFrames(t, g, 1)
+				wait, ok := g.req.(event.Wait)
+				if !ok || wait.Sound != "custom" || g.waitT != int(seconds*60) {
+					t.Fatalf("request %+v, ticks %d; want %v seconds", g.req, g.waitT, seconds)
+				}
+				wldPlay(t, g, "wait 60\npress ok\nwait 30\n", 120)
+			}
+			checkWait(0.25)
+			clip := filepath.Join(dir, "assets", "sfx", "custom.wav")
+			if err := os.WriteFile(clip, testgame.Wav(0.75), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			wldPlay(t, g, "press reload\nwait 10\n", 30)
+			checkWait(0.75)
+			if err := os.Remove(clip); err != nil {
+				t.Fatal(err)
+			}
+			wldPlay(t, g, "press reload\nwait 10\n", 30)
+			checkWait(0)
+		})
+	}
+}
+
+// The site (Edit and play loop): with --dir the game watches game.yaml, data/ and assets/, and
+// "pictures and sounds are reloaded on their own"; the definitions wait for F5.
+func TestWldLiveReloadsPicturesOnItsOwn(t *testing.T) {
+	old := liveEvery
+	liveEvery = 5 * time.Millisecond
+	t.Cleanup(func() { liveEvery = old })
+	dir := wldDisk(t, "", nil)
+	g := wldLive(t, dir, "camp")
+	if b := g.pics.get("pics/flat.png").Bounds(); b.Dx() != 16 {
+		t.Fatalf("the picture is %v", b)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "assets", "pics", "flat.png"), wldPNG(t, 24, 24, color.NRGBA{R: 1}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	screen := wldScreen(g)
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		wldStep(t, g, screen)
+		if g.pics.get("pics/flat.png").Bounds().Dx() == 24 {
+			break
+		}
+	}
+	if b := g.pics.get("pics/flat.png").Bounds(); b.Dx() != 24 {
+		t.Fatalf("the changed picture was not reloaded on its own: %v", b)
+	}
+	if g.live.pending || g.db.Locations["camp"].Name != "Camp" {
+		t.Fatal("a picture changed the definitions")
+	}
+}
+
+// A change to the definitions is not taken without F5.
+func TestWldLiveLeavesDefinitionsToF5(t *testing.T) {
+	covSlow(t)
+	old := liveEvery
+	liveEvery = 5 * time.Millisecond
+	t.Cleanup(func() { liveEvery = old })
+	dir := wldDisk(t, "", nil)
+	g := wldLive(t, dir, "camp")
+	wldEdit(t, dir, "data/main.yaml", "name: Camp\n", "name: Camp site\n")
+	screen := wldScreen(g)
+	for deadline := time.Now().Add(200 * time.Millisecond); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		wldStep(t, g, screen)
+	}
+	if g.db.Locations["camp"].Name != "Camp" {
+		t.Fatalf("the definitions were swapped without F5: %q", g.db.Locations["camp"].Name)
 	}
 }

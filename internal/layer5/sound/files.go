@@ -16,14 +16,31 @@ import (
 
 const SfxDir = "assets/sfx"
 
+// LoadEffects replaces the game effects and durations for startup and live reload.
+// Removed overrides revert to built-in sounds; unreadable files are logged and skipped.
 func LoadEffects(fsys fs.FS) int { return loadEffects(fsys, false) }
 
 // LoadEffectDurations loads only stream lengths for play's muted sessions.
 // It creates no players or PCM buffers; unreadable effects are logged and skipped
-// just as in LoadEffects. Close releases the session's custom durations.
+// just as in LoadEffects. Each load replaces custom durations, including removals.
+// Close releases the session's custom durations.
 func LoadEffectDurations(fsys fs.FS) int { return loadEffects(fsys, true) }
 
 func loadEffects(fsys fs.FS, lengthsOnly bool) int {
+	mu.Lock()
+	restoreBuiltins := false
+	for name := range effectDurations {
+		if _, ok := effects[name]; ok {
+			delete(effects, name)
+			restoreBuiltins = restoreBuiltins || builtinEffectSeconds[name] != 0
+		}
+	}
+	clear(effectDurations)
+	mu.Unlock()
+	if restoreBuiltins && !lengthsOnly {
+		makeEffects(false)
+	}
+
 	if fsys == nil {
 		return 0
 	}

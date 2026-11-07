@@ -121,3 +121,46 @@ func TestEffectDurationsWithoutPlayback(t *testing.T) {
 		t.Fatal("custom duration leaked across sessions")
 	}
 }
+
+func TestReloadEffectsDropsRemovedFiles(t *testing.T) {
+	for _, lengthsOnly := range []bool{true, false} {
+		name := "durations"
+		if !lengthsOnly {
+			name = "playback"
+		}
+		t.Run(name, func(t *testing.T) {
+			freshSession(t)
+			captureLog(t)
+			if !lengthsOnly {
+				makeEffects(false)
+			}
+			builtin := EffectSeconds("decide")
+			for _, replacement := range []fs.FS{nil, fstest.MapFS{}, fstest.MapFS{
+				"assets/sfx/decide.wav": {Data: []byte("invalid")},
+			}} {
+				fsys := fstest.MapFS{
+					"assets/sfx/custom.wav": {Data: testgame.Wav(0.75)},
+					"assets/sfx/decide.wav": {Data: testgame.Wav(0.75)},
+				}
+				if n := loadEffects(fsys, lengthsOnly); n != 2 {
+					t.Fatalf("loaded %d effects", n)
+				}
+				if n := loadEffects(replacement, lengthsOnly); n != 0 {
+					t.Fatalf("loaded %d removed effects", n)
+				}
+				if EffectSeconds("custom") != 0 || EffectSeconds("decide") != builtin {
+					t.Fatal("removed custom duration survived reload")
+				}
+				if _, ok := effects["custom"]; ok {
+					t.Fatal("removed PCM survived reload")
+				}
+				if !lengthsOnly && ClipSeconds(effects["decide"]) != builtin {
+					t.Fatal("removed override did not restore built-in PCM")
+				}
+				if lengthsOnly && (len(effects) != 0 || len(effectPlayers) != 0) {
+					t.Fatal("duration reload created PCM or players")
+				}
+			}
+		})
+	}
+}

@@ -240,6 +240,8 @@ func (g *Game) reloadAssets() {
 		sound.LoadEffects(g.opts.FS)
 		sound.SetVary(g.db.Game.UI.SfxVary.Values())
 		sound.Relearn(g.opts.FS, songsOf(g.db))
+	} else {
+		sound.LoadEffectDurations(g.opts.FS)
 	}
 	for _, s := range g.stack {
 		if gs, ok := s.(*galleryScreen); ok {
