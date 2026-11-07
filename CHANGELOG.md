@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- `gozen trace --repro TICK|TIME|PNG` prints a command to retake a recorded screen; `--format json` reports the reproduction bundle and `--out DIR` writes a cut trace, initial saves and a portable reproduction script. Traces preserve initial save bytes, slot times and memo starts, and `run --replay --until` seeks with batched updates.
+
 ## v0.21.2 - 2026-11-07
 
 Scripted play that only moves on when a screen acts on the input: a press or click that does nothing is retried and then reported, instead of silently drifting from the route.

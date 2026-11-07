@@ -1,0 +1,24 @@
+version: '1'
+suite:
+  name: Trace reproduction commands without graphics
+scenarios:
+- name: map a screenshot to its reproduction command
+  steps:
+  - run:
+      command: gozen trace "${specdir}/fixtures/repro.jsonl" --repro example.png
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '61'"
+      stderr:
+        equals: ''
+- name: report a structured reproduction at a time
+  steps:
+  - run:
+      command: gozen trace "${specdir}/fixtures/repro.jsonl" --repro 1s --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: '"tick":60'
+      stderr:
+        equals: ''

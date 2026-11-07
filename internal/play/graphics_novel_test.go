@@ -293,16 +293,7 @@ func TestGraphicsNovel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// A tall magenta figure for stand (a portrait 600 pixels or taller stands on the stage).
-	fig := image.NewNRGBA(image.Rect(0, 0, 240, 720))
-	draw.Draw(fig, fig.Bounds(), &image.Uniform{color.NRGBA{0xff, 0, 0xff, 0xff}}, image.Point{}, draw.Src)
-	var pb bytes.Buffer
-	if err := png.Encode(&pb, fig); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(game, "assets", "fig.png"), pb.Bytes(), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeNovelFigure(t, game)
 	saves := filepath.Join(root, "saves")
 	run := func(name, body string, event ...string) []map[string]any {
 		t.Helper()
@@ -593,5 +584,20 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("texts %+v, want the line", last.Texts)
+	}
+}
+
+// writeNovelFigure supplies the generated portrait referenced by testdata/novel.
+func writeNovelFigure(t *testing.T, game string) {
+	t.Helper()
+	// A tall magenta figure for stand (a portrait 600 pixels or taller stands on the stage).
+	fig := image.NewNRGBA(image.Rect(0, 0, 240, 720))
+	draw.Draw(fig, fig.Bounds(), &image.Uniform{color.NRGBA{0xff, 0, 0xff, 0xff}}, image.Point{}, draw.Src)
+	var pb bytes.Buffer
+	if err := png.Encode(&pb, fig); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(game, "assets", "fig.png"), pb.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }

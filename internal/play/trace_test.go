@@ -3,11 +3,15 @@ package play
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/nao1215/gozen/internal/savefile"
 
@@ -291,5 +295,127 @@ func TestWldTraceStandLinesNameThePictureOverThePortraits(t *testing.T) {
 	last := traceLines(t, buf.Bytes(), "stand")
 	if l := last[len(last)-1]; l["cg"] != nil || l["hides"] != false {
 		t.Fatalf("after the picture went: %v", l)
+	}
+}
+
+func TestTraceReproRestoresSavesAndMemo(t *testing.T) {
+	g := wldOpenWith(t, Options{Location: "camp", Seed: 7, FS: wldWorldFiles(t, "", nil)})
+	g.st.Gold = 123
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "initial.save")
+	if err := os.WriteFile(path, saved, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := &replayStore{Store: savefile.MemStore(), times: map[string]time.Time{"save1.json": time.Unix(123, 0)}}
+	if err := store.Store.Write("save1.json", saved); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	g = wldOpenWith(t, Options{Seed: 7, FS: wldWorldFiles(t, "", nil), FromMemo: path, Store: store, Trace: &buf, Script: "wait 5\nquit\n"})
+	for range 30 {
+		if !wldStep(t, g, wldScreen(g)) {
+			break
+		}
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	trace := filepath.Join(t.TempDir(), "run.jsonl")
+	if err := os.WriteFile(trace, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	g = wldOpenWith(t, Options{FS: wldWorldFiles(t, "", nil), Replay: trace, Store: savefile.MemStore()})
+	if g.st.Gold != 123 {
+		t.Fatalf("restored gold %d", g.st.Gold)
+	}
+	got, err := g.storeRead("save1.json")
+	if err != nil || !bytes.Equal(got, saved) {
+		t.Fatalf("save: %s, %v", got, err)
+	}
+	if got, ok := g.storeTime("save1.json"); !ok || !got.Equal(time.Unix(123, 0)) {
+		t.Fatalf("slot time: %v %v", got, ok)
+	}
+	if report := wldReplay(t, g); strings.Contains(report, "diverged") {
+		t.Fatal(report)
+	}
+}
+
+func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
+	trace := wldRecord(t, wldRecordScript)
+	normal, err := wldReplayGame(t, trace, func(o *Options) { o.Until = 100 })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for normal.tick < 99 {
+		if err := normal.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := json.Marshal(normal.traceSummary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := normal.Close(); err != nil {
+		t.Fatal(err)
+	}
+	fast, err := wldReplayGame(t, trace, func(o *Options) { o.Until = 100 })
+	if err != nil {
+		t.Fatal(err)
+	}
+	loop := &seekLoop{Game: fast, drew: true}
+	calls := 0
+	for !fast.untilShot {
+		if err := loop.Update(); err != nil {
+			t.Fatal(err)
+		}
+		calls++
+	}
+	got, err := json.Marshal(fast.traceSummary())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fast.tick != 99 || !bytes.Equal(got, want) {
+		t.Fatalf("seek at %d: %s; want %s", fast.tick, got, want)
+	}
+	if calls >= 99 {
+		t.Fatalf("seek did not batch: %d calls", calls)
+	}
+	fast.autoShot = "" // A successful target Draw releases the stop handshake.
+	for range 3 {
+		if err := loop.Update(); errors.Is(err, errQuit) {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if strings.Contains(ReplayReport, "diverged") {
+		t.Fatal(ReplayReport)
+	}
+}
+
+func TestTraceReproScriptDirectActions(t *testing.T) {
+	trace := wldRecord(t, "wait 5\ndo set: {gold: 123}\nwait 5\ndo call: ev_auto\nwait 40\nquit\n")
+	acts := traceLines(t, trace, "act")
+	if len(acts) < 2 {
+		t.Fatalf("direct script actions missing: %s", trace)
+	}
+	g, err := wldReplayGame(t, trace, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report := wldReplay(t, g); strings.Contains(report, "diverged") {
+		t.Fatal(report)
+	}
+	if g.st.Gold != 123 {
+		t.Fatalf("script state: %d", g.st.Gold)
 	}
 }

@@ -24,9 +24,11 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/layer1/memo"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer5/sound"
+	"github.com/nao1215/gozen/internal/savefile"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -166,12 +168,31 @@ func (g *Game) traceStart() error {
 		return err
 	}
 	if o.FromMemo != "" {
-		setup.Unsupported = append(setup.Unsupported, "from_memo")
+		m, b, err := memo.Read(o.FromMemo)
+		if err != nil {
+			return err
+		}
+		setup.Memo = &traceMemo{Memo: m, Save: b, Path: o.FromMemo, AllowLegacy: o.AllowLegacySave}
+	}
+	if g.opts.Trace != nil {
+		setup.SaveData = map[string][]byte{}
+		setup.SaveTimes = map[string]time.Time{}
+		for name := range setup.Saves {
+			b, err := g.storeRead(name)
+			if err != nil {
+				return err
+			}
+			setup.SaveData[name] = b
+			if t, ok := g.storeTime(name); ok {
+				setup.SaveTimes[name] = t
+			}
+		}
 	}
 	if o.Review {
 		setup.Unsupported = append(setup.Unsupported, "review")
 	}
 	g.emit("start", traceLine{
+		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
 		"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
@@ -213,12 +234,22 @@ func traceFingerprint(fsys fs.FS) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), err
 }
 
+type traceMemo struct {
+	Memo        memo.Memo `json:"memo"`
+	Save        []byte    `json:"save"`
+	Path        string    `json:"path"`
+	AllowLegacy bool      `json:"allow_legacy,omitempty"`
+}
+
 type traceSetup struct {
-	Config      config            `json:"config"`
-	Read        map[uint64]bool   `json:"read"`
-	Unlocked    map[string]bool   `json:"unlocked"`
-	Saves       map[string]string `json:"saves"`
-	Unsupported []string          `json:"unsupported,omitempty"`
+	SaveData    map[string][]byte    `json:"save_data"`
+	SaveTimes   map[string]time.Time `json:"save_times,omitempty"`
+	Memo        *traceMemo           `json:"memo,omitempty"`
+	Config      config               `json:"config"`
+	Read        map[uint64]bool      `json:"read"`
+	Unlocked    map[string]bool      `json:"unlocked"`
+	Saves       map[string]string    `json:"saves"`
+	Unsupported []string             `json:"unsupported,omitempty"`
 }
 
 func (g *Game) traceSaves() (map[string]string, error) {
@@ -489,7 +520,7 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 		if g.opts.TraceShots {
 
 			name := fmt.Sprintf("view_%06d", g.tick)
-			l["shot"] = filepath.Join(g.shotDir(), name+".png")
+			l["shot"] = g.traceShotPath(name)
 			g.saveShotQuiet(screen, name)
 		}
 		g.emit("view", l)
@@ -545,6 +576,8 @@ func (g *Game) isAutopilot() bool {
 }
 
 type replay struct {
+	scripted bool
+	size     [2]int
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
@@ -602,18 +635,21 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	var start traceLine
 	var reloads []int
 	var startOptions struct {
-		Seed        uint64      `json:"seed"`
-		Version     int         `json:"version"`
-		Speed       int         `json:"speed"`
-		Fingerprint string      `json:"fingerprint"`
-		Setup       *traceSetup `json:"setup"`
-		Scene       string      `json:"scene"`
-		Event       string      `json:"event"`
-		Line        int         `json:"line"`
-		Picture     string      `json:"picture"`
-		Answers     []int       `json:"answers"`
-		Autopilot   bool        `json:"autopilot"`
-		GalleryAll  bool        `json:"gallery_all"`
+		Seed         uint64      `json:"seed"`
+		Version      int         `json:"version"`
+		Speed        int         `json:"speed"`
+		Fingerprint  string      `json:"fingerprint"`
+		Setup        *traceSetup `json:"setup"`
+		Scene        string      `json:"scene"`
+		Event        string      `json:"event"`
+		Line         int         `json:"line"`
+		Picture      string      `json:"picture"`
+		Answers      []int       `json:"answers"`
+		Autopilot    bool        `json:"autopilot"`
+		GalleryAll   bool        `json:"gallery_all"`
+		Scripted     bool        `json:"scripted"`
+		Locales      []string    `json:"locales"`
+		BookAsPlayed bool        `json:"book_as_played"`
 	}
 	for sc.Scan() {
 		lines++
@@ -647,6 +683,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			}
 			start = l
 			r.autopilot = startOptions.Autopilot
+			r.scripted = startOptions.Scripted
 			r.version = startOptions.Version
 			if r.version != 1 && r.version != traceVersion {
 				return nil, fmt.Errorf(lang.T("replay の記録版 %d には対応していない"), r.version)
@@ -703,7 +740,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if !ok {
 				return nil, errors.New("replay: action name must be a string")
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk"}, name) {
+			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk", "dev_do", "dev_jump", "guides", "window"}, name) {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
@@ -744,6 +781,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		}
 	}
 	o.Seed = startOptions.Seed
+	o.Locales, o.BookAsPlayed = startOptions.Locales, startOptions.BookAsPlayed
 
 	if value, ok := start["location"].(string); ok {
 		o.Location = value
@@ -1024,6 +1062,28 @@ func (g *Game) act(name string, args traceLine) bool {
 	n := func(k string) int { return int(num(args[k])) }
 	st := g.st
 	switch name {
+	case "dev_do":
+		g.devDo(s("do"))
+		return true
+	case "dev_jump":
+		g.devJump(s("event"), n("line"))
+		return true
+	case "guides":
+		g.guideScripted = args["on"] == true
+		return true
+	case "window":
+		w, h := n("width"), n("height")
+		if w <= 0 || h <= 0 {
+			g.failure = errors.New("replay: invalid window dimensions")
+			return false
+		}
+		if g.rep != nil {
+			g.rep.size = [2]int{w, h}
+		}
+		if !g.opts.headless {
+			ebiten.SetWindowSize(w, h)
+		}
+		return true
 	case "walk":
 		// A script's walk on a map or in a painted scene (sceneWalk); in a dungeon the walk
 		// presses keys, which the trace has as input.
@@ -1082,4 +1142,56 @@ func (g *Game) traceBattleDecisions(b *battle.Battle) {
 			g.emit("ai_decision", traceLine{"decision": d})
 		}
 	}
+}
+
+// replayStore preserves slot ordering for Continue while isolating replay writes.
+type replayStore struct {
+	Store
+	times map[string]time.Time
+}
+
+func (s *replayStore) ModTime(name string) (time.Time, error) {
+	t, ok := s.times[name]
+	if !ok {
+		return time.Time{}, fs.ErrNotExist
+	}
+	return t, nil
+}
+
+func (s *replayStore) Write(name string, b []byte) error {
+	if err := s.Store.Write(name, b); err != nil {
+		return err
+	}
+	s.times[name] = time.Now()
+	return nil
+}
+
+func (r *replay) restoreSaves(g *Game) error {
+	if r.setup.SaveData == nil {
+		return nil
+	}
+	s := &replayStore{Store: savefile.MemStore(), times: maps.Clone(r.setup.SaveTimes)}
+	if s.times == nil {
+		s.times = map[string]time.Time{}
+	}
+	for name, b := range r.setup.SaveData {
+		if fmt.Sprintf("%x", sha256.Sum256(b)) != r.setup.Saves[name] {
+			return fmt.Errorf("replay: save digest mismatch: %s", name)
+		}
+		if err := s.Store.Write(name, b); err != nil {
+			return err
+		}
+	}
+	g.store, g.storeGiven = s, true
+	return nil
+}
+
+func (g *Game) traceShotPath(name string) string {
+	path := filepath.Join(g.shotDir(), name+".png")
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		g.tr.err = err
+		return path
+	}
+	return abs
 }

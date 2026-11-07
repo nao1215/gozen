@@ -31,6 +31,10 @@ func (g *Game) startFromMemo(path string) error {
 	if err != nil {
 		return err
 	}
+	return g.startMemo(path, m, save)
+}
+
+func (g *Game) startMemo(path string, m memo.Memo, save []byte) error {
 	p := rand.NewPCG(1, 2)
 	if len(m.Rand) == 0 || p.UnmarshalBinary(m.Rand) != nil {
 		p = g.newPCG()

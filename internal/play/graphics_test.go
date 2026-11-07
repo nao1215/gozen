@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/image/font/gofont/goregular"
 )
 
 // hostBin is testdata/host, built once by TestMain for every scenario.
@@ -366,6 +368,116 @@ func TestGraphicsScreensCasualtyPolicy(t *testing.T) {
 			st := save.State
 			if st.Actors["guide"].HP != want || st.Actors["scout"].HP <= 1 || st.Vars["losses"] != float64(1) || st.LastBattle.Result != "lose" || len(st.LastBattle.HP) != 1 || st.LastBattle.HP["guide"] != 0 {
 				t.Fatalf("saved outcome: %+v", st)
+			}
+		})
+	}
+}
+
+// TestGraphicsScreensRepro runs the exact printed shell command, then compares
+// pixels rather than PNG compression. Each CLI process owns one graphics loop.
+func TestGraphicsScreensRepro(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("printed POSIX shell command requires sh")
+	}
+	root := t.TempDir()
+	binary := filepath.Join(root, "gozen")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "../../cmd/gozen") //nolint:gosec // Builds the CLI into the test directory.
+	build.Stdout, build.Stderr = os.Stdout, os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatal(err)
+	}
+	run := func(t *testing.T, args ...string) string {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, binary, args...) //nolint:gosec // This test owns the CLI binary and its fixture arguments.
+		var out, diag bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &out, &diag
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("gozen %v: %v\n%s\n%s", args, err, &out, &diag)
+		}
+		return out.String()
+	}
+	for _, mode := range []string{"novel", "campaign"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := filepath.Join(root, mode)
+			if err := os.Mkdir(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			game := filepath.Join(dir, "game")
+			if err := os.CopyFS(game, os.DirFS(filepath.Join("testdata", mode))); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(game, "assets"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			start := []string{"--start", "war"}
+			body := "wait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			if mode == "novel" {
+				writeNovelFigure(t, game)
+				start = []string{"--start", "room"}
+				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			}
+			script := filepath.Join(dir, "input.txt")
+			// Let the opening settle, then capture an ordinary scripted frame.
+			if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			trace := filepath.Join(dir, "run.jsonl")
+			run(t, append([]string{"run", game, "--dev", "--mute", "--seed", "7", "--script", script, "--shots", dir, "--trace", trace, "--trace-shots", "--save-dir", filepath.Join(dir, "saves")}, start...)...)
+			targets := []string{"frame.png", "60"}
+			data, err := os.ReadFile(trace) //nolint:gosec // Reads this test's own trace.
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, line := range traceLines(t, data, "view") {
+				if shot, ok := line["shot"].(string); ok && shot != "" {
+					targets = append(targets, shot)
+					break
+				}
+			}
+			for i, target := range targets {
+				args := []string{"trace", trace, "--repro", target, "--format", "json"}
+				if mode == "campaign" {
+					args = append(args, "--out", filepath.Join(dir, fmt.Sprintf("bundle-%d", i)))
+				}
+				out := run(t, args...)
+				var result struct {
+					Data struct {
+						Command    string `json:"command"`
+						Screenshot string `json:"screenshot"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal([]byte(out), &result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Data.Command == "" {
+					t.Fatalf("missing command: %s", out)
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+				cmd := exec.CommandContext(ctx, "sh", "-c", result.Data.Command) //nolint:gosec // Executes the command generated from this test's own trace.
+				cmd.Env = append(os.Environ(), "PATH="+root+string(os.PathListSeparator)+os.Getenv("PATH"))
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				err := cmd.Run()
+				cancel()
+				if err != nil {
+					t.Fatalf("reproduce: %v\n%s\n%s", err, &stdout, &stderr)
+				}
+				if strings.HasSuffix(target, ".png") {
+					originalPath := target
+					if !filepath.IsAbs(originalPath) {
+						originalPath = filepath.Join(dir, target)
+					}
+					original := shotImage(t, filepath.Dir(originalPath), strings.TrimSuffix(filepath.Base(originalPath), ".png"))
+					reproduced := shotImage(t, filepath.Dir(result.Data.Screenshot), strings.TrimSuffix(filepath.Base(result.Data.Screenshot), ".png"))
+					if !reflect.DeepEqual(original, reproduced) {
+						t.Fatalf("%s reproduced PNG pixels differ", mode)
+					}
+				}
 			}
 		})
 	}

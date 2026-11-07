@@ -65,6 +65,55 @@ Running the game with `--script`, `--trace`, `--replay` and `--record` is descri
 - `gozen sim script` (`play.Simulate`, [ADR 0046](../decisions/0047-headless-scripted-runs.md)) runs the same `Game` without `Draw` or the Ebitengine loop. A pending script shot pauses `Update` only while `rendering` is set, and the pause comes before the tick advances, so the ticks are those of `run`. Pictures are not decoded ahead, and `pictures.load` gives an empty image of the size in the file header (`picdecode.Size`). Interactive lines (`--script -`) are appended by `script.more` when the commands run out; `Simulate` writes `ready` and flushes before each read. `TestGraphicsSimulateMatchesRun` compares both paths line by line, without the drawing lines and `music`.
 - Notes are made with F9 under `--dev --memos notes`. They record the screen, the state and an annotation, and finalize the JSON last. Adding the build revision is enabled separately with `--build-info`, and external input on Linux with `--external-input`. No source search or Git execution is done.
 
+### Reproduce a trace screen
+
+```sh
+gozen run game --dev --seed 7 --script input.txt --shots shots --trace run.jsonl --trace-shots
+gozen trace run.jsonl --repro shots/frame.png
+gozen trace run.jsonl --repro 750 --format json
+gozen trace run.jsonl --repro 12.5s --out repro
+sh repro/repro.sh
+```
+
+`--repro` prints a POSIX shell command that replays the recorded inputs and
+writes a PNG. Targets are simulation ticks, durations (rounded to the nearest
+60 Hz tick), or PNG paths from `shot`, `--shot-every`, or `--trace-shots` records.
+A basename is accepted only when it identifies one tick. Tick N means the state
+after update N; the generated command uses `--until N+1`, since `--until` stops
+before its argument. JSON output uses the usual result envelope; its `data`
+contains `game_dir`, the exact integer `seed`, `start_options`, `initial_saves`,
+`initial_memo` when present, `tick`, `until`, `argv`, `command`, and `screenshot`.
+
+New start records include `game_dir`, `scripted`, device locales,
+book display options, and, inside `setup`,
+`save_data` (base64 bytes), `save_times`, and optional `memo` (the initial save,
+resume cursor and randomness). Existing configuration, read marks, unlocks,
+start/event/flag options, save digests and data fingerprint remain recorded.
+Replay restores these saves in memory, including their ordering for Continue;
+it never overwrites the original slots. The trace may contain saved player data.
+
+`--out` requires a new directory and writes `trace.jsonl` through the chosen tick,
+initial slot copies under `saves/`, an `initial.save` for a memo start,
+`repro.json`, and `repro.sh`. The script reads
+the bundled trace, whose start record also contains the saves. The directory can
+move; the game directory and unchanged game assets must still be available at
+the recorded location. No game assets are copied. Without `--out`, the command
+uses the original trace and writes to `<trace>.repro-<tick>/`.
+
+Script `do`, `jump`, `guides`, and `window` operations are recorded as direct
+actions alongside input; campaign `order` and `end_turn` use the same `do` path.
+
+A replay with `--until` batches ordinary updates, without intermediate drawing
+within each batch, to seek quickly. Normal play, capture and video recording keep
+their existing pacing. Data edits, live reloads and unsupported review starts
+are rejected. Old traces without a game directory or required save bytes report
+what must be recorded again; ordinary replay of older traces is unchanged.
+
+Run the PNG comparison with `go test -tags=graphics ./internal/play -run
+'^TestGraphicsScreensRepro$' -count=1` from a desktop (wrap with
+`xvfb-run --auto-servernum --error-file=/dev/stderr` on Linux). It records neutral
+novel and campaign fixtures and executes the printed reproduction command.
+
 ## Balance display
 
 The F7 balance panel is described for users on the site: [F7 balance panel](https://nao1215.github.io/gozen/edit-play-loop/#f7-balance-panel). It shows the same numbers as `gozen sim battle`, with the same function and the same random seed (battle i uses `PCG(1, i)`), so a note's `.save` can be checked in a terminal with `gozen sim battle … --state … --hp`.

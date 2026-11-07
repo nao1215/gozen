@@ -55,6 +55,8 @@ type Options struct {
 	Now func() time.Time
 
 	SaveDir string
+	// GameDir is the CLI game directory recorded for reproduction; empty for embedded games.
+	GameDir string
 
 	// Locales are the device's languages, the preferred first (BCP 47 tags such as "en-US";
 	// DeviceLocales reads them). A game offering two languages or more is shown in the
@@ -184,7 +186,13 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
 	g.StartRendering()
-	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
+	var loop ebiten.Game = g
+	if g.rep != nil && opts.Until > 0 && opts.Video == nil && opts.Audio == nil {
+		loop = &seekLoop{Game: g}
+		ebiten.SetVsyncEnabled(false)
+		ebiten.SetTPS(ebiten.SyncWithFPS)
+	}
+	err = ebiten.RunGameWithOptions(loop, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -525,6 +533,9 @@ func New(opts Options) (_ *Game, err error) {
 		return nil, err
 	}
 	if rep != nil {
+		if err := rep.restoreSaves(g); err != nil {
+			return nil, err
+		}
 		if err := rep.prepare(g); err != nil {
 			return nil, err
 		}
@@ -623,8 +634,8 @@ func New(opts Options) (_ *Game, err error) {
 			g.emit("battle_setup", traceLine{"team": team, "index": index, "id": u.EID, "hp": hp, "mhp": u.MHP()})
 		}
 		s.typeText = g.typeMemo
-		s.jump = g.devJump
-		s.do = g.devDo
+		s.jump = func(name string, line int) { g.act("dev_jump", traceLine{"event": name, "line": line}) }
+		s.do = func(src string) { g.act("dev_do", traceLine{"do": src}) }
 		s.recruit = func(species string, level int) {
 			if !g.opts.Development || g.st == nil {
 				g.failure = errors.New("script: recruit needs a development session")
@@ -655,9 +666,9 @@ func New(opts Options) (_ *Game, err error) {
 			}
 		}
 		s.look = g.scriptLook
-		s.guides = func(on bool) { g.guideScripted = on }
+		s.guides = func(on bool) { g.act("guides", traceLine{"on": on}) }
 		if !opts.headless {
-			s.window = func(w, h int) { ebiten.SetWindowSize(w, h) }
+			s.window = func(w, h int) { g.act("window", traceLine{"width": w, "height": h}) }
 		}
 		g.in.script = s
 	}
@@ -708,12 +719,12 @@ func New(opts Options) (_ *Game, err error) {
 	}
 
 	g.loadConfig()
-	if err := g.useLanguage(); err != nil {
-		return nil, err
-	}
 	if rep != nil && rep.version == traceVersion {
 		g.cfg, g.read, g.unlocked = rep.setup.Config, rep.setup.Read, rep.setup.Unlocked
 		g.applyConfig()
+	}
+	if err := g.useLanguage(); err != nil {
+		return nil, err
 	}
 	if err := g.traceStart(); err != nil {
 		return nil, err
@@ -758,6 +769,13 @@ func New(opts Options) (_ *Game, err error) {
 	if opts.Review {
 		g.opts.GalleryAll = true
 		g.push(newCGReview(g))
+	}
+	if rep != nil && rep.setup.Memo != nil {
+		m := rep.setup.Memo
+		g.opts.AllowLegacySave = m.AllowLegacy
+		if err := g.startMemo(m.Path, m.Memo, m.Save); err != nil {
+			return nil, err
+		}
 	}
 	if opts.FromMemo != "" {
 		if err := g.startFromMemo(opts.FromMemo); err != nil {
@@ -815,6 +833,11 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
 		if s.size[0] > 0 {
 			w, h = float64(s.size[0]), float64(s.size[1])
+		}
+	case g.rep != nil && g.rep.scripted:
+		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
+		if g.rep.size[0] > 0 {
+			w, h = float64(g.rep.size[0]), float64(g.rep.size[1])
 		}
 	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
 		if m := ebiten.Monitor(); m != nil {
@@ -955,7 +978,11 @@ func (g *Game) Update() error {
 		return err
 	}
 	if g.opts.NoSound && g.tr != nil {
-		sound.Pump(ebiten.TPS())
+		tps := ebiten.TPS()
+		if g.rep != nil && g.rep.partial && g.opts.Video == nil && g.opts.Audio == nil {
+			tps = 60 * max(1, g.opts.Speed)
+		}
+		sound.Pump(tps)
 	}
 	if g.fast != nil {
 		if g.fast.page {
@@ -1209,7 +1236,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.quit = true
 		}
 	}
-	if g.autoShot != "" {
+	if g.autoShot != "" && !g.untilShot {
 		g.saveShot(screen, g.autoShot)
 		g.autoShot = ""
 	}
@@ -1229,6 +1256,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// Over everything else and before a script's shot, so the shot shows it.
 		g.drawMeter(screen)
 	}
+	if g.untilShot && g.autoShot != "" {
+		g.saveShot(screen, g.autoShot)
+		g.autoShot = ""
+	}
 	if s := g.in.script; s != nil && s.shot != "" {
 		g.saveShot(screen, s.shot)
 		s.shot = ""
@@ -1244,7 +1275,9 @@ func (g *Game) shotDir() string {
 
 func (g *Game) saveShot(screen *ebiten.Image, name string) {
 	g.saveShotQuiet(screen, name)
-	g.emit("shot", traceLine{"file": filepath.Join(g.shotDir(), name+".png")})
+	if g.tr != nil {
+		g.emit("shot", traceLine{"file": g.traceShotPath(name)})
+	}
 	if g.st != nil {
 		if d := dungeon.Of(g.db, g.st); d != nil && d.Space != nil {
 			g.traceState()
@@ -1262,6 +1295,8 @@ func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
 	screen.ReadPixels(img.Pix)
 	if s := g.in.script; g.db.Game.Screen.Native && s != nil && s.size[0] > 0 {
 		img = letterboxShot(img, s.size[0], s.size[1])
+	} else if g.db.Game.Screen.Native && g.rep != nil && g.rep.size[0] > 0 {
+		img = letterboxShot(img, g.rep.size[0], g.rep.size[1])
 	}
 	g.shots.write(filepath.Join(g.shotDir(), name+".png"), img)
 }
@@ -2386,4 +2421,31 @@ func (g *Game) Close() error {
 	gfx.Reset()
 	activeGame.Store(false)
 	return err
+}
+
+// seekLoop batches ordinary ticks without intermediate drawing. The first draw
+// initializes renderer resources; the target draw still completes before quitting.
+type seekLoop struct {
+	*Game
+	drew bool
+}
+
+func (s *seekLoop) Draw(screen *ebiten.Image) {
+	s.Game.Draw(screen)
+	s.drew = true
+}
+
+func (s *seekLoop) Update() error {
+	deadline := time.Now().Add(12 * time.Millisecond)
+	for range 256 {
+		if err := s.Game.Update(); err != nil {
+			return err
+		}
+		// Draw before recorded input so hit regions belong to the current screen.
+		_, inputNext := s.rep.inputs[s.tick+1]
+		if !s.drew || s.untilShot || inputNext || time.Now().After(deadline) {
+			return nil
+		}
+	}
+	return nil
 }

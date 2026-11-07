@@ -25,6 +25,8 @@ import (
 
 func (c *command) traceCmd() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen trace")
+	repro := fl.String("repro", "", "print a command to retake this `TICK`, time (12.5s), or screenshot path")
+	out := fl.String("out", "", "with --repro, write a cut trace and reproduction script to a new `DIR`")
 	only := fl.StringArray("only", nil, "print only this record `KIND`; repeat for multiple kinds")
 	c.reporting(fl)
 	from := fl.Float64("from", 0, "start at this `SECOND`")
@@ -37,6 +39,20 @@ func (c *command) traceCmd() clihelp.Operation {
 			return cliio.Invalid(diag.Operands, "expected <trace.jsonl>")
 		}
 		inputPath := fl.Arg(0)
+		if fl.Changed("out") && !fl.Changed("repro") {
+			return cliio.Invalid(diag.OptionConflict, "--out requires --repro")
+		}
+		if fl.Changed("repro") {
+			if *repro == "" || inputPath == "-" {
+				return cliio.Invalid(diag.BadValue, "--repro needs a target and a trace file path")
+			}
+			for _, flag := range []string{"check", "only", "from", "to", "input", "music-late"} {
+				if fl.Changed(flag) {
+					return cliio.Invalid(diag.OptionConflict, "--repro cannot be combined with --%s", flag)
+				}
+			}
+			return c.traceRepro(inputPath, *repro, *out)
+		}
 		if math.IsNaN(*from) || math.IsNaN(*to) || math.IsNaN(*musicLate) || math.IsInf(*from, 0) || math.IsInf(*to, 0) || math.IsInf(*musicLate, 0) || *from < 0 || *to < 0 || (*to > 0 && *to < *from) || *musicLate < 0 {
 			return cliio.Invalid(diag.BadValue, "invalid time range or music delay")
 		}
