@@ -27,7 +27,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"unsupported_script","tick":2,"operation":"recruit"}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -42,7 +42,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -57,7 +57,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"battle_setup","tick":2,"hp":1}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -72,7 +72,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"dev_set","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -95,7 +95,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"dev_do","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -118,7 +118,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"jump","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -141,7 +141,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
         {"t":"future_kind","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -159,3 +159,41 @@ scenarios:
         contains: "'--until' '2'"
       stderr:
         equals: ''
+- name: refuse unsubmitted text only at and after its tick
+  steps:
+  - fixture:
+      file: typed.jsonl
+      content: |
+        {"t":"start","tick":0,"exact_version":1,"game_dir":"fixture-game","seed":7}
+        {"t":"text_input","tick":2}
+  - run:
+      command: gozen trace typed.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'cannot reproduce exactly: text_input at tick 2'
+  - run:
+      command: gozen trace typed.jsonl --repro 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '2'"
+      stderr:
+        equals: ''
+- name: refuse traces predating source markers
+  steps:
+  - fixture:
+      file: old.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"end","tick":2}
+  - run:
+      command: gozen trace old.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'trace lacks the source audit revision; record again'

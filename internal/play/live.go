@@ -153,6 +153,7 @@ func (g *Game) updateLive() {
 }
 
 func (g *Game) askReload() {
+	g.emit("live_reload", traceLine{"requested": true})
 	if g.opts.LiveDir == "" {
 		g.liveSay(lang.T("埋め込みのデータで動いている（--dir で起動すると読み直せる）"), 180)
 		return

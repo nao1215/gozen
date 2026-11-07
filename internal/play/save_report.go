@@ -89,6 +89,14 @@ func (g *Game) drawLoadNotice(dst *ebiten.Image) {
 
 func (g *Game) writeSave(path string) error {
 	backup, err := g.saveState(path)
+	if g.tr != nil {
+		if err != nil {
+			g.emit("persistence_error", nil)
+		} else {
+			t, known := g.storeTime(path)
+			g.emit("save_write", traceLine{"file": path, "time": t, "time_known": known})
+		}
+	}
 	if backup != "" {
 		log.Printf("save backup: %s", backup)
 		g.emit("save_backup", traceLine{"file": path, "backup": backup})

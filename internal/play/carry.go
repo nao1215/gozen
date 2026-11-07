@@ -43,6 +43,7 @@ func (g *Game) loadCarry() {
 	if g.carry != nil || len(g.db.Game.Carry) == 0 {
 		return
 	}
+	g.emit("carry_read", nil)
 	g.carry = &carryRecord{Vars: map[string]any{}, Flags: map[string]bool{}}
 	b, err := g.storeRead(g.carryPath())
 	if err != nil {

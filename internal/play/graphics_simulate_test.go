@@ -24,7 +24,8 @@ import (
 // lines of what happened (talk, choices, battles, dungeon steps, campaign orders and turns,
 // inputs, scenes, saves and states) are the same, tick for tick, and so is the state at the
 // end. Only the lines of drawing (shot, view, stand, menu) and the music, whose songs are
-// decoded in the background at the speed of the machine, are left out.
+// decoded in the background at the speed of the machine, are left out. Save-write
+// records are compared without their wall-clock time.
 func TestGraphicsSimulateMatchesRun(t *testing.T) {
 	for _, c := range []struct {
 		name, fixture string
@@ -209,7 +210,8 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 }
 
 // simulateComparable is the trace's lines but those of presentation and music, each with its
-// tick when requested; the end line without its count of lines. Presentation
+// tick when requested; the end line without its count of lines and save_write
+// without its wall-clock time. Presentation
 // readiness can add render-wait ticks without changing the event sequence.
 func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 	t.Helper()
@@ -225,6 +227,8 @@ func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 		case "end":
 			m = maps.Clone(m)
 			delete(m, "lines")
+		case "save_write":
+			delete(m, "time")
 		}
 		line := comparableLine(m)
 		if ticks {

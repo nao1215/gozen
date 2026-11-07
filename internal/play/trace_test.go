@@ -568,7 +568,7 @@ func TestTraceRestoresPresentationSettings(t *testing.T) {
 
 func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "trace.jsonl")
-	trace := `{"t":"start","tick":0,"version":1,"seed":7}
+	trace := `{"t":"start","tick":0,"exact_version":1,"version":1,"seed":7}
 {"t":"act","tick":3,"name":"window","args":{"width":960,"height":540}}
 {"t":"end","tick":5}
 `
@@ -637,7 +637,7 @@ func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
 	for _, kind := range append(sortedKeys(inexactReplayKinds), "future_kind") {
 		t.Run(kind, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "trace.jsonl")
-			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
+			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"exact_version\":1,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
 			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -697,5 +697,350 @@ func TestReplayRejectsPanelThroughTarget(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// assertSourceRefused checks the actual runtime record, not only the kind registry.
+func assertSourceRefused(t *testing.T, buf *bytes.Buffer, kind string) {
+	t.Helper()
+	lines := traceLines(t, buf.Bytes(), kind)
+	if len(lines) == 0 {
+		t.Fatalf("source did not record %s: %s", kind, buf)
+	}
+	for _, line := range lines {
+		raw, err := json.Marshal(line)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var exact ExactReplay
+		if err := exact.Check(kind, int(num(line["tick"])), raw); err == nil {
+			t.Fatalf("accepted unrecorded source %s", kind)
+		}
+	}
+}
+
+func TestTraceSourceBoundaries(t *testing.T) {
+	for _, source := range []string{"IME", "memo", "graphs", "focus", "carry", "settings", "frame meter", "voice", "reload", "scene review", "picture review", "save error", "unlock error", "audio timing"} {
+		t.Run(source, func(t *testing.T) {
+			g := storyGame(t, Options{Location: "camp", Event: "first", Development: true}, "schema_version: 4\n")
+			var buf bytes.Buffer
+			g.tr = newTracer(&buf)
+			g.tick = 3
+			switch source {
+			case "IME":
+				f := &textField{}
+				f.start(g, func() (float64, float64) { return 0, 0 })
+				// Even a composition that is never committed is outside recorded input.
+				f.comp = "unfinished"
+				assertSourceRefused(t, &buf, "text_input")
+			case "memo":
+				g.openMemo()
+				g.memo.typed = true
+				g.typeMemo("unfinished")
+				assertSourceRefused(t, &buf, "memo_open")
+				g.closeMemo()
+			case "graphs":
+				g.in.pressed[btnGraphs] = true
+				g.updateGraphs()
+				assertSourceRefused(t, &buf, "graphs")
+			case "focus":
+				g.rendering, g.pauseUnfocused = true, true
+				if !g.pauseForFocus(false) {
+					t.Fatal("expected focus pause")
+				}
+				assertSourceRefused(t, &buf, "focus_pause")
+			case "carry":
+				g.db.Game.Carry = []string{"flag.*"}
+				g.carry = nil
+				g.loadCarry()
+				assertSourceRefused(t, &buf, "carry_read")
+			case "settings":
+				if err := g.saveConfig(); err != nil {
+					t.Fatal(err)
+				}
+				assertSourceRefused(t, &buf, "config_write")
+			case "frame meter":
+				g.meter.toggle()
+				if err := g.traceStart(); err != nil {
+					t.Fatal(err)
+				}
+				assertSourceRefused(t, &buf, "start")
+			case "audio timing":
+				g.holdWinSong("ending")
+				assertSourceRefused(t, &buf, "audio_timing")
+			case "reload":
+				g.askReload()
+				assertSourceRefused(t, &buf, "live_reload")
+			case "scene review":
+				g.opts.ReviewLog = filepath.Join(t.TempDir(), "review.jsonl")
+				(&sceneCheck{}).load(g)
+				assertSourceRefused(t, &buf, "scene_review")
+			case "picture review":
+				g.opts.ReviewLog = filepath.Join(t.TempDir(), "review.jsonl")
+				newCGReview(g)
+				assertSourceRefused(t, &buf, "cg_review")
+			case "save error", "unlock error":
+				g.store = &retryStore{Store: savefile.MemStore(), writes: map[string]int{}, fail: map[string]error{g.slotPath(0): errors.New("full"), g.galleryPath(): errors.New("full")}}
+				if source == "save error" {
+					if err := g.save(0); err == nil {
+						t.Fatal("expected failed save")
+					}
+				} else {
+					g.unlockDirty = true
+					g.saveUnlocks()
+				}
+				assertSourceRefused(t, &buf, "persistence_error")
+			case "voice":
+				g.playVoice(&g.talk, event.Say{Voice: "missing.ogg"})
+				assertSourceRefused(t, &buf, "voice")
+			}
+		})
+	}
+}
+
+func TestTraceStreamTextRefusedBeforeSubmission(t *testing.T) {
+	for _, source := range []string{"comment", "tip", "name"} {
+		t.Run(source, func(t *testing.T) {
+			g, w, _ := voicedShow(t)
+			var buf bytes.Buffer
+			g.tr = newTracer(&buf)
+			if source == "name" {
+				g.st.Streams.Viewer = ""
+				g.stack = []scene{newStreamLobby(g, nil)}
+			} else {
+				w.typing, w.tips = source == "comment", source == "tip"
+			}
+			g.typeMemo("For seeds")
+			assertSourceRefused(t, &buf, "text_input")
+			if source != "name" {
+				if w.field.text != "For seeds" {
+					t.Fatal("normal typing changed")
+				}
+				g.in.pressed[btnOK] = true
+				w.input(g)
+				kind := "stream_comment"
+				if source == "tip" {
+					kind = "stream_tip"
+				}
+				assertSourceRefused(t, &buf, kind)
+			}
+		})
+	}
+}
+
+func TestTraceStreamClockRefused(t *testing.T) {
+	var buf bytes.Buffer
+	g := wldOpenWith(t, Options{FS: streamsFS(t, "0"), Trace: &buf, Location: "booth", Now: func() time.Time { return noonish }})
+	if g.desk == nil {
+		t.Fatal("stream clock did not start")
+	}
+	assertSourceRefused(t, &buf, "now")
+}
+
+func TestTraceSaveWriteRestoresDisplayedTime(t *testing.T) {
+	for _, known := range []bool{true, false} {
+		t.Run(strconv.FormatBool(known), func(t *testing.T) {
+			clock := time.Date(2024, 2, 3, 4, 5, 0, 0, time.UTC)
+			var store Store = kvStore{kv: &memKV{m: map[string]string{}}, now: func() time.Time { return clock }}
+			if !known {
+				store = struct{ Store }{store}
+			} // Deliberately no ModTime capability.
+			var buf bytes.Buffer
+			g := storyGame(t, Options{Location: "camp", Trace: &buf, Store: store, Seed: 7}, "schema_version: 4\n")
+			g.tick = 2
+			if err := g.save(0); err != nil {
+				t.Fatal(err)
+			}
+			want, ok := g.slotLabel(0)
+			if !ok {
+				t.Fatal("recording cannot read its save")
+			}
+			g.tick = 3
+			g.traceEnd()
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			clock = clock.Add(48 * time.Hour)
+			g = storyGame(t, Options{Replay: path, Until: 4, Store: store}, "schema_version: 4\n")
+			g.tick = 2
+			if err := g.save(0); err != nil {
+				t.Fatal(err)
+			}
+			got, ok := g.slotLabel(0)
+			if !ok || got != want {
+				t.Fatalf("save screen changed: %q, want %q", got, want)
+			}
+			if _, gotKnown := g.storeTime(g.slotPath(0)); gotKnown != known {
+				t.Fatal("timestamp availability changed")
+			}
+		})
+	}
+}
+
+func TestTraceExternalSaveChangesRefused(t *testing.T) {
+	for _, source := range []string{"bytes", "timestamp", "read error"} {
+		t.Run(source, func(t *testing.T) {
+			var buf bytes.Buffer
+			g := storyGame(t, Options{Location: "camp", Store: savefile.MemStore()}, "schema_version: 4\n")
+			if err := g.save(0); err != nil {
+				t.Fatal(err)
+			}
+			underlying := g.store
+			g.opts.Trace, g.tr = &buf, newTracer(&buf)
+			if err := g.traceStart(); err != nil {
+				t.Fatal(err)
+			}
+			g.tick = 2
+			switch source {
+			case "bytes":
+				if err := underlying.Write(g.slotPath(0), []byte("changed")); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := g.load(0); err == nil {
+					t.Fatal("loading changed save bytes succeeded")
+				}
+			case "timestamp":
+				b, err := underlying.Read(g.slotPath(0))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := underlying.Write(g.slotPath(0), b); err != nil {
+					t.Fatal(err)
+				}
+				g.storeTime(g.slotPath(0))
+			case "read error":
+				store, ok := g.store.(*traceStore)
+				if !ok {
+					t.Fatal("tracing did not wrap the save store")
+				}
+				readErr := errors.New("unavailable")
+				store.Store = sysFailingStore{Store: savefile.MemStore(), readErr: readErr}
+				if _, err := g.load(0); !errors.Is(err, readErr) {
+					t.Fatalf("load error = %v, want %v", err, readErr)
+				}
+			}
+			assertSourceRefused(t, &buf, "external_save")
+		})
+	}
+}
+
+func TestTraceResourcesRejectChangedInputs(t *testing.T) {
+	for _, file := range []string{"assets/regular.ttf", "assets/image.png", "assets/voice.ogg", "assets/faces.json", "lang/en.yaml"} {
+		t.Run(file, func(t *testing.T) {
+			base := gameFiles(t)
+			base[file] = &fstest.MapFile{Data: []byte("original")}
+			want, err := traceResources(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fingerprint, err := traceFingerprint(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := &replay{version: traceVersion, fingerprint: fingerprint, setup: traceSetup{Resources: want}}
+			base[file].Data = []byte("edited")
+			g := &Game{opts: Options{FS: base, Seed: 7}}
+			if err := r.prepare(g); err == nil || !strings.Contains(err.Error(), "assets or translations changed") {
+				t.Fatalf("changed %s: %v", file, err)
+			}
+		})
+	}
+}
+
+func TestExactReplayRequiresSourceAuditRevision(t *testing.T) {
+	for _, revision := range []int{0, 2} {
+		var exact ExactReplay
+		err := exact.Check("start", 0, fmt.Appendf(nil, `{"exact_version":%d}`, revision))
+		if err == nil || !strings.Contains(err.Error(), "record again") {
+			t.Fatalf("revision %d: %v", revision, err)
+		}
+	}
+}
+
+func TestTraceProfileDeviceInputRefused(t *testing.T) {
+	g := bookGame(t, Options{Location: "camp"}, "")
+	var buf bytes.Buffer
+	g.tr = newTracer(&buf)
+	newProfiles(g, nil)
+	assertSourceRefused(t, &buf, "profiles")
+}
+
+func TestTraceAsyncPictureRefused(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp"}, "schema_version: 4\n")
+	var buf bytes.Buffer
+	g.tr = newTracer(&buf)
+	g.dollSheet(newDollSpec("x.png", nil, 30))
+	assertSourceRefused(t, &buf, "async_picture")
+}
+
+func TestTraceMusicRoomSeedRestored(t *testing.T) {
+	var buf bytes.Buffer
+	g := storyGame(t, Options{Trace: &buf}, "schema_version: 4\n")
+	if g.opts.Seed == 0 {
+		t.Fatal("recording retained an unseeded RNG")
+	}
+	room := newMusicRoom(g)
+	pool := []string{"first", "second", "third"}
+	var want []string
+	for range 20 {
+		want = append(want, pickBackground(pool, "", room.rnd))
+	}
+	g.traceEnd()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "trace.jsonl")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	g = storyGame(t, Options{Replay: path, Until: 1}, "schema_version: 4\n")
+	room = newMusicRoom(g)
+	for _, expected := range want {
+		if got := pickBackground(pool, "", room.rnd); got != expected {
+			t.Fatalf("shuffle: %s, want %s", got, expected)
+		}
+	}
+}
+
+func TestReplayIgnoresLiveFullscreenHotkey(t *testing.T) {
+	g := &Game{rep: &replay{partial: true}}
+	g.toggleFullscreen()
+	if g.cfg.Fullscreen || g.failure != nil {
+		t.Fatal("live fullscreen hotkey changed replay")
+	}
+}
+
+func TestReplayRefusesUnrecordedSaveClock(t *testing.T) {
+	g := &Game{rep: &replay{partial: true}, tick: 4}
+	s := &replayStore{Store: savefile.MemStore(), game: g, times: map[string]time.Time{}}
+	if err := s.Write(g.slotPath(0), []byte("save")); err == nil || g.failure == nil {
+		t.Fatal("an unrecorded save received a fabricated timestamp")
+	}
+	if _, err := s.Read(g.slotPath(0)); err == nil {
+		t.Fatal("refused save reached storage")
+	}
+}
+
+func TestReplayPreservesMultipleSaveClocksWithinTick(t *testing.T) {
+	first := time.Date(2025, 1, 2, 3, 4, 0, 0, time.FixedZone("recorded", 9*60*60))
+	second := first.Add(time.Minute)
+	g := &Game{rep: &replay{partial: true}, tick: 2}
+	name := g.slotPath(0)
+	s := &replayStore{Store: savefile.MemStore(), game: g, times: map[string]time.Time{}, writes: map[int]map[string][]*time.Time{2: {name: {&first, &second}}}}
+	for _, want := range []time.Time{first, second} {
+		if err := s.Write(name, []byte("save")); err != nil {
+			t.Fatal(err)
+		}
+		got, err := s.ModTime(name)
+		if err != nil || got.Format(time.RFC3339) != want.Format(time.RFC3339) {
+			t.Fatalf("got %v (%v), want %v", got, err, want)
+		}
+	}
+	if err := s.Write(name, []byte("extra")); err == nil {
+		t.Fatal("accepted extra write")
 	}
 }

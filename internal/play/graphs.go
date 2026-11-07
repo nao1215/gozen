@@ -138,6 +138,9 @@ func (g *Game) updateGraphs() {
 	p := &g.graphs
 	if g.in.pressedKey(btnGraphs) {
 		p.on = !p.on
+		if p.on {
+			g.emit("graphs", nil)
+		}
 	}
 	if !p.on || g.fast != nil || g.st == nil || g.db == nil {
 		return

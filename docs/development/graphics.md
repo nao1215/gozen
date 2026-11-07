@@ -84,12 +84,15 @@ before its argument. JSON output uses the usual result envelope; its `data`
 contains `game_dir`, the exact integer `seed`, `start_options`, `initial_saves`,
 `initial_memo` when present, `tick`, `until`, `argv`, `command`, and `screenshot`.
 
-New start records include `game_dir`, `scripted`, device locales,
+New start records include `exact_version: 1`, `game_dir`, `scripted`, device locales,
 book display options, the development mode, window scale and effective fullscreen setting, and, inside `setup`,
-`save_data` (base64 bytes), `save_times`, and optional `memo` (the initial save,
+`save_data` (base64 bytes), `save_times`, `resources` (an asset/translation digest), and optional `memo` (the initial save,
 resume cursor and randomness). Existing configuration, read marks, unlocks,
 start/event/flag options, save digests and data fingerprint remain recorded.
-Replay restores these saves in memory, including their ordering for Continue;
+Successful `save_write` records include `file`, `time`, and `time_known`. Replay
+restores subsequent writes with their recorded timestamp and UTC offset, or with
+no timestamp when the original store provided none. Replay restores initial saves
+in memory, including their ordering for Continue;
 it never overwrites the original slots. The trace may contain saved player data.
 
 `--out` requires a new directory and writes `trace.jsonl` through the chosen tick,
@@ -128,7 +131,7 @@ Exact reproduction uses the shared `ExactReplay` validator in
 `internal/play/trace.go`. Both `trace --repro` and `run --replay ... --until N`
 accept only explicitly listed record kinds through the target tick (`N - 1`
 for `--until`). `exactReplayKinds` documents the complete allow-list: `start`
-and `now` restore context, `input` and supported `act` names drive replay,
+restores context, `save_write` restores save timestamps, `input` and supported `act` names drive replay,
 `repro` marks the seek boundary, and the other listed records describe derived
 outcomes or presentation. Viewports must remain unchanged. Unknown action names
 are rejected too.
@@ -141,7 +144,57 @@ and future unknown kinds. A mutation after the target does not prevent an
 earlier reproduction. The constructor audit in `trace_test.go` scans all runtime
 `emit` calls and requires each kind to appear in exactly one of the allow-list
 or the explicit non-reproducible list. Dynamic kind constructors fail the audit.
-Older traces containing redundant script mutation facts must be recorded again.
+Older traces without `exact_version: 1` must be recorded again for exact
+reproduction: their missing source markers cannot be reconstructed. Ordinary
+replay without `--until` retains its older trace support.
+
+#### External-state audit
+
+The table covers the runtime in `internal/play` and its lower-layer dependencies.
+“Recorded” means captured in the trace; “restored” means reconstructed from that
+record or deterministic immutable inputs; “refused” means the shared validator
+rejects the source through the target tick, even if its UI has since closed.
+This is a screen reproduction contract, not an audio recording contract. Use the
+same engine build, renderer and display scale. Game files must remain immutable
+through recording and replay; startup verifies YAML plus all files under `assets/`
+and `lang/`, including fonts, picture metadata, sound and translations. A changed
+resource fails replay before play starts. Live editing is refused as below.
+
+| Source and runtime owner | Reproduction handling | Contract coverage |
+| --- | --- | --- |
+| Keyboard, gamepad, pointer position/buttons, drag release, wheel, Shift, held controls (`input.go`) | **Recorded** per tick; **restored** by `replay.feed`. Script and streamed script operations use recorded inputs and the action allow-list, independent of reader-goroutine completion. | Input replay tests; `TestTraceReproScriptDirectActions` |
+| Script `typeMemo`, unsubmitted text, IME composition/commit, Backspace; stream name/comment/tip fields (`memo.go`, `textfield.go`, `streams_*`) | **Refused** at `text_input` when a field is connected or script text is delivered. `stream_comment` and `stream_tip` are also refused. No submission is required. | `TestTraceStreamTextRefusedBeforeSubmission`, `TestTraceSourceBoundaries/IME` |
+| F8 command field and Frames tab (`devpanel.go`, `meter.go`) | **Refused** at `panel`, before raw typing or `time.Now`/`time.Since` measurements. | `TestReplayRejectsPanelThroughTarget` |
+| F9 memo editor, external editor goroutine, memo timestamp/elapsed seconds, disk writes and filename toast (`memo.go`, `entry_linux.go`, `layer1/memo`) | **Refused** at `memo_open`, before typing or external input; `memo` is also refused. `Game.started` and memo clocks affect only this path. | `TestTraceSourceBoundaries/memo` |
+| Initial memo save, cursor, random state and legacy-loading option (`memo_resume.go`) | **Recorded/restored** in `setup.memo`, without rereading the original memo. | `TestTraceReproRestoresSavesAndMemo` |
+| Initial save bytes, modification times and Continue ordering (`store.go`, `savefile`, browser storage) | **Recorded/restored** in memory. A recording-only store observer **refuses** subsequent external byte, timestamp or read-error changes at `external_save`. | `TestTraceReproRestoresSavesAndMemo`, `TestTraceExternalSaveChangesRefused` |
+| Manual saves and autosaves, including OS, memory and browser clocks | **Recorded/restored** by `save_write`, including timestamp availability and offset. Replay never uses `time.Now` for writes. Failed writes are **refused** at `persistence_error`; backup-dependent writes at `save_backup`. | `TestTraceSaveWriteRestoresDisplayedTime`, `TestTraceSourceBoundaries/save_error` |
+| Carry values loaded outside slots (`carry.go`) | **Refused** at `carry_read` before the first read, including a missing file; `carry` is also refused. | `TestTraceSourceBoundaries/carry` |
+| Read marks and gallery unlocks (`readlog.go`, `gallery.go`) | Initial values **recorded/restored**; later changes derived from recorded play. Read-progress write failures terminate the run; unlock write failures can show a retry banner and are **refused** at `persistence_error`. | Presentation/save replay tests; `TestTraceSourceBoundaries/unlock_error` |
+| Settings file, device locales, language, theme, display options (`config.go`, `locale_*`, `trace.go`) | Initial effective configuration and locales **recorded/restored**. Settings writes, including fullscreen hotkeys and their I/O errors, are **refused** at `config_write`. | `TestTraceRestoresPresentationSettings`, `TestTraceSourceBoundaries/settings` |
+| Fonts, translations, pictures, face metadata and sound files (`msgfit.go`, `assets.go`, `layer5/gfx`, `layer5/sound`) | **Restored** from immutable, fingerprint-verified resources. Bundled fallback fonts belong to the required matching engine build. No host-font discovery occurs. | `TestTraceResourcesRejectChangedInputs` |
+| Injected state or browser `?fps` frame meter | **Refused** in `setup.unsupported`. The browser meter also uses wall-clock frame measurements. | `TestTraceRejectsInjectedState`, `TestTraceSourceBoundaries/frame_meter` |
+| Stream clock (`streams.go`), away earnings, private crowd RNG, browser visibility callbacks | Although `now` records the base time and offset, exact reproduction is **refused** at the first `now`: later stream state also depends on unsupported input, speech and loading completion. | `TestTraceStreamClockRefused` |
+| Voice decode goroutines, browser speech completion, stream unanswered-comment files | **Refused** by stream initialization and `voice`/`stream_error`, before their timing or I/O can affect a supported target. | Stream clock/text boundary tests; existing stream voice timeout tests |
+| Dialogue voice duration/auto-wait (`voice.go`) | **Refused** at `voice`, including missing clips. This avoids accepting voice-dependent timing under different playback/seek conditions. | `TestTraceSourceBoundaries/voice` |
+| Boss fanfare completion (`battle_drama.go`) | **Refused** at `audio_timing` before polling the audio player's state. | `TestTraceSourceBoundaries/audio_timing` |
+| SFX variation clock and unseeded random pitch/volume (`layer5/sound/vary.go`), effect-player completion | **Restored screen state**: these affect audio samples/player cleanup only, with no feedback into game state or pixels. Exact audio is outside this contract. | Sound variation tests; muted graphics reproduction tests |
+| Gameplay/collection RNG, legacy-save parsing, music-room background shuffle (`play.go`, `rpg`, `gallery_music.go`) | **Recorded/restored** seed; traced runs replace seed zero before any RNG is created. Music-room wall-clock fallback and RPG unseeded fallbacks are not used by a supported recording's gameplay. Save-validation-only RNG does not change the live state. | Same-seed trace tests; `TestTraceMusicRoomSeedRestored` |
+| Puppet animation RNG and display previews (`puppets.go`, `meters.go`, `layer5/puppet`) | **Restored** from stable actor hashes or a clone of the game RNG. Simulation ticks advance animation; Draw does not advance it. | `TestEnemyPuppetMotionDoesNotDependOnDrawing`, graphics seek comparison |
+| Picture preload workers (`assets.go`, `picdecode`, `webfs`) | **Restored**: requested ordinary pictures synchronously join their load; preloading changes latency only. Captured doll/face loads wait without advancing ticks; the `time.Now` deadline fails instead of accepting a placeholder. | `TestDollCaptureWaitsForRequestedPicture`, `TestDollCaptureTimeoutDoesNotSavePlaceholder` |
+| Asynchronously appearing doll/face sheets during interactive play (`stage_dolls.go`) | **Refused** at `async_picture` when an asynchronous request starts. Even a later completed frame is outside the accepted prefix. | `TestTraceAsyncPictureRefused` |
+| F7 balance computation budget (`graphs.go`, `time.Now`/`time.Since`) | **Refused** at `graphs` when opened; partial progress depends on machine speed. | `TestTraceSourceBoundaries/graphs` |
+| Profile swipes/raw Tab and touch polling (`profiles.go`) | **Refused** at `profiles` on opening the book. | `TestTraceProfileDeviceInputRefused` |
+| Window size/layout, focus loss, fullscreen, browser visibility | Viewport **recorded**, changed viewports/window actions **refused**. Focus loss resets movement and is **refused** at `focus_pause`. Fullscreen uses `config_write`; stream browser visibility is refused with streams. | Viewport tests; `TestTraceSourceBoundaries/focus` |
+| Live reload watcher and reload requests (`live.go`) | **Refused** at `live_reload`, including requests that only show an unavailable/retry message. | `TestTraceSourceBoundaries/reload`, existing live-reload tests |
+| Review logs, review text, timestamped verdict writes (`scenecheck.go`, `cgreview.go`) | **Refused** at review entry before reading files; review writes remain refused too. | `TestTraceSourceBoundaries/scene_review`, `picture_review` |
+| Screenshot/PNG workers and video output (`shots.go`, `record.go`) | **Restored screen state**: workers receive copied pixels; completion never mutates game state. I/O failure terminates the run. A target screenshot waits for requested pictures. | Screenshot failure tests; `TestGraphicsScreensRepro` |
+| Debug logging, autoplay reports, seek-loop budgets, browser cooperative yields (`play.go`, `autopilot.go`, `layer1/pace`) | **Restored screen state**: `time.Now`/`time.Since` affect diagnostics, scheduling or report files only. Seek batches preserve simulation ticks; these clocks never enter accepted screen state. | `TestTraceReproBatchesPreserveTargetState`, `TestTraceReproBatchesIdleTicks` |
+
+Source markers are emitted at operations rather than by a new per-frame scan.
+The store observer and resource fingerprints exist only for tracing/replay;
+ordinary play retains its input, clocks, storage and loading behavior.
+
 
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep

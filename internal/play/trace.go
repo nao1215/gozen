@@ -2,6 +2,7 @@ package play
 
 import (
 	"bufio"
+	"bytes"
 	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
@@ -34,11 +35,12 @@ import (
 
 type tracer struct {
 	// inAct suppresses redundant panel mutation records already replayed by act.
-	inAct    bool
-	viewport traceViewport
-	enc      *lineWriter
-	lines    int
-	err      error
+	inAct     bool
+	focusLost bool
+	viewport  traceViewport
+	enc       *lineWriter
+	lines     int
+	err       error
 
 	scenes string
 	music  string
@@ -169,6 +171,13 @@ func (g *Game) traceStart() error {
 		return err
 	}
 	setup := traceSetup{Config: g.cfg, Read: g.read, Unlocked: g.unlocked}
+	setup.Resources, err = traceResources(g.opts.FS)
+	if err != nil {
+		return err
+	}
+	if g.meter.on {
+		setup.Unsupported = append(setup.Unsupported, "frame meter")
+	}
 	setup.Saves, err = g.traceSaves()
 	if err != nil {
 		return err
@@ -202,7 +211,7 @@ func (g *Game) traceStart() error {
 	}
 	g.emit("start", traceLine{
 		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
-		"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"exact_version": 1, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"window": o.Window, "fullscreen": g.cfg.Fullscreen, "development": o.Development,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
@@ -210,7 +219,74 @@ func (g *Game) traceStart() error {
 		"scene": o.Scene, "event": o.Event, "line": o.Line, "picture": o.Picture, "answers": o.Answers,
 		"autopilot": g.isAutopilot(), "fingerprint": fingerprint, "setup": setup,
 	})
+	if g.opts.Trace != nil {
+		g.store = &traceStore{Store: g.store, game: g, initial: setup.SaveData, times: setup.SaveTimes}
+	}
 	return g.tr.err
+}
+
+// traceStore detects external slot edits at the I/O boundary. Only recordings
+// install it; ordinary play pays no additional read or per-frame cost.
+type traceStore struct {
+	Store
+	game    *Game
+	initial map[string][]byte
+	times   map[string]time.Time
+}
+
+func (s *traceStore) slot(name string) bool {
+	for i := range saveSlots + 1 {
+		if name == s.game.slotPath(i) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *traceStore) Read(name string) ([]byte, error) {
+	b, err := s.Store.Read(name)
+	if s.slot(name) {
+		want, exists := s.initial[name]
+		if (exists && (err != nil || !bytes.Equal(b, want))) ||
+			(!exists && !errors.Is(err, fs.ErrNotExist)) {
+			s.game.emit("external_save", nil)
+		}
+	}
+	return b, err
+}
+
+func (s *traceStore) Write(name string, b []byte) error {
+	err := s.Store.Write(name, b)
+	if err == nil && s.slot(name) {
+		s.initial[name] = bytes.Clone(b)
+		if st, ok := s.Store.(interface {
+			ModTime(string) (time.Time, error)
+		}); ok {
+			if stamp, err := st.ModTime(name); err == nil {
+				s.times[name] = stamp
+			} else {
+				delete(s.times, name)
+			}
+		}
+	}
+	return err
+}
+
+func (s *traceStore) ModTime(name string) (time.Time, error) {
+	var t time.Time
+	err := fs.ErrNotExist
+	if st, ok := s.Store.(interface {
+		ModTime(string) (time.Time, error)
+	}); ok {
+		t, err = st.ModTime(name)
+	}
+	if s.slot(name) {
+		want, exists := s.times[name]
+		if (exists && (err != nil || !want.Equal(t) || want.Format("01/02 15:04") != t.Format("01/02 15:04"))) || (!exists && err == nil) {
+			s.game.emit("external_save", nil)
+		}
+	}
+	return t, err
 }
 
 func traceFingerprint(fsys fs.FS) (string, error) {
@@ -244,6 +320,40 @@ func traceFingerprint(fsys fs.FS) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), err
 }
 
+// traceResources fingerprints fonts, pictures, sounds, metadata and translations
+// once at startup. These files must stay immutable during a recorded run.
+func traceResources(fsys fs.FS) (string, error) {
+	h := sha256.New()
+	if fsys != nil {
+		for _, root := range []string{"assets", "lang"} {
+			err := fs.WalkDir(fsys, root, func(name string, d fs.DirEntry, err error) error {
+				if errors.Is(err, fs.ErrNotExist) && name == root {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+				b, err := fs.ReadFile(fsys, name)
+				if err != nil {
+					return err
+				}
+				if _, err := fmt.Fprintf(h, "%d:%s:%d:", len(name), name, len(b)); err != nil {
+					return err
+				}
+				_, err = h.Write(b)
+				return err
+			})
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 type traceMemo struct {
 	Memo        memo.Memo `json:"memo"`
 	Save        []byte    `json:"save"`
@@ -252,6 +362,7 @@ type traceMemo struct {
 }
 
 type traceSetup struct {
+	Resources   string               `json:"resources,omitempty"`
 	SaveData    map[string][]byte    `json:"save_data"`
 	SaveTimes   map[string]time.Time `json:"save_times,omitempty"`
 	Memo        *traceMemo           `json:"memo,omitempty"`
@@ -594,7 +705,8 @@ type traceViewport struct {
 }
 
 type replay struct {
-	scripted bool
+	saveWrites map[int]map[string][]*time.Time
+	scripted   bool
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
@@ -642,7 +754,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
-	r := &replay{inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
+	r := &replay{saveWrites: map[int]map[string][]*time.Time{}, inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	if o.Until < 0 {
@@ -782,6 +894,23 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
+		case "save_write":
+			var write struct {
+				File  string    `json:"file"`
+				Time  time.Time `json:"time"`
+				Known bool      `json:"time_known"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &write); err != nil {
+				return nil, err
+			}
+			if r.saveWrites[tick] == nil {
+				r.saveWrites[tick] = map[string][]*time.Time{}
+			}
+			var stamp *time.Time
+			if write.Known {
+				stamp = &write.Time
+			}
+			r.saveWrites[tick][write.File] = append(r.saveWrites[tick][write.File], stamp)
 		case "now":
 			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
 		default:
@@ -862,6 +991,15 @@ func (r *replay) prepare(g *Game) error {
 	}
 	if fingerprint == "" || fingerprint != r.fingerprint {
 		return errors.New(lang.T("replay のデータの指紋が一致しない"))
+	}
+	if r.setup.Resources != "" {
+		resources, err := traceResources(g.opts.FS)
+		if err != nil {
+			return err
+		}
+		if resources != r.setup.Resources {
+			return errors.New("replay: assets or translations changed")
+		}
 	}
 	saves, err := g.traceSaves()
 	if err != nil {
@@ -1188,6 +1326,8 @@ func (g *Game) traceBattleDecisions(b *battle.Battle) {
 
 // replayStore preserves slot ordering for Continue while isolating replay writes.
 type replayStore struct {
+	game   *Game
+	writes map[int]map[string][]*time.Time
 	Store
 	times map[string]time.Time
 }
@@ -1201,10 +1341,34 @@ func (s *replayStore) ModTime(name string) (time.Time, error) {
 }
 
 func (s *replayStore) Write(name string, b []byte) error {
+	if s.game != nil && s.game.rep != nil && s.game.rep.partial {
+		for i := range saveSlots + 1 {
+			if name == s.game.slotPath(i) {
+				if len(s.writes[s.game.tick][name]) == 0 {
+					s.game.failure = fmt.Errorf("cannot reproduce exactly: unrecorded save write at tick %d", s.game.tick)
+					return s.game.failure
+				}
+			}
+		}
+	}
 	if err := s.Store.Write(name, b); err != nil {
 		return err
 	}
-	s.times[name] = time.Now()
+	// A recorded write preserves both the local offset and timestamp availability.
+	if s.game != nil {
+		if stamps := s.writes[s.game.tick][name]; len(stamps) > 0 {
+			stamp := stamps[0]
+			s.writes[s.game.tick][name] = stamps[1:]
+			if stamp == nil {
+				delete(s.times, name)
+			} else {
+				s.times[name] = *stamp
+			}
+			return nil
+		}
+	}
+	// Older ordinary replays have no clock record; exact replay refuses them.
+	s.times[name] = time.Unix(0, 0).UTC()
 	return nil
 }
 
@@ -1212,7 +1376,7 @@ func (r *replay) restoreSaves(g *Game) error {
 	if r.setup.SaveData == nil {
 		return nil
 	}
-	s := &replayStore{Store: savefile.MemStore(), times: maps.Clone(r.setup.SaveTimes)}
+	s := &replayStore{game: g, writes: r.saveWrites, Store: savefile.MemStore(), times: maps.Clone(r.setup.SaveTimes)}
 	if s.times == nil {
 		s.times = map[string]time.Time{}
 	}
@@ -1247,8 +1411,9 @@ type ExactReplay struct {
 }
 
 // exactReplayKinds is the explicit allow-list. Input and act drive replay; start
-// and now restore its context. The remaining records describe deterministic
-// outcomes or presentation, not additional mutations. repro is a seek boundary.
+// restores its context and save_write restores storage clocks. Remaining records
+// describe deterministic outcomes or presentation, not additional mutations.
+// repro is a seek boundary.
 var exactReplayKinds = map[string]bool{
 	"act":                 true,
 	"activate":            true,
@@ -1264,7 +1429,6 @@ var exactReplayKinds = map[string]bool{
 	"battle_music":        true,
 	"battle_result":       true,
 	"battle_step":         true,
-	"carry":               true,
 	"checkpoint_restored": true,
 	"clash":               true,
 	"clash_hit":           true,
@@ -1279,22 +1443,19 @@ var exactReplayKinds = map[string]bool{
 	"input":               true,
 	"layout":              true,
 	"look":                true,
-	"memo":                true,
 	"menu":                true,
 	"message_open":        true,
 	"music":               true,
 	"notice":              true,
-	"now":                 true,
 	"order":               true,
-	"profiles":            true,
 	"ready":               true,
 	"region":              true,
 	"repro":               true,
 	"request":             true,
 	"resume":              true,
 	"rollback":            true,
-	"save_backup":         true,
 	"save_load":           true,
+	"save_write":          true,
 	"say":                 true,
 	"scene":               true,
 	"screen_action":       true,
@@ -1310,16 +1471,11 @@ var exactReplayKinds = map[string]bool{
 	"stand":               true,
 	"start":               true,
 	"state":               true,
-	"stream":              true,
-	"stream_comment":      true,
-	"stream_error":        true,
-	"stream_tip":          true,
 	"travel":              true,
 	"turn":                true,
 	"unlock":              true,
 	"view":                true,
 	"viewport":            true,
-	"voice":               true,
 }
 
 // Action names are checked separately: an act record is not permission to run
@@ -1340,23 +1496,43 @@ var exactReplayActions = map[string]bool{
 // Non-reproducible kinds are explicitly classified for the constructor audit.
 // This is not a fallback: every kind absent from exactReplayKinds is rejected.
 var inexactReplayKinds = map[string]bool{
+	"async_picture":      true,
+	"audio_timing":       true,
 	"battle_setup":       true,
+	"carry":              true,
+	"carry_read":         true,
 	"cg_review":          true,
 	"cg_review_tag":      true,
+	"config_write":       true,
 	"dev_do":             true,
 	"dev_set":            true,
 	"diverge":            true,
+	"external_save":      true,
+	"focus_pause":        true,
+	"graphs":             true,
 	"guide":              true,
 	"guide_blocked":      true,
 	"guide_done":         true,
 	"jump":               true,
 	"live_reload":        true,
+	"memo":               true,
+	"memo_open":          true,
+	"now":                true,
 	"panel":              true, // Typed text and wall-clock frame measurements are not recorded.
+	"persistence_error":  true,
 	"pick_error":         true,
 	"problem":            true,
+	"profiles":           true,
+	"save_backup":        true,
 	"scene_review":       true,
 	"script_error":       true,
+	"stream":             true,
+	"stream_comment":     true,
+	"stream_error":       true,
+	"stream_tip":         true,
+	"text_input":         true,
 	"unsupported_script": true,
+	"voice":              true,
 }
 
 // Check rejects any record not known to replay exactly, including future kinds.
@@ -1366,6 +1542,20 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 		return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
 	}
 	switch kind {
+	case "start":
+		var start struct {
+			ExactVersion int        `json:"exact_version"`
+			Setup        traceSetup `json:"setup"`
+		}
+		if err := json.Unmarshal(raw, &start); err != nil {
+			return err
+		}
+		if start.ExactVersion != 1 {
+			return errors.New("cannot reproduce exactly: trace lacks the source audit revision; record again")
+		}
+		if len(start.Setup.Unsupported) > 0 {
+			return fmt.Errorf("cannot reproduce exactly: unsupported start conditions %v", start.Setup.Unsupported)
+		}
 	case "act":
 		var act struct {
 			Name string `json:"name"`

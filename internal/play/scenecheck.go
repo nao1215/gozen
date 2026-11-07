@@ -66,6 +66,7 @@ func sceneTags(g *Game) []data.CGReviewTag {
 }
 
 func (c *sceneCheck) load(g *Game) {
+	g.emit("scene_review", traceLine{"open": true})
 	c.verdict = map[string]sceneReviewLine{}
 	f, err := os.Open(g.sceneReviewLog())
 	if err != nil {

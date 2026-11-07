@@ -909,6 +909,10 @@ func (g *Game) pauseForFocus(focused bool) bool {
 	if focused || !g.rendering || g.in.script != nil || g.auto != nil || g.rep != nil {
 		return false
 	}
+	if g.tr != nil && !g.tr.focusLost {
+		g.tr.focusLost = true
+		g.emit("focus_pause", nil)
+	}
 	g.resetFreeMotion()
 	// The external memo editor intentionally completes while the game lacks
 	// focus. Keep collecting its result and expiring its completion toast.

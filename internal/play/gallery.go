@@ -111,6 +111,9 @@ func (g *Game) saveUnlocks() {
 			err = g.store.Write(g.galleryPath(), b)
 		}
 	}
+	if err != nil {
+		g.emit("persistence_error", nil)
+	}
 	g.unlockSaveRetry.record(g.tick, "gallery", err)
 	if err != nil {
 		return

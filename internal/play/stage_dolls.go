@@ -140,6 +140,9 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 		loaded := make(chan struct{})
 		c.pending[key] = loaded
 		wait := g.waitsForDolls()
+		if !wait {
+			g.emit("async_picture", nil)
+		}
 		go func() {
 			defer close(loaded)
 			if pace.OneThread && g.drawn != nil && !wait {

@@ -239,6 +239,7 @@ func (g *Game) songTicks(id string) int {
 }
 
 func (g *Game) holdWinSong(song string) {
+	g.emit("audio_timing", nil)
 	g.fanfareSong, g.fanfareT = song, g.songTicks(song)
 }
 
