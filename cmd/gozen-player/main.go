@@ -32,5 +32,6 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	return play.Main(ctx, os.DirFS(filepath.Join(filepath.Dir(exe), "game")), ".", os.Args[1:], play.EntryConfig{Output: os.Stdout})
+	gameDir := filepath.Join(filepath.Dir(exe), "game")
+	return play.Main(ctx, os.DirFS(gameDir), ".", os.Args[1:], play.EntryConfig{Output: os.Stdout, GameDir: gameDir})
 }

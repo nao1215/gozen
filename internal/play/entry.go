@@ -16,8 +16,12 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 )
 
-// EntryConfig supplies the host's output, save store and CLI operand mode.
+// EntryConfig supplies the host's output, save store, game directory and CLI operand mode.
 type EntryConfig struct {
+	// GameDir is the filesystem directory backing the supplied game FS, used by
+	// packaged startup for trace reproduction. Leave empty for embedded sources
+	// without a directory. An explicit --dir or directory operand takes precedence.
+	GameDir   string
 	Store     func(string) (Store, error)
 	Mute      bool
 	Output    io.Writer
@@ -197,9 +201,15 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 			opts.Script = string(b)
 		}
 		if *trace != "" {
-			opts.GameDir, err = filepath.Abs(*dirFlag)
-			if err != nil {
-				return err
+			gameDir := cfg.GameDir
+			if *dirFlag != "" {
+				gameDir = *dirFlag
+			}
+			if gameDir != "" {
+				opts.GameDir, err = filepath.Abs(gameDir)
+				if err != nil {
+					return err
+				}
 			}
 			if d := filepath.Dir(*trace); d != "." {
 				if err := os.MkdirAll(d, 0o700); err != nil {

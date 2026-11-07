@@ -62,7 +62,7 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 		return b, nil, err
 	}
 	if start.GameDir == "" {
-		return b, nil, errors.New("trace lacks game_dir; record again with gozen run --trace")
+		return b, nil, errors.New("game directory is unknown; record again with gozen run <game-dir> --dev --trace")
 	}
 	if start.Seed == 0 {
 		return b, nil, errors.New("trace lacks a reproducible seed")

@@ -306,3 +306,13 @@ func TestReproRejectsUnknownFutureRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestReproUnknownGameDirectory(t *testing.T) {
+	for _, field := range []string{"", `,"game_dir":""`} {
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":1,"seed":7`+field+`}`)
+		out, stderr := invoke(t, 1, "trace", path, "--repro", "0")
+		if out != "" || !strings.Contains(stderr, "game directory is unknown") {
+			t.Fatalf("stdout %q, stderr %q", out, stderr)
+		}
+	}
+}

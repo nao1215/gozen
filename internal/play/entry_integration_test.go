@@ -3,6 +3,7 @@ package play_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"golang.org/x/image/font/gofont/goregular"
 
 	"github.com/nao1215/gozen/internal/play"
 )
@@ -145,5 +148,53 @@ func TestMainRejectsACancelledContextFirst(t *testing.T) {
 	var out bytes.Buffer
 	if err := play.Main(ctx, nil, "invalid", []string{"--help"}, play.EntryConfig{Output: &out}); !errors.Is(err, context.Canceled) || out.Len() != 0 {
 		t.Fatalf("%v, wrote %d bytes", err, out.Len())
+	}
+}
+
+func TestEntryTraceGameDirectory(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 10\nid: entry-trace\ntitle: Entry trace\nstart: {location: camp}\nfonts: {regular: test.ttf}\n")},
+		"assets/test.ttf": {Data: goregular.TTF},
+		"data/main.yaml":  {Data: []byte("locations: {camp: {name: Camp, safe: true}}\n")},
+	}
+	root := t.TempDir()
+	gameDir := filepath.Join(root, "game")
+	if err := os.CopyFS(gameDir, files); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	for _, tt := range []struct {
+		name string
+		cfg  play.EntryConfig
+		args []string
+		want string
+	}{
+		{name: "packaged", cfg: play.EntryConfig{GameDir: gameDir}, want: gameDir},
+		{name: "embedded"},
+		{name: "override", cfg: play.EntryConfig{GameDir: "unused"}, args: []string{"--dir", "game"}, want: gameDir},
+		{name: "operand", cfg: play.EntryConfig{Directory: true}, args: []string{"game"}, want: gameDir},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			trace := filepath.Join(t.TempDir(), "trace.jsonl")
+			args := append([]string{"--dev", "--mute", "--seed", "7", "--trace", trace, "--save-dir", t.TempDir(), "--start", "missing"}, tt.args...)
+			// The invalid start stops after trace metadata is written, before a window opens.
+			err := play.Main(t.Context(), files, ".", args, tt.cfg)
+			if err == nil || !strings.Contains(err.Error(), `unknown location "missing"`) {
+				t.Fatalf("startup: %v", err)
+			}
+			data, err := os.ReadFile(trace) //nolint:gosec // Reads the trace created in this test's temporary directory.
+			if err != nil {
+				t.Fatal(err)
+			}
+			var start struct {
+				GameDir string `json:"game_dir"`
+			}
+			if err := json.NewDecoder(bytes.NewReader(data)).Decode(&start); err != nil {
+				t.Fatal(err)
+			}
+			if start.GameDir != tt.want {
+				t.Fatalf("game_dir = %q, want %q", start.GameDir, tt.want)
+			}
+		})
 	}
 }
