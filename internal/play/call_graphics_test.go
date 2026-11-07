@@ -100,11 +100,11 @@ func hairPNG(t *testing.T, opaqueTop int) string {
 	return b.String()
 }
 
-// TestCallKeepsHairInView draws a picture self view, small and on the stage, whose
+// TestGraphicsCallKeepsHairInView draws a picture self view, small and on the stage, whose
 // hair rises well above its face: the hair stays inside the view (the trace's layout
 // figure has its opaque top inside its clip), a picture drawn cut at its own top keeps
 // its framing, and self_backdrop is drawn behind the picture.
-func TestCallKeepsHairInView(t *testing.T) {
+func TestGraphicsCallKeepsHairInView(t *testing.T) {
 	files := map[string]string{"assets/me.png": hairPNG(t, 8), "assets/cut.png": hairPNG(t, 0), "assets/room.png": string(btlPNG(64, 36))}
 	for _, self := range []string{"me.png", "cut.png"} {
 		t.Run(self, func(t *testing.T) { callHair(t, self, files) })
