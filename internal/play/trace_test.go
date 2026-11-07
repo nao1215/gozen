@@ -1316,3 +1316,211 @@ func TestTraceUpdateInputProperties(t *testing.T) {
 		}
 	}
 }
+
+const reproPickScreens = `
+screens:
+  routes:
+    title: Routes
+    entries:
+      - {label: Default, do: [{set: {gold: 1}}]}
+      - {label: Selected, do: [{set: {gold: 73}}, {open: result}]}
+  result:
+    title: Selected route
+    entries:
+      - {label: Finished, text: Selected route reached.}
+`
+
+const reproPickEvent = `events:
+  choose_route:
+    do:
+      - choice:
+          - {label: Default choice, do: [{set: {gold: 2}}]}
+          - {label: Selected choice, do: [{set: {gold: 37}}, {open: routes}]}
+`
+
+const reproPickScript = "wait 40\ndo call: choose_route\npick Selected choice\nwait 30\npick Selected\nwait 40\n"
+
+func TestTraceReproScriptPick(t *testing.T) {
+	fsys := wldWorldFiles(t, reproPickScreens, map[string]string{"data/pick.yaml": reproPickEvent})
+	var recorded bytes.Buffer
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp", Development: true, Trace: &recorded, Script: reproPickScript + "quit\n"})
+	for range 500 {
+		if err := g.Update(); errors.Is(err, errQuit) {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if g.st.Gold != 73 {
+		t.Fatalf("recorded gold = %d", g.st.Gold)
+	}
+	picks := traceLines(t, recorded.Bytes(), "pick")
+	if len(picks) != 2 || picks[0]["index"] != float64(1) || picks[1]["index"] != float64(1) {
+		t.Fatalf("picks: %v", picks)
+	}
+	path := filepath.Join(t.TempDir(), "pick.jsonl")
+	if err := os.WriteFile(path, recorded.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, until := range []int{0, g.tick} {
+		t.Run(strconv.Itoa(until), func(t *testing.T) {
+			replayed, err := New(Options{FS: fsys, Replay: path, Until: until, NoSound: true, ShotDir: t.TempDir(), SaveDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := replayed.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			for range 500 {
+				if until > 0 && replayed.tick >= until-1 {
+					break
+				}
+				if err := replayed.Update(); errors.Is(err, errQuit) {
+					break
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if replayed.failure != nil || replayed.rep.diverge != "" {
+				t.Fatalf("replay: %v %s", replayed.failure, replayed.rep.diverge)
+			}
+			if replayed.st.Gold != 73 {
+				t.Fatalf("replayed gold = %d", replayed.st.Gold)
+			}
+			kind, items := replayed.scriptPickables()
+			if kind != "screen:result" || len(items) != 1 || items[0].label != "Finished" {
+				t.Fatalf("screen: %s %v", kind, items)
+			}
+		})
+	}
+}
+
+// The dispatch switch is the engine's command table. Audit its cases and the
+// parser's aliases, so adding a command cannot silently bypass this inventory.
+func TestScriptCommandsHaveReproductionClassification(t *testing.T) {
+	classes := map[string]string{
+		"press": "input", "hold": "input", "click": "input", "drag": "input",
+		"read": "input", "until": "input", "skip": "input", "lines": "input",
+		"walk": "input/act", "face": "input/act", "play": "input/act",
+		"pick": "pick", "do": "act", "jump": "act", "order": "act", "end_turn": "act",
+		"guides": "act/guide", "window": "refused", "type": "refused", "memo": "refused",
+		"battle-hp": "refused", "battle-log": "refused", "recruit": "refused", "guarantee-recruit": "refused",
+		"wait-graphs": "refused", "wait": "timing", "gap": "timing", "shot": "observation",
+		"snapshot": "observation", "look": "observation", "quit": "termination",
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), "input.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	verb := func(e ast.Expr) bool {
+		sel, ok := e.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "verb" {
+			return false
+		}
+		id, ok := sel.X.(*ast.Ident)
+		return ok && id.Name == "c"
+	}
+	add := func(e ast.Expr) {
+		lit, ok := e.(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			t.Fatal("dynamic script command requires an explicit audit")
+			return
+		}
+		name, err := strconv.Unquote(lit.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen[name] = true
+	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.SwitchStmt:
+			if verb(n.Tag) {
+				for _, stmt := range n.Body.List {
+					clause, ok := stmt.(*ast.CaseClause)
+					if !ok {
+						t.Fatal("unexpected non-case statement in script command switch")
+						return false
+					}
+					for _, e := range clause.List {
+						add(e)
+					}
+				}
+			}
+		case *ast.BinaryExpr:
+			if n.Op == token.EQL && verb(n.X) {
+				add(n.Y)
+			}
+		}
+		return true
+	})
+	doc, err := os.ReadFile("../../docs/development/graphics.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name := range seen {
+		if classes[name] == "" {
+			t.Errorf("script command %q needs a reproduction classification", name)
+		}
+		if !strings.Contains(string(doc), "| `"+name+"` |") {
+			t.Errorf("script command %q needs a reproduction table row", name)
+		}
+	}
+	for name := range classes {
+		if !seen[name] {
+			t.Errorf("stale script classification: %s", name)
+		}
+	}
+}
+
+func TestTraceScriptMemoRefusedBeforeDraw(t *testing.T) {
+	var trace bytes.Buffer
+	g := wldOpenWith(t, Options{FS: gameFiles(t), Location: "camp", MemoDir: t.TempDir(), Trace: &trace, Script: "memo bug Neutral note\nwait 10\n"})
+	if err := g.Update(); err != nil {
+		t.Fatal(err)
+	}
+	markers := traceLines(t, trace.Bytes(), "unsupported_script")
+	if len(markers) != 1 || markers[0]["operation"] != "memo" {
+		t.Fatalf("markers: %v", markers)
+	}
+	var exact ExactReplay
+	raw, err := json.Marshal(markers[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := exact.Check("unsupported_script", 1, raw); err == nil {
+		t.Fatal("queued memo accepted")
+	}
+}
+
+func TestReplayPickWaitsForReceiver(t *testing.T) {
+	menu := &list{items: []listItem{{label: "Same"}, {label: "Same"}}}
+	g := &Game{tick: 4, stack: []scene{&sysMenu{l: menu}}}
+	g.rep = &replay{picks: map[int]traceLine{4: {"on": "menu", "index": float64(1), "label": "Same"}}}
+	g.replayPick(&list{})
+	if menu.sel != 0 || g.in.pressed[btnOK] || g.rep.pickTick != 0 {
+		t.Fatal("covered receiver accepted pick")
+	}
+	g.replayPick(menu)
+	if menu.sel != 1 || !g.in.pressed[btnOK] || g.rep.pickTick != 4 {
+		t.Fatal("pick did not select indexed duplicate label at receiver")
+	}
+	menu.sel = 0
+	g.in.pressed[btnOK] = false
+	g.replayPick(menu)
+	if menu.sel != 0 || g.in.pressed[btnOK] {
+		t.Fatal("pick applied twice")
+	}
+	g.rep.pickTick = 0
+	menu.items[1].disabled = true
+	g.replayPick(menu)
+	if g.failure == nil || menu.sel != 0 || g.in.pressed[btnOK] {
+		t.Fatal("disabled replay target accepted")
+	}
+}

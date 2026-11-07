@@ -713,6 +713,8 @@ type replay struct {
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
+	picks       map[int]traceLine
+	pickTick    int
 	inputs      map[int]traceLine
 	acts        map[int][]traceLine
 	expect      map[string][]traceLine
@@ -757,7 +759,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
-	r := &replay{saveWrites: map[int]map[string][]*time.Time{}, inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
+	r := &replay{picks: map[int]traceLine{}, saveWrites: map[int]map[string][]*time.Time{}, inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	if o.Until < 0 {
@@ -879,6 +881,14 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, fmt.Errorf(lang.T("replay の入力ティック %d が重複"), tick)
 			}
 			r.inputs[tick] = l
+		case "pick":
+			index, ok := l["index"].(float64)
+			on, onOK := l["on"].(string)
+			_, labelOK := l["label"].(string)
+			if tick <= 0 || !ok || index < 0 || index != float64(int(index)) || !onOK || on == "" || !labelOK || r.picks[tick] != nil {
+				return nil, errors.New("replay: invalid pick record")
+			}
+			r.picks[tick] = l
 		case "act":
 			if tick == 0 {
 				return nil, errors.New(lang.T("replay の直接操作は１ティック以降でなければならない"))
@@ -1033,6 +1043,9 @@ func (r *replay) feed(in *input, tick int) {
 		if i := slices.Index(buttonNames[:], n); i >= 0 {
 			in.held[i] = true
 		}
+	}
+	if r.picks[tick] != nil {
+		in.pressed[btnOK] = false
 	}
 	in.fast = l["fast"] == true
 	in.esc = l["esc"] == true
@@ -1448,6 +1461,7 @@ var exactReplayKinds = map[string]bool{
 	"layout":              true,
 	"look":                true,
 	"menu":                true,
+	"pick":                true,
 	"message_open":        true,
 	"music":               true,
 	"notice":              true,

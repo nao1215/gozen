@@ -122,6 +122,7 @@ type input struct {
 	// offer exists only between script dispatch and the end of Update. Rendering,
 	// tracing and device polling cannot acknowledge a command.
 	offer                          *scriptOffer
+	replayPick                     func(any)
 	observing, readInput, idleRead bool
 
 	pressed [numButtons]bool
@@ -1183,6 +1184,9 @@ func (s *script) more() bool {
 
 // surfaceInput reports input that can change an authored surface's focus or geometry.
 func (in *input) surfaceInput() bool {
+	if in.replay != nil && in.replay.picks[in.tick] != nil && in.replay.pickTick != in.tick {
+		return true
+	}
 	if in.offer != nil && in.offer.command.verb == "pick" {
 		return true
 	}
@@ -1239,6 +1243,9 @@ func (in *input) number() int              { in.query(in.digit != 0); return in.
 // receivePick is called at a control's activation path, after early returns.
 // Selection and confirmation happen together, never on a covered control.
 func (in *input) receivePick(target any) {
+	if in.replayPick != nil {
+		in.replayPick(target)
+	}
 	if o := in.offer; o != nil && o.command.verb == "pick" && !o.accepted && o.script.pick != nil {
 		o.target = target
 		o.script.pick(in, o.command.name)

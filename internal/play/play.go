@@ -556,6 +556,7 @@ func New(opts Options) (_ *Game, err error) {
 		g.tr = newTracer(opts.Trace)
 		if rep != nil {
 			g.in.replay = rep
+			g.in.replayPick = g.replayPick
 		}
 	}
 	g.loadTheme()
@@ -1030,6 +1031,13 @@ func (g *Game) Update() error {
 		return s.err
 	}
 	defer g.in.finishOffer()
+	if g.rep != nil {
+		defer func() {
+			if g.failure == nil && g.rep.picks[g.tick] != nil && g.rep.pickTick != g.tick {
+				g.failure = fmt.Errorf("replay: pick receiver not reached at tick %d", g.tick)
+			}
+		}()
+	}
 	g.in.observing = false
 	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.panelModal() && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
 		g.openMemo()

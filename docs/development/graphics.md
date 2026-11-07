@@ -131,7 +131,7 @@ Exact reproduction uses the shared `ExactReplay` validator in
 `internal/play/trace.go`. Both `trace --repro` and `run --replay ... --until N`
 accept only explicitly listed record kinds through the target tick (`N - 1`
 for `--until`). `exactReplayKinds` documents the complete allow-list: `start`
-restores context, `save_write` restores save timestamps, `input` and supported `act` names drive replay,
+restores context, `save_write` restores save timestamps, `input`, receiver-bound `pick`, and supported `act` names drive replay,
 `repro` marks the seek boundary, and the other listed records describe derived
 outcomes or presentation. Viewports must remain unchanged. Unknown action names
 are rejected too.
@@ -147,6 +147,55 @@ or the explicit non-reproducible list. Dynamic kind constructors fail the audit.
 Older traces without `exact_version: 1` must be recorded again for exact
 reproduction: their missing source markers cannot be reconstructed. Ordinary
 replay without `--until` retains its older trace support.
+
+#### Script command reproduction audit
+
+The command dispatch switch in `input.go` is audited by
+`TestScriptCommandsHaveReproductionClassification`, including parser aliases.
+Every command needs a classification and a row here. Refusals apply through the
+target tick; an earlier target remains reproducible.
+
+Successful `pick` emits a `pick` record with `on`, `index`, and `label`. Replay
+withholds its OK until the same control receiver selects that indexed entry;
+a changed, disabled, or unreached target fails replay. Record older scripted picks
+again: their traces contain only OK and cannot recover the selected control. This covers choices,
+confirmation dialogs, title/save/system menus, authored lists and surface controls.
+`TestTraceReproScriptPick` checks non-default choice and menu state, and
+`TestGraphicsScreensRepro/script-pick` compares the resulting PNG.
+
+| Script command | Reproduction handling |
+| --- | --- |
+| `press` | Recorded `input` buttons/digits. |
+| `hold` | Recorded `input` held buttons and Shift, including release. |
+| `click` | Recorded `input` pointer position and buttons. |
+| `drag` | Recorded `input` pointer motion, hold and release. |
+| `read` | Recorded `input` OK; waiting adds ticks. |
+| `until` | Recorded `input` OK; waiting adds ticks. |
+| `skip` | Recorded `input.fast`; optional screenshots and TPS changes affect capture pacing only. |
+| `lines` | Recorded `input` OK; screenshots observe pixels without changing game state. |
+| `play` | Recorded `input` OK and `act battle_auto` for direct battle progression. |
+| `walk` | Dungeon movement uses recorded `input`; map/painted-scene goals use `act walk`. The dungeon walk goal is script-only bookkeeping; mid-event battles use `act battle_auto`. |
+| `face` | Recorded directional `input` or `act walk` with `face`, using the same movement receiver and mid-event battle actions as `walk`. |
+| `pick` | Recorded `pick` selection applied at the control receiver, followed by OK. |
+| `do` | Recorded `act dev_do`; derived unsupported sources still refuse exact reproduction. |
+| `jump` | Recorded `act dev_jump`. |
+| `order` | Parser alias for recorded `act dev_do`. |
+| `end_turn` | Parser alias for recorded `act dev_do`. |
+| `guides` | Recorded `act guides`; displaying a guide emits refused `guide`. |
+| `window` | Recorded `act window`; refused because viewport changes are unsupported. |
+| `type` | Refused at `text_input` when text reaches the field. |
+| `memo` | Refused at `unsupported_script` before queuing the capture, including before Draw or file writing; disabled memo output is a no-op. |
+| `battle-hp` | Refused at `battle_setup` when HP changes. |
+| `battle-log` | Refused at `unsupported_script` when log visibility changes. |
+| `recruit` | Refused at `unsupported_script` before recruitment. |
+| `guarantee-recruit` | Refused at `unsupported_script` when recruitment probability changes. |
+| `wait-graphs` | Requires an open balance panel, already refused at `graphs`; its larger computation budget cannot enter an accepted prefix. |
+| `wait` | Script scheduling only; elapsed simulation ticks are preserved. |
+| `gap` | Script scheduling only; resulting input ticks are recorded. |
+| `shot` | Pixel output only; no game-state mutation. |
+| `snapshot` | Observation only (`snapshot`). |
+| `look` | Observation only (`look`). |
+| `quit` | Ends the recording; the trace end bounds ordinary replay. |
 
 #### External-state audit
 

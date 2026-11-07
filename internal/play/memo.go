@@ -391,6 +391,7 @@ func (g *Game) quickMemo(kind, text, source string) {
 	if g.opts.MemoDir == "" || g.db == nil || g.quickN >= 40 {
 		return
 	}
+	g.emit("unsupported_script", traceLine{"operation": "memo"})
 	g.quickN++
 	m := &memoBox{info: g.memoInfo()}
 	m.save = g.memoResume(&m.info)

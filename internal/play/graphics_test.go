@@ -408,7 +408,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "timed-fade", "campaign", "campaign-warm", "battle-puppet", "native-window", "native-script", "guides"} {
+	for _, mode := range []string{"novel", "script-pick", "timed-fade", "campaign", "campaign-warm", "battle-puppet", "native-window", "native-script", "guides"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
@@ -419,7 +419,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			if mode == "campaign-warm" {
 				fixture = "campaign"
 			}
-			if mode == "timed-fade" || strings.HasPrefix(mode, "native-") || mode == "guides" {
+			if mode == "script-pick" || mode == "timed-fade" || strings.HasPrefix(mode, "native-") || mode == "guides" {
 				fixture = "novel"
 			}
 			source := os.DirFS(filepath.Join("testdata", fixture))
@@ -448,6 +448,29 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			if mode == "novel" {
 				start = []string{"--start", "room"}
 				body = "do call: story\nwait 40\npress ok\nwait 30\nshot frame\nquit\n"
+			}
+			if mode == "script-pick" {
+				gameRoot, err := os.OpenRoot(game)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := gameRoot.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				original, err := gameRoot.ReadFile("game.yaml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := gameRoot.WriteFile("game.yaml", append(original, []byte(reproPickScreens)...), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := gameRoot.WriteFile("data/pick.yaml", []byte(reproPickEvent), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				start = []string{"--start", "room"}
+				body = reproPickScript + "shot frame\nquit\n"
 			}
 			if mode == "timed-fade" {
 				// Change the screen after seeking has begun, animate it, then trigger a
