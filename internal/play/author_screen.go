@@ -1000,7 +1000,7 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		}
 		actionable := focusStop(e)
 		focused := actionable && j == s.focus
-		if g.tr != nil && actionable && e.Carousel == "" {
+		if g.controlFrame() != nil && actionable && e.Carousel == "" {
 			r := entryBounds(e)
 			reason := e.Reason
 			enabled := !s.unavailable(g, entryIndex) && s.popup == nil

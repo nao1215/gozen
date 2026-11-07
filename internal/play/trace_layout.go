@@ -45,7 +45,8 @@ type screenControl struct {
 }
 
 func (g *Game) traceControl(label string, r [4]float64, enabled, focused bool, reason string) {
-	if g.tr == nil || g.tr.layout == nil {
+	f := g.controlFrame()
+	if f == nil {
 		return
 	}
 	if enabled {
@@ -53,7 +54,7 @@ func (g *Game) traceControl(label string, r [4]float64, enabled, focused bool, r
 	} else if reason == "" {
 		reason = "disabled"
 	}
-	g.tr.layout.controls = append(g.tr.layout.controls, screenControl{label, r, enabled, reason, focused})
+	f.controls = append(f.controls, screenControl{label, r, enabled, reason, focused})
 }
 
 // digest hashes comparable drawing facts without formatting, allocation or pixel reads.
@@ -407,15 +408,17 @@ func (g *Game) screenTextRight(dst *ebiten.Image, s string, x, y, size float64, 
 }
 
 func (g *Game) screenOffsets() (int, int) {
-	if g.tr == nil || g.tr.layout == nil {
+	f := g.controlFrame()
+	if f == nil {
 		return 0, 0
 	}
-	return len(g.tr.layout.texts), len(g.tr.layout.controls)
+	return len(f.texts), len(f.controls)
 }
 
 // The phone draws on intermediate canvases. Convert their boxes into screen UI units.
 func (g *Game) transformScreenRecords(textStart, controlStart int, transform func(float64, float64) (float64, float64)) {
-	if g.tr.layout == nil {
+	f := g.controlFrame()
+	if f == nil {
 		return
 	}
 	box := func(r [4]float64) [4]float64 {
@@ -428,7 +431,6 @@ func (g *Game) transformScreenRecords(textStart, controlStart int, transform fun
 		}
 		return roundRect(x0, y0, x1-x0, y1-y0)
 	}
-	f := g.tr.layout
 	for i := textStart; i < len(f.texts); i++ {
 		f.texts[i].Rect = box(f.texts[i].Rect)
 	}
@@ -438,14 +440,14 @@ func (g *Game) transformScreenRecords(textStart, controlStart int, transform fun
 }
 
 func (g *Game) clipScreenRecords(textStart, controlStart int, w, h float64) {
-	if g.tr.layout == nil {
+	f := g.controlFrame()
+	if f == nil {
 		return
 	}
 	clip := func(r [4]float64) [4]float64 {
 		x, y := max(0, r[0]), max(0, r[1])
 		return roundRect(x, y, max(0, min(w, r[0]+r[2])-x), max(0, min(h, r[1]+r[3])-y))
 	}
-	f := g.tr.layout
 	texts := f.texts[:textStart]
 	for _, t := range f.texts[textStart:] {
 		t.Rect = clip(t.Rect)

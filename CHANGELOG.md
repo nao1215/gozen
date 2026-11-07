@@ -12,6 +12,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Extend the `--dev` F8 Frames panel with a read-only state and screen-structure overlay, focused/disabled control rectangles, standing picture filenames, phone status, event-read variables and moving Update/Draw averages.
+
 - `gozen trace --metrics` streams play records into factual text-per-decision, longest read-only stretch, repeated-line, signal-spacing and stall observations, with text/JSON output, `--top` and `--stall-seconds`. Traces add accepted menu decisions, scripted input outcomes, autoplay wait transitions, dialogue event names and phone-call screen state.
 
 - `gozen capture --against DIR` reports image and available screen-structure differences by job ID, with changed-first HTML, previous images and pixel highlights. Differences never change the capture exit status.

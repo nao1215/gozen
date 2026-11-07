@@ -5,6 +5,20 @@ package catalog
 
 // english is the built-in English words of the engine.
 var english = map[string]string{
+	"Changed: %s = %s": "Changed: %s = %s",
+	"Tick %d | Event %s | Line %d | Location %s | Seed %d":  "Tick %d | Event %s | Line %d | Location %s | Seed %d",
+	"Seed: automatic (not recorded)":                        "Seed: automatic (not recorded)",
+	"Phone: closed":                                         "Phone: closed",
+	"Phone: %s | age %d | closing %d | result %d | call %t": "Phone: %s | age %d | closing %d | result %d | call %t",
+	"Standing: %s | %s x=%.2f | %s":                         "Standing: %s | %s x=%.2f | %s",
+	"Event reads: +%d":                                      "Event reads: +%d",
+	"Event reads: no indexed flags or variables":            "Event reads: no indexed flags or variables",
+	"pressable":         "pressable",
+	"not pressable: %s": "not pressable: %s",
+	"focused":           "focused",
+	"Update %.2f ms (avg %.2f) | Draw %.2f ms (avg %.2f)": "Update %.2f ms (avg %.2f) | Draw %.2f ms (avg %.2f)",
+	"F8: close | Frames: game continues":                  "F8: close | Frames: game continues",
+
 	"%s: 短縮形には game.yaml の schema_version: 11 が必要です":                "%s: shorthand needs schema_version: 11 in game.yaml",
 	"check: 構造検査に合格しました。レイアウトは検査していません":                             "check: structure passed; layout was not checked",
 	"%s %q を参照する定義がありません。利用箇所を接続するか、不要なら削除してください":                   "no definition refers to %s %q; connect a consumer or remove it if obsolete",

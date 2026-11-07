@@ -81,7 +81,7 @@ func (g *Game) drawBanners(dst *ebiten.Image) {
 func (g *Game) drawBanner(dst *ebiten.Image, b phoneBanner) {
 	sw, _ := g.screen()
 	x, y := (sw-bannerW)/2, b.top()
-	if g.tr != nil {
+	if g.controlFrame() != nil {
 		enabled := b.n.Event != ""
 		reason := "no_event"
 		if g.phone != nil && g.phone.cue.App == "banner" {

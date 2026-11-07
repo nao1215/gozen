@@ -263,7 +263,7 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			gfx.FillRect(dst, lx, float32(hy+hs*0.7), float32(r.Max.X-22)-lx, 1.5, withAlpha(g.th.border, 0xa0), false)
 			continue
 		}
-		if g.tr != nil {
+		if g.controlFrame() != nil {
 			reason := it.reason
 			if !active {
 				reason = "inactive"

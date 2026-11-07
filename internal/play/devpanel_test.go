@@ -6,6 +6,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
 
 	"github.com/nao1215/gozen/internal/layer5/gfx"
 )
@@ -531,5 +535,154 @@ func TestPanelReadOnlyOKRemainsPending(t *testing.T) {
 	g.in.finishOffer()
 	if s.pc != 1 || !g.st.Flags["probe"] {
 		t.Fatal("pending OK did not edit the flag")
+	}
+}
+
+func TestOverlayModel(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp", Event: "first", Seed: 71, Development: true}, "schema_version: 4\n")
+	g.evName, g.evLines, g.tick = "first", 2, 42
+	g.db.Events["first"].When = data.Expr{Expr: testgame.Expr("flag.ready and var.count > 0")}
+	g.st.Flags["ready"], g.st.Flags["unrelated"] = true, true
+	g.st.Vars["count"] = 3.0
+	f := &layoutFrame{cast: []standFig{{ID: "actor:guide", Side: "left", X: 0.25, Face: "guide.png"}}}
+	before, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Join(g.overlayLines(f), "\n")
+	for _, want := range []string{"42", "first", "Line 2", "camp", "71", "guide.png", "left x=0.25", "flag.ready = true", "var.count = 3", "Phone: closed"} {
+		if !strings.Contains(lines, want) {
+			t.Errorf("missing %q in %s", want, lines)
+		}
+	}
+	if strings.Contains(lines, "unrelated") {
+		t.Fatal(lines)
+	}
+	g.phone = &phoneView{cue: data.PhoneCue{App: "page"}, age: 12, closing: 2, result: -1}
+	if got := strings.Join(g.overlayLines(f), "\n"); !strings.Contains(got, "Phone: page | age 12 | closing 2 | result -1") {
+		t.Fatal(got)
+	}
+	after, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("observation mutated saved state or random stream")
+	}
+	c := screenControl{Label: "Trail", Reason: "Gate closed", Focused: true}
+	if got := overlayControlText(c); !strings.Contains(got, "not pressable: Gate closed") || !strings.Contains(got, "focused") {
+		t.Fatal(got)
+	}
+	c.Enabled = true
+	if got := overlayControlText(c); strings.Contains(got, "Gate closed") || !strings.Contains(got, "pressable") {
+		t.Fatal(got)
+	}
+	g.st = nil
+	g.evName = ""
+	if got := strings.Join(g.overlayLines(&layoutFrame{}), "\n"); !strings.Contains(got, "Location -") {
+		t.Fatal(got)
+	}
+}
+
+func TestOverlayCollectorOff(t *testing.T) {
+	g := &Game{}
+	if n := testing.AllocsPerRun(100, func() {
+		if g.overlayActive() {
+			t.Fatal("release overlay active")
+		}
+		g.traceControl("button", [4]float64{1, 2, 3, 4}, false, false, "blocked")
+		g.traceStandFigures(nil)
+	}); n != 0 {
+		t.Fatalf("closed overlay allocated %g objects", n)
+	}
+	g.panel = &devPanel{tab: tabFrames}
+	if g.overlayActive() {
+		t.Fatal("Frames enabled outside development")
+	}
+	g.opts.Development = true
+	g.panel.collecting = true
+	g.traceControl("button", [4]float64{1, 2, 3, 4}, false, true, "blocked")
+	g.transformScreenRecords(0, 0, func(x, y float64) (float64, float64) { return x + 10, y + 20 })
+	if c := g.panel.frame.controls[0]; c.Rect != [4]float64{11, 22, 3, 4} || c.Reason != "blocked" || !c.Focused {
+		t.Fatal(c)
+	}
+	g.closePanel()
+	if g.controlFrame() != nil {
+		t.Fatal("closed collector retained")
+	}
+}
+
+func TestOverlayRecentChanges(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp", Development: true}, "schema_version: 4\n")
+	g.panel = &devPanel{tab: tabFrames}
+	g.evName = ""
+	g.st.Flags["ready"] = false
+	g.observeOverlayChanges()
+	if len(g.panel.recent) != 0 {
+		t.Fatal("initial values treated as recent changes")
+	}
+	g.st.Flags["ready"] = true
+	g.tick += 6
+	g.st.Vars["count"] = 2.0
+	g.observeOverlayChanges()
+	lines := strings.Join(g.overlayLines(&layoutFrame{}), "\n")
+	if !strings.Contains(lines, "Changed: flag.ready = true") || !strings.Contains(lines, "Changed: var.count = 2") {
+		t.Fatal(lines)
+	}
+	g.observeOverlayChanges()
+	if len(g.panel.recent) != 2 {
+		t.Fatal("unchanged values duplicated")
+	}
+}
+
+// The regular --dev path has no tracer. Real drawing helpers must still populate
+// control boxes; constructing a model by hand would not catch trace-only guards.
+func TestOverlayDrawCollectsWithoutTrace(t *testing.T) {
+	g := storyGame(t, Options{Location: "camp", Event: "first", Development: true, Seed: 7}, "schema_version: 4\nui: {message: novel}\n")
+	if g.tr != nil {
+		t.Fatal("fixture unexpectedly tracing")
+	}
+	for range 30 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g.togglePanel()
+	g.panelTab(false)
+	g.Draw(btlImage())
+	if len(g.panel.frame.controls) == 0 {
+		t.Fatal("overlay without trace collected no controls")
+	}
+	if g.panel.collecting {
+		t.Fatal("collector left enabled between frames")
+	}
+	g.closePanel()
+	g.Draw(btlImage())
+	if g.controlFrame() != nil {
+		t.Fatal("closed overlay collected drawing")
+	}
+}
+
+func TestOverlaySharesSectionTiming(t *testing.T) {
+	g := &Game{opts: Options{Development: true}, tr: newTracer(nil)}
+	g.tr.performance = newTracePerformance(0)
+	p := g.tr.performance
+	g.togglePanel()
+	g.panelTab(false)
+	if g.panel.performance != p || p.durations == nil {
+		t.Fatal("Frames did not attach to section collector")
+	}
+	p.updated(time.Now())
+	p.drawn(time.Now())
+	if p.durations.update.count != 1 || p.durations.draw.count != 1 {
+		t.Fatal("missing timing samples")
+	}
+	g.closePanel()
+	if p.durations != nil {
+		t.Fatal("closed overlay left timing collection enabled")
+	}
+	p.updated(time.Now())
+	if p.whole.ticks != 2 {
+		t.Fatal("closing overlay disturbed section counts")
 	}
 }

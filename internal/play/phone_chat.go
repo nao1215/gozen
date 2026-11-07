@@ -237,7 +237,7 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 		g.text(dst, clipTime(c.length()), x+10, y+b.bh-24, 13, phoneOnVideo)
 	case m.Picture != "":
 		p.pics[b.i] = picRect{x, y, b.bw, b.bh}
-		if g.tr != nil {
+		if g.controlFrame() != nil {
 			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready(), false, "transition")
 		}
 		if img := g.pics.get(m.Picture); img != nil {

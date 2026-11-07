@@ -477,9 +477,9 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	if p == nil {
 		return
 	}
-	if g.tr != nil && g.tr.layout != nil {
-		for i := range g.tr.layout.controls {
-			c := &g.tr.layout.controls[i]
+	if f := g.controlFrame(); f != nil {
+		for i := range f.controls {
+			c := &f.controls[i]
 			c.Enabled, c.Focused, c.Reason = false, false, "phone"
 		}
 	}
@@ -528,7 +528,7 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	op.GeoM.Translate(sw/2*k, (sh/2+(1-rise)*sh*0.9)*k)
 	op.ColorScale.ScaleAlpha(float32(math.Min(1, rise*1.5)))
 	dst.DrawImage(p.canvas, op)
-	if g.tr != nil {
+	if g.controlFrame() != nil {
 		g.transformScreenRecords(textStart, controlStart, func(x, y float64) (float64, float64) {
 			x, y = op.GeoM.Apply(x*k, y*k)
 			return x / k, y / k
@@ -614,7 +614,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		_, bar := g.pageAccent(p)
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
-	if g.tr != nil {
+	if g.controlFrame() != nil {
 		g.clipScreenRecords(textStart, controlStart, scw, sch)
 		g.transformScreenRecords(textStart, controlStart, func(x, y float64) (float64, float64) { return x + bezel, y + bezel })
 	}
@@ -693,7 +693,7 @@ func likeCount(n int) string {
 // paused) and the seek bar.
 func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	c := p.watch
-	if g.tr != nil {
+	if g.controlFrame() != nil {
 		g.traceControl("", roundRect(0, 0, w, h), p.ready(), false, "transition")
 	}
 	gfx.FillRect(dst, 0, 0, float32(w), float32(h), color.Black, false)

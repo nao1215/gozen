@@ -172,7 +172,7 @@ func (g *Game) drawPhoneCall(p *phoneView, dst *ebiten.Image, w, h float64) {
 		fill  color.NRGBA
 		label string
 	}{{ax, phoneAnswer, lang.T("応答")}, {dx, phoneDecline, lang.T("拒否")}} {
-		if g.tr != nil {
+		if g.controlFrame() != nil {
 			g.traceControl(b.label, roundRect(b.x-34, by-34, 68, 68), p.ready(), false, "transition")
 		}
 		gfx.FillCircle(dst, float32(b.x), float32(by), 34, b.fill, true)

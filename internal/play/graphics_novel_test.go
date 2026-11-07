@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -756,5 +757,112 @@ func TestGraphicsNovelPhonePalette(t *testing.T) {
 				t.Fatalf("only %d pixels of expected phone color %v", count, tc.rgb)
 			}
 		})
+	}
+}
+
+// TestGraphicsNovelOverlay compares gameplay records at the same ticks, observes
+// pixels in the overlay band, closes F8, then replays the observed run.
+func TestGraphicsNovelOverlay(t *testing.T) {
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, os.DirFS("testdata/novel")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(game, "assets"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeNovelFigure(t, game)
+	if err := os.WriteFile(filepath.Join(game, "data", "overlay.yaml"), []byte(`events:
+  overlay:
+    do:
+      - stand: {who: Guide, face: fig.png, at: left}
+      - say: {who: Guide, text: "A quiet trail."}
+      - set: {var.roll: 'rand(1000000)'}
+      - say: "The gate opens."
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(name, script, replay string) []byte {
+		t.Helper()
+		dir := filepath.Join(root, name)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		args := []string{"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "room", "--event", "overlay", "--save-dir", filepath.Join(dir, "saves"), "--shots", dir, "--trace", filepath.Join(dir, "trace.jsonl")}
+		if replay != "" {
+			args = append(args, "--replay", replay)
+		} else {
+			path := filepath.Join(dir, "script.txt")
+			if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			args = append(args, "--script", path)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // Built test host and isolated fixture paths.
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: %v\n%s\n%s", name, err, &stdout, &stderr)
+		}
+		b, err := os.ReadFile(filepath.Join(dir, "trace.jsonl")) //nolint:gosec // Isolated test output.
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	prefix := "wait 40\npress panel\nwait 3\n"
+	tail := "wait 40\nshot visible\npress ok\nwait 40\nsnapshot\n"
+	off := run("off", prefix+"press cancel\n"+tail+"quit\n", "")
+	on := run("on", prefix+"press left\n"+tail+"press panel\nwait 3\nshot closed\nquit\n", "")
+	for _, kind := range []string{"say", "snapshot"} {
+		a, b := traceLines(t, off, kind), traceLines(t, on, kind)
+		if len(a) == 0 || !reflect.DeepEqual(a, b) {
+			t.Fatalf("%s differs with overlay: %v / %v", kind, a, b)
+		}
+	}
+	if !bytes.Contains(on, []byte(`"roll":`)) {
+		t.Fatal("fixture did not consume gameplay randomness")
+	}
+	replay := run("replay", "", filepath.Join(root, "on", "trace.jsonl"))
+	for _, kind := range []string{"say", "end"} {
+		a, b := traceLines(t, on, kind), traceLines(t, replay, kind)
+		for _, lines := range [][]traceLine{a, b} {
+			for _, l := range lines {
+				delete(l, "lines")
+				delete(l, "replay")
+			}
+		}
+		if len(a) == 0 || !reflect.DeepEqual(a, b) {
+			t.Fatalf("replay %s differs: %v / %v", kind, a, b)
+		}
+	}
+	a, b := shotImage(t, filepath.Join(root, "off"), "visible"), shotImage(t, filepath.Join(root, "on"), "visible")
+	changed := 0
+	for y := 8; y < 60; y++ {
+		for x := 8; x < 300; x++ {
+			if a.At(x, y) != b.At(x, y) {
+				changed++
+			}
+		}
+	}
+	if changed < 100 {
+		t.Fatalf("overlay band changed only %d pixels", changed)
+	}
+	c := shotImage(t, filepath.Join(root, "on"), "closed")
+	changed = 0
+	for y := 8; y < 60; y++ {
+		for x := 8; x < 300; x++ {
+			if b.At(x, y) != c.At(x, y) {
+				changed++
+			}
+		}
+	}
+	if changed < 100 {
+		t.Fatal("F8 did not remove overlay band")
 	}
 }

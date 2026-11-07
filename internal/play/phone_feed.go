@@ -384,7 +384,7 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	g.text(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), x+60, y+18, 16, phoneInk)
 	g.screenTextRight(dst, post.Time, x+w-14, y+20, 13, phoneMuted)
 	py := y + phoneFeedHead
-	if g.tr != nil {
+	if g.controlFrame() != nil {
 		reason := "transition"
 		if p.cue.Browse {
 			reason = "browse"

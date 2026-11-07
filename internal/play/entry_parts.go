@@ -295,7 +295,7 @@ func (s *authorScreen) drawCarousel(g *Game, dst *ebiten.Image, focused bool) {
 	for _, box := range boxes {
 		e := s.entries[box.member]
 		refused := s.unavailable(g, box.member)
-		if g.tr != nil {
+		if g.controlFrame() != nil {
 			g.traceControl(s.entries[box.member].Label, roundRect(box.x, box.y, box.size, box.size), !refused, focused && box.member == s.ringCenter(), s.entries[box.member].Reason)
 		}
 		tint := g.th.window

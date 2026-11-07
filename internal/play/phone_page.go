@@ -293,7 +293,7 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 			g.screenText(dst, line, w/2, y+side+8+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
 		}
 	default:
-		if g.tr != nil {
+		if g.controlFrame() != nil {
 			g.traceControl(r.Button, roundRect(x, y, iw, phonePageBtn), p.ready(), p.keyed && p.focus == i, "transition")
 		}
 		accent, _ := g.pageAccent(p)

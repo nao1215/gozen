@@ -38,11 +38,20 @@ const (
 var tabNames = [numTabs]string{"状態", "フラグ", "シーン", "コマンド", "フレーム"}
 
 type devPanel struct {
-	tab  panelTab
-	sel  int
-	top  int
-	text string // the Command tab's line
-	msg  string // the result of the last edit or command
+	tab          panelTab
+	sel          int
+	top          int
+	text         string      // the Command tab's line
+	msg          string      // the result of the last edit or command
+	frame        layoutFrame // reused only while drawing the Frames overlay
+	collecting   bool
+	performance  *tracePerformance
+	readDB       *data.DB
+	readEvent    string
+	readNames    []string
+	observed     map[string]string
+	observedTick int
+	recent       []string
 }
 
 // togglePanel opens the panel on its first tab, or closes it.
@@ -58,6 +67,9 @@ func (g *Game) togglePanel() {
 func (g *Game) closePanel() {
 	if g.panel != nil && g.panel.tab == tabFrames && g.meter.on {
 		g.meter.toggle()
+	}
+	if g.panel != nil && g.panel.performance != nil {
+		g.panel.performance.durations = nil
 	}
 	g.panel = nil
 }
@@ -184,10 +196,24 @@ func (g *Game) panelTab(next bool) {
 	}
 	p.tab = (p.tab + d) % numTabs
 	p.sel, p.top, p.msg = 0, 0, ""
-	if p.tab == tabFrames && !g.meter.on {
-		g.meter.toggle()
-	} else if p.tab != tabFrames && g.meter.on {
-		g.meter.toggle()
+	if p.tab == tabFrames {
+		if !g.meter.on {
+			g.meter.toggle()
+		}
+		if g.tr != nil && g.tr.performance != nil {
+			p.performance = g.tr.performance
+		} else {
+			p.performance = newTracePerformance(g.tick)
+		}
+		p.performance.durations = &frameDurations{}
+	} else {
+		if g.meter.on {
+			g.meter.toggle()
+		}
+		if p.performance != nil {
+			p.performance.durations = nil
+			p.performance = nil
+		}
 	}
 	g.emit("panel", traceLine{"tab": []string{"state", "flags", "scenes", "command", "frames"}[p.tab]})
 }
@@ -507,5 +533,159 @@ func (g *Game) drawFlagTable(screen *ebiten.Image, y float64, rows int, rowH, si
 	for _, l := range ls[:min(2, len(ls))] {
 		gfx.DrawTextLeft(screen, l, 24, y, size*0.75, g.th.dim)
 		y += rowH * 0.8
+	}
+}
+
+// overlayActive excludes the browser meter and release players.
+func (g *Game) overlayActive() bool {
+	return g.opts.Development && g.panel != nil && g.panel.tab == tabFrames
+}
+
+// controlFrame shares the screen collector, without enabling trace I/O for the overlay.
+func (g *Game) controlFrame() *layoutFrame {
+	if g.tr != nil && g.tr.layout != nil {
+		return g.tr.layout
+	}
+	if g.panel != nil && g.panel.collecting {
+		return &g.panel.frame
+	}
+	return nil
+}
+
+func (g *Game) overlayLines(f *layoutFrame) []string {
+	loc := "-"
+	if g.st != nil {
+		loc = g.st.Location
+	}
+	lines := []string{fmt.Sprintf(lang.T("Tick %d | Event %s | Line %d | Location %s | Seed %d"), g.tick, g.evName, g.evLines, loc, g.opts.Seed)}
+	if g.opts.Seed == 0 {
+		lines = append(lines, lang.T("Seed: automatic (not recorded)"))
+	}
+	if g.phone == nil {
+		lines = append(lines, lang.T("Phone: closed"))
+	} else {
+		p := g.phone
+		lines = append(lines, fmt.Sprintf(lang.T("Phone: %s | age %d | closing %d | result %d | call %t"), p.cue.App, p.age, p.closing, p.result, p.calling()))
+	}
+	for _, c := range f.cast {
+		lines = append(lines, fmt.Sprintf(lang.T("Standing: %s | %s x=%.2f | %s"), c.ID, c.Side, c.X, c.Face))
+	}
+	// Read values, never evaluate conditions: even a condition can draw random numbers.
+	names := g.overlayReadNames()
+	for _, name := range names[:min(6, len(names))] {
+		lines = append(lines, name+" = "+g.stateValue(name))
+	}
+	if len(names) > 6 {
+		lines = append(lines, fmt.Sprintf(lang.T("Event reads: +%d"), len(names)-6))
+	}
+	if len(names) == 0 {
+		lines = append(lines, lang.T("Event reads: no indexed flags or variables"))
+		if g.panel != nil {
+			for _, name := range g.panel.recent {
+				lines = append(lines, fmt.Sprintf(lang.T("Changed: %s = %s"), name, g.stateValue(name)))
+			}
+		}
+	}
+	return lines
+}
+
+// overlayReadNames caches only definition-derived names; values remain live.
+func (g *Game) overlayReadNames() []string {
+	p := g.panel
+	if p != nil && p.readDB == g.db && p.readEvent == g.evName {
+		return p.readNames
+	}
+	var names []string
+	if g.evName != "" {
+		prefix := "events." + g.evName + "."
+		for name, use := range g.panelUses() {
+			if (strings.HasPrefix(name, "flag.") || strings.HasPrefix(name, "var.")) && slices.ContainsFunc(use.Reads, func(path string) bool { return strings.HasPrefix(path, prefix) }) {
+				names = append(names, name)
+			}
+		}
+		slices.Sort(names)
+	}
+	if p != nil {
+		p.readDB, p.readEvent, p.readNames = g.db, g.evName, names
+	}
+	return names
+}
+
+// observeOverlayChanges records changes only while visible. The initial sample is a
+// baseline, not a claim about mutations that happened while the overlay was closed.
+func (g *Game) observeOverlayChanges() {
+	p := g.panel
+	first := p.observed == nil
+	if !first && g.tick-p.observedTick < 6 {
+		return
+	}
+	p.observedTick = g.tick
+	if first {
+		p.observed = map[string]string{}
+	}
+	for _, name := range g.stateRows() {
+		if !strings.HasPrefix(name, "flag.") && !strings.HasPrefix(name, "var.") {
+			continue
+		}
+		value := g.stateValue(name)
+		if old, ok := p.observed[name]; !first && (!ok || old != value) {
+			p.recent = slices.DeleteFunc(p.recent, func(n string) bool { return n == name })
+			p.recent = append([]string{name}, p.recent...)
+			p.recent = p.recent[:min(6, len(p.recent))]
+		}
+		p.observed[name] = value
+	}
+}
+
+func overlayControlText(c screenControl) string {
+	status := lang.T("pressable")
+	if !c.Enabled {
+		status = fmt.Sprintf(lang.T("not pressable: %s"), c.Reason)
+	}
+	if c.Focused {
+		status += " | " + lang.T("focused")
+	}
+	return c.Label + " | " + status
+}
+
+// drawOverlay uses the same control rectangles as screen records. Its own drawing is
+// deliberately uninstrumented, so it cannot feed back into screen/trace collection.
+func (g *Game) drawOverlay(dst *ebiten.Image) {
+	p := g.panel
+	f := g.controlFrame()
+	if f == nil {
+		return
+	}
+	p.collecting = false
+	for _, c := range f.controls {
+		col := color.NRGBA{80, 220, 150, 255}
+		if !c.Enabled {
+			col = color.NRGBA{240, 130, 90, 255}
+		}
+		if c.Focused {
+			col = color.NRGBA{255, 230, 80, 255}
+		}
+		r := c.Rect
+		gfx.StrokeRoundRect(dst, float32(r[0]), float32(r[1]), float32(r[2]), float32(r[3]), 0, 2, col)
+		gfx.DrawTextLeft(dst, overlayControlText(c), r[0]+2, r[1]+2, 12, col)
+	}
+	// The standing hook uses the reusable overlay buffer even when a trace is active.
+	fcopy := *f
+	fcopy.cast = p.frame.cast
+	g.observeOverlayChanges()
+	lines := g.overlayLines(&fcopy)
+	if p.performance != nil && p.performance.durations != nil {
+		u, d := &p.performance.durations.update, &p.performance.durations.draw
+		lines = append(lines, fmt.Sprintf(lang.T("Update %.2f ms (avg %.2f) | Draw %.2f ms (avg %.2f)"), ms(u.last), ms(u.average()), ms(d.last), ms(d.average())))
+	}
+	lines = append(lines, lang.T("F8: close | Frames: game continues"))
+	sw, sh := g.screen()
+	h := min(sh-56, float64(len(lines))*18+12)
+	gfx.FillRect(dst, 4, 4, float32(sw-8), float32(h), color.NRGBA{10, 16, 24, 210}, false)
+	for i, line := range lines {
+		if float64(i)*18+24 > h {
+			break
+		}
+		gfx.DrawTextLeft(dst, line, 10, 8+float64(i)*18, 14, color.White)
 	}
 }

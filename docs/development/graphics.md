@@ -378,6 +378,51 @@ with the same bounded PNG tolerance. Offscreen layout defaults to device scale 1
 only `StartRendering` installs the monitor query, and layout tests can inject a
 scale without initializing GLFW.
 
+## F8 development overlay
+
+Under `gozen run --dev`, F8 opens the existing development panel on State.
+Press Left once to select Frames; F8 closes it. Scripts use `press panel`,
+then `press left`. The State/Flags/Scenes/Command bodies still pause play;
+Frames lets the game continue and leaves ordinary input with the game.
+There is no additional development key and release players cannot enable it.
+
+Frames overlays the tick, event ID and dialogue line number, location, seed,
+standing identities/slots and picture filenames, and the open phone's app,
+age, closing countdown, result index and call status. A result of -1 means
+no result selected yet. The first six flags/variables read by the current
+event are listed in name order using the existing state-use index, including
+reads in branches and text; conditions are never evaluated for observation.
+An absent indexed read is reported explicitly, with up to six flags/variables
+observed changing since Frames opened as a fallback (not a history of changes
+while the panel was closed). The line number counts dialogue
+lines, as in the existing trace, rather than YAML source lines.
+
+Controls use the same rectangles as stage-3 `screen` records: green means
+pressable, orange means not pressable (with its recorded reason), and yellow
+marks focus. Labels repeat those facts so color alone is not required.
+Phone controls retain their clipping and screen-coordinate transforms.
+The top information band can cover underlying controls; the overlay does not
+participate in hit testing or add screen-record controls.
+
+Update and Draw times are CPU milliseconds, with separate moving averages of
+the latest 60 calls from the per-section frame collector. They are not GPU
+execution times. Closing Frames discards its collector and buffers; no overlay
+collection, formatting, timing or allocation runs while it is closed. The
+browser `?fps` meter is unchanged. Presentation and timing records can differ,
+but the overlay does not change saved state or consume gameplay randomness.
+
+`TestGraphicsNovelOverlay` (included in `make graphics`) compares overlay
+pixels, gameplay records with and without Frames, and replayed state. Run:
+
+```sh
+xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./internal/play -run '^TestGraphicsNovelOverlay$' -count=1
+```
+
+The existing `playtest-panel` documentation job captures `s-frames`; regenerate
+`playtest-frames.jpg` with `make docs-images` to show the expanded overlay.
+
+![F8 Frames development overlay](../images/playtest-frames.jpg)
+
 ## Balance display
 
 The F7 balance panel is described for users on the site: [F7 balance panel](https://nao1215.github.io/gozen/edit-play-loop/#f7-balance-panel). It shows the same numbers as `gozen sim battle`, with the same function and the same random seed (battle i uses `PCG(1, i)`), so a note's `.save` can be checked in a terminal with `gozen sim battle … --state … --hp`.

@@ -518,7 +518,7 @@ func New(opts Options) (_ *Game, err error) {
 			return nil, err
 		}
 	}
-	if opts.Trace != nil && opts.Seed == 0 {
+	if (opts.Trace != nil || opts.Development) && opts.Seed == 0 {
 		opts.Seed = newSeed()
 	}
 	runctx, cancel := context.WithCancel(context.Background())
@@ -940,6 +940,9 @@ func (g *Game) pauseForFocus(focused bool) bool {
 }
 
 func (g *Game) Update() error {
+	if g.overlayActive() && g.panel.performance != nil && (g.tr == nil || g.tr.performance != g.panel.performance) {
+		defer g.panel.performance.updated(time.Now())
+	}
 	g.updating.Store(true)
 	defer g.updating.Store(false)
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" {
@@ -1220,6 +1223,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 	g.traceDrawGap(g.tick - 1)
+	if g.overlayActive() {
+		p := g.panel
+		p.frame.controls = p.frame.controls[:0]
+		p.frame.cast = p.frame.cast[:0]
+		p.collecting = true
+		defer func() { p.collecting = false }()
+		if p.performance != nil && (g.tr == nil || g.tr.performance != p.performance) {
+			defer p.performance.drawn(time.Now())
+		}
+	}
 	if g.tr != nil && g.tr.performance != nil && !g.tr.ended {
 		defer g.tr.performance.drawn(time.Now())
 	}
@@ -1356,6 +1369,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.drawLoadNotice(screen)
 	if len(g.quick) > 0 {
 		g.drawQuickMemos(screen)
+	}
+	if g.overlayActive() {
+		g.drawOverlay(screen)
 	}
 	if g.meter.on {
 		// Over everything else and before a script's shot, so the shot shows it.

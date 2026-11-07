@@ -1,6 +1,6 @@
 # Playtesting capture (run playtest-panel): F8 opens the panel; the Command tab runs a
 # typed set (pc###) and the State tab shows the flag set; the Frames tab shows the frame
-# meter over the game (s-frames); the Scenes tab jumps to the event late (pj###). A frame
+# state and frame overlay over the game (s-frames); the Scenes tab jumps to the event late (pj###). A frame
 # every 5 ticks.
 gap 1
 wait 90

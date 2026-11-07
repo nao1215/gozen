@@ -805,7 +805,7 @@ images:
     frames:
       - {shots: "pj*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
-  # The meter's numbers change from run to run; they are a small part of the picture.
+  # Frame timing values in the development overlay change from run to run.
   playtest-frames.jpg:
     run: playtest-panel
     shot: s-frames
