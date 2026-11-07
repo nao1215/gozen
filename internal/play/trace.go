@@ -1286,7 +1286,6 @@ var exactReplayKinds = map[string]bool{
 	"notice":              true,
 	"now":                 true,
 	"order":               true,
-	"panel":               true,
 	"profiles":            true,
 	"ready":               true,
 	"region":              true,
@@ -1352,6 +1351,7 @@ var inexactReplayKinds = map[string]bool{
 	"guide_done":         true,
 	"jump":               true,
 	"live_reload":        true,
+	"panel":              true, // Typed text and wall-clock frame measurements are not recorded.
 	"pick_error":         true,
 	"problem":            true,
 	"scene_review":       true,

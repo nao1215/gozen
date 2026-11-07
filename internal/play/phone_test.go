@@ -1632,3 +1632,58 @@ func TestPhoneTimeoutAfterLandscapeEntrance(t *testing.T) {
 		t.Fatal("timeout did not follow entrance")
 	}
 }
+
+func TestPhoneTimedMixedLockOutcomes(t *testing.T) {
+	for _, action := range []string{"dismiss before call", "open after call", "complete after decline", "decline", "answer", "timeout"} {
+		t.Run(action, func(t *testing.T) {
+			cue := data.PhoneCue{App: "lock", Var: "var.result", Timeout: 10, Notices: []data.PhoneNotice{
+				{Text: "Note"}, {Call: true, Title: "Caller"}, {Text: "Receipt"},
+			}}
+			g := phoneGame(t, cue)
+			phoneTicks(g, phoneRise+20)
+			g.in = input{}
+			want := ""
+			switch action {
+			case "dismiss before call":
+				g.in.esc = true
+				want = "dismiss"
+			case "open after call":
+				g.phone.shown = 3
+				g.in.pressed[btnOK] = true
+				want = "open"
+			case "complete after decline":
+				phonePress(g, btnOK)
+				if !g.phone.calling() {
+					t.Fatal("expected the incoming call")
+				}
+				phonePress(g, btnCancel)
+				if g.phone.calling() || g.phone.shown != 3 || g.phone.closing != 0 || g.phone.answer() != -1 {
+					t.Fatal("declining should advance to the ordinary notice without answering")
+				}
+				g.in = input{}
+				g.in.pressed[btnOK] = true
+				want = "open"
+			case "decline":
+				g.phone.cue.Notices = cue.Notices[:2]
+				g.phone.shown = 2
+				g.in.esc = true
+				want = "decline"
+			case "answer":
+				g.phone.shown = 2
+				g.in.pressed[btnOK] = true
+				want = "answer"
+			case "timeout":
+				g.phone.age = phoneRise + 599
+				want = "expired"
+			}
+			g.updatePhone()
+			n := g.phone.answer()
+			if n < 0 || cue.Results()[n].ID != want {
+				t.Fatalf("answer %d, want %s", n, want)
+			}
+			if !phoneTicks(g, phoneRise) || g.phone.answer() != n {
+				t.Fatal("closing lost or changed outcome")
+			}
+		})
+	}
+}

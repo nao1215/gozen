@@ -262,16 +262,18 @@ func TestReproRejectsTypedPanelCommands(t *testing.T) {
 				t.Fatal(err)
 			}
 			tick := -1
+			commandRecorded := false
 			for _, record := range records {
-				if record.kind == command.kind {
+				if record.kind == "panel" && tick < 0 {
 					tick = record.tick
 				}
+				commandRecorded = commandRecorded || record.kind == command.kind
 			}
-			if tick < 0 {
+			if tick < 0 || !commandRecorded {
 				t.Fatalf("typed command not recorded: %s", &trace)
 			}
 			path := traceFile(t, strings.TrimSpace(trace.String()))
-			want := fmt.Sprintf("cannot reproduce exactly: %s at tick %d", command.kind, tick)
+			want := fmt.Sprintf("cannot reproduce exactly: panel at tick %d", tick)
 			out, stderr := invoke(t, 1, "trace", path, "--repro", strconv.Itoa(result.Ticks))
 			if out != "" || !strings.Contains(stderr, want) {
 				t.Fatalf("stdout=%s stderr=%s", out, stderr)

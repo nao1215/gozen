@@ -305,3 +305,20 @@ func TestChoiceSourceDiagnostics(t *testing.T) {
 		t.Fatalf("literal definition changed: %s, %v", encoded, err)
 	}
 }
+
+func TestPhoneMixedLockResultIndices(t *testing.T) {
+	cue := data.PhoneCue{App: "lock", Var: "var.result", Timeout: 10, Notices: []data.PhoneNotice{
+		{Text: "Note"}, {Call: true, Title: "Caller", Ring: 3}, {Text: "Receipt"},
+	}}
+	want := []data.PhoneResult{
+		{Row: -1, Notice: 1, ID: "answer"},
+		{Row: -1, Notice: -1, ID: "decline"},
+		{Row: -1, Notice: 1, ID: "missed", Missed: true},
+		{Row: -2, Notice: -2, ID: "expired"},
+		{Row: -3, Notice: -3, ID: "open"},
+		{Row: -4, Notice: -4, ID: "dismiss"},
+	}
+	if got := cue.Results(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("results = %+v, want %+v", got, want)
+	}
+}

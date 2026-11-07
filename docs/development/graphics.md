@@ -134,7 +134,8 @@ outcomes or presentation. Viewports must remain unchanged. Unknown action names
 are rejected too.
 
 Every unlisted kind fails with `cannot reproduce exactly: <kind> at tick N`
-and exit 1. This includes `dev_set`, `dev_do`, `jump` from F8 panel mutations,
+and exit 1. This includes `panel` whenever F8 is opened (typed text and Frames-tab wall-clock
+measurements are not recorded), `dev_set`, `dev_do`, `jump` from panel mutations,
 `unsupported_script`, `battle_setup`, `live_reload`, guide and review records,
 and future unknown kinds. A mutation after the target does not prevent an
 earlier reproduction. The constructor audit in `trace_test.go` scans all runtime

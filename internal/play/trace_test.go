@@ -652,3 +652,50 @@ func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestReplayRejectsPanelThroughTarget(t *testing.T) {
+	for _, tab := range []panelTab{tabCommand, tabFrames} {
+		t.Run(map[panelTab]string{tabCommand: "unsubmitted command", tabFrames: "wall-clock frames"}[tab], func(t *testing.T) {
+			g := storyGame(t, Options{Location: "camp", Event: "first", Development: true}, "schema_version: 4\n")
+			var buf bytes.Buffer
+			g.tr = newTracer(&buf)
+			if err := g.traceStart(); err != nil {
+				t.Fatal(err)
+			}
+			g.tick = 2
+			g.togglePanel()
+			for g.panel.tab != tab {
+				g.panelTab(true)
+			}
+			if tab == tabCommand {
+				g.typeMemo("set: {flag.typed: true}")
+				if g.panel.text == "" || g.st.Flags["typed"] {
+					t.Fatal("expected an unsubmitted command")
+				}
+			} else {
+				g.meter.since = time.Now().Add(-2 * time.Second)
+				g.meter.updated(time.Now().Add(-time.Millisecond))
+				if !g.meter.on || g.meter.text == "" {
+					t.Fatal("expected displayed wall-clock measurements")
+				}
+			}
+			g.tick = 4
+			g.closePanel()
+			g.traceEnd()
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, until := range []int{0, 2, 3, 5} {
+				_, err := loadReplay(path, &Options{Until: until})
+				if until <= 2 {
+					if err != nil {
+						t.Fatal(err)
+					}
+				} else if err == nil || err.Error() != "cannot reproduce exactly: panel at tick 2" {
+					t.Fatalf("until %d: %v", until, err)
+				}
+			}
+		})
+	}
+}

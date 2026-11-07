@@ -651,6 +651,17 @@ func (p PhoneCue) Results() []PhoneResult {
 			out = append(out, PhoneResult{Row: -2, Notice: -2, ID: id})
 		}
 	}
+	// Append mixed-lock outcomes after existing results to preserve saved indices.
+	if calls {
+		for _, n := range p.Notices {
+			if !n.Call {
+				out = append(out,
+					PhoneResult{Row: -3, Notice: -3, ID: "open"},
+					PhoneResult{Row: -4, Notice: -4, ID: "dismiss"})
+				break
+			}
+		}
+	}
 	if !keeps {
 		return nil
 	}
