@@ -68,7 +68,7 @@ func TestTraceButtonsRoundTrip(t *testing.T) {
 				}
 				g.traceInput(&want)
 				path := filepath.Join(t.TempDir(), "trace.jsonl")
-				data := append([]byte(`{"t":"start","tick":0,"version":1,"exact_version":2}`+"\n"), buf.Bytes()...)
+				data := append([]byte(`{"t":"start","tick":0,"version":1,"exact_version":3}`+"\n"), buf.Bytes()...)
 				data = append(data, []byte(`{"t":"end","tick":2}`+"\n")...)
 				if err := os.WriteFile(path, data, 0o600); err != nil {
 					t.Fatal(err)
@@ -95,7 +95,7 @@ func TestReplayRejectsEmptyButtonNames(t *testing.T) {
 	for _, field := range []string{"press", "held"} {
 		t.Run(field, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "old.jsonl")
-			data := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1,\"exact_version\":2}\n{\"t\":\"input\",\"tick\":1,%q:[\"\"]}\n{\"t\":\"end\",\"tick\":2}\n", field)
+			data := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1,\"exact_version\":3}\n{\"t\":\"input\",\"tick\":1,%q:[\"\"]}\n{\"t\":\"end\",\"tick\":2}\n", field)
 			if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -712,7 +712,7 @@ func TestTraceRestoresPresentationSettings(t *testing.T) {
 
 func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "trace.jsonl")
-	trace := `{"t":"start","tick":0,"exact_version":2,"version":1,"seed":7}
+	trace := `{"t":"start","tick":0,"exact_version":3,"version":1,"seed":7}
 {"t":"act","tick":3,"name":"window","args":{"width":960,"height":540}}
 {"t":"end","tick":5}
 `
@@ -781,7 +781,7 @@ func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
 	for _, kind := range append(sortedKeys(inexactReplayKinds), "future_kind") {
 		t.Run(kind, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "trace.jsonl")
-			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"exact_version\":2,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
+			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"exact_version\":3,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
 			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -1099,7 +1099,7 @@ func TestTraceResourcesRejectChangedInputs(t *testing.T) {
 }
 
 func TestExactReplayRequiresSourceAuditRevision(t *testing.T) {
-	for _, revision := range []int{0, 1, 3} {
+	for _, revision := range []int{0, 1, 2, 4} {
 		var exact ExactReplay
 		err := exact.Check("start", 0, fmt.Appendf(nil, `{"exact_version":%d}`, revision))
 		if err == nil || !strings.Contains(err.Error(), "record again") {
@@ -1795,5 +1795,81 @@ func TestReplayLegacyPointerRequiresNewRecording(t *testing.T) {
 	r.feed(&in, 1)
 	if !in.moved || in.mouse != image.Pt(10, 20) || in.wheel != -0.5 {
 		t.Fatalf("legacy ordinary replay changed: %+v", in)
+	}
+}
+
+func TestTraceAutopilotTitleSaveRefused(t *testing.T) {
+	fsys := wldWorldFiles(t, "", nil)
+	g := wldOpenWith(t, Options{FS: fsys, Location: "camp"})
+	saved, err := g.saveBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store := savefile.MemStore()
+	if err := store.Write("save1.json", saved); err != nil {
+		t.Fatal(err)
+	}
+	var trace bytes.Buffer
+	g = wldOpenWith(t, Options{FS: fsys, Store: store, Trace: &trace, Autopilot: &Autopilot{}})
+	title, ok := g.stack[len(g.stack)-1].(*title)
+	if !ok || title.menu.items[title.menu.sel].id != "continue" {
+		t.Fatal("existing save did not select Continue")
+	}
+	if err := g.Update(); err != nil {
+		t.Fatal(err)
+	}
+	start := traceLines(t, trace.Bytes(), "start")[0]
+	raw, err := json.Marshal(start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var exact ExactReplay
+	if err := exact.Check("start", 0, raw); err == nil || !strings.Contains(err.Error(), "autopilot") {
+		t.Fatalf("exact: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "auto.jsonl")
+	if err := os.WriteFile(path, trace.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 1}); err == nil || !strings.Contains(err.Error(), "autopilot") {
+		t.Fatalf("loader: %v", err)
+	}
+}
+
+func TestTraceRecordingReplayRefused(t *testing.T) {
+	g, trace := wldTracedGame(t, "wait 10\n")
+	if err := g.Update(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "original.jsonl")
+	if err := os.WriteFile(path, trace.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var recorded bytes.Buffer
+	replayed := wldOpenWith(t, Options{FS: g.opts.FS, Replay: path, Until: 1, Trace: &recorded})
+	if !replayed.rep.scripted {
+		t.Fatal("source script provenance missing")
+	}
+	path = filepath.Join(t.TempDir(), "recorded.jsonl")
+	if err := os.WriteFile(path, recorded.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 1}); err == nil || !strings.Contains(err.Error(), "recording a replay") {
+		t.Fatalf("loader: %v", err)
+	}
+}
+
+func TestTraceWriterRejectsOversizedRecord(t *testing.T) {
+	var buf bytes.Buffer
+	writer := lineWriter{w: &buf}
+	err := writer.Encode(traceLine{"t": "say", "tick": 1, "text": strings.Repeat("x", TraceLineLimit)})
+	if err == nil || !strings.Contains(err.Error(), "line limit") || buf.Len() != 0 {
+		t.Fatalf("error=%v written=%d", err, buf.Len())
 	}
 }

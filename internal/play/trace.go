@@ -87,6 +87,12 @@ type traceLine = map[string]any
 
 const traceVersion = 2
 
+// TraceLineLimit is the shared JSONL scanner limit used by the player and CLI.
+// Writers leave room for the newline and scanner lookahead.
+const TraceLineLimit = 16 << 20
+
+const initialSaveLimit = 8 << 20
+
 func newTracer(w io.Writer) *tracer {
 	t := &tracer{}
 	if w != nil {
@@ -131,6 +137,9 @@ func (lw *lineWriter) Encode(l traceLine) error {
 		b.WriteString(strings.TrimSuffix(vb.String(), "\n"))
 	}
 	b.WriteString("}\n")
+	if b.Len() >= TraceLineLimit {
+		return errors.New("trace record exceeds the 16 MiB line limit")
+	}
 	n, err := io.WriteString(lw.w, b.String())
 	if err == nil && n != b.Len() {
 		return io.ErrShortWrite
@@ -201,10 +210,20 @@ func (g *Game) traceStart() error {
 				return err
 			}
 			setup.SaveData[name] = b
+			if len(b) > initialSaveLimit {
+				setup.Unsupported = append(setup.Unsupported, fmt.Sprintf("initial save %q exceeds the 8 MiB limit", name))
+			}
 			if t, ok := g.storeTime(name); ok {
 				setup.SaveTimes[name] = t
 			}
 		}
+	}
+	if setup.Memo != nil && len(setup.Memo.Save) > initialSaveLimit {
+		setup.Memo = nil
+		setup.Unsupported = append(setup.Unsupported, "initial memo save exceeds the 8 MiB limit")
+	}
+	if o.Replay != "" {
+		setup.Unsupported = append(setup.Unsupported, "recording a replay")
 	}
 	if o.State != nil {
 		setup.Unsupported = append(setup.Unsupported, "injected state")
@@ -212,9 +231,13 @@ func (g *Game) traceStart() error {
 	if o.Review {
 		setup.Unsupported = append(setup.Unsupported, "review")
 	}
+	initial := setup.SaveData
+	if initial != nil {
+		setup.SaveData = map[string][]byte{}
+	}
 	g.emit("start", traceLine{
 		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
-		"exact_version": 2, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"exact_version": 3, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
 		"window": o.Window, "fullscreen": g.cfg.Fullscreen, "development": o.Development,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
@@ -223,7 +246,12 @@ func (g *Game) traceStart() error {
 		"autopilot": g.isAutopilot(), "fingerprint": fingerprint, "setup": setup,
 	})
 	if g.opts.Trace != nil {
-		g.store = &traceStore{Store: g.store, game: g, initial: setup.SaveData, times: setup.SaveTimes}
+		for _, name := range slices.Sorted(maps.Keys(initial)) {
+			if len(initial[name]) <= initialSaveLimit {
+				g.emit("initial_save", traceLine{"file": name, "data": initial[name]})
+			}
+		}
+		g.store = &traceStore{Store: g.store, game: g, initial: initial, times: setup.SaveTimes}
 	}
 	return g.tr.err
 }
@@ -766,7 +794,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	defer func() { err = errors.Join(err, f.Close()) }()
 	r := &replay{picks: map[int]traceLine{}, saveWrites: map[int]map[string][]*time.Time{}, inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
 	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	sc.Buffer(make([]byte, 1<<20), TraceLineLimit)
 	if o.Until < 0 {
 		return nil, errors.New(lang.T("--until は正のティックを指定する"))
 	}
@@ -848,6 +876,21 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 					return nil, fmt.Errorf(lang.T("replay で再現できない開始条件 %v"), r.setup.Unsupported)
 				}
 			}
+		case "initial_save":
+			var save struct {
+				File string `json:"file"`
+				Data []byte `json:"data"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &save); err != nil {
+				return nil, err
+			}
+			if tick != 0 || r.setup.SaveData == nil || len(save.Data) > initialSaveLimit {
+				return nil, errors.New("invalid initial save record")
+			}
+			if _, exists := r.setup.SaveData[save.File]; exists {
+				return nil, errors.New("duplicate initial save record")
+			}
+			r.setup.SaveData[save.File] = save.Data
 		case "unsupported_script", "battle_setup":
 			if !r.partial {
 				return nil, fmt.Errorf("cannot reproduce exactly: %s at tick %d", k, tick)
@@ -1484,6 +1527,7 @@ var exactReplayKinds = map[string]bool{
 	"from_memo_ready":     true,
 	"gallery":             true,
 	"input":               true,
+	"initial_save":        true,
 	"layout":              true,
 	"look":                true,
 	"menu":                true,
@@ -1593,13 +1637,17 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 		}
 	case "start":
 		var start struct {
+			Autopilot    bool       `json:"autopilot"`
 			ExactVersion int        `json:"exact_version"`
 			Setup        traceSetup `json:"setup"`
 		}
 		if err := json.Unmarshal(raw, &start); err != nil {
 			return err
 		}
-		if start.ExactVersion != 2 {
+		if start.Autopilot {
+			return errors.New("cannot reproduce exactly: autopilot changes selections without recording them")
+		}
+		if start.ExactVersion != 3 {
 			return errors.New("cannot reproduce exactly: trace lacks the source audit revision; record again")
 		}
 		if len(start.Setup.Unsupported) > 0 {

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,6 +74,31 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 	if len(start.Setup.Saves) > 0 && start.Setup.Data == nil {
 		return b, nil, errors.New("trace contains save digests but no initial save bytes; record again with --trace")
 	}
+	for _, record := range records[1:] {
+		if record.kind != "initial_save" {
+			continue
+		}
+		var save struct {
+			File string `json:"file"`
+			Data []byte `json:"data"`
+		}
+		if err := json.Unmarshal(record.raw, &save); err != nil {
+			return b, nil, err
+		}
+		if record.tick != 0 || start.Setup.Data == nil || len(save.Data) > 8<<20 {
+			return b, nil, errors.New("invalid initial save record")
+		}
+		if _, exists := start.Setup.Data[save.File]; exists {
+			return b, nil, errors.New("duplicate initial save record")
+		}
+		start.Setup.Data[save.File] = save.Data
+	}
+	for name, digest := range start.Setup.Saves {
+		data, ok := start.Setup.Data[name]
+		if !ok || fmt.Sprintf("%x", sha256.Sum256(data)) != digest {
+			return b, nil, fmt.Errorf("initial save %q is missing or does not match its digest", name)
+		}
+	}
 	tick, err := reproTick(target, records, records[len(records)-1].tick)
 	if err != nil {
 		return b, nil, err
@@ -92,7 +118,7 @@ func readRepro(path, target string) (reproBundle, []byte, error) {
 func readReproRecords(src []byte) ([]reproRecord, error) {
 	var records []reproRecord
 	sc := bufio.NewScanner(bytes.NewReader(src))
-	sc.Buffer(make([]byte, 65536), 1<<24)
+	sc.Buffer(make([]byte, 65536), play.TraceLineLimit)
 	last := 0
 	for sc.Scan() {
 		var h struct {

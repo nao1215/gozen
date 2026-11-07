@@ -252,6 +252,17 @@ The store observer and resource fingerprints exist only for tracing/replay;
 ordinary play retains its input, clocks, storage and loading behavior.
 
 
+Exact reproduction requires source audit revision 3. Autopilot traces are refused
+because selection changes are not recorded. Recordings of replays are also
+refused because replay provenance and source-only refusal records are not
+preserved by re-recording. Record the original scripted or interactive run.
+
+Initial slots use separate `initial_save` records (filename and base64 data),
+with an 8 MiB decoded limit per save. Larger slots or memo saves mark the start
+unsupported, so `--repro` reports the limit instead of producing an incomplete
+bundle. All trace writers and readers share a 16 MiB line limit. Bundling checks
+initial save digests and refuses missing or altered bytes.
+
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep
 their existing pacing. Seeking and screenshot recording (including

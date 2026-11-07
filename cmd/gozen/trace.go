@@ -18,6 +18,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/play"
 
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/text/catalog"
@@ -90,7 +91,7 @@ func (c *command) traceCmd() clihelp.Operation {
 		var shown []string
 		count := map[string]int{}
 		sc := bufio.NewScanner(inputStream)
-		sc.Buffer(make([]byte, 1<<20), 1<<24)
+		sc.Buffer(make([]byte, 1<<20), play.TraceLineLimit)
 		for sc.Scan() {
 			l, err := decodeTrace(sc.Bytes())
 			if err != nil {

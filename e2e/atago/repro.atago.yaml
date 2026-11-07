@@ -27,7 +27,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"unsupported_script","tick":2,"operation":"recruit"}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -42,7 +42,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -57,7 +57,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"battle_setup","tick":2,"hp":1}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -72,7 +72,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"dev_set","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -95,7 +95,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"dev_do","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -118,7 +118,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"jump","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -141,7 +141,7 @@ scenarios:
   - fixture:
       file: unsupported.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"future_kind","tick":2}
   - run:
       command: gozen trace unsupported.jsonl --repro 2
@@ -164,7 +164,7 @@ scenarios:
   - fixture:
       file: typed.jsonl
       content: |
-        {"t":"start","tick":0,"exact_version":2,"game_dir":"fixture-game","seed":7}
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"fixture-game","seed":7}
         {"t":"text_input","tick":2}
   - run:
       command: gozen trace typed.jsonl --repro 2

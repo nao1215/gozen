@@ -22,7 +22,7 @@ import (
 func reproFixture(t *testing.T) string {
 	t.Helper()
 	return traceFile(t,
-		`{"t":"start","tick":0,"exact_version":2,"version":2,"game_dir":"fixture game","seed":18446744073709551615,"event":"intro","flags":["ready"],"setup":{"saves":{},"save_data":{}}}`,
+		`{"t":"start","tick":0,"exact_version":3,"version":2,"game_dir":"fixture game","seed":18446744073709551615,"event":"intro","flags":["ready"],"setup":{"saves":{},"save_data":{}}}`,
 		`{"t":"input","tick":1,"press":["ok"]}`,
 		`{"t":"shot","tick":60,"file":"shots/first.png"}`,
 		`{"t":"view","tick":90,"shot":"shots/view.png"}`,
@@ -115,10 +115,10 @@ func TestReproCommandAndBundle(t *testing.T) {
 
 func TestReproMissingPrerequisites(t *testing.T) {
 	for _, start := range []string{
-		`{"t":"start","tick":0,"exact_version":2,"seed":1}`,
-		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":0}`,
-		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":1,"setup":{"saves":{"save1.json":"abc"}}}`,
-		`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":1,"setup":{"unsupported":["review"]}}`,
+		`{"t":"start","tick":0,"exact_version":3,"seed":1}`,
+		`{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":0}`,
+		`{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":1,"setup":{"saves":{"save1.json":"abc"}}}`,
+		`{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":1,"setup":{"unsupported":["review"]}}`,
 	} {
 		if _, _, err := readRepro(traceFile(t, start), "0"); err == nil {
 			t.Fatalf("accepted %s", start)
@@ -132,7 +132,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 		`{"t":"unsupported_script","tick":2,"operation":"guarantee-recruit"}`,
 		`{"t":"battle_setup","tick":2,"hp":1}`,
 	} {
-		path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7}`, record)
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":7}`, record)
 		if _, _, err := readRepro(path, "2"); err == nil || !strings.Contains(err.Error(), "cannot reproduce exactly:") {
 			t.Fatalf("record %s: %v", record, err)
 		}
@@ -143,7 +143,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 }
 
 func TestReproRejectsGuides(t *testing.T) {
-	start := `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7,"scripted":false}`
+	start := `{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":7,"scripted":false}`
 	guide := `{"t":"guide","tick":2,"screen":"board","step":1,"text":"The kiln log first."}`
 	shot := `{"t":"shot","tick":3,"file":"first-visit.png"}`
 	path := traceFile(t, start, guide, shot)
@@ -213,7 +213,7 @@ func TestReproRejectsWindowChanges(t *testing.T) {
 		`{"t":"viewport","tick":2,"width":960,"height":540,"scale":1}`,
 	} {
 		path := traceFile(t,
-			`{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7,"window":2}`,
+			`{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":7,"window":2}`,
 			`{"t":"viewport","tick":0,"width":1280,"height":720,"scale":1}`,
 			`{"t":"viewport","tick":1,"width":1280,"height":720,"scale":1}`,
 			change)
@@ -297,7 +297,7 @@ func TestReproRejectsTypedPanelCommands(t *testing.T) {
 }
 
 func TestReproRejectsUnknownFutureRecord(t *testing.T) {
-	path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"game_dir":"game","seed":7}`, `{"t":"future_kind","tick":2}`)
+	path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":7}`, `{"t":"future_kind","tick":2}`)
 	out, stderr := invoke(t, 1, "trace", path, "--repro", "2")
 	if out != "" || !strings.Contains(stderr, "cannot reproduce exactly: future_kind at tick 2") {
 		t.Fatalf("stdout=%s stderr=%s", out, stderr)
@@ -309,10 +309,91 @@ func TestReproRejectsUnknownFutureRecord(t *testing.T) {
 
 func TestReproUnknownGameDirectory(t *testing.T) {
 	for _, field := range []string{"", `,"game_dir":""`} {
-		path := traceFile(t, `{"t":"start","tick":0,"exact_version":2,"seed":7`+field+`}`)
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"seed":7`+field+`}`)
 		out, stderr := invoke(t, 1, "trace", path, "--repro", "0")
 		if out != "" || !strings.Contains(stderr, "game directory is unknown") {
 			t.Fatalf("stdout %q, stderr %q", out, stderr)
 		}
+	}
+}
+
+func TestReproLargeInitialSaves(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml":      {Data: []byte("schema_version: 10\nid: large-save-repro\n" + testgame.Game)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+	}
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewNRGBA(image.Rect(0, 0, 16, 16))); err != nil {
+		t.Fatal(err)
+	}
+	files["assets/x.png"] = &fstest.MapFile{Data: picture.Bytes()}
+	for _, size := range []int{8 << 20, (8 << 20) + 1} {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			store := savefile.MemStore()
+			data := bytes.Repeat([]byte(" "), size)
+			for _, name := range []string{"save1.json", "save2.json"} {
+				if err := store.Write(name, data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var trace bytes.Buffer
+			game, err := play.New(play.Options{FS: files, GameDir: "fixture", Seed: 7, Location: "camp", NoSound: true, Store: store, Trace: &trace})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := game.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := traceFile(t, strings.TrimSpace(trace.String()))
+			if size > 8<<20 {
+				_, stderr := invoke(t, 1, "trace", path, "--repro", "0")
+				if !strings.Contains(stderr, "exceeds the 8 MiB limit") {
+					t.Fatal(stderr)
+				}
+				return
+			}
+			for line := range bytes.SplitSeq(trace.Bytes(), []byte("\n")) {
+				if len(line) >= play.TraceLineLimit {
+					t.Fatal("unreadable trace record")
+				}
+			}
+			bundle := filepath.Join(t.TempDir(), "bundle")
+			invoke(t, 0, "trace", path, "--repro", "0", "--out", bundle)
+			invoke(t, 0, "trace", path)
+			for _, name := range []string{"save1.json", "save2.json"} {
+				got, err := os.ReadFile(filepath.Join(bundle, "saves", name)) //nolint:gosec // Reads this test's generated bundle.
+				if err != nil || !bytes.Equal(got, data) {
+					t.Fatalf("bundled save: %v", err)
+				}
+			}
+			replayed, err := play.New(play.Options{FS: files, NoSound: true, Store: savefile.MemStore(), Replay: filepath.Join(bundle, "trace.jsonl"), Until: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := replayed.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestReproRefusesUnrecordedSources(t *testing.T) {
+	for _, tt := range []struct{ fields, want string }{
+		{`"autopilot":true`, "autopilot changes selections"},
+		{`"setup":{"unsupported":["recording a replay"]}`, "recording a replay"},
+	} {
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"game_dir":"fixture","seed":7,`+tt.fields+`}`)
+		_, stderr := invoke(t, 1, "trace", path, "--repro", "0")
+		if !strings.Contains(stderr, tt.want) {
+			t.Fatal(stderr)
+		}
+	}
+}
+
+func TestReproRefusesMissingInitialSaveRecord(t *testing.T) {
+	path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"game_dir":"fixture","seed":7,"setup":{"saves":{"save1.json":"digest"},"save_data":{}}}`)
+	_, stderr := invoke(t, 1, "trace", path, "--repro", "0")
+	if !strings.Contains(stderr, "missing or does not match its digest") {
+		t.Fatal(stderr)
 	}
 }
