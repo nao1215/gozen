@@ -298,8 +298,15 @@ func skipText(l map[string]any) string {
 		what = "scene skip"
 	}
 	if l["on"] == true {
+		unread := ""
+		if l["unread"] == true {
+			unread = ", passing lines not read"
+		}
 		if l["scene"] == true {
-			return fmt.Sprintf("%s from %s line %v (%v of %v lines read)", what, str(l["event"]), l["line"], l["read"], l["lines"])
+			return fmt.Sprintf("%s from %s line %v (%v of %v lines read%s)", what, str(l["event"]), l["line"], l["read"], l["lines"], unread)
+		}
+		if unread != "" {
+			return what + " on (" + unread[2:] + ")"
 		}
 		return what + " on"
 	}

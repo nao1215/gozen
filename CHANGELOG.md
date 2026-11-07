@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Changed
+
+- With the setting "Text to skip" set to all, scene skip (Page Down) is offered in any event with lines and passes lines not read, as skip mode and Ctrl already did; it still stops at a choice, a phone that keeps a result and a battle. A `skip` line of the trace that starts skipping carries `"unread": true` then, and `trace --check` no longer reports the lines it passes as GZN1404.
+
 ## v0.20.0 - 2026-11-07
 
 A lock screen call that rings out to a `missed` result, a choice that waits behind an Unmute button so keeping quiet is an answer, and Skip that stops at phones that keep a result.

@@ -47,8 +47,9 @@ type traceChecker struct {
 	waiting  bool
 	stands   int
 
-	// skipping is skip mode or scene skip, from the trace's skip lines (ADR 0026).
-	skipping bool
+	// skipping is skip mode or scene skip, from the trace's skip lines (ADR 0026);
+	// skipUnread is set when the player's setting let it pass lines not read.
+	skipping, skipUnread bool
 }
 
 type standFigure struct {
@@ -111,11 +112,12 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 	case "say":
 		c.sayWho, c.sayText, c.sayTick = str(l["who"]), str(l["text"]), tick
 		c.sayN++
-		if read, ok := l["read"].(bool); ok && !read && c.skipping {
+		if read, ok := l["read"].(bool); ok && !read && c.skipping && !c.skipUnread {
 			c.add(tick, "skip-unread", lang.T("スキップ中に読んでいない台詞を飛ばした（%s）"), c.say())
 		}
 	case "skip":
 		c.skipping = l["on"] == true
+		c.skipUnread = c.skipping && l["unread"] == true
 	case "voice":
 		switch {
 		case c.skipping:
