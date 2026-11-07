@@ -41,6 +41,7 @@ type sceneCache struct {
 }
 
 // baked is a doll's sheet and the round face for its balloons (nil without a picture).
+// A nil sheet records a failed picture load so later frames do not retry it.
 type baked struct {
 	sheet, face *image.RGBA
 }
@@ -110,6 +111,13 @@ func (g *Game) waitsForDolls() bool {
 // draw. No simulation updates run here. A timeout must fail the capture instead
 // of silently recording a timing-dependent placeholder.
 func (g *Game) waitDoll(done <-chan struct{}) bool {
+	// Completion wins over an expired deadline, including failed loads.
+	select {
+	case <-done:
+		return true
+	default:
+	}
+
 	if g.pictureDeadline.IsZero() {
 		g.pictureDeadline = time.Now().Add(10 * time.Second)
 	}
@@ -124,7 +132,7 @@ func (g *Game) waitDoll(done <-chan struct{}) bool {
 	}
 }
 
-// dollSheet is the baked sheet of a doll, or nil while it is being baked.
+// dollSheet is the baked sheet of a doll, or nil while baking or after a failed load.
 func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	c := g.scenes()
 	key := sp.k
@@ -151,6 +159,14 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 			c.slots <- struct{}{}
 			defer func() { <-c.slots }()
 			pic := g.pics.decode(sp.picture)
+			if pic == nil && sp.picture != "" {
+				// An unloadable picture is settled: keep the missing-picture result
+				// instead of baking a doll or retrying it on subsequent frames.
+				c.mu.Lock()
+				c.baked[key] = baked{}
+				c.mu.Unlock()
+				return
+			}
 			var found *[4]int
 			if pic != nil {
 				found = g.foundFace(sp.picture, pic.Bounds().Size())
@@ -176,7 +192,7 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 		b, done = c.baked[key]
 		c.mu.Unlock()
 	}
-	if !done {
+	if !done || b.sheet == nil {
 		return nil
 	}
 	c.mu.Lock()

@@ -3,6 +3,7 @@ package play
 import (
 	"image"
 	"testing"
+	"testing/fstest"
 	"time"
 )
 
@@ -66,4 +67,44 @@ func TestDollCaptureTimeoutDoesNotSavePlaceholder(t *testing.T) {
 	}
 	// No image is needed: the failure must reject the shot before reading pixels.
 	g.saveShotQuiet(nil, "frame")
+}
+
+func TestDollCaptureSettlesFailedPicture(t *testing.T) {
+	for _, path := range []string{"invalid.png", "missing.png"} {
+		t.Run(path, func(t *testing.T) {
+			g := &Game{tick: 18, autoShot: "frame", pictureDeadline: time.Now().Add(time.Second)}
+			g.pics = newPictures(fstest.MapFS{"assets/invalid.png": {Data: []byte("not an image")}})
+			defer g.closeScenes()
+			sp := newDollSpec(path, nil, 30)
+			if g.dollSheet(sp) != nil || g.failure != nil {
+				t.Fatalf("failed picture did not settle as a placeholder: %v", g.failure)
+			}
+			select {
+			case <-g.scenes().pending[sp.k]:
+			default:
+				t.Fatal("failed load is still pending")
+			}
+			// A settled failure remains settled, even after the draw deadline.
+			g.pictureDeadline = time.Now().Add(-time.Second)
+			for range 10 {
+				if g.dollFace(sp) != nil || g.failure != nil {
+					t.Fatalf("failed picture was retried: %v", g.failure)
+				}
+			}
+			if g.tick != 18 {
+				t.Fatal("failed load advanced simulation")
+			}
+		})
+	}
+}
+
+func TestDollCaptureCompletedLoadWinsOverDeadline(t *testing.T) {
+	g := &Game{pictureDeadline: time.Now().Add(-time.Second)}
+	done := make(chan struct{})
+	close(done)
+	for range 100 {
+		if !g.waitDoll(done) || g.failure != nil {
+			t.Fatalf("completed load timed out: %v", g.failure)
+		}
+	}
 }
