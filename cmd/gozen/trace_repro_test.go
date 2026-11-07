@@ -397,3 +397,61 @@ func TestReproRefusesMissingInitialSaveRecord(t *testing.T) {
 		t.Fatal(stderr)
 	}
 }
+
+func TestReproConfiguredAuthorTools(t *testing.T) {
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewNRGBA(image.Rect(0, 0, 16, 16))); err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"review", "review-log", "review-sources", "memos", "external-input", "build-info", "live reload"} {
+		t.Run(mode, func(t *testing.T) {
+			var trace bytes.Buffer
+			o := play.Options{
+				FS: fstest.MapFS{
+					"game.yaml":      {Data: []byte("schema_version: 10\nid: tools-repro\n" + testgame.Game)},
+					"data/main.yaml": {Data: []byte(testgame.Data)},
+					"assets/x.png":   {Data: picture.Bytes()},
+				},
+				GameDir: "fixture", Seed: 7, NoSound: true, Store: savefile.MemStore(), Trace: &trace,
+			}
+			switch mode {
+			case "review":
+				o.Review = true
+			case "review-log":
+				o.ReviewLog = filepath.Join(t.TempDir(), "review.jsonl")
+			case "review-sources":
+				o.ReviewSources = filepath.Join(t.TempDir(), "sources.json")
+			case "memos":
+				o.MemoDir = t.TempDir()
+			case "external-input":
+				o.ExternalInput = true
+			case "build-info":
+				o.CollectBuildInfo = true
+			case "live reload":
+				o.LiveDir = t.TempDir()
+			}
+			g, err := play.New(o)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := traceFile(t, strings.TrimSpace(trace.String()))
+			for _, bundle := range []bool{false, true} {
+				args := []string{"trace", path, "--repro", "0", "--format", "json"}
+				if bundle {
+					args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
+				}
+				code := 0
+				if mode == "review" {
+					code = 1
+				}
+				out, stderr := invoke(t, code, args...)
+				if (mode == "review" && !strings.Contains(stderr, "cg_review")) || (mode != "review" && (stderr != "" || out == "")) {
+					t.Fatalf("stdout=%s stderr=%s", out, stderr)
+				}
+			}
+		})
+	}
+}

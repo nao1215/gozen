@@ -65,6 +65,32 @@ Running the game with `--script`, `--trace`, `--replay` and `--record` is descri
 - `gozen sim script` (`play.Simulate`, [ADR 0046](../decisions/0047-headless-scripted-runs.md)) runs the same `Game` without `Draw` or the Ebitengine loop. A pending script shot pauses `Update` only while `rendering` is set, and the pause comes before the tick advances, so the ticks are those of `run`. Pictures are not decoded ahead, and `pictures.load` gives an empty image of the size in the file header (`picdecode.Size`). Interactive lines (`--script -`) are appended by `script.more` when the commands run out; `Simulate` writes `ready` and flushes before each read. `TestGraphicsSimulateMatchesRun` compares both paths line by line, without the drawing lines and `music`.
 - Notes are made with F9 under `--dev --memos notes`. They record the screen, the state and an annotation, and finalize the JSON last. Adding the build revision is enabled separately with `--build-info`, and external input on Linux with `--external-input`. No source search or Git execution is done.
 
+### Author options and exact reproduction
+
+This table classifies every registered player option; `TestTraceOptionClassification`
+rejects additions without a row. Enabling an author tool alone does not refuse
+a trace. Its event refuses only targets at or after the first screen change.
+Paths to review logs and source maps are not recorded.
+
+| Options | Reproduction policy |
+| --- | --- |
+| `--dev` | Recorded and restored as `development`. Unsupported panel/graph actions are refused by their records. |
+| `--gallery-all`, `--book-as-played` | Recorded and restored as `gallery_all` and `book_as_played`. |
+| `--review`, `--review-log`, `--review-sources` | Refused at `cg_review` or `scene_review` when review UI appears, including gallery review controls, in-play tagging, its no-CG toast and an unsubmitted editor. `--review` opens review UI at tick 0. |
+| `--memos`, `--external-input`, `--build-info` | Accepted until `memo_open`, `memo`, `unsupported_script` or review UI records. External input occurs inside these editors; build metadata and debug logs alone do not change the screen. |
+| `--dir` | Game identity and resources are recorded and checked. An idle live watcher is accepted. F5 attempts and automatic file-change reloads emit `live_reload` and refuse only targets including that event (including unavailable/retry messages). |
+| `--seed`, `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm` | Recorded and restored in start options. Seed zero is refused. |
+| `--scene`, `--event`, `--line`, `--picture`, `--answers` | Recorded and restored in start options. |
+| `--from-memo`, `--allow-legacy-save` | Initial memo bytes, cursor and legacy setting are recorded and restored. Oversized memo bytes are refused. |
+| `--save-dir` | Initial configuration, unlocks, read marks and slot bytes/times are recorded and restored in isolated storage. Unrecordable slots are refused. |
+| `--window`, `--fullscreen` | Initial values are recorded and restored; later viewport changes are refused. |
+| `--script` | Inputs and supported actions are recorded and replayed; unrecordable script actions are refused. |
+| `--autoplay`, `--report`, `--shot-every`, `--auto-floors`, `--speed` | Autopilot runs are refused; speed is recorded and restored. Report and shot scheduling only apply to autopilot. |
+| `--replay`, `--replay-battle` | Recording a replay is refused. |
+| `--mute` | Replay uses muted audio with the recorded deterministic audio clock; audible output is outside PNG reproduction. |
+| `--trace`, `--trace-shots`, `--shots`, `--record`, `--until` | Output destinations and stopping controls; recorded inputs/state are restored through the requested tick. Output files themselves are not replay state. |
+| `--help` | Prints help without starting a trace. |
+
 ### Reproduce a trace screen
 
 ```sh
@@ -273,8 +299,8 @@ their existing pacing. Seeking and screenshot recording (including
 by the current screen. The wait shares a ten-second deadline per draw and does
 not advance simulation ticks; a timeout fails the run instead of saving a
 placeholder. Ordinary interactive play keeps loading these pictures asynchronously.
-Data edits, live reloads and unsupported review starts
-are rejected. Old traces without a game directory or required save bytes report
+Changed resources are rejected. Live reloads and author-tool screen changes
+are rejected only when their events occur through the target tick. Old traces without a game directory or required save bytes report
 what must be recorded again; ordinary replay of older traces is unchanged.
 
 Run the PNG comparison with `go test -tags=graphics ./internal/play -run

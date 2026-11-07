@@ -20,7 +20,10 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"github.com/nao1215/gozen/internal/event"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -273,7 +276,7 @@ func TestWldTraceViewLinesNameThePicturesDrawn(t *testing.T) {
 	}
 }
 
-func TestWldReplayRefusesOptionsItCannotReproduce(t *testing.T) {
+func TestWldReplayRefusesReviewScreen(t *testing.T) {
 	var buf bytes.Buffer
 	opts := Options{
 		Location: "camp", Seed: 5, Trace: &buf, Review: true, ReviewLog: t.TempDir() + "/review.jsonl",
@@ -286,8 +289,8 @@ func TestWldReplayRefusesOptionsItCannotReproduce(t *testing.T) {
 	if err := g.Close(); err != nil {
 		t.Fatal(err)
 	}
-	_, err := wldReplayGame(t, buf.Bytes(), func(o *Options) { o.FS = wldWorldFiles(t, "", nil) })
-	if err == nil || !strings.Contains(err.Error(), "cannot reproduce the start conditions [review]") {
+	_, err := wldReplayGame(t, buf.Bytes(), func(o *Options) { o.FS = wldWorldFiles(t, "", nil); o.Until = 1 })
+	if err == nil || !strings.Contains(err.Error(), "cg_review at tick 0") {
 		t.Fatalf("error %v", err)
 	}
 }
@@ -1963,4 +1966,197 @@ func TestTraceWriterRejectsOversizedRecord(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "line limit") || buf.Len() != 0 {
 		t.Fatalf("error=%v written=%d", err, buf.Len())
 	}
+}
+
+func TestTraceAuthorToolConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		configure func(*Options)
+	}{
+		{"review", func(o *Options) { o.Review = true; o.ReviewLog = "unused.jsonl" }},
+		{"review-log", func(o *Options) { o.ReviewLog = "unused.jsonl" }},
+		{"review-sources", func(o *Options) { o.ReviewSources = "unused.json" }},
+		{"memos", func(o *Options) { o.MemoDir = "unused" }},
+		{"external-input", func(o *Options) { o.ExternalInput = true }},
+		{"build-info", func(o *Options) { o.CollectBuildInfo = true }},
+		{"live reload", func(o *Options) { o.LiveDir = t.TempDir(); o.Script = "" }},
+		{"F5 script", func(o *Options) { o.LiveDir = t.TempDir(); o.Script = "press reload\n" }},
+		{"disabled watcher", func(o *Options) { o.LiveDir = t.TempDir() }},
+		{"gallery-all", func(o *Options) { o.GalleryAll = true }},
+		{"book-as-played", func(o *Options) { o.BookAsPlayed = true }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			o := Options{FS: wldWorldFiles(t, "", nil), Location: "camp", Seed: 5, Development: true, Trace: &buf, Script: "wait 5\nquit\n"}
+			tc.configure(&o)
+			o.NoSound, o.Store, o.ShotDir = true, savefile.MemStore(), t.TempDir()
+			g, err := New(o)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := g.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			start := traceLines(t, buf.Bytes(), "start")[0]
+			b, err := json.Marshal(start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var exact ExactReplay
+			err = exact.Check("start", 0, b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if o.Review {
+				assertSourceRefused(t, &buf, "cg_review")
+				return
+			}
+			replayed, err := wldReplayGame(t, buf.Bytes(), func(o *Options) { o.FS = g.opts.FS })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if replayed.opts.GalleryAll != o.GalleryAll || replayed.opts.BookAsPlayed != o.BookAsPlayed || !replayed.opts.Development {
+				t.Fatalf("author display options not restored: %+v", replayed.opts)
+			}
+		})
+	}
+}
+
+func TestTraceInPlayTagRefusesAtInteraction(t *testing.T) {
+	for _, picture := range []string{"", "pics/tall1.png"} {
+		t.Run(picture, func(t *testing.T) {
+			var buf bytes.Buffer
+			logPath := filepath.Join(t.TempDir(), "review.jsonl")
+			g := wldOpenWith(t, Options{FS: wldWorldFiles(t, mnuReviewYAML, nil), Location: "camp", Seed: 5, Trace: &buf, ReviewLog: logPath})
+			start := traceLines(t, buf.Bytes(), "start")[0]
+			check := func() {
+				t.Helper()
+				b, err := json.Marshal(start)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var exact ExactReplay
+				if err := exact.Check("start", 0, b); err != nil {
+					t.Fatalf("start refusal: %v", err)
+				}
+			}
+			check() // Configuration alone does not affect the screen.
+			g.tick = 3
+			if picture != "" {
+				g.Image(data.CG{File: picture})
+			}
+			g.in.pressed[btnTag] = true
+			opened := g.updateTag()
+			if picture == "" {
+				if opened || g.tag == nil || g.tag.toast == "" || g.tag.toastT != 90 {
+					t.Fatalf("no-CG toast: %+v", g.tag)
+				}
+			} else if !opened || g.tag == nil || g.tag.box == nil {
+				t.Fatalf("tag editor: %+v", g.tag)
+			}
+			assertSourceRefused(t, &buf, "cg_review")
+			assertReplaySourceBoundary(t, buf.Bytes(), "cg_review", 3)
+			if _, err := os.Stat(logPath); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("tag submitted without input: %v", err)
+			}
+		})
+	}
+}
+
+func TestTraceOptionClassification(t *testing.T) {
+	b, err := os.ReadFile("../../docs/development/graphics.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, table, ok := strings.Cut(string(b), "### Author options and exact reproduction")
+	if !ok {
+		t.Fatal("missing option classification")
+	}
+	table, _, _ = strings.Cut(table, "### Reproduce a trace screen")
+	classified := map[string]bool{}
+	for line := range strings.SplitSeq(table, "\n") {
+		if !strings.HasPrefix(line, "| `--") {
+			continue
+		}
+		columns := strings.Split(line, "|")
+		if len(columns) != 4 || strings.TrimSpace(columns[2]) == "" {
+			t.Fatalf("missing policy: %s", line)
+		}
+		for option := range strings.SplitSeq(columns[1], ",") {
+			name := strings.Trim(strings.TrimSpace(option), "`")
+			name = strings.TrimPrefix(name, "--")
+			if classified[name] {
+				t.Errorf("duplicate classification: %s", name)
+			}
+			classified[name] = true
+		}
+	}
+	Entry(nil, ".", EntryConfig{}).Flags.VisitAll(func(f *pflag.Flag) {
+		if !classified[f.Name] {
+			t.Errorf("option --%s needs a reproduction classification", f.Name)
+		}
+		delete(classified, f.Name)
+	})
+	for name := range classified {
+		t.Errorf("classification has no registered option: --%s", name)
+	}
+}
+
+// The target is Until-1: a source only invalidates targets including its tick.
+func assertReplaySourceBoundary(t *testing.T, trace []byte, kind string, tick int) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "boundary.jsonl")
+	if err := os.WriteFile(path, trace, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: tick}); err != nil {
+		t.Fatalf("before %s: %v", kind, err)
+	}
+	for _, until := range []int{tick + 1, tick + 2} {
+		if _, err := loadReplay(path, &Options{Until: until}); err == nil || !strings.Contains(err.Error(), kind+" at tick") {
+			t.Fatalf("including %s: %v", kind, err)
+		}
+	}
+}
+
+func TestTraceReloadBoundary(t *testing.T) {
+	for _, automatic := range []bool{false, true} {
+		t.Run(strconv.FormatBool(automatic), func(t *testing.T) {
+			var buf bytes.Buffer
+			dir := t.TempDir()
+			g := wldOpenWith(t, Options{FS: wldWorldFiles(t, "", nil), Location: "camp", Seed: 5, Development: true, Trace: &buf})
+			g.opts.LiveDir = dir
+			g.live.setBase(liveFingerprint(dir))
+			g.tick = 3
+			if automatic {
+				if err := os.Mkdir(filepath.Join(dir, "assets"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, "assets", "picture.png"), []byte("changed"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				g.live.changed.Store(true)
+				g.updateLive()
+			} else {
+				g.in.pressed[btnReload] = true
+				g.updateLive()
+			}
+			assertSourceRefused(t, &buf, "live_reload")
+			assertReplaySourceBoundary(t, buf.Bytes(), "live_reload", 3)
+		})
+	}
+}
+
+func TestTraceReviewGalleryBoundary(t *testing.T) {
+	var buf bytes.Buffer
+	g := wldOpenWith(t, Options{FS: wldWorldFiles(t, mnuReviewYAML, nil), Location: "camp", Seed: 5, Trace: &buf, ReviewLog: filepath.Join(t.TempDir(), "review.jsonl"), GalleryAll: true})
+	g.tick = 3
+	newGallery(g)
+	assertSourceRefused(t, &buf, "cg_review")
+	assertReplaySourceBoundary(t, buf.Bytes(), "cg_review", 3)
 }

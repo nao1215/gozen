@@ -280,6 +280,9 @@ func (s *galleryScreen) tabLabels(g *Game) []string {
 }
 
 func (s *galleryScreen) build(g *Game) {
+	if g.opts.GalleryAll && (g.cgReviewEnabled() || (g.opts.ReviewLog != "" && g.db.Game.SceneReview.Configured())) {
+		g.emit("cg_review", traceLine{"gallery": true})
+	}
 	sw, sh := g.screen()
 	var items []listItem
 	gal := g.db.Game.Gallery

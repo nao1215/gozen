@@ -233,9 +233,6 @@ func (g *Game) traceStart() error {
 	if o.State != nil {
 		setup.Unsupported = append(setup.Unsupported, "injected state")
 	}
-	if o.Review {
-		setup.Unsupported = append(setup.Unsupported, "review")
-	}
 	initial := setup.SaveData
 	if initial != nil {
 		setup.SaveData = map[string][]byte{}
