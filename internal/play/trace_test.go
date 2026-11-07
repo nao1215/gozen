@@ -885,7 +885,8 @@ func TestTraceExternalSaveChangesRefused(t *testing.T) {
 	for _, source := range []string{"bytes", "timestamp", "read error"} {
 		t.Run(source, func(t *testing.T) {
 			var buf bytes.Buffer
-			g := storyGame(t, Options{Location: "camp", Store: savefile.MemStore()}, "schema_version: 4\n")
+			dir := t.TempDir()
+			g := storyGame(t, Options{Location: "camp", Store: savefile.DirStore(dir)}, "schema_version: 4\n")
 			if err := g.save(0); err != nil {
 				t.Fatal(err)
 			}
@@ -904,11 +905,13 @@ func TestTraceExternalSaveChangesRefused(t *testing.T) {
 					t.Fatal("loading changed save bytes succeeded")
 				}
 			case "timestamp":
-				b, err := underlying.Read(g.slotPath(0))
+				path := filepath.Join(dir, g.slotPath(0))
+				info, err := os.Stat(path)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := underlying.Write(g.slotPath(0), b); err != nil {
+				stamp := info.ModTime().Add(-24 * time.Hour)
+				if err := os.Chtimes(path, stamp, stamp); err != nil {
 					t.Fatal(err)
 				}
 				g.storeTime(g.slotPath(0))
@@ -1108,5 +1111,42 @@ func TestTraceUnmutedSFXWaitMutedReproduction(t *testing.T) {
 	g.traceEnd()
 	if g.rep.diverge != "" || !g.rep.finished {
 		t.Fatalf("replay: %s", g.rep.report())
+	}
+}
+
+func TestTraceStartupFocusPause(t *testing.T) {
+	for _, resume := range []bool{false, true} {
+		t.Run(strconv.FormatBool(resume), func(t *testing.T) {
+			g := storyGame(t, Options{Location: "camp"}, "schema_version: 4\n")
+			var buf bytes.Buffer
+			g.tr = newTracer(&buf)
+			g.rendering, g.pauseUnfocused = true, true
+			for range 2 {
+				if !g.pauseForFocus(false) || g.tick != 0 {
+					t.Fatal("startup focus pause advanced simulation")
+				}
+			}
+			lines := traceLines(t, buf.Bytes(), "focus_pause")
+			if len(lines) != 1 {
+				t.Fatalf("startup markers = %d", len(lines))
+			}
+			raw, err := json.Marshal(lines[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var exact ExactReplay
+			if err := exact.Check("focus_pause", 0, raw); err != nil {
+				t.Fatal(err)
+			}
+			if resume && g.pauseForFocus(true) {
+				t.Fatal("focused window paused")
+			}
+			// A later loss, or updates while unfocused, must not be hidden by
+			// the accepted startup marker: movement may now be reset.
+			buf.Reset()
+			g.tick = 3
+			g.pauseForFocus(false)
+			assertSourceRefused(t, &buf, "focus_pause")
+		})
 	}
 }

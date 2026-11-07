@@ -917,11 +917,14 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) pauseForFocus(focused bool) bool {
+	if focused && g.tr != nil {
+		g.tr.focusLost = false
+	}
 	if focused || !g.rendering || g.in.script != nil || g.auto != nil || g.rep != nil {
 		return false
 	}
-	if g.tr != nil && !g.tr.focusLost {
-		g.tr.focusLost = true
+	if g.tr != nil && (!g.tr.focusLost || (g.tr.focusTick == 0 && g.tick > 0)) {
+		g.tr.focusLost, g.tr.focusTick = true, g.tick
 		g.emit("focus_pause", nil)
 	}
 	g.resetFreeMotion()

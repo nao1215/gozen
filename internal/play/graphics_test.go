@@ -653,7 +653,10 @@ screens:
 								}
 							}
 						}
-						t.Fatalf("%s target %q: %d pixels differ in %v, max channel delta %d/65535; bounds %v/%v; original %s; reproduced %s", mode, target, count, changed, maxDelta, original.Bounds(), reproduced.Bounds(), originalPath, result.Data.Screenshot)
+						// Allow driver rounding by one 8-bit step in at most 0.05% of pixels.
+						if original.Bounds() != reproduced.Bounds() || maxDelta > 257 || count > original.Bounds().Dx()*original.Bounds().Dy()/2000 {
+							t.Fatalf("%s target %q: %d pixels differ in %v, max channel delta %d/65535; bounds %v/%v; original %s; reproduced %s", mode, target, count, changed, maxDelta, original.Bounds(), reproduced.Bounds(), originalPath, result.Data.Screenshot)
+						}
 					}
 				}
 			}

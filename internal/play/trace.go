@@ -37,6 +37,7 @@ type tracer struct {
 	// inAct suppresses redundant panel mutation records already replayed by act.
 	inAct     bool
 	focusLost bool
+	focusTick int
 	viewport  traceViewport
 	enc       *lineWriter
 	lines     int
@@ -1437,6 +1438,7 @@ var exactReplayKinds = map[string]bool{
 	"end_turn":            true,
 	"flow_enter":          true,
 	"flow_next":           true,
+	"focus_pause":         true, // Only before the first update; checked below.
 	"from_memo":           true,
 	"from_memo_ready":     true,
 	"gallery":             true,
@@ -1508,7 +1510,6 @@ var inexactReplayKinds = map[string]bool{
 	"dev_set":            true,
 	"diverge":            true,
 	"external_save":      true,
-	"focus_pause":        true,
 	"graphs":             true,
 	"guide":              true,
 	"guide_blocked":      true,
@@ -1542,6 +1543,12 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 		return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
 	}
 	switch kind {
+	case "focus_pause":
+		// Replay skips focus handling. Before the first update there is no
+		// movement to reset and no simulation tick has advanced.
+		if tick != 0 {
+			return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
+		}
 	case "start":
 		var start struct {
 			ExactVersion int        `json:"exact_version"`

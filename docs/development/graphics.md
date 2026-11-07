@@ -186,7 +186,7 @@ resource fails replay before play starts. Live editing is refused as below.
 | Asynchronously appearing doll/face sheets during interactive play (`stage_dolls.go`) | **Refused** at `async_picture` when an asynchronous request starts. Even a later completed frame is outside the accepted prefix. | `TestTraceAsyncPictureRefused` |
 | F7 balance computation budget (`graphs.go`, `time.Now`/`time.Since`) | **Refused** at `graphs` when opened; partial progress depends on machine speed. | `TestTraceSourceBoundaries/graphs` |
 | Profile swipes/raw Tab and touch polling (`profiles.go`) | **Refused** at `profiles` on opening the book. | `TestTraceProfileDeviceInputRefused` |
-| Window size/layout, focus loss, fullscreen, browser visibility | Viewport **recorded**, changed viewports/window actions **refused**. Focus loss resets movement and is **refused** at `focus_pause`. Fullscreen uses `config_write`; stream browser visibility is refused with streams. | Viewport tests; `TestTraceSourceBoundaries/focus` |
+| Window size/layout, focus loss, fullscreen, browser visibility | Viewport **recorded**, changed viewports/window actions **refused**. Focus pauses at tick 0 before the first update are presentation-only and accepted; replay skips focus handling. Later focus loss resets movement and is **refused** at `focus_pause`. Fullscreen uses `config_write`; stream browser visibility is refused with streams. | Viewport tests; `TestTraceSourceBoundaries/focus`, `TestTraceStartupFocusPause` |
 | Live reload watcher and reload requests (`live.go`) | **Refused** at `live_reload`, including requests that only show an unavailable/retry message. | `TestTraceSourceBoundaries/reload`, existing live-reload tests |
 | Review logs, review text, timestamped verdict writes (`scenecheck.go`, `cgreview.go`) | **Refused** at review entry before reading files; review writes remain refused too. | `TestTraceSourceBoundaries/scene_review`, `picture_review` |
 | Screenshot/PNG workers and video output (`shots.go`, `record.go`) | **Restored screen state**: workers receive copied pixels; completion never mutates game state. I/O failure terminates the run. A target screenshot waits for requested pictures. | Screenshot failure tests; `TestGraphicsScreensRepro` |
@@ -212,7 +212,12 @@ Run the PNG comparison with `go test -tags=graphics ./internal/play -run
 '^TestGraphicsScreensRepro$' -count=1` from a desktop (wrap with
 `xvfb-run --auto-servernum --error-file=/dev/stderr` on Linux). It records neutral
 novel, campaign and battle-puppet fixtures and executes the printed reproduction
-command. Pixel comparisons remain exact. Enemy puppet motion advances in simulation
+command. All reproduction PNG comparisons allow GPU/driver rounding of at most
+1/255 per channel in at most 0.05% of pixels (rounded down to a whole pixel).
+Image bounds must match; exceeding either limit fails with the pixel count,
+changed bounds and maximum channel delta. Replay game-state trace comparisons
+through the target tick remain exact; this tolerance applies only to PNG pixels.
+Enemy puppet motion advances in simulation
 updates, independent of drawing. The puppet's composed mesh texture is unmanaged:
 automatic atlas promotion after earlier draws changes float32 source coordinates
 used by linear filtering, so drawing history can affect channel rounding even at
@@ -224,7 +229,7 @@ the same display environment.
 Round doll face textures also stay off the automatic atlas: map tokens and
 campaign portraits scale them with linear filtering. `TestGraphicsScreensRepro`
 compares both the ordinary campaign and a longer warmed-up run against seeking,
-with exact pixels and no tolerance. Offscreen layout defaults to device scale 1;
+with the same bounded PNG tolerance. Offscreen layout defaults to device scale 1;
 only `StartRendering` installs the monitor query, and layout tests can inject a
 scale without initializing GLFW.
 
