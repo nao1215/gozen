@@ -8,6 +8,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/nao1215/gozen/internal/battle"
+	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -191,7 +193,7 @@ func TestEnemyPuppetMotionDoesNotDependOnDrawing(t *testing.T) {
 		}
 		drawn.Draw(btlImage())
 	}
-	wantMotion := drawn.puppets.live["enemy.mote"].Motion
+	wantMotion := drawn.puppets.enemies[drawn.currentBattle().b.Foes[0]].Motion
 	want := wantMotion.Pose()
 	if err := drawn.Close(); err != nil {
 		t.Fatal(err)
@@ -202,7 +204,7 @@ func TestEnemyPuppetMotionDoesNotDependOnDrawing(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	gotMotion := skipped.puppets.live["enemy.mote"].Motion
+	gotMotion := skipped.puppets.enemies[skipped.currentBattle().b.Foes[0]].Motion
 	if !reflect.DeepEqual(gotMotion, wantMotion) {
 		t.Fatal("motion state differs without draws (including time, phases, springs and RNG)")
 	}
@@ -213,7 +215,64 @@ func TestEnemyPuppetMotionDoesNotDependOnDrawing(t *testing.T) {
 	for range 3 {
 		skipped.Draw(btlImage())
 	}
-	if after := skipped.puppets.live["enemy.mote"].Motion.Pose(); after != got {
+	if after := skipped.puppets.enemies[skipped.currentBattle().b.Foes[0]].Motion.Pose(); after != got {
 		t.Fatalf("repeated drawing advanced motion: %+v -> %+v", got, after)
+	}
+}
+
+func TestEnemyPuppetsBelongToBattleUnits(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: enemyPuppetFiles(t), Location: "field", Battle: "one", Party: []string{"scout", "guide"}})
+	s := g.currentBattle()
+	first := s.b.Foes[0]
+	second := *first
+	s.b.Foes = append(s.b.Foes, &second)
+	first.Def.Images = []data.HPImage{{Below: 0.5, File: "streamer/surprised.png"}}
+	s.shownHP[first], s.shownHP[&second] = first.MHP(), 1
+	s.actor = first
+	g.closeEnemyPuppets()
+	s.stepFoePictures(g)
+	a, b := g.puppets.enemies[first], g.puppets.enemies[&second]
+	if a == nil || b == nil || a == b || a.Rig() != b.Rig() {
+		t.Fatal("identical enemies must share only their rig")
+	}
+	if a.Motion.Pose().Face == b.Motion.Pose().Face {
+		t.Fatal("the healthy and hurt enemies share a face")
+	}
+	// Compare the entire motion (including health and speaking) to independent
+	// puppets driven by each unit's own inputs; pointers/RNG seeds never enter it.
+	for _, u := range []*battle.Unit{first, &second} {
+		want := seededPuppet(a.Rig(), "enemy."+u.EID)
+		t.Cleanup(want.Close)
+		face, ok := want.Rig().Face(map[bool]string{true: "smile", false: "surprised"}[u == first])
+		if !ok {
+			t.Fatal("fixture face missing")
+		}
+		want.Motion.SetFace(face)
+		want.Motion.SetHealth(float64(s.shownHP[u]) / float64(u.MHP()))
+		want.Motion.Step()
+		want.Motion.Speak(u == first)
+		if !reflect.DeepEqual(g.puppets.enemies[u].Motion, want.Motion) {
+			t.Fatal("unit face, health, or speaking motion was overwritten")
+		}
+	}
+	// Units removed by a merge and fully faded defeated units release their state.
+	s.b.Foes = s.b.Foes[:1]
+	s.stepFoePictures(g)
+	if len(g.puppets.enemies) != 1 || g.puppets.enemies[&second] != nil {
+		t.Fatal("removed unit retained")
+	}
+	s.gone[first] = 40
+	s.stepFoePictures(g)
+	if len(g.puppets.enemies) != 0 {
+		t.Fatal("faded unit retained")
+	}
+	delete(s.gone, first)
+	s.stepFoePictures(g)
+	if g.puppets.enemies[first] == a {
+		t.Fatal("departed unit reused old motion")
+	}
+	g.pop()
+	if len(g.puppets.enemies) != 0 {
+		t.Fatal("closed battle retained puppets")
 	}
 }

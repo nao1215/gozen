@@ -452,6 +452,7 @@ func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 }
 
 func (g *Game) dropReplay(r *sceneReplay, at int) {
+	g.closeEnemyPuppets()
 	g.stack = g.stack[:at]
 	g.st, g.events, g.req = r.saved, r.events, nil
 	g.backlog, g.logView = r.log, nil

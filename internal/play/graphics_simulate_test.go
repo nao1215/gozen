@@ -180,7 +180,13 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 				}
 			}
 			want, got := simulateComparable(t, ran, c.state == ""), simulateComparable(t, sim.Bytes(), c.state == "")
-			if len(want) < 10 {
+			minimum := 10
+			if c.outcome != "" {
+				// Timeout scripts have no input and emit nine comparable records
+				// without the redundant dev_do. Their before/after state is checked above.
+				minimum = 9
+			}
+			if len(want) < minimum {
 				t.Fatalf("the run wrote only %d lines to compare", len(want))
 			}
 			for i := range max(len(want), len(got)) {

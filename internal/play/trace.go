@@ -33,6 +33,8 @@ import (
 )
 
 type tracer struct {
+	// inAct suppresses redundant panel mutation records already replayed by act.
+	inAct    bool
 	viewport traceViewport
 	enc      *lineWriter
 	lines    int
@@ -141,6 +143,9 @@ func boolKeys(l traceLine) map[string]bool {
 
 func (g *Game) emit(kind string, fields traceLine) {
 	if g.tr == nil {
+		return
+	}
+	if g.tr.inAct && (kind == "dev_set" || kind == "dev_do" || kind == "jump") {
 		return
 	}
 	line := traceLine{"t": kind, "tick": g.tick}
@@ -645,6 +650,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	}
 	lines, lastTick := 0, 0
 	var start traceLine
+	var exact ExactReplay
 	var reloads []int
 	var startOptions struct {
 		Development  *bool       `json:"development"`
@@ -687,6 +693,11 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		if lines == 1 && (k != "start" || tick != 0) {
 			return nil, fmt.Errorf(lang.T("replay %s に先頭の開始行がない"), path)
 		}
+		if r.partial && tick < o.Until {
+			if err := exact.Check(k, tick, sc.Bytes()); err != nil {
+				return nil, err
+			}
+		}
 		switch k {
 		case "start":
 			if lines != 1 {
@@ -716,13 +727,11 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				}
 			}
 		case "unsupported_script", "battle_setup":
-			if !r.partial || tick < o.Until {
-				op := l["operation"]
-				if k == "battle_setup" {
-					op = "battle-hp"
-				}
-				return nil, fmt.Errorf("replay: unsupported script operation %v at tick %d", op, tick)
+			if !r.partial {
+				return nil, fmt.Errorf("cannot reproduce exactly: %s at tick %d", k, tick)
 			}
+		case "live_reload":
+			reloads = append(reloads, tick)
 		case "end":
 			r.end = l
 			if r.version == traceVersion {
@@ -769,12 +778,10 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				}
 				continue
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk", "dev_do", "dev_jump", "guides"}, name) {
+			if !exactReplayActions[name] {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
-		case "live_reload":
-			reloads = append(reloads, tick)
 		case "now":
 			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
 		default:
@@ -1085,6 +1092,11 @@ func (g *Game) traceAct(name string, args traceLine) {
 
 func (g *Game) act(name string, args traceLine) bool {
 	g.traceAct(name, args)
+	if g.tr != nil {
+		previous := g.tr.inAct
+		g.tr.inAct = true
+		defer func() { g.tr.inAct = previous }()
+	}
 	s := func(k string) string {
 		v, ok := args[k].(string)
 		if !ok {
@@ -1224,4 +1236,158 @@ func (g *Game) traceShotPath(name string) string {
 		return path
 	}
 	return abs
+}
+
+// ExactReplay validates the record stream used by the trace CLI's reproduction
+// bundles and the player's replay loader. The zero value starts a stream. Call
+// Check in trace order, only through the target tick; it retains viewport state.
+// It validates replay support, not the trace's ordering or start prerequisites.
+type ExactReplay struct {
+	viewport *traceViewport
+}
+
+// exactReplayKinds is the explicit allow-list. Input and act drive replay; start
+// and now restore its context. The remaining records describe deterministic
+// outcomes or presentation, not additional mutations. repro is a seek boundary.
+var exactReplayKinds = map[string]bool{
+	"act":                 true,
+	"activate":            true,
+	"ai_decision":         true,
+	"answer":              true,
+	"autosave":            true,
+	"banner_open":         true,
+	"battle":              true,
+	"battle_capture":      true,
+	"battle_close":        true,
+	"battle_end":          true,
+	"battle_fx":           true,
+	"battle_music":        true,
+	"battle_result":       true,
+	"battle_step":         true,
+	"carry":               true,
+	"checkpoint_restored": true,
+	"clash":               true,
+	"clash_hit":           true,
+	"clash_skill":         true,
+	"end":                 true,
+	"end_turn":            true,
+	"flow_enter":          true,
+	"flow_next":           true,
+	"from_memo":           true,
+	"from_memo_ready":     true,
+	"gallery":             true,
+	"input":               true,
+	"layout":              true,
+	"look":                true,
+	"memo":                true,
+	"menu":                true,
+	"message_open":        true,
+	"music":               true,
+	"notice":              true,
+	"now":                 true,
+	"order":               true,
+	"panel":               true,
+	"profiles":            true,
+	"ready":               true,
+	"region":              true,
+	"repro":               true,
+	"request":             true,
+	"resume":              true,
+	"rollback":            true,
+	"save_backup":         true,
+	"save_load":           true,
+	"say":                 true,
+	"scene":               true,
+	"screen_action":       true,
+	"screen_carry":        true,
+	"screen_drop":         true,
+	"screen_peek":         true,
+	"screen_refused":      true,
+	"shot":                true,
+	"skip":                true,
+	"snapshot":            true,
+	"sortie":              true,
+	"spot":                true,
+	"stand":               true,
+	"start":               true,
+	"state":               true,
+	"stream":              true,
+	"stream_comment":      true,
+	"stream_error":        true,
+	"stream_tip":          true,
+	"travel":              true,
+	"turn":                true,
+	"unlock":              true,
+	"view":                true,
+	"viewport":            true,
+	"voice":               true,
+}
+
+// Action names are checked separately: an act record is not permission to run
+// an unknown future operation. Both replay modes share the supported actions.
+var exactReplayActions = map[string]bool{
+	"battle_auto": true,
+	"run":         true,
+	"use_item":    true,
+	"raise":       true,
+	"equip_best":  true,
+	"buy":         true,
+	"walk":        true,
+	"dev_do":      true,
+	"dev_jump":    true,
+	"guides":      true,
+}
+
+// Non-reproducible kinds are explicitly classified for the constructor audit.
+// This is not a fallback: every kind absent from exactReplayKinds is rejected.
+var inexactReplayKinds = map[string]bool{
+	"battle_setup":       true,
+	"cg_review":          true,
+	"cg_review_tag":      true,
+	"dev_do":             true,
+	"dev_set":            true,
+	"diverge":            true,
+	"guide":              true,
+	"guide_blocked":      true,
+	"guide_done":         true,
+	"jump":               true,
+	"live_reload":        true,
+	"pick_error":         true,
+	"problem":            true,
+	"scene_review":       true,
+	"script_error":       true,
+	"unsupported_script": true,
+}
+
+// Check rejects any record not known to replay exactly, including future kinds.
+// Errors identify the first unsupported kind and tick for CLI diagnostics.
+func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
+	if !exactReplayKinds[kind] {
+		return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
+	}
+	switch kind {
+	case "act":
+		var act struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(raw, &act); err != nil {
+			return err
+		}
+		if act.Name == "window" {
+			return errors.New("cannot reproduce exactly: the recording changed the window size")
+		}
+		if !exactReplayActions[act.Name] {
+			return fmt.Errorf("cannot reproduce exactly: act at tick %d (unknown action %q)", tick, act.Name)
+		}
+	case "viewport":
+		var current traceViewport
+		if err := json.Unmarshal(raw, &current); err != nil {
+			return err
+		}
+		if v.viewport != nil && current != *v.viewport {
+			return errors.New("cannot reproduce exactly: the recording changed the window size")
+		}
+		v.viewport = &current
+	}
+	return nil
 }

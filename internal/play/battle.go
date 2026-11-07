@@ -754,7 +754,7 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 	}
 	if st.Amount > 0 {
 		if st.Target.Enemy && st.Stat != "mp" {
-			if p := g.puppets.live["enemy."+st.Target.EID]; p != nil {
+			if p := g.puppets.enemies[st.Target]; p != nil {
 				p.Motion.SetHealth(float64(st.HP) / float64(max(1, st.Target.MHP())))
 				p.Motion.Hit()
 			}
@@ -840,7 +840,7 @@ func (s *battleScene) reactTo(g *Game, u *battle.Unit, kind string, t int) {
 		return
 	}
 	if u.Def != nil {
-		if p := g.puppets.live["enemy."+u.EID]; p != nil {
+		if p := g.puppets.enemies[u]; p != nil {
 			if kind != "hit" || p.Rig().Spec.Motion.Hit != "soft_only" {
 				if r, ok := p.Rig().Spec.ReactionOf(map[string]string{"act": "hop", "hit": "shake"}[kind]); ok {
 					p.Motion.React(r)
@@ -863,7 +863,7 @@ func (s *battleScene) softOnlyHit(g *Game, u *battle.Unit) bool {
 	if u == nil || !u.Enemy {
 		return false
 	}
-	p := g.puppets.live["enemy."+u.EID]
+	p := g.puppets.enemies[u]
 	return p != nil && p.Rig().Spec.Motion.Hit == "soft_only"
 }
 
@@ -1488,6 +1488,12 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 // stepFoePictures prepares the visible enemies once per simulation tick. Drawing
 // only consumes this state, including when replay skips intermediate frames.
 func (s *battleScene) stepFoePictures(g *Game) {
+	for u, p := range g.puppets.enemies {
+		if !slices.Contains(s.b.Foes, u) || s.gone[u] >= 40 || u.Def.Puppet == "" {
+			p.Close()
+			delete(g.puppets.enemies, u)
+		}
+	}
 	for _, u := range s.b.Foes {
 		gone, isGone := s.gone[u]
 		if isGone && gone >= 40 {
@@ -1612,7 +1618,7 @@ func (s *battleScene) drawFoePicture(g *Game, dst *ebiten.Image, u *battle.Unit,
 		if fade.form && fade.ticks > 0 {
 			newAlpha *= float32(16-fade.ticks) / 16
 		}
-		if p := g.puppets.live["enemy."+u.EID]; u.Def.Puppet != "" && p != nil {
+		if p := g.puppets.enemies[u]; u.Def.Puppet != "" && p != nil {
 			g.drawPuppet(dst, p, x, box.bottom+bob, fh, newAlpha, false, nil)
 		} else {
 			g.drawStanding(dst, path, x, box.bottom+bob, fh, newAlpha, false, cs)

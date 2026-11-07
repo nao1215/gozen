@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/play"
 )
 
 type reproBundle struct {
@@ -130,49 +131,13 @@ func readReproRecords(src []byte) ([]reproRecord, error) {
 // cutReproRecords validates replayable actions through tick and adds the seek boundary.
 func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 	var cut bytes.Buffer
-	type viewportSize struct {
-		Width  int     `json:"width"`
-		Height int     `json:"height"`
-		Scale  float64 `json:"scale"`
-		Tall   bool    `json:"tall"`
-	}
-	var viewport *viewportSize
+	var exact play.ExactReplay
 	for _, r := range records {
 		if r.tick > tick {
 			break
 		}
-		if r.kind == "live_reload" {
-			return nil, errors.New("cannot reproduce across live reload; record again after the edit")
-		}
-		if r.kind == "battle_setup" {
-			return nil, fmt.Errorf("cannot reproduce unsupported script operation battle-hp at tick %d", r.tick)
-		}
-		if r.kind == "unsupported_script" {
-			return nil, fmt.Errorf("cannot reproduce unsupported script operation at tick %d: %s", r.tick, r.raw)
-		}
-		if r.kind == "act" {
-			var act struct {
-				Name string `json:"name"`
-			}
-			if err := json.Unmarshal(r.raw, &act); err != nil {
-				return nil, err
-			}
-			if act.Name == "window" {
-				return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
-			}
-		}
-		if r.kind == "viewport" {
-			var current viewportSize
-			if err := json.Unmarshal(r.raw, &current); err != nil {
-				return nil, err
-			}
-			if viewport != nil && current != *viewport {
-				return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
-			}
-			viewport = &current
-		}
-		if r.kind == "guide" {
-			return nil, errors.New("cannot reproduce exactly: guides cannot be reproduced exactly")
+		if err := exact.Check(r.kind, r.tick, r.raw); err != nil {
+			return nil, err
 		}
 		if r.kind == "end" {
 			continue

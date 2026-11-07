@@ -38,7 +38,7 @@ func TestSimScriptWritesTheTrace(t *testing.T) {
 		kinds[kind] = true
 		end = m
 	}
-	for _, k := range []string{"start", "say", "dev_do", "battle", "snapshot", "end"} {
+	for _, k := range []string{"start", "say", "act", "battle", "snapshot", "end"} {
 		if !kinds[k] {
 			t.Errorf("no %s line", k)
 		}

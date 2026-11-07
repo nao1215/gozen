@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"os"
 	"path/filepath"
@@ -408,6 +411,24 @@ func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
 
 func TestTraceReproScriptDirectActions(t *testing.T) {
 	trace := wldRecord(t, "wait 5\ndo set: {gold: 123}\nwait 5\ndo call: ev_auto\nwait 40\nquit\n")
+	for _, kind := range []string{"dev_set", "dev_do", "jump"} {
+		if len(traceLines(t, trace, kind)) != 0 {
+			t.Fatalf("redundant mutation record %s", kind)
+		}
+	}
+	var exact ExactReplay
+	for line := range bytes.SplitSeq(bytes.TrimSpace(trace), []byte("\n")) {
+		var header struct {
+			Kind string `json:"t"`
+			Tick int    `json:"tick"`
+		}
+		if err := json.Unmarshal(line, &header); err != nil {
+			t.Fatal(err)
+		}
+		if err := exact.Check(header.Kind, header.Tick, line); err != nil {
+			t.Fatal(err)
+		}
+	}
 	acts := traceLines(t, trace, "act")
 	if len(acts) < 2 {
 		t.Fatalf("direct script actions missing: %s", trace)
@@ -447,7 +468,7 @@ func TestTraceRejectsScriptMutations(t *testing.T) {
 			}
 			for _, until := range []int{0, 44} {
 				_, err := loadReplay(path, &Options{Until: until})
-				if err == nil || !strings.Contains(err.Error(), "unsupported script operation") {
+				if err == nil || !strings.Contains(err.Error(), "cannot reproduce exactly:") {
 					t.Fatalf("until %d: %v\n%s", until, err, &buf)
 				}
 			}
@@ -559,5 +580,75 @@ func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	}
 	if _, err := loadReplay(path, &Options{Until: 4}); err == nil || !strings.Contains(err.Error(), "the recording changed the window size") {
 		t.Fatalf("resize: %v", err)
+	}
+}
+
+func TestTraceRecordKindsHaveExactReplayClassification(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{"repro": true} // The trace CLI adds this seek boundary.
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			method, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || method.Sel.Name != "emit" {
+				return true
+			}
+			literal, ok := call.Args[0].(*ast.BasicLit)
+			if !ok || literal.Kind != token.STRING {
+				t.Errorf("%s: trace constructor must use a literal kind so the replay audit can enumerate it", name)
+				return true
+			}
+			kind, err := strconv.Unquote(literal.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen[kind] = true
+			return true
+		})
+	}
+	for kind := range seen {
+		if exactReplayKinds[kind] == inexactReplayKinds[kind] {
+			t.Errorf("record %q must be in exactly one replay classification", kind)
+		}
+	}
+	for _, group := range []map[string]bool{exactReplayKinds, inexactReplayKinds} {
+		for kind := range group {
+			if !seen[kind] {
+				t.Errorf("stale classification %q", kind)
+			}
+		}
+	}
+}
+
+func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
+	for _, kind := range append(sortedKeys(inexactReplayKinds), "future_kind") {
+		t.Run(kind, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			trace := fmt.Sprintf("{\"t\":\"start\",\"tick\":0,\"version\":1}\n{\"t\":%q,\"tick\":2}\n", kind)
+			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := loadReplay(path, &Options{Until: 2}); err != nil {
+				t.Fatal(err)
+			}
+			_, err := loadReplay(path, &Options{Until: 3})
+			want := fmt.Sprintf("cannot reproduce exactly: %s at tick 2", kind)
+			if err == nil || err.Error() != want {
+				t.Fatalf("got %v; want %s", err, want)
+			}
+		})
 	}
 }

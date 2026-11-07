@@ -82,7 +82,7 @@ func TestSimulateWritesTheTraceOfAScript(t *testing.T) {
 		}
 		count[kind]++
 	}
-	for _, k := range []string{"start", "say", "dev_do", "battle", "snapshot", "end"} {
+	for _, k := range []string{"start", "say", "act", "battle", "snapshot", "end"} {
 		if count[k] == 0 {
 			t.Errorf("no %s line: %v", k, count)
 		}
@@ -108,7 +108,7 @@ func TestSimulateIsDeterministicAndInteractive(t *testing.T) {
 	file, _ := simTrace(t, simulateScript, "")
 	again, _ := simTrace(t, simulateScript, "")
 	piped, _ := simTrace(t, "", strings.Replace(simulateScript, "shot fire\n", "shot fire\npress nowhere\n", 1))
-	kinds := []string{"say", "dev_do", "battle", "input", "scene", "state", "snapshot", "end"}
+	kinds := []string{"say", "act", "battle", "input", "scene", "state", "snapshot", "end"}
 	want := simKinds(file, kinds...)
 	if got := simKinds(again, kinds...); strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatal("the same script and seed went another way")

@@ -36,7 +36,7 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: 'unsupported script operation'
+        contains: 'cannot reproduce exactly: unsupported_script at tick 2'
 - name: refuse reproduction after guarantee-recruit
   steps:
   - fixture:
@@ -51,7 +51,7 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: 'unsupported script operation'
+        contains: 'cannot reproduce exactly: unsupported_script at tick 2'
 - name: refuse reproduction after battle-hp
   steps:
   - fixture:
@@ -66,4 +66,96 @@ scenarios:
       stdout:
         equals: ''
       stderr:
-        contains: 'unsupported script operation'
+        contains: 'cannot reproduce exactly: battle_setup at tick 2'
+- name: refuse reproduction of dev_set
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"dev_set","tick":2}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'cannot reproduce exactly: dev_set at tick 2'
+  - run:
+      command: gozen trace unsupported.jsonl --repro 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '2'"
+      stderr:
+        equals: ''
+- name: refuse reproduction of dev_do
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"dev_do","tick":2}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'cannot reproduce exactly: dev_do at tick 2'
+  - run:
+      command: gozen trace unsupported.jsonl --repro 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '2'"
+      stderr:
+        equals: ''
+- name: refuse reproduction of jump
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"jump","tick":2}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'cannot reproduce exactly: jump at tick 2'
+  - run:
+      command: gozen trace unsupported.jsonl --repro 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '2'"
+      stderr:
+        equals: ''
+- name: refuse reproduction of future_kind
+  steps:
+  - fixture:
+      file: unsupported.jsonl
+      content: |
+        {"t":"start","tick":0,"game_dir":"fixture-game","seed":7}
+        {"t":"future_kind","tick":2}
+  - run:
+      command: gozen trace unsupported.jsonl --repro 2
+  - assert:
+      exit_code: 1
+      stdout:
+        equals: ''
+      stderr:
+        contains: 'cannot reproduce exactly: future_kind at tick 2'
+  - run:
+      command: gozen trace unsupported.jsonl --repro 1
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: "'--until' '2'"
+      stderr:
+        equals: ''

@@ -531,7 +531,13 @@ screens:
 						cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Test-owned CLI and trace.
 						var stdout, stderr bytes.Buffer
 						cmd.Stdout, cmd.Stderr = &stdout, &stderr
-						if err := cmd.Run(); err == nil || !strings.Contains(stderr.String(), "unsupported script operation") {
+						kind := "unsupported_script"
+						if strings.HasPrefix(mutation, "battle-hp ") {
+							kind = "battle_setup"
+						}
+						err := cmd.Run()
+						var exit *exec.ExitError
+						if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "cannot reproduce exactly: "+kind+" at tick ") {
 							t.Fatalf("%s: gozen %v: %v\n%s\n%s", mutation, args, err, &stdout, &stderr)
 						}
 					}
@@ -566,12 +572,29 @@ screens:
 					cmd.Stdout, cmd.Stderr = &stdout, &stderr
 					err := cmd.Run()
 					var exit *exec.ExitError
-					want := "the recording changed the window size"
+					want := "cannot reproduce exactly: the recording changed the window size [GZN1401]"
 					if mode == "guides" {
-						want = "guides cannot be reproduced exactly"
+						guides := traceLines(t, data, "guide")
+						if len(guides) == 0 {
+							t.Fatal("recording has no guide to refuse")
+						}
+						want = fmt.Sprintf("cannot reproduce exactly: guide at tick %v [GZN1401]", guides[0]["tick"])
 					}
-					if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), want) {
+					if !errors.As(err, &exit) || exit.ExitCode() != 1 || stdout.Len() != 0 {
 						t.Fatalf("reproduction refusal: %v stdout=%s stderr=%s", err, &stdout, &stderr)
+					}
+					var diagnostic struct {
+						Version  int    `json:"version"`
+						Command  string `json:"command"`
+						Severity string `json:"severity"`
+						Code     string `json:"code"`
+						Message  string `json:"message"`
+					}
+					if err := json.Unmarshal(stderr.Bytes(), &diagnostic); err != nil {
+						t.Fatalf("reproduction diagnostic: %v: %s", err, &stderr)
+					}
+					if diagnostic.Version != 1 || diagnostic.Command != "trace" || diagnostic.Severity != "error" || diagnostic.Code != "GZN1401" || diagnostic.Message != want {
+						t.Fatalf("unexpected reproduction diagnostic: %s", &stderr)
 					}
 					continue
 				}

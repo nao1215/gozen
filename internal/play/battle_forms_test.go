@@ -44,7 +44,7 @@ func TestEnemyPuppetUsesActorRigFormat(t *testing.T) {
 	if p == nil {
 		t.Fatal("enemy puppet was not loaded")
 	}
-	if g.puppets.live["enemy."+u.EID] == nil {
+	if g.puppets.enemies[u] == nil {
 		t.Fatal("enemy puppet was not retained")
 	}
 	before := p.Motion.Pose()

@@ -109,18 +109,38 @@ It does not restore viewport changes. The start record preserves the plain
 the same display scale. Injected in-process state is an unsupported start condition.
 
 Script `do`, `jump`, `guides`, and `window` operations are recorded as direct
-actions alongside input; campaign `order` and `end_turn` use the same `do` path.
+actions alongside input; their redundant `dev_set`, `dev_do`, and `jump` facts
+are omitted because `act` already reproduces the command. Panel commands keep
+those mutation records and are not reproducible. Campaign `order` and `end_turn` use the same `do` path.
 Script `recruit`, `guarantee-recruit`, and `battle-log` emit `unsupported_script`
 with an `operation` name; `battle-hp` emits `battle_setup`. Replay and reproduction
 reject targets that include these mutations. Record older scripts again: older
 traces did not identify the recruitment mutations.
 
 Replays still default guides off (ADR 0055). Reproduction rejects any `guide`
-record through the target tick with "cannot reproduce exactly: guides cannot be
-reproduced exactly" (exit 1), including explicit `guides on` scripts. Guide rings
+record through the target tick with "cannot reproduce exactly: guide at tick N"
+(exit 1), including explicit `guides on` scripts. Guide rings
 and the prompt pulse use the recorded tick, but exact text pixels have not been
 established across seeking and ordinary drawing. Ordinary replay still accepts
 the explicit `guides on` action.
+
+Exact reproduction uses the shared `ExactReplay` validator in
+`internal/play/trace.go`. Both `trace --repro` and `run --replay ... --until N`
+accept only explicitly listed record kinds through the target tick (`N - 1`
+for `--until`). `exactReplayKinds` documents the complete allow-list: `start`
+and `now` restore context, `input` and supported `act` names drive replay,
+`repro` marks the seek boundary, and the other listed records describe derived
+outcomes or presentation. Viewports must remain unchanged. Unknown action names
+are rejected too.
+
+Every unlisted kind fails with `cannot reproduce exactly: <kind> at tick N`
+and exit 1. This includes `dev_set`, `dev_do`, `jump` from F8 panel mutations,
+`unsupported_script`, `battle_setup`, `live_reload`, guide and review records,
+and future unknown kinds. A mutation after the target does not prevent an
+earlier reproduction. The constructor audit in `trace_test.go` scans all runtime
+`emit` calls and requires each kind to appear in exactly one of the allow-list
+or the explicit non-reproducible list. Dynamic kind constructors fail the audit.
+Older traces containing redundant script mutation facts must be recorded again.
 
 A replay with `--until` batches ordinary updates, without intermediate drawing
 within each batch, to seek quickly. Normal play, capture and video recording keep

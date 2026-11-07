@@ -1396,11 +1396,15 @@ func (g *Game) push(s scene) {
 
 func (g *Game) pop() {
 	if len(g.stack) > 1 {
+		if _, ok := g.stack[len(g.stack)-1].(*battleScene); ok {
+			g.closeEnemyPuppets()
+		}
 		g.stack = g.stack[:len(g.stack)-1]
 	}
 }
 
 func (g *Game) replace(s scene) {
+	g.closeEnemyPuppets()
 	g.stack = []scene{s}
 	g.talk = talk{}
 	g.recruit = nil

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -132,7 +133,7 @@ func TestReproRejectsUnsupportedMutations(t *testing.T) {
 		`{"t":"battle_setup","tick":2,"hp":1}`,
 	} {
 		path := traceFile(t, `{"t":"start","tick":0,"game_dir":"game","seed":7}`, record)
-		if _, _, err := readRepro(path, "2"); err == nil || !strings.Contains(err.Error(), "unsupported script operation") {
+		if _, _, err := readRepro(path, "2"); err == nil || !strings.Contains(err.Error(), "cannot reproduce exactly:") {
 			t.Fatalf("record %s: %v", record, err)
 		}
 		if _, _, err := readRepro(path, "1"); err != nil {
@@ -152,7 +153,7 @@ func TestReproRejectsGuides(t *testing.T) {
 			args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
 		}
 		_, stderr := invoke(t, 1, args...)
-		if !strings.Contains(stderr, "guides cannot be reproduced exactly") {
+		if !strings.Contains(stderr, "cannot reproduce exactly: guide at tick") {
 			t.Fatal(stderr)
 		}
 	}
@@ -200,7 +201,7 @@ screens:
 			args = append(args, "--out", filepath.Join(t.TempDir(), "bundle"))
 		}
 		out, stderr := invoke(t, 1, args...)
-		if out != "" || !strings.Contains(stderr, "guides cannot be reproduced exactly") {
+		if out != "" || !strings.Contains(stderr, "cannot reproduce exactly: guide at tick") {
 			t.Fatalf("stdout=%s stderr=%s", out, stderr)
 		}
 	}
@@ -229,5 +230,77 @@ func TestReproRejectsWindowChanges(t *testing.T) {
 				t.Fatalf("stdout=%s stderr=%s", out, stderr)
 			}
 		}
+	}
+}
+
+func TestReproRejectsTypedPanelCommands(t *testing.T) {
+	for _, command := range []struct{ yaml, kind string }{
+		{"set: {gold: 123}", "dev_set"},
+		{"wait: 1", "dev_do"},
+	} {
+		t.Run(command.kind, func(t *testing.T) {
+			files := fstest.MapFS{
+				"game.yaml":      {Data: []byte("schema_version: 10\nid: panel-repro\n" + testgame.Game)},
+				"data/main.yaml": {Data: []byte(testgame.Data)},
+			}
+			var picture bytes.Buffer
+			if err := png.Encode(&picture, image.NewNRGBA(image.Rect(0, 0, 16, 16))); err != nil {
+				t.Fatal(err)
+			}
+			files["assets/x.png"] = &fstest.MapFile{Data: picture.Bytes()}
+			var trace bytes.Buffer
+			result, err := play.Simulate(t.Context(), play.Options{
+				FS: files, GameDir: "fixture", Location: "camp", Seed: 7,
+				Development: true, Store: savefile.MemStore(), Trace: &trace,
+				Script: "wait 10\npress panel\nwait 3\npress right 3\nwait 3\ntype " + command.yaml + "\nwait 3\npress ok\nwait 3\nquit\n",
+			}, play.SimulateConfig{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			records, err := readReproRecords(trace.Bytes())
+			if err != nil {
+				t.Fatal(err)
+			}
+			tick := -1
+			for _, record := range records {
+				if record.kind == command.kind {
+					tick = record.tick
+				}
+			}
+			if tick < 0 {
+				t.Fatalf("typed command not recorded: %s", &trace)
+			}
+			path := traceFile(t, strings.TrimSpace(trace.String()))
+			want := fmt.Sprintf("cannot reproduce exactly: %s at tick %d", command.kind, tick)
+			out, stderr := invoke(t, 1, "trace", path, "--repro", strconv.Itoa(result.Ticks))
+			if out != "" || !strings.Contains(stderr, want) {
+				t.Fatalf("stdout=%s stderr=%s", out, stderr)
+			}
+			// The same trace must be refused by the replay loader before running.
+			game, replayErr := play.New(play.Options{FS: files, Store: savefile.MemStore(), Replay: path, Until: tick + 1})
+			if game != nil {
+				if err := game.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			err = replayErr
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("replay: %v", err)
+			}
+			if _, _, err := readRepro(path, strconv.Itoa(tick-1)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestReproRejectsUnknownFutureRecord(t *testing.T) {
+	path := traceFile(t, `{"t":"start","tick":0,"game_dir":"game","seed":7}`, `{"t":"future_kind","tick":2}`)
+	out, stderr := invoke(t, 1, "trace", path, "--repro", "2")
+	if out != "" || !strings.Contains(stderr, "cannot reproduce exactly: future_kind at tick 2") {
+		t.Fatalf("stdout=%s stderr=%s", out, stderr)
+	}
+	if _, _, err := readRepro(path, "1"); err != nil {
+		t.Fatal(err)
 	}
 }
