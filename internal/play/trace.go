@@ -401,6 +401,9 @@ var buttonNames = [numButtons]string{
 }
 
 func (g *Game) traceInput() {
+	if g.tr == nil {
+		return
+	}
 	in := &g.in
 	var press, held []string
 	for b := range numButtons {

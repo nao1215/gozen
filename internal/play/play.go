@@ -1031,6 +1031,8 @@ func (g *Game) Update() error {
 	}
 	defer g.in.finishOffer()
 	g.in.observing = false
+	// Record raw input before overlays can consume clicks or pointer edges.
+	g.traceInput()
 	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
@@ -1042,7 +1044,6 @@ func (g *Game) Update() error {
 	if g.panelModal() {
 		g.in.observing = true
 		g.updatePanel()
-		g.traceInput()
 		return nil
 	}
 
@@ -1060,7 +1061,6 @@ func (g *Game) Update() error {
 		return nil
 	}
 	if g.updateLoadNotice() {
-		g.traceInput()
 		g.traceTick()
 		return nil
 	}
@@ -1070,11 +1070,12 @@ func (g *Game) Update() error {
 	}
 	if g.auto != nil && len(g.stack) > 0 {
 		g.auto.step(g)
+		// Autopilot synthesizes input after the physical input was recorded.
+		g.traceInput()
 	}
 	if g.rep != nil {
 		g.rep.doActs(g)
 	}
-	g.traceInput()
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" && g.tick%30 == 0 && g.in.script != nil {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
 	}
