@@ -184,8 +184,8 @@ func Run(ctx context.Context, opts Options) (err error) {
 	unwatched := opts.Script != "" || opts.Autopilot != nil
 	g.StartRendering()
 	if g.rep != nil && opts.Until > 0 {
-		// Draw every replay tick: presentation transitions can begin in Draw.
-		// Uncap the frame rate, not the number of updates between draws.
+		// Give each recorded tick a Draw opportunity; Draw applies recorded gaps.
+		// Skip real-time pacing while preserving presentation transitions.
 		ebiten.SetVsyncEnabled(false)
 		ebiten.SetTPS(ebiten.SyncWithFPS)
 	}
@@ -1190,6 +1190,10 @@ func (g *Game) stepBattlePictures() {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	if g.rep != nil && g.opts.Until > 0 && !g.untilShot && g.rep.skipDraw(g.tick) {
+		return
+	}
+	g.traceDrawGap(g.tick - 1)
 	if g.waitsForDolls() {
 		g.pictureDeadline = time.Now().Add(10 * time.Second)
 		defer func() { g.pictureDeadline = time.Time{} }()

@@ -2316,3 +2316,121 @@ func TestTracePartyHitFixture(t *testing.T) {
 	}
 	t.Fatal("fixture did not capture the hit")
 }
+
+func TestTraceDrawCadencePartyHit(t *testing.T) {
+	var buf bytes.Buffer
+	g := wldOpenWith(t, Options{FS: partyHitFiles(t), Location: "field", Battle: "one", Party: []string{"scout"}, Seed: 7, Script: partyHitScript, Trace: &buf})
+	screen := btlImage()
+	skipped, gapEnd := 0, 0
+	var want pictureFade
+	var target int
+	for range 300 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		s := g.currentBattle()
+		u := s.b.Party[0]
+		if gapEnd == 0 && s.faceOf(u) == "hurt" {
+			gapEnd = g.tick + 3
+		}
+		if gapEnd > g.tick {
+			skipped++
+			continue
+		}
+		shot := g.in.script.shot
+		g.in.script.shot = ""
+		g.Draw(screen)
+		if shot == "frame" {
+			want, target = s.foeFade[u], g.tick
+			break
+		}
+	}
+	if skipped != 3 || target == 0 || want.ticks <= 0 || want.ticks >= 18 {
+		t.Fatalf("skipped=%d target=%d fade=%+v", skipped, target, want)
+	}
+	g.traceEnd()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "cadence.jsonl")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fast := wldOpenWith(t, Options{FS: partyHitFiles(t), Replay: path, Until: target + 1, Store: savefile.MemStore()})
+	if got := fast.rep.drawSkips; !reflect.DeepEqual(got, [][2]int{{gapEnd - 3, gapEnd - 1}}) {
+		t.Fatalf("cadence = %v", got)
+	}
+	for fast.tick < target {
+		if err := fast.Update(); err != nil {
+			t.Fatal(err)
+		}
+		fast.Draw(screen)
+	}
+	s := fast.currentBattle()
+	if got := s.foeFade[s.b.Party[0]]; got != want {
+		t.Fatalf("replayed fade %+v, want %+v", got, want)
+	}
+}
+
+func TestTraceDrawCadence(t *testing.T) {
+	var buf bytes.Buffer
+	g := &Game{tr: newTracer(&buf)}
+	if allocs := testing.AllocsPerRun(100, func() {
+		g.tick++
+		g.traceDrawGap(g.tick - 1)
+	}); allocs != 0 || buf.Len() != 0 {
+		t.Fatalf("ordinary cadence: %g allocations, %s", allocs, &buf)
+	}
+	g.tick += 4
+	g.traceDrawGap(g.tick - 1)
+	if lines := strings.Count(buf.String(), "\n"); lines != 1 {
+		t.Fatalf("one gap must produce one record: %s", &buf)
+	}
+	for _, tc := range []struct {
+		name  string
+		spans [][2]int
+	}{
+		{"legacy", nil},
+		{"gaps", [][2]int{{2, 4}, {7, 7}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &replay{drawSkips: tc.spans}
+			for tick := range 10 {
+				want := tc.name == "gaps" && (tick >= 2 && tick <= 4 || tick == 7)
+				if r.skipDraw(tick) != want {
+					t.Fatalf("tick %d: skip=%v", tick, !want)
+				}
+			}
+		})
+	}
+}
+
+func TestTraceDrawCadenceValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		records string
+		valid   bool
+	}{
+		{"legacy", "", true},
+		{"tail", `{"t":"draw_skip","tick":5,"first":1,"last":5}`, true},
+		{"zero", `{"t":"draw_skip","tick":5,"first":0,"last":4}`, false},
+		{"reversed", `{"t":"draw_skip","tick":5,"first":4,"last":3}`, false},
+		{"future", `{"t":"draw_skip","tick":5,"first":1,"last":6}`, false},
+		{"fractional", `{"t":"draw_skip","tick":5,"first":1.5,"last":4}`, false},
+		{"overlap", "{\"t\":\"draw_skip\",\"tick\":3,\"first\":1,\"last\":2}\n{\"t\":\"draw_skip\",\"tick\":5,\"first\":2,\"last\":4}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			body := "{\"t\":\"start\",\"tick\":0,\"exact_version\":3,\"version\":1,\"seed\":7}\n" + tc.records + "\n{\"t\":\"end\",\"tick\":5}\n"
+			body = strings.ReplaceAll(body, "\n\n", "\n")
+			err := os.WriteFile(path, []byte(body), 0o600)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = loadReplay(path, &Options{Until: 5})
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%v: %v", tc.valid, err)
+			}
+		})
+	}
+}

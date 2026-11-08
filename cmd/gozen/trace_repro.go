@@ -160,7 +160,20 @@ func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 	var exact play.ExactReplay
 	for _, r := range records {
 		if r.tick > tick {
-			break
+			// A later draw can describe a gap crossing the requested boundary.
+			if r.kind == "draw_skip" {
+				var span struct {
+					First int `json:"first"`
+					Last  int `json:"last"`
+				}
+				if err := json.Unmarshal(r.raw, &span); err != nil {
+					return nil, err
+				}
+				if span.First <= tick {
+					fmt.Fprintf(&cut, "{\"t\":\"draw_skip\",\"tick\":%d,\"first\":%d,\"last\":%d}\n", tick, span.First, min(tick, span.Last))
+				}
+			}
+			continue
 		}
 		if err := exact.Check(r.kind, r.tick, r.raw); err != nil {
 			return nil, err

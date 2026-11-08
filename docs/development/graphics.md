@@ -267,6 +267,7 @@ resource fails replay before play starts. Live editing is refused as below.
 | Sound-length waits (`sfx.wait`, `layer5/sound`) | **Restored**: muted startup reads custom stream lengths without PCM decoding or playback; built-in durations share the synthesis definitions. Mute does not shorten waits. | `TestEffectDurationsWithoutPlayback`, `TestTraceUnmutedSFXWaitMutedReproduction` |
 | SFX variation clock and unseeded random pitch/volume (`layer5/sound/vary.go`), effect-player completion | **Restored screen state**: these affect audio samples/player cleanup only, with no feedback into game state or pixels. Exact audio is outside this contract. | Sound variation tests; muted graphics reproduction tests |
 | Gameplay/collection RNG, legacy-save parsing, music-room background shuffle (`play.go`, `rpg`, `gallery_music.go`) | **Recorded/restored** seed; traced runs replace seed zero before any RNG is created. Music-room wall-clock fallback and RPG unseeded fallbacks are not used by a supported recording's gameplay. Save-validation-only RNG does not change the live state. | Same-seed trace tests; `TestTraceMusicRoomSeedRestored` |
+| Updates between draws (`play.go`, party portrait fades in `battle.go`) | **Recorded/restored**: `draw_skip` intervals preserve ticks without drawing; seeking skips real-time pacing. Legacy traces assume a draw every tick. | `TestTraceDrawCadencePartyHit`, `TestTraceDrawCadence`, `TestReproCutDrawCadence` |
 | Puppet animation RNG and display previews (`puppets.go`, `meters.go`, `layer5/puppet`) | **Restored** from stable actor hashes or a clone of the game RNG. Simulation ticks advance animation; Draw does not advance it. | `TestEnemyPuppetMotionDoesNotDependOnDrawing`, graphics seek comparison |
 | Picture preload workers (`assets.go`, `picdecode`, `webfs`) | **Restored**: requested ordinary pictures synchronously join their load; preloading changes latency only. Captured doll/face loads wait without advancing ticks; the `time.Now` deadline fails instead of accepting a placeholder. | `TestDollCaptureWaitsForRequestedPicture`, `TestDollCaptureTimeoutDoesNotSavePlaceholder` |
 | Asynchronously appearing doll/face sheets during interactive play (`stage_dolls.go`) | **Refused** at `async_picture` when an asynchronous request starts. Even a later completed frame is outside the accepted prefix. | `TestTraceAsyncPictureRefused` |
@@ -276,7 +277,7 @@ resource fails replay before play starts. Live editing is refused as below.
 | Live reload watcher and reload requests (`live.go`) | **Refused** at `live_reload`, including requests that only show an unavailable/retry message. | `TestTraceSourceBoundaries/reload`, existing live-reload tests |
 | Review logs, review text, timestamped verdict writes (`scenecheck.go`, `cgreview.go`) | **Refused** at review entry before reading files; review writes remain refused too. | `TestTraceSourceBoundaries/scene_review`, `picture_review` |
 | Screenshot/PNG workers and video output (`shots.go`, `record.go`) | **Restored screen state**: workers receive copied pixels; completion never mutates game state. I/O failure terminates the run. A target screenshot waits for requested pictures. | Screenshot failure tests; `TestGraphicsScreensRepro` |
-| Debug logging, autoplay reports, seek-loop budgets, browser cooperative yields (`play.go`, `autopilot.go`, `layer1/pace`) | **Restored screen state**: `time.Now`/`time.Since` affect diagnostics, scheduling or report files only. Seek batches preserve simulation ticks; these clocks never enter accepted screen state. | `TestTraceReproBatchesPreserveTargetState`, `TestTraceReproBatchesIdleTicks` |
+| Debug logging, autoplay reports, browser cooperative yields (`play.go`, `autopilot.go`, `layer1/pace`) | **Restored screen state**: `time.Now`/`time.Since` affect diagnostics, scheduling or report files only. Seeking preserves simulation ticks and recorded draw cadence; these clocks never enter accepted screen state. | `TestTraceReproPreservesTargetState`, `TestTraceDrawCadencePartyHit` |
 
 Source markers are emitted at operations rather than by a new per-frame scan.
 The store observer and resource fingerprints exist only for tracing/replay;
@@ -294,8 +295,12 @@ unsupported, so `--repro` reports the limit instead of producing an incomplete
 bundle. All trace writers and readers share a 16 MiB line limit. Bundling checks
 initial save digests and refuses missing or altered bytes.
 
-A replay with `--until` batches ordinary updates, without intermediate drawing
-within each batch, to seek quickly. Normal play, capture and video recording keep
+A replay with `--until` skips real-time pacing and reproduces recorded draw
+cadence. A `draw_skip` record stores the inclusive `first` and `last` ticks that
+ran without a Draw, emitted at the next Draw (or trace end). Ordinary frames
+need no cadence record or allocation. Older traces without cadence records
+assume a draw every tick. A requested screenshot at a skipped tick draws the
+state reached at that tick after reproducing the preceding cadence. Normal play, capture and video recording keep
 their existing pacing. Seeking and screenshot recording (including
 `--trace-shots` without a script) wait for the faces and doll sheets requested
 by the current screen. The wait shares a ten-second deadline per draw and does

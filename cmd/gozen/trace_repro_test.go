@@ -455,3 +455,46 @@ func TestReproConfiguredAuthorTools(t *testing.T) {
 		})
 	}
 }
+
+func TestReproCutDrawCadence(t *testing.T) {
+	path := traceFile(t,
+		`{"t":"start","tick":0,"exact_version":3,"version":1,"game_dir":"fixture","seed":7}`,
+		`{"t":"draw_skip","tick":5,"first":2,"last":4}`,
+		`{"t":"draw_skip","tick":10,"first":8,"last":9}`,
+		`{"t":"end","tick":12}`)
+	for _, tick := range []int{1, 3, 5, 8, 10} {
+		_, cut, err := readRepro(path, strconv.Itoa(tick))
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := 0
+		var spans [][2]int
+		for line := range bytes.SplitSeq(bytes.TrimSpace(cut), []byte{'\n'}) {
+			var record struct {
+				Kind  string `json:"t"`
+				Tick  int    `json:"tick"`
+				First int    `json:"first"`
+				Last  int    `json:"last"`
+			}
+			if err := json.Unmarshal(line, &record); err != nil {
+				t.Fatal(err)
+			}
+			if record.Tick < last || record.Tick > tick {
+				t.Fatalf("unordered cut: %s", cut)
+			}
+			last = record.Tick
+			if record.Kind == "draw_skip" {
+				spans = append(spans, [2]int{record.First, record.Last})
+			}
+		}
+		for n := 1; n <= tick; n++ {
+			skipped := false
+			for _, span := range spans {
+				skipped = skipped || n >= span[0] && n <= span[1]
+			}
+			if want := n >= 2 && n <= 4 || n >= 8 && n <= 9; skipped != want {
+				t.Fatalf("target %d, tick %d: skipped=%v, cut=%s", tick, n, skipped, cut)
+			}
+		}
+	}
+}

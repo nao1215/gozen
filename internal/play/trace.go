@@ -44,6 +44,7 @@ type tracer struct {
 	enc       *lineWriter
 	lines     int
 	lastTick  int
+	drawTick  int // Last drawn tick; zero is the state before the first update.
 	err       error
 
 	scenes string
@@ -641,6 +642,27 @@ func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
 	}
 }
 
+// traceDrawGap writes only exceptional cadence, with no allocation on ordinary frames.
+// through is the last tick that ran without drawing (inclusive).
+func (g *Game) traceDrawGap(through int) {
+	if g.tr == nil || g.tr.ended {
+		return
+	}
+	if first := g.tr.drawTick + 1; first <= through {
+		g.emit("draw_skip", traceLine{"first": first, "last": through})
+	}
+	g.tr.drawTick = g.tick
+}
+
+// skipDraw keeps draw-owned presentation transitions on their recorded ticks.
+// Traces without draw_skip records retain the legacy draw-every-tick behavior.
+func (r *replay) skipDraw(tick int) bool {
+	i, _ := slices.BinarySearchFunc(r.drawSkips, tick, func(span [2]int, tick int) int {
+		return cmp.Compare(span[1], tick)
+	})
+	return i < len(r.drawSkips) && r.drawSkips[i][0] <= tick
+}
+
 func (g *Game) traceFrameStart() {
 	if g.tr == nil {
 		return
@@ -753,6 +775,7 @@ func (v traceViewport) sameLayout(other traceViewport) bool {
 }
 
 type replay struct {
+	drawSkips  [][2]int
 	saveWrites map[int]map[string][]*time.Time
 	scripted   bool
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
@@ -888,6 +911,19 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 					return nil, fmt.Errorf(lang.T("replay で再現できない開始条件 %v"), r.setup.Unsupported)
 				}
 			}
+		case "draw_skip":
+			var span struct {
+				First int `json:"first"`
+				Last  int `json:"last"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &span); err != nil {
+				return nil, err
+			}
+			if span.First < 1 || span.Last < span.First || span.Last > tick ||
+				(len(r.drawSkips) > 0 && span.First <= r.drawSkips[len(r.drawSkips)-1][1]) {
+				return nil, errors.New("invalid draw_skip interval")
+			}
+			r.drawSkips = append(r.drawSkips, [2]int{span.First, span.Last})
 		case "initial_save":
 			var save struct {
 				File string `json:"file"`
@@ -1303,6 +1339,7 @@ func (g *Game) traceEnd() {
 	if g.tr == nil || g.tr.ended {
 		return
 	}
+	g.traceDrawGap(g.tick)
 	g.tr.ended = true
 	g.traceState(true)
 	if g.rep != nil {
@@ -1512,6 +1549,7 @@ type ExactReplay struct {
 // describe deterministic outcomes or presentation, not additional mutations.
 // repro is a seek boundary.
 var exactReplayKinds = map[string]bool{
+	"draw_skip":           true, // Recorded presentation cadence.
 	"act":                 true,
 	"activate":            true,
 	"ai_decision":         true,
