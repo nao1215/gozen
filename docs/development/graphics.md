@@ -133,10 +133,10 @@ uses the original trace and writes to `<trace>.repro-<tick>/`.
 
 The `viewport` records describe render width, height, UI scale and portrait layout
 at the initial layout and each change. Layout changes at tick 0 establish the
-startup viewport. Later changes that preserve logical width, height (render size
-divided by UI scale), and portrait layout are also accepted. Reproduction rejects
-logical resizes after startup and script `window` actions through the target tick with
-"cannot reproduce exactly: the recording changed the window size" (exit 1).
+startup viewport. Reproduction rejects every later viewport change, including a
+change of render size or UI scale that keeps the logical size, and script `window`
+actions through the target tick with "cannot reproduce exactly: the recording
+changed the window size" (exit 1).
 It does not restore viewport changes. The start record preserves the plain
 `window` option and `fullscreen`; exact native-screen reproduction still requires
 the same display scale. Injected in-process state is an unsupported start condition.
