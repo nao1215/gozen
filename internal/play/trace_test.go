@@ -832,6 +832,7 @@ func TestExactReplayViewportChanges(t *testing.T) {
 	initial := traceViewport{Width: 1280, Height: 720, Scale: 1}
 	startup := traceViewport{Width: 960, Height: 540, Scale: 1}
 	retina := traceViewport{Width: 2560, Height: 1440, Scale: 2}
+	nativeResize := traceViewport{Width: 960, Height: 540, Scale: 0.75}
 	for _, tt := range []struct {
 		name    string
 		tick    int
@@ -840,9 +841,12 @@ func TestExactReplayViewportChanges(t *testing.T) {
 	}{
 		{name: "startup layout", current: startup},
 		{name: "startup device scale", current: retina},
+		{name: "startup native scale", current: nativeResize},
 		{name: "unchanged", tick: 1, current: initial},
-		{name: "device scale after start", tick: 1, current: retina},
-		{name: "fractional device scale", tick: 1, current: traceViewport{Width: 1920, Height: 1080, Scale: 1.5}},
+		{name: "device scale after start", tick: 1, current: retina, wantErr: true},
+		{name: "native scale after first tick", tick: 1, current: nativeResize, wantErr: true},
+		{name: "native scale at later tick", tick: 60, current: nativeResize, wantErr: true},
+		{name: "fractional device scale", tick: 1, current: traceViewport{Width: 1920, Height: 1080, Scale: 1.5}, wantErr: true},
 		{name: "logical resize", tick: 1, current: startup, wantErr: true},
 		{name: "scale without matching pixels", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 2}, wantErr: true},
 		{name: "portrait layout", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 1, Tall: true}, wantErr: true},

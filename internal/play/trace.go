@@ -764,16 +764,6 @@ type traceViewport struct {
 	Tall   bool    `json:"tall,omitempty"`
 }
 
-// sameLayout compares logical dimensions, allowing device-pixel scaling alone.
-func (v traceViewport) sameLayout(other traceViewport) bool {
-	if v == other {
-		return true
-	}
-	return v.Scale > 0 && other.Scale > 0 && v.Tall == other.Tall &&
-		float64(v.Width)*other.Scale == float64(other.Width)*v.Scale &&
-		float64(v.Height)*other.Scale == float64(other.Height)*v.Scale
-}
-
 type replay struct {
 	startupViewport *traceViewport
 	drawSkips       [][2]int
@@ -1731,8 +1721,8 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 			return err
 		}
 		// Startup layout can settle before Update advances the first game tick.
-		// Later device-scale changes are harmless only for the same logical layout.
-		if tick != 0 && v.viewport != nil && !current.sameLayout(*v.viewport) {
+		// Later scale changes can change rendered dimensions even with the same logical layout.
+		if tick != 0 && v.viewport != nil && current != *v.viewport {
 			return errors.New("cannot reproduce exactly: the recording changed the window size")
 		}
 		v.viewport = &current
