@@ -97,8 +97,10 @@ about 331 allocations per battle and 0.15 seconds for 5,000 battles; the test
 allows 600 allocations per battle, 64 MiB heap in use and 3 seconds. The time
 margin accommodates concurrent unit-test jobs. Graphics allocation ceilings for
 pictures-4k, standing-pictures and phone-video
-are 300, 1,900 and 1,300 per frame, respectively; these are approximately twice
-the coordinator's measured 143, 425–930 and 250–649. Their sampled heap ceiling
+are 350, 1,900 and 1,300 per steady frame, respectively. The picture startup
+ceiling is 1,700 allocations per frame. An Xvfb run measured approximately
+165 steady and 838 startup allocations per frame for pictures, 433–1,028 for
+standing pictures and 267–600 for phone video. Their sampled heap ceiling
 is 256 MiB (measured peaks up to 120 MB), and their section time ceiling is five
 seconds. Long-conversation retains a 20,000 allocation ceiling and allows 120
 seconds for reading the entire conversation (1,434 ticks in the headless check).
@@ -107,12 +109,12 @@ The large map retains its static point-and-label layer while the visible state
 is unchanged. State, focus, camera, viewport and theme changes redraw it;
 animated tokens remain live.
 The fixed map ceilings are 13,000 startup and 600 steady allocations/frame,
-256 MiB sampled heap and 15 seconds per section. A local CPU-side benchmark
+512 MiB sampled heap and 15 seconds per section. A local CPU-side benchmark
 measured 12,443 startup allocations/frame over 30 updates/draws, and 391 per
 warm update/draw over 120 iterations, including periodic state refreshes.
-Native calibration of these new ceilings is pending the
-coordinator's graphics run; CPU-side drawing submission is not a native frame
-measurement. Campaigns and authored marker images retain their live drawing path.
+A Linux Xvfb runtime run measured 9,924 startup and 404 steady allocations
+per frame, with 280 MiB sampled heap. Windows and macOS budget calibration
+has not been performed. Campaigns and authored marker images retain their live drawing path.
 Do not raise ceilings merely to hide a regression.
 
 ## CI cost

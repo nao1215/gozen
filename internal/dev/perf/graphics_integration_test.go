@@ -69,7 +69,7 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 			}()
 			scanner := bufio.NewScanner(file)
 			scanner.Buffer(make([]byte, 65536), 16<<20)
-			found := false
+			found, startup := false, false
 			for scanner.Scan() {
 				var record struct {
 					Kind        string   `json:"t"`
@@ -86,6 +86,12 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 				}
 				if record.Kind != "section" || record.Scope != "mark" {
 					continue
+				}
+				if record.Name == "run" {
+					startup = true
+				}
+				if record.Frames == 0 || record.Ticks == 0 {
+					t.Fatalf("section %s not exercised: %+v", record.Name, record)
 				}
 				if record.Name == name {
 					found = true
@@ -130,8 +136,8 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 			if err := scanner.Err(); err != nil {
 				t.Fatal(err)
 			}
-			if !found {
-				t.Fatalf("missing section %s", name)
+			if !found || !startup {
+				t.Fatalf("missing section: startup=%t, %s=%t", startup, name, found)
 			}
 		})
 	}

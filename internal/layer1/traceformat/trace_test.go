@@ -3,9 +3,10 @@ package traceformat_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 )
 
 func TestExactReplayViewportChanges(t *testing.T) {

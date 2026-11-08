@@ -129,6 +129,7 @@ func TestReproCutDrawCadence(t *testing.T) {
 		}
 	}
 }
+
 func TestReproCommandAndBundle(t *testing.T) {
 	path := reproFixture(t)
 	dir := filepath.Join(t.TempDir(), "bundle space ' quoted")

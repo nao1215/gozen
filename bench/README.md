@@ -56,7 +56,7 @@ machine, as `make bench-compare` and CI do.
 
 The `speed` cases share `internal/dev/perf` with the [speed budget tests](../docs/development/speed-budgets.md):
 a 2,000-point map, a 3840x2160 picture, 32 simultaneous standing pictures,
-a phone video with 24 generated 1280x720 frames, a 2,000-line conversation,
+a phone video with 24 generated 1280x720 frames, a 200-line conversation,
 and 5,000 battles. Setup generates neutral pictures and copies the existing
 licensed test font; no large assets are committed. Both revisions use the
 head fixture generator. Fixture changes reset the CI comparison baseline.

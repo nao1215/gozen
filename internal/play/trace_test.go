@@ -2575,8 +2575,32 @@ func TestWldTraceRecordsTheStructureOfAPlay(t *testing.T) {
 
 func TestWldTraceSameSeedSameTrace(t *testing.T) {
 	covSlow(t)
-	a := wldRecord(t, wldRecordScript)
-	b := wldRecord(t, wldRecordScript)
+	// Wall time and process-wide memory samples are observational. Keep every
+	// other byte, including section boundaries, frame counts and tick counts.
+	stable := func(src []byte) []byte {
+		var out bytes.Buffer
+		for line := range bytes.SplitSeq(bytes.TrimSpace(src), []byte("\n")) {
+			var record traceLine
+			if err := json.Unmarshal(line, &record); err != nil {
+				t.Fatal(err)
+			}
+			if record["t"] == "section" {
+				for _, field := range []string{"elapsed_seconds", "fps", "tps", "heap_inuse_bytes", "allocations", "slow_frame_share", "allocations_per_frame"} {
+					delete(record, field)
+				}
+				var err error
+				line, err = json.Marshal(record)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			out.Write(line)
+			out.WriteByte('\n')
+		}
+		return out.Bytes()
+	}
+	a := stable(wldRecord(t, wldRecordScript))
+	b := stable(wldRecord(t, wldRecordScript))
 	if !bytes.Equal(a, b) {
 		t.Fatal("two plays with the same seed and inputs wrote different traces")
 	}
