@@ -89,13 +89,9 @@ func (db *DB) CommandsFingerprint(name string) (string, error) {
 	}
 	events := map[string]*Event{}
 	screens := map[string]*AuthorScreen{}
-	runners := map[string]*RunnerDefinition{}
 	var visitEvent, visitScreen func(string)
 	walk := func(cmds []Command) {
 		eachCommand(reflect.ValueOf(cmds), func(cmd Command) {
-			if cmd.RunGame != nil {
-				runners[cmd.RunGame.ID] = db.Game.Runners[cmd.RunGame.ID]
-			}
 			if cmd.Call.Event != "" {
 				visitEvent(cmd.Call.Event)
 			}
@@ -145,9 +141,8 @@ func (db *DB) CommandsFingerprint(name string) (string, error) {
 	b, err := json.Marshal(struct {
 		Commands []Command
 		Events   map[string]*Event
-		Screens  map[string]*AuthorScreen     `json:",omitempty"`
-		Runners  map[string]*RunnerDefinition `json:",omitempty"`
-	}{cmds, events, screens, runners})
+		Screens  map[string]*AuthorScreen `json:",omitempty"`
+	}{cmds, events, screens})
 	if err != nil {
 		return "", err
 	}

@@ -15,7 +15,6 @@ type fastTo struct {
 	strict  bool
 	lines   int
 	answers []int
-	games   []rpg.GameOutcome
 	battle  bool
 	ticks   int
 
@@ -88,7 +87,7 @@ func (g *Game) fastStep() {
 			return
 		}
 		g.fast = nil
-		if f.strict && (why != "line" || g.evLines != f.lines || len(g.evAnswers) != len(f.answers) || len(g.events.GameResults()) != len(f.games)) {
+		if f.strict && (why != "line" || g.evLines != f.lines || len(g.evAnswers) != len(f.answers)) {
 			g.failure = fmt.Errorf("load: invalid replay cursor at line %d: %s", g.evLines, why)
 		}
 		if g.opts.capture != nil {

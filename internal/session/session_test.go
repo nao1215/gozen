@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
-	"math/rand/v2"
 	"os"
 	"reflect"
 	"slices"
@@ -17,7 +16,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	gozen "github.com/nao1215/gozen/internal/session"
@@ -2464,7 +2462,7 @@ func TestRestoreRejectsDamagedSaves(t *testing.T) {
 		return b
 	}
 	cases := map[string][]byte{
-		"future format version":       with("format_version", "5"),
+		"future format version":       with("format_version", "4"),
 		"format version zero":         with("format_version", "0"),
 		"negative format version":     with("format_version", "-1"),
 		"format version as string":    with("format_version", `"2"`),
@@ -2806,93 +2804,4 @@ func FuzzLoad(f *testing.F) {
 			t.Fatalf("a loaded game cannot be saved: %v", err)
 		}
 	})
-}
-
-func TestHeadlessGameRejectsPlayButRestoresAcceptedOutcome(t *testing.T) {
-	files := fstest.MapFS{
-		"game.yaml": {Data: []byte(`schema_version: 12
-id: runner-session
-title: Runner session
-start: {location: camp}
-runners:
-  trail:
-    lives: 1
-    tiles: {'.': {kind: empty}}
-    stages: [{id: route, rows: ['.........']}]
-`)},
-		"data/world.yaml": {Data: []byte(`locations:
-  camp: {name: Camp}
-events:
-  trial:
-    - run_game: {id: trail, outputs: {score: var.score}}
-    - set: {gold: gold + 7}
-    - say: Result
-    - say: After
-`)},
-	}
-	game, err := gozen.Load(files, ".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	live := session(t, game, gozen.Config{Seed: 9})
-	before := query[float64](t, live, "gold")
-	if err := live.Do(t.Context(), "- call: trial"); err == nil || !strings.Contains(err.Error(), "requires the graphical player") {
-		t.Fatalf("headless play error: %v", err)
-	}
-	if query[float64](t, live, "gold") != before {
-		t.Fatal("unsupported game awarded a reward")
-	}
-	if _, err := live.Save(); err != nil {
-		t.Fatalf("rejected game remains pending: %v", err)
-	}
-	db, err := data.Load(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pcg := rand.NewPCG(9, 11)
-	rngBytes, err := pcg.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-	st := rpg.New(db, rand.New(pcg)) //nolint:gosec // Deterministic game replay, not security.
-	snap, err := st.Save()
-	if err != nil {
-		t.Fatal(err)
-	}
-	runner := event.New(db, st, nil)
-	runner.Start(db.Events["trial"].Do)
-	request, ok := runner.Next().(event.RunGame)
-	if !ok {
-		t.Fatal("missing game request")
-	}
-	result := request.Identity
-	result.Status, result.Score = "completed", 17
-	if err := runner.AnswerGame(result); err != nil {
-		t.Fatal(err)
-	}
-	runner.Next()
-	cursor := rpg.Cursor{Event: "trial", Line: 1, Games: runner.GameResults()}
-	if err := cursor.Seal(db); err != nil {
-		t.Fatal(err)
-	}
-	saved, err := rpg.WithCursor(snap, cursor, rngBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for range 2 {
-		restored, err := gozen.Restore(game, saved, gozen.Config{Seed: 1})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if query[float64](t, restored, "gold") != before+7 || query[float64](t, restored, "var.score") != 17 {
-			t.Fatal("restoration lost or repeated game reward")
-		}
-		if q := restored.Next(); q.Kind != "say" || q.Text != "Result" {
-			t.Fatalf("wrong restoration destination: %+v", q)
-		}
-		saved, err = restored.Save()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 }

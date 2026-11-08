@@ -4,7 +4,7 @@ Status: Accepted. Date: 2026-11-08. Implements issue #159.
 
 ## Purpose
 
-Authors can offer another standalone Gozen game through an in-game phone. A child uses ordinary YAML and assets, runs in the host process and returns to the phone when closed. Implement embedded games and their distribution before general casual-game rules. Neither a VM nor native plugins are part of this contract.
+Authors can offer another standalone Gozen game through an in-game phone. A child uses ordinary YAML and assets, runs in the host process and returns to the phone when closed. Neither a VM nor native plugins are part of this contract.
 
 ## Runtime ownership
 

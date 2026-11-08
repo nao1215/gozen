@@ -507,13 +507,10 @@ type frame struct {
 
 // Runner runs events.
 type Runner struct {
-	games       []rpg.GameOutcome
-	gamePending *RunGame
-	gameCommand *data.RunGameCommand
-	db          *data.DB
-	st          *rpg.State
-	host        Host
-	stack       []frame
+	db    *data.DB
+	st    *rpg.State
+	host  Host
+	stack []frame
 	// repeated counts frozen loop membership across this execution, including nested calls.
 	repeated int
 	notes    []string
@@ -612,9 +609,6 @@ func (r *Runner) start(cmds []data.Command, args expr.Map) {
 	if len(cmds) > 0 && r.OnStart != nil && !r.Running() {
 		r.OnStart(cmds, maps.Clone(args))
 	}
-	if !r.Running() {
-		r.games = nil
-	}
 	r.countRun(cmds)
 	if len(cmds) > 0 {
 		r.stack = append([]frame{{cmds: cmds, args: args}}, r.stack...)
@@ -623,7 +617,7 @@ func (r *Runner) start(cmds []data.Command, args expr.Map) {
 
 // Running reports whether there is anything left to run.
 func (r *Runner) Running() bool {
-	return r.gamePending != nil || r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.likes != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
+	return r.gameOver || len(r.stack) > 0 || len(r.notes) > 0 || r.options != nil || r.likes != nil || r.battle != nil || len(r.later) > 0 || r.afterPending
 }
 
 // Asking is the command whose answer is waited for: the choice or the battle just asked
@@ -638,7 +632,6 @@ func (r *Runner) Asking() *data.Command {
 
 // Stop drops everything left.
 func (r *Runner) Stop() {
-	r.gamePending, r.gameCommand = nil, nil
 	r.pages = nil
 	r.afterPending = false
 	r.offers = nil
@@ -888,9 +881,6 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // Next runs commands until one needs the screen, and returns it (nil when the events are
 // over).
 func (r *Runner) Next() Request {
-	if r.gamePending != nil {
-		return *r.gamePending
-	}
 	if r.phoneWait {
 		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn = false, nil, nil, nil, nil
 	}
@@ -1041,8 +1031,6 @@ func (r *Runner) run(c *data.Command) Request {
 		} else {
 			r.push(c.Else)
 		}
-	case "run_game":
-		return r.beginGame(c.RunGame)
 	case "plan":
 		cmds, err := planning.ApplyIn(r.st, *c.Plan, env)
 		r.logf(err)
@@ -1842,7 +1830,7 @@ func (r *Runner) emit(effect Effect) {
 // without presentation or input. The caller must supply isolated state and RNG:
 // earlier effects are applied even on error. A nil request on success means the
 // choice at the target line was already answered. Non-dialogue boundaries fail.
-func (r *Runner) ReplayTo(line int, answers []int, games []rpg.GameOutcome) (Request, error) {
+func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 	if line < 1 {
 		return nil, errors.New("load: invalid saved line")
 	}
@@ -1866,11 +1854,6 @@ func (r *Runner) ReplayTo(line int, answers []int, games []rpg.GameOutcome) (Req
 		switch q := request.(type) {
 		case nil:
 			return nil, fmt.Errorf("load: event ended before saved line %d", line)
-		case RunGame:
-			if err := r.ReplayGame(games); err != nil {
-				return nil, err
-			}
-			continue
 		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
 		case Tap:
@@ -1896,9 +1879,6 @@ func (r *Runner) ReplayTo(line int, answers []int, games []rpg.GameOutcome) (Req
 			continue
 		}
 		if seen == line {
-			if len(r.games) != len(games) {
-				return nil, errors.New("load: unused game outcomes")
-			}
 			if answer != len(answers) {
 				return nil, fmt.Errorf("load: unused saved answers at line %d", seen)
 			}

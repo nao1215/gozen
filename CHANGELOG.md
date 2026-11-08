@@ -4,16 +4,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
-### Added
-
-- Author finite scrolling runners with schema 12: courses, steering and boost rates, pickups, limited actions, checkpoint retries, artwork and sound cues. Events receive explicit results through `run_game`; two original courses demonstrate the same rules.
-- Save completed runner outcomes with definition and seed checks, preserving story progression on load without replaying the challenge. Attempts block saving until their result is accepted.
-- Play runners standalone or inside portrait and landscape phone apps, with keyboard, pointer and normalized multi-touch input. Input traces support deterministic replay.
-
 ### Fixed
 
 - Browser phone installs use IndexedDB for archive bytes, allowing valid packages larger than localStorage can hold. Failed writes preserve the selected release and saves; older cached packages remain readable.
 - Updating a host game to a newer pinned phone catalog no longer blocks its store when an older signed catalog is saved. Existing app selections are preserved; conflicting releases and network rollback are still rejected.
+- Starting play at an event with `--event` but no `--line` keeps an opening phone exchange playable instead of skipping past it to the first dialogue.
 
 ## v0.23.0 - 2026-11-08
 
