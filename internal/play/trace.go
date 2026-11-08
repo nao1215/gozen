@@ -775,9 +775,10 @@ func (v traceViewport) sameLayout(other traceViewport) bool {
 }
 
 type replay struct {
-	drawSkips  [][2]int
-	saveWrites map[int]map[string][]*time.Time
-	scripted   bool
+	startupViewport *traceViewport
+	drawSkips       [][2]int
+	saveWrites      map[int]map[string][]*time.Time
+	scripted        bool
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
@@ -910,6 +911,14 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				if len(r.setup.Unsupported) > 0 {
 					return nil, fmt.Errorf(lang.T("replay で再現できない開始条件 %v"), r.setup.Unsupported)
 				}
+			}
+		case "viewport":
+			if r.partial && tick == 0 {
+				var viewport traceViewport
+				if err := json.Unmarshal(sc.Bytes(), &viewport); err != nil {
+					return nil, err
+				}
+				r.startupViewport = &viewport
 			}
 		case "draw_skip":
 			var span struct {

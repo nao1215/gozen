@@ -966,6 +966,15 @@ func (g *Game) Update() error {
 		}
 	}
 
+	if g.tick == 0 && g.rep != nil && g.rep.startupViewport != nil {
+		w, h := g.pixels()
+		v := g.rep.startupViewport
+		if int(w) != v.Width || int(h) != v.Height {
+			g.failure = fmt.Errorf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport %dx%d", int(w), int(h), v.Width, v.Height)
+			return g.failure
+		}
+	}
+
 	if s := g.in.script; g.rendering && s != nil && s.shot != "" {
 		return nil
 	}

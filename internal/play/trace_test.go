@@ -695,6 +695,60 @@ func TestTraceRecordsViewportChanges(t *testing.T) {
 	}
 }
 
+func TestReplayStartupViewport(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("schema_version: 11\nscreen: {width: 640, height: 360, native: true}\n")...)
+	for _, fullscreen := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fullscreen=%t", fullscreen), func(t *testing.T) {
+			var buf bytes.Buffer
+			g, err := New(Options{FS: fsys, Trace: &buf, Seed: 7, Fullscreen: fullscreen, NoSound: true, Store: savefile.MemStore()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			g.in.script = nil
+			g.layout(640, 360)
+			g.layout(1280, 720) // Keep the final startup layout after settling.
+			g.traceEnd()
+			if err := g.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for _, size := range [][2]int{{1280, 720}, {1920, 1080}, {960, 540}} {
+				t.Run(fmt.Sprint(size), func(t *testing.T) {
+					r, err := New(Options{FS: fsys, Replay: path, Until: 1, NoSound: true, headless: true, Store: savefile.MemStore()})
+					if err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() {
+						if closeErr := r.Close(); closeErr != nil && !errors.Is(closeErr, r.failure) {
+							t.Error(closeErr)
+						}
+					})
+					r.in.script = nil
+					r.layout(float64(size[0]), float64(size[1]))
+					err = r.Update()
+					if size == [2]int{1280, 720} {
+						if err != nil || !r.untilShot {
+							t.Fatalf("matching viewport: capture=%t, err=%v", r.untilShot, err)
+						}
+					} else {
+						want := fmt.Sprintf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport 1280x720", size[0], size[1])
+						if err == nil || err.Error() != want {
+							t.Fatalf("mismatch error: %v, want %s", err, want)
+						}
+						if r.tick != 0 || r.untilShot || r.autoShot != "" {
+							t.Fatalf("mismatch advanced or scheduled capture: tick=%d, untilShot=%t, autoShot=%q", r.tick, r.untilShot, r.autoShot)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestReplayStartOptionPresence(t *testing.T) {
 	caller := Options{Development: true, Window: 2, Fullscreen: true, Locales: []string{"en-US"}, BookAsPlayed: true}
 	for _, tt := range []struct {
