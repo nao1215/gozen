@@ -3,16 +3,20 @@ suite:
   name: maintainer dango decision contracts
   timeout: 180s
 scenarios:
-- name: list and real passing decision tests
+- name: list decision tests
   steps:
   - run:
       command: go -C "${specdir}/../.." tool dango lint --list
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
   - assert:
       exit_code: 0
       stdout: {contains: '0047 headless pictures:'}
       stderr: {equals: ''}
+- name: a real passing baseline rejects isolated source and schema violations
+  steps:
   - run:
       command: go -C "${specdir}/../.." tool dango lint --format json
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
   - assert:
       exit_code: 0
       stdout:
@@ -23,28 +27,8 @@ scenarios:
         - {path: '$.data.decisions[0].status', equals: pass}
         - {path: '$.data.decisions[0].details', equals: []}
       stderr: {equals: ''}
-- name: invalid invocation has structured diagnostics and exit two
-  steps:
-  - run:
-      command: go -C "${specdir}/../.." tool dango lint --json --format json
-  - assert:
-      exit_code: 2
-      stdout: {equals: ''}
-      stderr:
-        json:
-        - {path: $.version, equals: 1}
-        - {path: $.severity, equals: error}
-  - run:
-      command: go -C "${specdir}/../.." tool dango lint --list --format json
-  - assert:
-      exit_code: 0
-      stdout:
-        json:
-        - {path: '$.data.decisions[0].id', equals: '0004'}
-        - {path: '$.data.decisions[0].status', equals: not_run}
-        - {path: '$.data.decisions[0].tests[0].name', equals: TestRepositoryLocations}
-- name: an isolated functional option violates the real API decision
-  steps:
+  # Reuse location-independent compiled packages from the successful full run.
+  # Keeping this in one scenario prevents concurrent cold builds of both roots.
   - run:
       command: python3 '${specdir}/fixtures/dango/prepare.py' '${specdir}/../..' checkout
       timeout: 120s
@@ -52,6 +36,7 @@ scenarios:
   - run:
       command: go tool dango lint
       cwd: checkout
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
   - assert:
       exit_code: 1
       stdout: {contains: 'use a Config struct, not functional options'}
@@ -59,7 +44,7 @@ scenarios:
   - run:
       command: go tool dango lint --format json
       cwd: checkout
-      env: {GOZEN_UPDATE_SCHEMA: "1"}
+      env: {GOFLAGS: "-trimpath -buildvcs=false", GOZEN_UPDATE_SCHEMA: "1"}
   - assert:
       exit_code: 1
       stdout:
@@ -76,6 +61,28 @@ scenarios:
         - {path: '$.data.decisions[10].status', equals: fail}
       stderr: {equals: ''}
       file: {path: checkout/data/schema/types.schema.json, equals: "{}\n"}
+- name: invalid invocation has structured diagnostics and exit two
+  steps:
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --json --format json
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.severity, equals: error}
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --list --format json
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.decisions[0].id', equals: '0004'}
+        - {path: '$.data.decisions[0].status', equals: not_run}
+        - {path: '$.data.decisions[0].tests[0].name', equals: TestRepositoryLocations}
 - name: reproduction writes artifacts without running the game
   steps:
   - fixture:
@@ -87,6 +94,7 @@ scenarios:
         {"t":"end","tick":120}
   - run:
       command: go -C "${specdir}/../.." build -buildvcs=false -o "${workdir}/dango.exe" ./cmd/internal/dango
+      env: {GOFLAGS: "-trimpath -buildvcs=false"}
   - assert: {exit_code: 0}
   - run:
       command: '"${workdir}/dango.exe" repro trace.jsonl --repro 1s --out "bundle space" --format json'
