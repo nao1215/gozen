@@ -193,16 +193,16 @@ func TestFaceChoosesPopFontOnlyForASCII(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := Face(24, "Hello")
-	if a.Source != popSource {
+	if a.Source != active.popSource {
 		t.Fatal("ASCII text must use the pop font")
 	}
 	if b := Face(24, "Hello again"); b != a {
 		t.Fatal("faces of one size and kind are cached")
 	}
-	if j := Face(24, "こんにちは"); j.Source != regularSource || j == a {
+	if j := Face(24, "こんにちは"); j.Source != active.regularSource || j == a {
 		t.Fatal("non-ASCII text must use the regular font")
 	}
-	if Face(24, "mixed あ").Source != regularSource {
+	if Face(24, "mixed あ").Source != active.regularSource {
 		t.Fatal("one non-ASCII rune switches to the regular font")
 	}
 	if Face(36, "x").Size != 36 {
@@ -254,11 +254,11 @@ func TestPopDrawsDecorationsInThePopFont(t *testing.T) {
 
 func TestLoadFontsFailedPopKeepsTheOldFonts(t *testing.T) {
 	useFont(t)
-	old := regularSource
+	old := active.regularSource
 	if err := LoadFonts(gobold.TTF, []byte("broken pop")); err == nil {
 		t.Fatal("bad pop font accepted")
 	}
-	if regularSource != old {
+	if active.regularSource != old {
 		t.Fatal("a failed load replaced the regular font")
 	}
 }
@@ -268,10 +268,10 @@ func TestLoadTitleFont(t *testing.T) {
 	if err := LoadTitleFont(gobold.TTF, goregular.TTF); err != nil {
 		t.Fatal(err)
 	}
-	if titleSource == nil || subSource == nil {
+	if active.titleSource == nil || active.subSource == nil {
 		t.Fatal("fonts not set")
 	}
-	if err := LoadTitleFont(nil, nil); err != nil || titleSource != nil || subSource != nil {
+	if err := LoadTitleFont(nil, nil); err != nil || active.titleSource != nil || active.subSource != nil {
 		t.Fatal("nil fonts must clear the title typefaces")
 	}
 	if err := LoadTitleFont([]byte("bad"), nil); err == nil {
@@ -395,17 +395,17 @@ func TestDrawTextCachesFacesPerBaseSize(t *testing.T) {
 	DrawText(dst, "hello", 10, 10, 20, color.White)
 	DrawTextLeft(dst, "hello", 10, 10, 20, color.White)
 	DrawTextRight(dst, "hello", 190, 40, 20, color.White)
-	if len(faceCache) != 1 {
-		t.Fatalf("%d faces for one base size", len(faceCache))
+	if len(active.faceCache) != 1 {
+		t.Fatalf("%d faces for one base size", len(active.faceCache))
 	}
 	DrawText(dst, "hello", 10, 10, 40, color.White)
-	if len(faceCache) != 2 {
-		t.Fatalf("a new base size must add a face, have %d", len(faceCache))
+	if len(active.faceCache) != 2 {
+		t.Fatalf("a new base size must add a face, have %d", len(active.faceCache))
 	}
 	DrawText(dst, "hello", 10, 10, 0, color.White)
 	DrawTextLeft(dst, "", 10, 10, 20, color.White)
 	DrawTextLeft(dst, "x", 10, 10, -3, color.White)
-	if len(faceCache) != 2 {
+	if len(active.faceCache) != 2 {
 		t.Fatal("invalid draws touched the face cache")
 	}
 }
@@ -417,13 +417,13 @@ func TestRoundedMaskIsCachedPerSizeAndRadius(t *testing.T) {
 		t.Fatal("RoundedMask must return the image it masked")
 	}
 	RoundedMask(ebiten.NewImage(40, 30), 6)
-	if len(maskCache) != 1 {
-		t.Fatalf("same size and radius made %d masks", len(maskCache))
+	if len(active.maskCache) != 1 {
+		t.Fatalf("same size and radius made %d masks", len(active.maskCache))
 	}
 	RoundedMask(ebiten.NewImage(40, 30), 8)
 	RoundedMask(ebiten.NewImage(41, 30), 6)
-	if len(maskCache) != 3 {
-		t.Fatalf("masks %d", len(maskCache))
+	if len(active.maskCache) != 3 {
+		t.Fatalf("masks %d", len(active.maskCache))
 	}
 }
 
@@ -437,10 +437,10 @@ func TestResetClearsEverything(t *testing.T) {
 	DrawTextOutline(dst, "x", 0, 0, 12, color.White)
 	RoundedMask(ebiten.NewImage(8, 8), 2)
 	Reset()
-	if len(shapeCache)+len(textCache)+len(maskCache)+len(faceCache) != 0 {
+	if len(active.shapeCache)+len(active.textCache)+len(active.maskCache)+len(active.faceCache) != 0 {
 		t.Fatal("caches survive Reset")
 	}
-	if regularSource != nil || popSource != nil || Scale() != 1 {
+	if active.regularSource != nil || active.popSource != nil || Scale() != 1 {
 		t.Fatal("fonts or scale survive Reset")
 	}
 }
@@ -506,16 +506,16 @@ func TestTextDoesNotCacheOffscreenGlyphs(t *testing.T) {
 	useFont(t)
 	dst := ebiten.NewImage(200, 100)
 	DrawTextLeft(dst, "Camp", 300, 0, 22.5, color.White)
-	if len(glyphCache) != 0 {
+	if len(active.glyphCache) != 0 {
 		t.Fatal("offscreen text populated the glyph atlas")
 	}
 	DrawTextLeft(dst, "Camp", 0, 0, 22.5, color.White)
-	if len(glyphCache) == 0 {
+	if len(active.glyphCache) == 0 {
 		t.Fatal("visible text did not populate the glyph atlas")
 	}
-	n := len(glyphCache)
+	n := len(active.glyphCache)
 	DrawTextLeft(dst, "Camp", 20, 30, 22.5, color.Black)
-	if len(glyphCache) != n {
+	if len(active.glyphCache) != n {
 		t.Fatal("position or tint caused duplicate glyph copies")
 	}
 }

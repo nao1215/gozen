@@ -1,0 +1,159 @@
+name: Game catalog
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - docs/registry/**
+      - cmd/internal/gamecatalog/**
+      - internal/layer2/gamepackage/**
+      - scripts/update-game-catalog.py
+      - .github/workflows/game-catalog.yml
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [update, publish]
+        default: update
+
+permissions:
+  contents: read
+
+concurrency:
+  group: game-catalog-${{ github.event.pull_request.number || 'publisher' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || inputs.operation == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Validate approved archives and immutable history
+        run: |
+          args=()
+          if git cat-file -e HEAD^1:docs/registry/catalog.json; then
+            git show HEAD^1:docs/registry/catalog.json > "$RUNNER_TEMP/previous-catalog.json"
+            args=("$RUNNER_TEMP/previous-catalog.json")
+          fi
+          go run ./cmd/internal/gamecatalog check docs/registry/catalog.json docs/registry/sources.json "${args[@]}"
+      - name: Verify installer and metadata updater contracts
+        run: go test -race ./internal/layer2/gamepackage ./cmd/internal/gamecatalog
+
+  update:
+    if: github.event_name == 'schedule' || inputs.operation == 'update'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Propose and validate new registered releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list --state open --json headRefName,headRepository > "$RUNNER_TEMP/catalog-prs.json"
+          cp docs/registry/catalog.json "$RUNNER_TEMP/previous-catalog.json"
+          python3 scripts/update-game-catalog.py --pending-prs "$RUNNER_TEMP/catalog-prs.json" --repository "$GITHUB_REPOSITORY"
+          go run ./cmd/internal/gamecatalog check docs/registry/catalog.json docs/registry/sources.json "$RUNNER_TEMP/previous-catalog.json"
+      - name: Open a review PR for additions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if git diff --quiet -- docs/registry/catalog.json; then exit 0; fi
+          branch="automation/game-catalog-${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/registry/catalog.json
+          git commit -m 'chore(catalog): propose approved-source game releases'
+          gh auth setup-git
+          git push origin "$branch"
+          cat > "$RUNNER_TEMP/catalog-pr.md" <<'BODY'
+          Adds releases discovered from registered upstream repositories. Every archive passed digest, expansion, icon and game-definition checks. Existing releases are unchanged.
+
+          Review distribution rights, content, compatibility, metadata and actual play before merging. Merging publishes the signed catalog; discovery alone does not approve a game.
+          BODY
+          gh pr create --base main --head "$branch" --title 'chore(catalog): propose new game releases' --body-file "$RUNNER_TEMP/catalog-pr.md"
+
+  publish:
+    needs: validate
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'publish' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Sign the reviewed snapshot
+        env:
+          GAME_CATALOG_SIGNING_KEY: ${{ secrets.GAME_CATALOG_SIGNING_KEY }}
+        run: go run ./cmd/internal/gamecatalog sign docs/registry/catalog.json "$RUNNER_TEMP/catalog.sig"
+      - name: Publish independently of engine releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view game-catalog; then
+            gh release create game-catalog --target "$GITHUB_SHA" --title 'Approved game catalog' --notes 'Signed game catalog. Each package release remains immutable; installations and updates are explicit.' --latest=false
+          fi
+          gh release upload game-catalog docs/registry/catalog.json "$RUNNER_TEMP/catalog.sig" --clobber
+      - name: Publish the browser snapshot as one Git commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          tree = {'tree': [
+              {'path': 'catalog.json', 'mode': '100644', 'type': 'blob', 'content': Path('docs/registry/catalog.json').read_text()},
+              {'path': 'catalog.sig', 'mode': '100644', 'type': 'blob', 'content': (temp / 'catalog.sig').read_text()},
+          ]}
+          (temp / 'catalog-tree.json').write_text(json.dumps(tree))
+          PY
+          tree=$(gh api --method POST "repos/$GH_REPO/git/trees" --input "$RUNNER_TEMP/catalog-tree.json" --jq .sha)
+          if parent=$(gh api "repos/$GH_REPO/git/ref/heads/catalog-data" --jq .object.sha); then
+            exists=true
+          else
+            parent=''
+            exists=false
+          fi
+          export CATALOG_TREE="$tree" CATALOG_PARENT="$parent"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          commit = {'message': 'chore(catalog): publish reviewed signed snapshot', 'tree': os.environ['CATALOG_TREE']}
+          if os.environ['CATALOG_PARENT']:
+              commit['parents'] = [os.environ['CATALOG_PARENT']]
+          (Path(os.environ['RUNNER_TEMP']) / 'catalog-commit.json').write_text(json.dumps(commit))
+          PY
+          commit=$(gh api --method POST "repos/$GH_REPO/git/commits" --input "$RUNNER_TEMP/catalog-commit.json" --jq .sha)
+          if [ "$exists" = true ]; then
+            gh api --method PATCH "repos/$GH_REPO/git/refs/heads/catalog-data" -f sha="$commit" -F force=false
+          else
+            gh api --method POST "repos/$GH_REPO/git/refs" -f ref=refs/heads/catalog-data -f sha="$commit"
+          fi

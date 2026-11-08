@@ -32,7 +32,7 @@ The heavy jobs of the CI, Coverage, Benchmark, licenses, Release Smoke and Secur
 
 `on.paths` is not used: a workflow that never starts leaves its required status checks pending, and the pull request cannot be merged. Instead the jobs wait for `changes` and are skipped with `if`; GitHub counts a skipped job as passed for a required check. A skipped job with a matrix would be reported under the name without its matrix values and would not match a required check such as `unit (ubuntu-latest, stable)`. So the matrix jobs that are required (unit, cli-e2e, govulncheck) still start and skip their steps, and the other jobs are skipped as a whole. Only the answer `false` skips; if `changes` fails, everything runs.
 
-The `docs-checks` job of the CI workflow runs on these pull requests only, with the tests that read the documentation (`internal/dev/docs`, `internal/diag`, `internal/layer2/gamedata`). The Docs and Website workflows are not skipped.
+The `docs-checks` job of the CI workflow runs on these pull requests only, with the tests that read the documentation (`internal/dev/docs`, `internal/diag`, `internal/layer2/gamedata`). The Docs and Website workflows still start. For a pull request whose entire diff is exactly `CHANGELOG.md`, `docs_runtime=false` omits the Website build/browser steps and the Docs executable examples; the existing `build` and `steps` check names still report success. Release notes are not inputs to these artifacts. Mixed changes, unknown paths, empty or unreadable diffs, pushes, schedules and manual runs retain these checks. Image freshness and documentation tests still run. Superseded Website pull requests are canceled; main deployments are not canceled.
 
 ## Time
 

@@ -164,3 +164,21 @@ ui:
     border: 0.55
     shadow: 0.7
     surfaces: {base: mica, card: acrylic, control: glass}
+
+phone:
+  catalog: apps/catalog.yaml
+  catalog_sha256: 69c9ba89b71f1c14520d94e6339da87dc932dce5a4c85ff4c4e79f1e004e95a9
+  apps:
+    - id: counter
+      package: fixtures/counter
+      version: '>=1.0.0 <2.0.0'
+      bundled_version: 1.0.0
+      install: bundled
+      path: apps/counter.zip
+      when: flag.games_unlocked
+    - id: trail
+      package: fixtures/trail
+      version: 1.0.0
+      install: bundled
+      path: apps/trail.zip
+      when: flag.games_unlocked

@@ -25,3 +25,5 @@ are dedicated to the public domain under CC0 1.0 Universal
 `game/assets/LICENSE`): use them for any purpose, with or without credit. They
 were made for another of the author's projects and not used there; the standing
 pictures were cut to the figure and the backgrounds made 1920x1080.
+
+The bundled Counter and Trail games under `game/apps/`, including their custom PNG icons, are original MIT-licensed neutral examples. Their source and deterministic ZIP/catalog recipe are in `e2e/atago/fixtures/phone-package/prepare.py`. They use the engine's built-in font and contain no third-party assets. See `docs/examples/phone-games.md` for rebuilding them.

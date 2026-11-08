@@ -7,8 +7,6 @@ import (
 	"math"
 )
 
-var rec *recorder
-
 type recorder struct {
 	w      io.Writer
 	tps    int
@@ -22,9 +20,9 @@ type voice struct {
 	pos int
 }
 
-func InitRecord(w io.Writer, tps int) {
-	rec = &recorder{w: w, tps: tps}
-	makeEffects(false)
+func (session *Session) InitRecord(w io.Writer, tps int) {
+	session.rec = &recorder{w: w, tps: tps}
+	session.makeEffects(false)
 }
 
 func recordBGM(m *Modular, fsys fs.FS, songs []Song) {
@@ -33,8 +31,8 @@ func recordBGM(m *Modular, fsys fs.FS, songs []Song) {
 	}
 }
 
-func Tick() error {
-	r := rec
+func (session *Session) Tick() error {
+	r := session.rec
 	if r == nil {
 		return nil
 	}
@@ -46,15 +44,15 @@ func Tick() error {
 		r.buf = make([]byte, frames*8)
 	}
 	clear(r.buf)
-	if m := current(); m != nil {
+	if m := session.current(); m != nil {
 		if _, err := m.Read(r.buf); err != nil {
 			return err
 		}
 	}
 
-	mu.Lock()
-	vol, se := float32(bgmVolume()), float32(seVolume())
-	mu.Unlock()
+	session.mu.Lock()
+	vol, se := float32(session.bgmVolume()), float32(session.seVolume())
+	session.mu.Unlock()
 	for f := range frames * 2 {
 		v := math.Float32frombits(binary.LittleEndian.Uint32(r.buf[f*4:])) * vol
 		for i := range r.voices {
@@ -81,20 +79,18 @@ func Tick() error {
 	return r.err
 }
 
-var silentBuf []byte
-
-func Pump(tps int) {
-	mu.Lock()
-	m, play := bgm, bgmPlay
-	mu.Unlock()
-	if rec != nil || play != nil || m == nil || tps <= 0 {
+func (session *Session) Pump(tps int) {
+	session.mu.Lock()
+	m, play := session.bgm, session.bgmPlay
+	session.mu.Unlock()
+	if session.rec != nil || play != nil || m == nil || tps <= 0 {
 		return
 	}
 	frames := SampleRate / tps
-	if len(silentBuf) != frames*8 {
-		silentBuf = make([]byte, frames*8)
+	if len(session.silentBuf) != frames*8 {
+		session.silentBuf = make([]byte, frames*8)
 	}
-	if _, err := m.Read(silentBuf); err != nil {
+	if _, err := m.Read(session.silentBuf); err != nil {
 		m.Stop()
 	}
 }

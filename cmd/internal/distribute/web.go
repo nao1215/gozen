@@ -3,14 +3,19 @@ package distribute
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
 )
 
 //go:embed index.html
@@ -22,7 +27,7 @@ var webPage []byte
 // and the player undo the gzip themselves, so any static host serves the site.
 // reuse, when not empty, is an earlier web export of the game: a file whose content has
 // not changed since is taken from it instead of being converted again.
-func Web(src, dst, bundle, version, reuse string) error {
+func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 	earlier, err := readEarlier(reuse)
 	if err != nil {
 		return err
@@ -60,8 +65,11 @@ func Web(src, dst, bundle, version, reuse string) error {
 		if err := gzipPlayer(filepath.Join(stage, "gozen-player.wasm")); err != nil {
 			return err
 		}
-		files, db, err := CopyGame(src, filepath.Join(stage, "game"))
+		files, db, err := CopyGame(ctx, src, filepath.Join(stage, "game"))
 		if err != nil {
+			return err
+		}
+		if err := checkWebPhonePackages(ctx, os.DirFS(filepath.Join(stage, "game")), db.Game.Phone); err != nil {
 			return err
 		}
 		manifest, err := shrinkWeb(filepath.Join(stage, "game"), files, voiceDir(db), earlier)
@@ -104,4 +112,53 @@ func gzipPlayer(name string) error {
 		return err
 	}
 	return os.Remove(name)
+}
+
+// Native bundles may exceed the browser's bounded in-memory archive reader.
+// Reject them before publishing a site whose startup would fetch unusable data.
+func checkWebPhonePackages(ctx context.Context, fsys fs.FS, cfg *gamedata.PhoneApps) error {
+	if cfg == nil {
+		return nil
+	}
+	b, err := fs.ReadFile(fsys, cfg.Catalog)
+	if err != nil {
+		return err
+	}
+	catalog, err := gamepackage.Authenticate(b, cfg.CatalogSHA256)
+	if err != nil {
+		return err
+	}
+	for _, app := range cfg.Apps {
+		if app.Install != "bundled" {
+			continue
+		}
+		version := app.BundledVersion
+		if version == "" {
+			version = app.Version
+		}
+		for _, release := range catalog.Releases {
+			if release.ID != app.Package || release.Version != version {
+				continue
+			}
+			if release.Size > gamepackage.MaxArchiveBytes || release.UnpackedSize > gamepackage.MaxUnpackedBytes {
+				return fmt.Errorf("bundled app %s exceeds browser package limits (64 MiB archive, 256 MiB unpacked)", app.ID)
+			}
+			f, err := fsys.Open(app.Path)
+			if err != nil {
+				return err
+			}
+			archive, err := io.ReadAll(io.LimitReader(f, release.Size+1))
+			if err = errors.Join(err, f.Close()); err != nil {
+				return err
+			}
+			installed, err := gamepackage.VerifyContext(ctx, release, archive)
+			if err != nil {
+				return fmt.Errorf("bundled app %s browser validation: %w", app.ID, err)
+			}
+			if err := installed.Close(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

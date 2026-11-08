@@ -40,6 +40,7 @@ provides the field contracts; these tables explain which section to open first.
 
 | Section | Purpose |
 | --- | --- |
+| `game.phone` | Pin a catalog and declare bundled or optional games offered by phone apps. |
 | `game.asides` | Events inserted after the lines of certain speakers, such as a moment of thought or a picture in the character's mind. |
 | `game.battle` | The rules every battle shares. |
 | `game.campaign` | Configure factions, turns, orders, generals and battles for a campaign. |

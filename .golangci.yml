@@ -165,6 +165,10 @@ linters:
           - unparam
         text: "always receives"
 formatters:
+  exclusions:
+    paths:
+      # Ignored build products can contain copied upstream modules and toolchains.
+      - ^build/
   enable:
     - gofumpt
     - goimports

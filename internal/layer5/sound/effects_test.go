@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuiltInEffectsAreAllMadeAndBounded(t *testing.T) {
-	made := synthEffects()
+	made := testSession.synthEffects()
 	for _, name := range Effects {
 		b, ok := made[name]
 		if !ok {
@@ -33,7 +33,7 @@ func TestBuiltInEffectsAreAllMadeAndBounded(t *testing.T) {
 }
 
 func TestBuiltInEffectsAreDeterministic(t *testing.T) {
-	a, b := synthEffects(), synthEffects()
+	a, b := testSession.synthEffects(), testSession.synthEffects()
 	for _, name := range Effects {
 		if !bytes.Equal(a[name], b[name]) {
 			t.Errorf("effect %q differs between runs", name)
@@ -65,7 +65,7 @@ func TestEffectEnvelopes(t *testing.T) {
 }
 
 func TestSynthClampsToUnitRange(t *testing.T) {
-	b := synth(0.002, func(float64) float64 { return 5 })
+	b := testSession.synth(0.002, func(float64) float64 { return 5 })
 	if len(b) != 88*8 {
 		t.Fatalf("length %d", len(b))
 	}
@@ -80,13 +80,13 @@ func TestSynthClampsToUnitRange(t *testing.T) {
 func TestMakeEffectsGameFilesWin(t *testing.T) {
 	freshSession(t)
 	custom := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	mu.Lock()
-	effects["cursor"] = custom
-	mu.Unlock()
-	makeEffects(false)
-	mu.Lock()
-	got, other := effects["cursor"], effects["decide"]
-	mu.Unlock()
+	testSession.mu.Lock()
+	testSession.effects["cursor"] = custom
+	testSession.mu.Unlock()
+	testSession.makeEffects(false)
+	testSession.mu.Lock()
+	got, other := testSession.effects["cursor"], testSession.effects["decide"]
+	testSession.mu.Unlock()
 	if !bytes.Equal(got, custom) {
 		t.Fatal("a game's own effect was replaced by the built-in one")
 	}
@@ -97,11 +97,11 @@ func TestMakeEffectsGameFilesWin(t *testing.T) {
 
 func TestMakeEffectsInBackground(t *testing.T) {
 	freshSession(t)
-	makeEffects(true)
+	testSession.makeEffects(true)
 	waitFor(t, "background effects", func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(effects["fanfare"]) > SampleRate*8
+		testSession.mu.Lock()
+		defer testSession.mu.Unlock()
+		return len(testSession.effects["fanfare"]) > SampleRate*8
 	})
 }
 
@@ -159,16 +159,16 @@ func TestResample(t *testing.T) {
 
 func TestVaryOnlyChangesQuickRepeats(t *testing.T) {
 	freshSession(t)
-	t.Cleanup(func() { SetVary(0.03, 0.10) })
+	t.Cleanup(func() { testSession.SetVary(0.03, 0.10) })
 	src := stereo(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-	SetVary(0.2, 0.1)
-	b, k := vary("a", src)
+	testSession.SetVary(0.2, 0.1)
+	b, k := testSession.vary("a", src)
 	if k != 1 || len(b) != len(src) {
 		t.Fatal("first play must be untouched")
 	}
 	changed := false
 	for range 20 {
-		b, k = vary("a", src)
+		b, k = testSession.vary("a", src)
 		if k < 0.9-1e-9 || k > 1.1+1e-9 {
 			t.Fatalf("volume factor %v out of range", k)
 		}
@@ -179,14 +179,14 @@ func TestVaryOnlyChangesQuickRepeats(t *testing.T) {
 	if !changed {
 		t.Fatal("repeated plays never varied")
 	}
-	if b, k := vary("other", src); k != 1 || len(b) != len(src) {
+	if b, k := testSession.vary("other", src); k != 1 || len(b) != len(src) {
 		t.Fatal("another effect's first play must be untouched")
 	}
-	SetVary(-1, -1)
-	if b, k := vary("a", src); k != 1 || len(b) != len(src) {
+	testSession.SetVary(-1, -1)
+	if b, k := testSession.vary("a", src); k != 1 || len(b) != len(src) {
 		t.Fatal("variation disabled must keep the effect as is")
 	}
-	if varyPitch != 0 || varyVolume != 0 {
+	if testSession.varyPitch != 0 || testSession.varyVolume != 0 {
 		t.Fatal("negative variation is clamped to zero")
 	}
 }

@@ -413,7 +413,7 @@ func (w *streamWatch) say(g *Game, l streamSay) {
 		// the line waits for its voice to load (a browser may still be fetching it), then
 		// for it to end
 		if w.voice = w.ahead[f]; w.voice == nil {
-			w.voice = loadVoice(g.db.FS, f)
+			w.voice = g.loadVoice(g.db.FS, f)
 		}
 		if !w.voice.loaded() { // fetching and decoding both count toward the budget
 			w.limit = now.Add(wait)
@@ -463,8 +463,9 @@ func (w *streamWatch) captionTimes(g *Game, text string) (time.Time, time.Time) 
 
 // Platform speech hooks also allow the browser contract to be tested without a browser.
 var (
-	streamCanSpeak = canSpeak
-	streamSpeak    = speak
+	streamCanSpeak  = canSpeak
+	streamSpeak     = speak
+	streamStopSpeak = stopSpeaking
 )
 
 // readAloud reads the line the host says with speech synthesis (a browser build), the
@@ -508,7 +509,7 @@ func (w *streamWatch) voiced(g *Game) {
 		w.readAloud(g, w.captionWho, w.caption)
 		return
 	}
-	sound.PlayVoice(v.pcm, g.voiceGain(w.show.Hosts[w.captionWho].Actor))
+	g.audioSession().PlayVoice(v.pcm, g.voiceGain(w.show.Hosts[w.captionWho].Actor))
 	end := now.Add(seconds(sound.ClipSeconds(v.pcm)))
 	l["ticks"] = int(math.Ceil(sound.ClipSeconds(v.pcm) * ebiten.DefaultTPS))
 	g.emit("voice", l)
@@ -563,7 +564,7 @@ func (w *streamWatch) prefetchVoices(g *Game, count int) {
 		if f := w.voiceFile(g, l); f != "" {
 			want[f] = true
 			if w.ahead[f] == nil {
-				w.ahead[f] = loadVoice(g.db.FS, f)
+				w.ahead[f] = g.loadVoice(g.db.FS, f)
 			}
 		}
 	}
@@ -902,7 +903,7 @@ func (w *streamWatch) finish(g *Game) {
 
 // leave goes back to the lobby.
 func (w *streamWatch) leave(g *Game) {
-	w.hush()
+	w.hush(g)
 	keepAwake(false)
 	closeBodies(w.bodies)
 	g.sfx("cancel")
@@ -950,13 +951,13 @@ const (
 )
 
 // hush stops the line being read aloud or its voice.
-func (w *streamWatch) hush() {
+func (w *streamWatch) hush(g *Game) {
 	if w.spoken != nil {
-		stopSpeaking()
+		streamStopSpeak()
 		w.spoken = nil
 	}
 	w.voice = nil
-	sound.StopVoice()
+	g.audioSession().StopVoice()
 }
 
 // canRead reports whether the lines can be read aloud: with speech synthesis (a browser
@@ -1020,7 +1021,7 @@ func (w *streamWatch) update(g *Game) {
 			if late {
 				w.voiceFallback(g, w.voice, "fetch/decode timeout")
 			}
-			w.hush()
+			w.hush(g)
 			if late {
 				w.readAloud(g, w.captionWho, w.caption)
 			}
@@ -1098,7 +1099,7 @@ func (w *streamWatch) input(g *Game) {
 			g.desk.speak = !g.desk.speak
 			keepAwake(g.desk.speak)
 			if !g.desk.speak {
-				w.hush()
+				w.hush(g)
 			}
 			g.sfx("decide")
 		case ctlCaptions:

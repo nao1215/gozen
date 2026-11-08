@@ -462,6 +462,16 @@ func (p *phoneView) homeLayout(w float64) []pageRow {
 }
 
 func (g *Game) updatePhoneHome(p *phoneView) {
+	g.addPhoneGameApps(p)
+	defer func() {
+		if p.selectedApp != "" {
+			id := p.selectedApp
+			p.selectedApp = ""
+			if err := g.startPhoneGame(p, id); err != nil {
+				p.gameError = err.Error()
+			}
+		}
+	}()
 	rows, end := g.pageView(p)
 	if g.pageKeys(p, rows, end) {
 		return

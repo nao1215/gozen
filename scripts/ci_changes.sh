@@ -18,17 +18,23 @@ event="${1:-${GITHUB_EVENT_NAME:-}}"
 out="${GITHUB_OUTPUT:-/dev/stdout}"
 
 emit() {
+  echo "docs_runtime=${docs_runtime}" >> "${out}"
   echo "perf=${perf}" >> "${out}"
   echo "code=$1" >> "${out}"
   echo "code changed: $1"
   exit 0
 }
 
+docs_runtime=true
 perf=true
 [ "${event}" = pull_request ] || emit true
 
 files="$(git diff --name-only HEAD^1 HEAD)" || emit true
 [ -n "${files}" ] || emit true
+
+# Release notes do not feed the site or executable documentation examples.
+# Keep this exemption exact; all mixed changes and unknown paths run the checks.
+[ "${files}" != CHANGELOG.md ] || docs_runtime=false
 
 perf=false
 while IFS= read -r f; do

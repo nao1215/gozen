@@ -1,0 +1,88 @@
+name: Game registration proposal
+description: Propose a game for the Gozen phone game catalog.
+title: "[Game registration]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Phone games are implemented for the upcoming 0.23.0 release. The public catalog has not been published yet. This form starts a review; submission does not automatically approve or publish a game. See the [authoring recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) and [release metadata contract](https://github.com/nao1215/gozen/blob/main/docs/registry/README.md).
+        Submit only information and assets you have permission to share publicly.
+  - type: input
+    id: game-title
+    attributes:
+      label: Game title
+    validations:
+      required: true
+  - type: input
+    id: game-id
+    attributes:
+      label: Proposed game ID
+      description: A stable namespaced ID, such as your-name/game-name.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source repository
+      description: Link to the source and author information.
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Release version and package
+      description: Give an exact version and links to its release and downloadable YAML/assets package. Explain if the package is not available yet.
+    validations:
+      required: true
+  - type: input
+    id: metadata
+    attributes:
+      label: Release metadata
+      description: Link the gozen-package.json release asset, if available. See https://github.com/nao1215/gozen/blob/main/docs/registry/README.md for its fields.
+  - type: input
+    id: browser-mirror
+    attributes:
+      label: Browser package mirror (optional)
+      description: For browser installation, provide a raw.githubusercontent.com ZIP URL pinned to a 40-character commit ID. Its bytes must match the desktop package. Browser ZIPs must be at most 64 MiB compressed and 256 MiB unpacked.
+  - type: input
+    id: compatibility
+    attributes:
+      label: Gozen compatibility
+      description: Which Gozen versions have you tested? List desktop/browser targets and portrait/landscape support. Mark untested targets explicitly.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description and controls
+      description: Explain the game, its controls, how a player finishes or leaves it, and any save requirements.
+    validations:
+      required: true
+  - type: textarea
+    id: icon
+    attributes:
+      label: Custom app icon
+      description: Attach or link an icon made for this game. A custom icon is required for registration. Use a square static PNG, 32–1024 pixels per side and at most 64 KiB. Do not use the default Gozen icon.
+    validations:
+      required: true
+  - type: textarea
+    id: licenses
+    attributes:
+      label: Licenses and distribution rights
+      description: Link the code, asset and icon licenses. Identify third-party material and explain your permission to distribute the game and icon through the registry.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots and test evidence
+      description: Share actual screenshots or a recording and commands/results from your tested release. Label mockups and untested behavior clearly.
+  - type: checkboxes
+    id: permission
+    attributes:
+      label: Permission and review
+      options:
+        - label: I have permission to submit this game and its custom icon for public review and distribution under the licenses listed above.
+          required: true
+        - label: I understand that this submission does not guarantee approval or publication.
+          required: true

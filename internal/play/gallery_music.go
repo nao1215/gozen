@@ -181,7 +181,7 @@ func (r *musicRoom) play(g *Game, i int) {
 	if i < 0 || i >= len(r.entries) {
 		r.playing, r.shotT = -1, 0
 		r.song, r.queue = "", nil
-		sound.Stop()
+		g.audioSession().Stop()
 		g.songOverride, g.moodOverride = "", ""
 		g.baseSong, g.baseMood = "", ""
 		g.emit("gallery", traceLine{"music": "", "stop": true})

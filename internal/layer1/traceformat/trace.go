@@ -34,6 +34,7 @@ type ExactReplay struct {
 var kinds = map[string]bool{
 	"decision":            true, // Observational choice list.
 	"input_result":        true, // Receiver acknowledgement.
+	"phone_game":          true, // Exact approved child identity and per-attempt clock.
 	"autoplay_wait":       true, // Observational waiting state.
 	"draw_skip":           true, // Recorded presentation cadence.
 	"act":                 true,
@@ -123,6 +124,7 @@ var kinds = map[string]bool{
 	"memo":                false,
 	"memo_open":           false,
 	"now":                 false,
+	"phone_streams":       false, // Embedded streams retain the stream replay limitation.
 	"panel":               false, // Typed text and wall-clock frame measurements are not recorded.
 	"persistence_error":   false,
 	"pick_error":          false,

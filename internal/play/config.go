@@ -14,7 +14,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/sound"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
@@ -92,9 +91,9 @@ func (g *Game) applyConfig() {
 		g.windowA = g.th.window.A
 	}
 	g.th.window.A = uint8(float64(g.windowA) * float64(clampInt(g.cfg.Window, 0, 10)) / 10)
-	sound.SetVolumes(float64(clampInt(g.cfg.BGM, 0, 10))/10, float64(clampInt(g.cfg.SE, 0, 10))/10)
-	sound.SetVoiceVolume(float64(clampInt(g.cfg.Voice, 0, 10)) / 10)
-	if g.cfg.Fullscreen != ebiten.IsFullscreen() {
+	g.audioSession().SetVolumes(float64(clampInt(g.cfg.BGM, 0, 10))/10, float64(clampInt(g.cfg.SE, 0, 10))/10)
+	g.audioSession().SetVoiceVolume(float64(clampInt(g.cfg.Voice, 0, 10)) / 10)
+	if !g.embedded && g.cfg.Fullscreen != ebiten.IsFullscreen() {
 		ebiten.SetFullscreen(g.cfg.Fullscreen)
 	}
 }
@@ -459,7 +458,10 @@ func (g *Game) setLanguage(code string) {
 func (g *Game) useLanguage() error {
 	code := g.language()
 	g.db.Show(code)
-	return lang.Use(code, g.db.EngineWords(code))
+	if g.words == nil {
+		return lang.Use(code, g.db.EngineWords(code))
+	}
+	return g.words.Use(code, g.db.EngineWords(code))
 }
 
 // languageName is a language as the settings show it, in that language.

@@ -33,7 +33,7 @@ func TestDesktopRejectsInvalidRuntimeWithoutPublishing(t *testing.T) {
 			}
 			parent := t.TempDir()
 			dst := filepath.Join(parent, "out")
-			err = Desktop(src, dst, bundle, "linux-amd64", "devel")
+			err = Desktop(t.Context(), src, dst, bundle, "linux-amd64", "devel")
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("got %v, want %s", err, tc.want)
 			}
@@ -51,7 +51,7 @@ func TestDesktopRejectsInvalidRuntimeWithoutPublishing(t *testing.T) {
 func TestDesktopRejectsOverlapAndPreservesExistingDestination(t *testing.T) {
 	src, bundle := t.TempDir(), t.TempDir()
 	for _, dst := range []string{filepath.Join(src, "output"), filepath.Join(bundle, "output")} {
-		if err := Desktop(src, dst, bundle, "linux-amd64", "devel"); err == nil || !strings.Contains(err.Error(), "separate") {
+		if err := Desktop(t.Context(), src, dst, bundle, "linux-amd64", "devel"); err == nil || !strings.Contains(err.Error(), "separate") {
 			t.Fatalf("overlap: %v", err)
 		}
 	}
@@ -60,7 +60,7 @@ func TestDesktopRejectsOverlapAndPreservesExistingDestination(t *testing.T) {
 	if err := os.WriteFile(name, []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := Desktop(src, dst, bundle, "linux-amd64", "devel"); err == nil {
+	if err := Desktop(t.Context(), src, dst, bundle, "linux-amd64", "devel"); err == nil {
 		t.Fatal("existing destination accepted")
 	}
 	b, err := os.ReadFile(name) //nolint:gosec // Test-owned temporary file.

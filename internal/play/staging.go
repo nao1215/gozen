@@ -8,7 +8,6 @@ import (
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/sound"
 )
 
 // Staging (ADR 0028): the portraits an event stands on the novel window's stage with
@@ -254,15 +253,15 @@ func (g *Game) music(c data.MusicCue) {
 	switch {
 	case c.Stop:
 		g.songOverride, g.moodOverride, g.baseSong = "", "", ""
-		sound.StopFade(c.Fade)
+		g.audioSession().StopFade(c.Fade)
 	case c.Fade > 0:
-		sound.PlaySongFade(c.Song, g.setMusic(c), c.Fade)
+		g.audioSession().PlaySongFade(c.Song, g.setMusic(c), c.Fade)
 	default:
 		g.Music(c)
 	}
 }
 
 // soundTicks is how long a wait for a sound effect lasts, in ticks.
-func soundTicks(name string) int {
-	return int(math.Ceil(sound.EffectSeconds(name) * 60))
+func (g *Game) soundTicks(name string) int {
+	return int(math.Ceil(g.audioSession().EffectSeconds(name) * 60))
 }

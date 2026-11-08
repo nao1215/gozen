@@ -4,6 +4,22 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- Run standalone Gozen games inside the phone, in portrait or landscape, with a host-owned Back control. Child games keep separate input, fonts, audio, progress and saves; closing one resumes its host. The office sample includes two original games and custom app icons.
+- Offer bundled games or explicit downloads through the phone store. Hosts pin an approved catalog and choose app IDs, flags and version ranges. Signed catalog refresh, verified immutable ZIPs and atomic installation preserve existing games when downloads fail or are cancelled. Browser downloads use immutable CORS mirrors and origin-local storage.
+- Register game releases with required custom icons, licenses and compatibility information. Registry updates are proposed through review PRs and signed catalogs publish independently of engine releases. Authoring instructions and real phone captures accompany the registration form.
+- Add dango checks for child resource ownership, installation failures, signed offline catalogs, save isolation and browser export limits, with desktop and browser E2E scenarios.
+
+### Fixed
+
+- Trace reproduction rejects a last-frame target that would overflow the exclusive replay boundary, including screenshot targets.
+- The dead-code gate propagates checker and filter errors and ignores blank or comment-only allowlist lines.
+
+### Changed
+
+- Changelog-only pull requests skip executable documentation builds; uncertain changes keep the checks enabled. Superseded website runs are cancelled only for pull requests.
+
 ## v0.22.0 - 2026-11-08
 
 ### Added

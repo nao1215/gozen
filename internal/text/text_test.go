@@ -74,3 +74,27 @@ func TestUseCopiesCallerMap(t *testing.T) {
 		t.Fatalf("caller mutation changed translation: %s", got)
 	}
 }
+
+func TestContextIsolation(t *testing.T) {
+	parent, err := NewContext(English, map[string]string{"key": "parent"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := NewContext(Japanese, map[string]string{"key": "child"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restore := parent.Activate()
+	defer restore()
+	if T("key") != "parent" {
+		t.Fatal("parent words missing")
+	}
+	resume := child.Activate()
+	if T("key") != "child" {
+		t.Fatal("child words missing")
+	}
+	resume()
+	if T("key") != "parent" {
+		t.Fatal("child changed parent words")
+	}
+}

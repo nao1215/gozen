@@ -1,11 +1,13 @@
 package distribute
 
 import (
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/draw"
 	"io"
@@ -14,11 +16,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/deepteams/webp"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/cmd/internal/starter"
+	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
@@ -61,7 +66,7 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, bundle, "devel", ""); err != nil {
+	if err := Web(t.Context(), src, out, bundle, "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "game", "files.json")) //nolint:gosec // Test-owned exported file.
@@ -148,7 +153,7 @@ func TestWebManifestAndRuntimeValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	parent := t.TempDir()
-	if err := Web(src, filepath.Join(parent, "site"), bundle, "devel", ""); err == nil || !strings.Contains(err.Error(), "checksum") {
+	if err := Web(t.Context(), src, filepath.Join(parent, "site"), bundle, "devel", ""); err == nil || !strings.Contains(err.Error(), "checksum") {
 		t.Fatalf("mismatched JavaScript: %v", err)
 	}
 	files, err := os.ReadDir(parent)
@@ -174,7 +179,7 @@ func TestWebFetchesVoicesLater(t *testing.T) {
 		}
 	}
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, webBundle(t), "devel", ""); err != nil {
+	if err := Web(t.Context(), src, out, webBundle(t), "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "game", "files.json")) //nolint:gosec // Test-owned exported file.
@@ -259,7 +264,7 @@ func TestWebConversionPreservesCollidingDirectories(t *testing.T) {
 		}
 	}
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, bundle, "devel", ""); err != nil {
+	if err := Web(t.Context(), src, out, bundle, "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	files := manifest(t, out)
@@ -269,5 +274,109 @@ func TestWebConversionPreservesCollidingDirectories(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(out, "game", "assets", "note.txt.gz", "notice.txt")) //nolint:gosec // Test-owned exported file.
 	if err != nil || string(b) != "directory content" {
 		t.Fatalf("directory content lost: %q, %v", b, err)
+	}
+}
+
+func TestWebRejectsOversizedPhoneBundles(t *testing.T) {
+	b, err := os.ReadFile("../../../examples/office/game/apps/catalog.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var catalog gamepackage.Catalog
+	if err := json.Unmarshal(b, &catalog); err != nil {
+		t.Fatal(err)
+	}
+	archive, err := os.ReadFile("../../../examples/office/game/apps/counter.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := catalog.Releases[0]
+	for _, tc := range []struct {
+		name           string
+		size, unpacked int64
+		optional       bool
+		wantError      bool
+	}{
+		{"valid bundle", original.Size, original.UnpackedSize, false, false},
+		{"archive", gamepackage.MaxArchiveBytes + 1, gamepackage.MaxUnpackedBytes, false, true},
+		{"expanded", gamepackage.MaxArchiveBytes, gamepackage.MaxUnpackedBytes + 1, false, true},
+		{"optional native release", gamepackage.MaxArchiveBytes + 1, gamepackage.MaxUnpackedBytes, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &catalog.Releases[0]
+			r.Size, r.UnpackedSize = tc.size, tc.unpacked
+			encoded, err := json.Marshal(catalog)
+			if err != nil {
+				t.Fatal(err)
+			}
+			digest := sha256.Sum256(encoded)
+			app := gamedata.PhoneApp{ID: "counter", Package: r.ID, Version: ">=1.0.0 <2.0.0", BundledVersion: r.Version, Install: "bundled", Path: "counter.zip"}
+			if tc.optional {
+				app.Install = "optional"
+			}
+			cfg := &gamedata.PhoneApps{Catalog: "catalog.json", CatalogSHA256: hex.EncodeToString(digest[:]), Apps: []gamedata.PhoneApp{app}}
+			err = checkWebPhonePackages(t.Context(), fstest.MapFS{"catalog.json": {Data: encoded}, "counter.zip": {Data: archive}}, cfg)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("error = %v, want error %v", err, tc.wantError)
+			}
+		})
+	}
+}
+
+func TestWebRejectsPhoneBundleEntryOverflow(t *testing.T) {
+	b, err := os.ReadFile("../../../examples/office/game/apps/catalog.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := gamepackage.Parse(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := zip.OpenReader("../../../examples/office/game/apps/counter.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var archive bytes.Buffer
+	writer := zip.NewWriter(&archive)
+	for _, file := range original.File {
+		if err := writer.Copy(file); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := original.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 4097 {
+		if _, err := writer.Create(fmt.Sprintf("assets/empty-%d.txt", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	release := &catalog.Releases[0]
+	release.Size = int64(archive.Len())
+	sum := sha256.Sum256(archive.Bytes())
+	release.SHA256 = hex.EncodeToString(sum[:])
+	encoded, err := json.Marshal(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(encoded)
+	cfg := &gamedata.PhoneApps{Catalog: "catalog.json", CatalogSHA256: hex.EncodeToString(digest[:]), Apps: []gamedata.PhoneApp{{ID: "counter", Package: release.ID, Version: release.Version, Install: "bundled", Path: "counter.zip"}}}
+	fsys := fstest.MapFS{"catalog.json": {Data: encoded}, "counter.zip": {Data: archive.Bytes()}}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "counter.zip"), archive.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	installed, err := gamepackage.OpenArchive(t.Context(), os.DirFS(dir), "counter.zip", *release)
+	if err != nil {
+		t.Fatalf("native archive unexpectedly rejected: %v", err)
+	}
+	if err := installed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkWebPhonePackages(t.Context(), fsys, cfg); err == nil || !strings.Contains(err.Error(), "entries") {
+		t.Fatalf("browser entry overflow: %v", err)
 	}
 }

@@ -31,6 +31,11 @@ type pickable struct {
 // choices of a question, an open popup, a screen's actions and seats, or a list
 // menu. kind names which of them it is.
 func (g *Game) scriptPickables() (kind string, items []pickable) {
+	if g.phone != nil && g.phone.child != nil {
+		child := g.phone.child.game
+		defer child.activatePresentation()()
+		return child.scriptPickables()
+	}
 	if len(g.stack) == 0 {
 		return "", nil
 	}

@@ -9,8 +9,8 @@ name: Website
 #
 # The site carries Go Zen, the novel and the campaign samples built from this checkout's engine
 # (/play/go-zen/, /play/novel/, /play/campaign/), so the build runs on every push and pull request:
-# a change anywhere can stop a game in the browser, and the build opens both in
-# headless Chrome.
+# code and sample changes can stop a game in the browser, checked in headless Chrome.
+# Only a CHANGELOG.md-only pull request omits the build (docs/development/ci.md).
 on:
   push:
     branches: [main]
@@ -22,7 +22,7 @@ permissions: {}
 
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -40,8 +40,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+
+      - name: Decide whether executable documentation can change
+        id: scope
+        run: ./scripts/ci_changes.sh
 
       - name: Install Hugo
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: |
           curl -fsSL -o "${RUNNER_TEMP}/hugo.tar.gz" \
             "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_linux-amd64.tar.gz"
@@ -51,19 +57,23 @@ jobs:
           hugo version
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.scope.outputs.docs_runtime != 'false'
         with:
           go-version-file: go.mod
 
       # scripts/web/assets.py writes the samples' pictures as WebP with Pillow.
       - name: Install Pillow
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-pil
 
       # make website also builds Go Zen, the novel and the campaign samples for the browser into
       # public/play/go-zen, public/play/novel and public/play/campaign.
       - name: Install license collector
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: go install github.com/google/go-licenses/v2@v2.0.1
 
       - name: Build website
+        if: steps.scope.outputs.docs_runtime != 'false'
         # The commit is stamped into every page so the deploy can be verified
         # afterwards. Hugo reads HUGO_PARAMS_* as config overrides. The build
         # fails when data/schema/types.schema.json has a cell without English in
@@ -77,17 +87,21 @@ jobs:
       # the site, every #fragment to an id, and every link to a file of this
       # repository to a file of the checkout (internal/dev/docs).
       - name: Check the links of the built site
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: make website-check
 
       # Opens /play/go-zen/, /play/novel/ and /play/campaign/ in headless Chrome (preinstalled on
       # the runner) and fails when a game draws nothing, or the page logs an
       # exception or a failed request; it presses Enter and keeps the screenshots.
       - name: Check that Go Zen, the novel and the campaign samples run in the browser
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: make website-play-check
 
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        if: steps.scope.outputs.docs_runtime != 'false'
 
       - name: Check exported games in the browser
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: make e2e-web
 
       - name: Keep the screenshots of the browser check
@@ -99,6 +113,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Index the site with Pagefind
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: |
           curl -fsSL -o "${RUNNER_TEMP}/pagefind.tar.gz" \
             "https://github.com/Pagefind/pagefind/releases/download/v${PAGEFIND_VERSION}/pagefind-v${PAGEFIND_VERSION}-x86_64-unknown-linux-musl.tar.gz"
@@ -107,6 +122,7 @@ jobs:
           "${RUNNER_TEMP}/pagefind" --site website/public
 
       - name: Upload Pages artifact
+        if: steps.scope.outputs.docs_runtime != 'false'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: website/public

@@ -1,8 +1,22 @@
-# Extensible casual activities
+# Phone games and extensible casual activities
 
-Status: Design proposal; no activity command or schema is implemented.
+Phone hosting, approved packages and explicit installation are implemented for the upcoming 0.23.0 release. Runner gameplay and the casual activity model below remain proposals. Public catalog publication is tracked separately from the engine release.
 
-## Author and purpose
+## Delivery order
+
+First, run one standalone Gozen game inside another game's phone without a VM or child process. Then reproduce a scrolling runner with Gozen definitions. General casual-game authoring follows those two working uses. One-button operation is an option, not a restriction on games.
+
+The implemented phone host provides portrait or landscape framing, transformed input and an exit control outside the child's viewport. It suspends its own gameplay and resumes when the child closes. Child resources and saves are isolated; only one level of embedding is supported. [ADR 0063](../decisions/0063-phone-game-packages.md) defines ownership and trust. The [authoring recipe](../examples/phone-games.md) includes YAML and actual captured examples.
+
+## Registry and installation
+
+Host authors choose app IDs, unlock flags, bundled or optional installation, and exact versions or bounded update ranges. Players explicitly download or update an allowed app. New catalog entries do not add apps to a host's declarations, and updates preserve earlier installations and saves.
+
+The repository maintains reviewed release metadata, including required custom PNG icons and immutable package hashes. Signed catalog refresh authenticates new releases against the host's pinned public key. Archive and storage checks preserve existing installations when a download fails. See the [registry contract](../registry/README.md) for package limits, browser mirrors, upstream metadata, review and publication.
+
+Authors can submit games through the [registration form](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml). Submission starts review and does not publish a game automatically.
+
+## Casual activity proposal
 
 A game author should be able to build a short touch-controlled challenge using YAML and assets, launch it from an ordinary story event or phone entry, and use its result in the story. Changing a runner into a catching challenge must not require recompiling Gozen. Authors configure these games through YAML under ADR 0041. The proposal adds no public Go plugin API.
 
@@ -57,4 +71,4 @@ Initial scope excludes saving inside an attempt. Save before entry or after retu
 3. Connect one shared host view to events and phone navigation. Verify cancelling, retrying, completing, saving after return, and applying each reward once.
 4. Exercise actual touch, keyboard and gamepad operation, desktop/browser exports, graphics and deterministic scripted runs. Add schema, two examples, documentation and dango enforcement before declaring authoring supported.
 
-Implement this after the phone flag and navigation work. Estimate the remaining time after testing the rules without graphics and trying the input prototype. Full game embedding is a separate proposal and is not a prerequisite for this activity model.
+Implement this after the embedded-game distribution work. Estimate the remaining time after testing the rules without graphics and trying the input prototype. Embedded Gozen games take priority over this activity model. The activity host must fit the ownership and exit contracts established by that work.

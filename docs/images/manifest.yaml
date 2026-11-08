@@ -42,6 +42,16 @@ runs:
     sample: office
     script: scripts/capture-office.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, office, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  phone-games:
+    sample: office
+    script: scripts/capture-phone-games.txt
+    check: [python3, scripts/check-phone-archive.py, --games]
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_games, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
+  phone-archive:
+    sample: office
+    script: scripts/capture-phone-archive.txt
+    check: [python3, scripts/check-phone-archive.py]
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_archive, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl"]
   phone-chat:
     sample: office
     script: scripts/capture-phone-chat.txt
@@ -701,6 +711,28 @@ images:
       - {shots: "lb*"}
       - {shots: "lc*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-game-home.jpg:
+    run: phone-games
+    shot: game-home
+    jpeg: {width: 960, height: 540, quality: 3}
+  phone-game-counter.jpg:
+    run: phone-games
+    shot: game-counter
+    jpeg: {width: 960, height: 540, quality: 3}
+  phone-game-trail.jpg:
+    run: phone-games
+    shot: game-trail
+    jpeg: {width: 960, height: 540, quality: 3}
+  phone-navigation.gif:
+    run: phone-archive
+    frames:
+      - {shots: "pn*"}
+    gif: {fps: 12, width: 400, height: 600, colors: 256, crop: "480:720:400:0"}
+  phone-history.gif:
+    run: phone-archive
+    frames:
+      - {shots: "pr*"}
+    gif: {fps: 12, width: 400, height: 600, colors: 256, crop: "480:720:400:0"}
   phone-chat.gif:
     run: phone-chat
     frames:

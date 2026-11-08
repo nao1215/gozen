@@ -17,13 +17,13 @@ import (
 func (g *Game) lineVoice(t *talk, s event.Say, passed bool) {
 	if s.Voice == "" {
 		if g.db.Game.UI.Voice.Cuts() {
-			sound.StopVoice()
+			g.audioSession().StopVoice()
 		}
 		return
 	}
 	if passed || g.live.quiet || g.fast != nil || g.skipping {
 		if g.db.Game.UI.Voice.Cuts() {
-			sound.StopVoice()
+			g.audioSession().StopVoice()
 		}
 		return
 	}
@@ -36,14 +36,14 @@ func (g *Game) playVoice(t *talk, s event.Say) {
 	if s.Actor != "" {
 		l["who"] = s.Actor
 	}
-	pcm, err := sound.VoiceClip(g.db.FS, "assets/"+s.Voice)
+	pcm, err := g.audioSession().VoiceClip(g.db.FS, "assets/"+s.Voice)
 	if err != nil {
 		log.Printf("voice %s: %v", s.Voice, err)
 		l["missing"] = true
 		g.emit("voice", l)
 		return
 	}
-	sound.PlayVoice(pcm, g.voiceGain(s.Actor))
+	g.audioSession().PlayVoice(pcm, g.voiceGain(s.Actor))
 	t.voiceT = int(math.Ceil(sound.ClipSeconds(pcm) * 60))
 	l["ticks"] = t.voiceT
 	g.emit("voice", l)

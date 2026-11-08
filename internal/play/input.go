@@ -121,6 +121,8 @@ var pads = [numButtons][]ebiten.StandardGamepadButton{
 }
 
 type input struct {
+	supplied *input
+	physical bool
 	// offer exists only between script dispatch and the end of Update. Rendering,
 	// tracing and device polling cannot acknowledge a command.
 	offer                          *scriptOffer
@@ -171,6 +173,12 @@ type input struct {
 }
 
 func (in *input) update() {
+	if in.supplied != nil {
+		source, ui := in.supplied, in.ui
+		*in = *source
+		in.supplied, in.ui = source, ui
+		return
+	}
 	in.pressed, in.pad = [numButtons]bool{}, [numButtons]bool{}
 	in.click, in.rclick, in.moved, in.wheel = false, false, false, 0
 	in.pdown, in.pheld, in.pup = false, false, false
@@ -369,7 +377,12 @@ func (in *input) gamepads() {
 
 // devices reports whether the input comes from the keyboard, the mouse and the pads, not
 // a script or a replay: only then is text typed with the keyboard and an input method.
-func (in *input) devices() bool { return in.script == nil && in.replay == nil }
+func (in *input) devices() bool {
+	if in.supplied != nil {
+		return in.physical
+	}
+	return in.script == nil && in.replay == nil
+}
 
 func (in *input) ok() bool     { return in.pressedKey(btnOK) }
 func (in *input) cancel() bool { return in.pressedKey(btnCancel) || in.rightClicked() }
@@ -1269,6 +1282,11 @@ func (in *input) receivePick(target any) {
 }
 
 func (in *input) finishOffer() {
+	if in.supplied != nil {
+		in.idleRead = in.readInput
+		in.offer = nil
+		return
+	}
 	o := in.offer
 	in.offer = nil
 	in.observing = false

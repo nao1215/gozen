@@ -73,7 +73,7 @@ func Simulate(ctx context.Context, opts Options, cfg SimulateConfig) (res Simula
 		}
 	}
 	for {
-		err = g.Update()
+		err = g.Update() //nolint:contextcheck // Ebitengine requires Update() without parameters; g.context inherits ctx above.
 		if errors.Is(err, errQuit) {
 			err = nil
 			break

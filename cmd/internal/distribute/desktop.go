@@ -1,6 +1,7 @@
 package distribute
 
 import (
+	"context"
 	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
@@ -27,7 +28,7 @@ type Runtime struct {
 
 // Desktop assembles an existing game with a matching local runtime bundle.
 // The caller provides the CLI version; foreign targets are inspected, never run.
-func Desktop(src, dst, bundle, target, version string) error {
+func Desktop(ctx context.Context, src, dst, bundle, target, version string) error {
 	return cli.Publish(dst, []string{src, bundle}, func(stage string) error {
 		player := "gozen-player"
 		if strings.HasPrefix(target, "windows-") {
@@ -47,7 +48,7 @@ func Desktop(src, dst, bundle, target, version string) error {
 		if err := copyLicenses(bundle, stage); err != nil {
 			return err
 		}
-		if _, _, err := CopyGame(src, filepath.Join(stage, "game")); err != nil {
+		if _, _, err := CopyGame(ctx, src, filepath.Join(stage, "game")); err != nil {
 			return err
 		}
 		return nil

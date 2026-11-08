@@ -24,14 +24,14 @@ const voicesAhead = 0
 
 // loadVoice loads a stream line's recorded voice at once (the files are on the disk), so
 // a run and its replay time the lines the same.
-func loadVoice(fsys fs.FS, file string) *voiceLoad {
+func (g *Game) loadVoice(fsys fs.FS, file string) *voiceLoad {
 	v := &voiceLoad{file: file, done: make(chan struct{})}
-	v.read(fsys)
+	v.read(fsys, g.audioSession())
 	return v
 }
 
 // whenHidden: a desktop build writes what it keeps when it closes.
-func whenHidden(func()) {}
+func whenHidden(func()) func() { return func() {} }
 
 // keepAwake: only a browser build holds the screen awake while the lines are read aloud.
 func keepAwake(bool) {}

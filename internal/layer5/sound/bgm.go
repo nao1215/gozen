@@ -81,24 +81,15 @@ func (s Song) ModuleFrames() int {
 
 const songFade = SampleRate * 7 / 10
 
-var (
-	ctx     *audio.Context
-	bgm     *Modular
-	bgmPlay *audio.Player
-	muted   bool
-	volume  = 0.7
-	mu      sync.Mutex
-)
-
-func Init() error {
-	ctx = audio.CurrentContext()
-	if ctx == nil {
-		ctx = audio.NewContext(SampleRate)
+func (session *Session) Init() error {
+	session.ctx = audio.CurrentContext()
+	if session.ctx == nil {
+		session.ctx = audio.NewContext(SampleRate)
 	}
-	if ctx.SampleRate() != SampleRate {
+	if session.ctx.SampleRate() != SampleRate {
 		return fmt.Errorf("sound: audio context requires sample rate %d", SampleRate)
 	}
-	makeEffects(pace.OneThread)
+	session.makeEffects(pace.OneThread)
 	return nil
 }
 
@@ -108,32 +99,32 @@ const startFrames = SampleRate / 4
 
 const playerBuffer = 100 * time.Millisecond
 
-func LoadBGM(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64) {
+func (session *Session) LoadBGM(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64) {
 	m := NewModular(first, oneShot)
-	mu.Lock()
-	bgm = m
-	volume = vol
-	mu.Unlock()
-	if rec != nil {
+	session.mu.Lock()
+	session.bgm = m
+	session.volume = vol
+	session.mu.Unlock()
+	if session.rec != nil {
 		recordBGM(m, fsys, songs)
 		return
 	}
 	m.Lazy(fsys, songs, bgmBudget)
 	m.PlaySong(first, Neutral)
-	if ctx == nil {
+	if session.ctx == nil {
 		return
 	}
-	p, err := ctx.NewPlayerF32(m)
+	p, err := session.ctx.NewPlayerF32(m)
 	if err != nil {
 		log.Printf("bgm: %v", err)
 		return
 	}
 	p.SetBufferSize(playerBuffer)
 
-	mu.Lock()
-	p.SetVolume(bgmVolume())
-	bgmPlay = p
-	mu.Unlock()
+	session.mu.Lock()
+	p.SetVolume(session.bgmVolume())
+	session.bgmPlay = p
+	session.mu.Unlock()
 	p.Play()
 }
 
@@ -222,135 +213,133 @@ func (p *pcm) fill(r io.Reader, progress func()) error {
 	}
 }
 
-func current() *Modular {
-	mu.Lock()
-	defer mu.Unlock()
-	return bgm
+func (session *Session) current() *Modular {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.bgm
 }
 
-func Request(mood string) {
-	if m := current(); m != nil {
+func (session *Session) Request(mood string) {
+	if m := session.current(); m != nil {
 		m.Request(mood)
 	}
 }
 
-func PlaySong(song, mood string) {
-	if m := current(); m != nil {
+func (session *Session) PlaySong(song, mood string) {
+	if m := session.current(); m != nil {
 		m.PlaySong(song, mood)
 	}
 }
 
-func Stop() {
-	if m := current(); m != nil {
+func (session *Session) Stop() {
+	if m := session.current(); m != nil {
 		m.Stop()
 	}
 }
 
 // PlaySongFade plays a song that fades in over seconds while the one playing fades out
 // over the same time (the music command's fade; ADR 0028).
-func PlaySongFade(song, mood string, seconds float64) {
-	if m := current(); m != nil {
+func (session *Session) PlaySongFade(song, mood string, seconds float64) {
+	if m := session.current(); m != nil {
 		m.PlaySongFade(song, mood, seconds)
 	}
 }
 
 // StopFade stops the music, fading out over seconds.
-func StopFade(seconds float64) {
-	if m := current(); m != nil {
+func (session *Session) StopFade(seconds float64) {
+	if m := session.current(); m != nil {
 		m.StopFade(seconds)
 	}
 }
 
 // EffectSeconds is how long a sound effect lasts (0 when there is none of that name).
-func EffectSeconds(name string) float64 {
-	mu.Lock()
-	defer mu.Unlock()
-	if seconds, ok := effectDurations[name]; ok {
+func (session *Session) EffectSeconds(name string) float64 {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if seconds, ok := session.effectDurations[name]; ok {
 		return seconds
 	}
 	return float64(int(builtinEffectSeconds[name]*SampleRate)) / SampleRate
 }
 
-func Jump(mood string) {
-	if m := current(); m != nil {
+func (session *Session) Jump(mood string) {
+	if m := session.current(); m != nil {
 		m.Jump(mood)
 	}
 }
 
-func JumpLast(mood string) {
-	if m := current(); m != nil {
+func (session *Session) JumpLast(mood string) {
+	if m := session.current(); m != nil {
 		m.JumpLast(mood)
 	}
 }
 
-func PlayOnce(song, mood string) {
-	if m := current(); m != nil {
+func (session *Session) PlayOnce(song, mood string) {
+	if m := session.current(); m != nil {
 		m.PlayOnce(song, mood)
 	}
 }
 
-func Keep(songs ...string) {
-	if m := current(); m != nil {
+func (session *Session) Keep(songs ...string) {
+	if m := session.current(); m != nil {
 		m.Keep(songs...)
 	}
 }
 
-func Playing() (song, module string) {
-	if m := current(); m != nil {
+func (session *Session) Playing() (song, module string) {
+	if m := session.current(); m != nil {
 		return m.Current()
 	}
 	return "", ""
 }
 
-func Active() bool { return current() != nil }
+func (session *Session) Active() bool { return session.current() != nil }
 
-func WantedSong() string {
-	if m := current(); m != nil {
+func (session *Session) WantedSong() string {
+	if m := session.current(); m != nil {
 		return m.Wanted()
 	}
 	return ""
 }
 
-func HasMood(mood string) bool {
-	if m := current(); m != nil {
+func (session *Session) HasMood(mood string) bool {
+	if m := session.current(); m != nil {
 		return m.HasMood(mood)
 	}
 	return false
 }
 
-func ToggleMute() bool {
-	mu.Lock()
-	defer mu.Unlock()
-	muted = !muted
-	if bgmPlay != nil {
-		bgmPlay.SetVolume(bgmVolume())
+func (session *Session) ToggleMute() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.muted = !session.muted
+	if session.bgmPlay != nil {
+		session.bgmPlay.SetVolume(session.bgmVolume())
 	}
-	return muted
+	return session.muted
 }
 
-func bgmVolume() float64 {
-	if muted {
+func (session *Session) bgmVolume() float64 {
+	if session.muted {
 		return 0
 	}
-	return volume * bgmScale
+	return session.volume * session.bgmScale
 }
 
-func seVolume() float64 {
-	if muted {
+func (session *Session) seVolume() float64 {
+	if session.muted {
 		return 0
 	}
-	return 0.7 * seScale
+	return 0.7 * session.seScale
 }
 
-var bgmScale, seScale = 1.0, 1.0
-
-func SetVolumes(bgm, se float64) {
-	mu.Lock()
-	bgmScale, seScale = bgm, se
-	if bgmPlay != nil {
-		bgmPlay.SetVolume(bgmVolume())
+func (session *Session) SetVolumes(bgm, se float64) {
+	session.mu.Lock()
+	session.bgmScale, session.seScale = bgm, se
+	if session.bgmPlay != nil {
+		session.bgmPlay.SetVolume(session.bgmVolume())
 	}
-	mu.Unlock()
+	session.mu.Unlock()
 }
 
 type tail struct {
@@ -383,8 +372,10 @@ func (s *loadedSong) bytes() int {
 }
 
 type Modular struct {
-	mu    sync.Mutex
-	songs map[string]*loadedSong
+	workers sync.WaitGroup
+	closed  bool
+	mu      sync.Mutex
+	songs   map[string]*loadedSong
 
 	defs     map[string]Song
 	fsys     fs.FS
@@ -472,14 +463,15 @@ func (m *Modular) Keep(songs ...string) {
 func (m *Modular) fetch(song, mood string) {
 	m.touch(song)
 	s, ok := m.defs[song]
-	if !ok || m.songs[song] != nil || m.loading[song] || m.fsys == nil {
+	if m.closed || !ok || m.songs[song] != nil || m.loading[song] || m.fsys == nil {
 		return
 	}
 	if m.loading == nil {
 		m.loading = map[string]bool{}
 	}
 	m.loading[song] = true
-	go m.stream(s, mood, m.fsys)
+	fsys := m.fsys
+	m.workers.Go(func() { m.stream(s, mood, fsys) })
 }
 
 func (m *Modular) stream(s Song, first string, fsys fs.FS) {
@@ -825,8 +817,8 @@ func AssetPath(file string) string {
 	return "assets/" + file
 }
 
-func Relearn(fsys fs.FS, songs []Song) {
-	m := current()
+func (session *Session) Relearn(fsys fs.FS, songs []Song) {
+	m := session.current()
 	if m == nil {
 		return
 	}
@@ -844,4 +836,12 @@ func Relearn(fsys fs.FS, songs []Song) {
 	for name := range m.kept {
 		m.fetch(name, Neutral)
 	}
+}
+
+// close stops scheduling and joins all readers before the owner releases its FS.
+func (m *Modular) close() {
+	m.mu.Lock()
+	m.closed = true
+	m.mu.Unlock()
+	m.workers.Wait()
 }

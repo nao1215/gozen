@@ -1,0 +1,47 @@
+gap 20
+wait 180
+press ok
+wait 80
+shot game-home
+press right
+press right
+press ok
+wait 100
+press ok
+wait 80
+press ok
+wait 60
+shot game-counter
+press ok
+wait 30
+press menu
+wait 30
+press ok
+wait 30
+press ok
+wait 60
+hold shift+cancel 1
+wait 100
+press right
+press ok
+wait 100
+press ok
+wait 80
+press ok
+wait 40
+press down
+press ok
+wait 60
+shot game-trail
+press ok
+wait 30
+press menu
+wait 30
+press ok
+wait 30
+press ok
+wait 60
+hold shift+cancel 1
+wait 100
+snapshot
+quit

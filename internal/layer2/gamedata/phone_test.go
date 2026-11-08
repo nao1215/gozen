@@ -174,3 +174,62 @@ func TestPhoneChecksPuppetContents(t *testing.T) {
 		})
 	}
 }
+
+func TestPhoneGameDeclarations(t *testing.T) {
+	const phone = `
+phone:
+  catalog: apps/catalog.yaml
+  catalog_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  apps:
+    - {id: puzzle, package: demo/puzzle, version: 1.0.0, install: bundled, path: apps/puzzle.zip, when: flag.unlocked}
+`
+	for _, tc := range []struct{ name, from, to, command, want string }{
+		{name: "duplicate ID", from: "    - {id: puzzle", to: "    - {id: puzzle, package: demo/other, version: 1.0.0, install: optional}\n    - {id: puzzle", command: "{app: store}", want: "duplicate phone app"},
+		{name: "unsigned catalog URL", from: "  catalog:", to: "  catalog_url: https://example.com/catalog.yaml\n  catalog:", command: "{app: store}", want: "catalog_public_key"},
+		{name: "short catalog key", from: "  catalog:", to: "  catalog_public_key: YQ==\n  catalog_signature_url: https://example.com/catalog.sig\n  catalog_url: https://example.com/catalog.yaml\n  catalog:", command: "{app: store}", want: "32 bytes"},
+		{name: "catalog URL", from: "  catalog:", to: "  catalog_public_key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n  catalog_signature_url: https://example.com/catalog.sig\n  catalog_url: https://example.com/catalog.yaml\n  catalog:", command: "{app: store}"},
+		{name: "insecure URL", from: "  catalog:", to: "  catalog_url: http://example.com/catalog.yaml\n  catalog:", command: "{app: store}", want: "HTTPS"},
+		//nolint:gosec // Deliberately invalid example credentials must be rejected, not used for authentication.
+		{name: "URL credentials", from: "  catalog:", to: "  catalog_url: https://user:password@example.com/catalog.yaml\n  catalog:", command: "{app: store}", want: "HTTPS"},
+		{name: "URL fragment", from: "  catalog:", to: "  catalog_url: https://example.com/catalog.yaml#part\n  catalog:", command: "{app: store}", want: "HTTPS"},
+		{name: "hidden bundle", from: "apps/puzzle.zip", to: ".cache/puzzle.zip", command: "{app: store}", want: "safe relative ZIP"},
+		{name: "reserved bundle", from: "apps/puzzle.zip", to: "apps/CON.zip", command: "{app: store}", want: "safe relative ZIP"},
+		{name: "game", command: "{app: game, game: puzzle}"},
+		{name: "store", command: "{app: store}"},
+		{name: "optional", from: "install: bundled, path: apps/puzzle.zip", to: "install: optional", command: "{app: store}"},
+		{name: "range requires bundled pin", from: "version: 1.0.0", to: "version: '>=1.0.0 <2.0.0'", command: "{app: store}", want: "bundled_version"},
+		{name: "bundled pin out of range", from: "version: 1.0.0", to: "version: '>=1.0.0 <2.0.0', bundled_version: 2.0.0", command: "{app: store}", want: "bundled_version"},
+		{name: "optional forbids bundled pin", from: "install: bundled, path: apps/puzzle.zip", to: "install: optional, bundled_version: 1.0.0", command: "{app: store}", want: "only bundled"},
+		{name: "bounded versions", from: "version: 1.0.0", to: "version: '>=1.0.0 <2.0.0', bundled_version: 1.0.0", command: "{app: game, game: puzzle}"},
+		{name: "unknown game", command: "{app: game, game: missing}", want: "unknown phone app"},
+		{name: "missing game", command: "{app: game}", want: "unknown phone app"},
+		{name: "wrong app", command: "{app: page, game: puzzle, rows: [{text: Hi}]}", want: "game is only for app game"},
+		{name: "store game key", command: "{app: store, game: puzzle}", want: "game is only for app game"},
+		{name: "foreign content", command: "{app: game, game: puzzle, rows: [{text: Hi}]}", want: "do not accept other app content"},
+		{name: "foreign outcome", command: "{app: game, game: puzzle, var: var.result}", want: "do not accept other app content"},
+		{name: "catalog traversal", from: "apps/catalog.yaml", to: "../catalog.yaml", command: "{app: store}", want: "safe relative"},
+		{name: "catalog digest", from: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", to: "abc", command: "{app: store}", want: "SHA-256"},
+		{name: "bundle traversal", from: "apps/puzzle.zip", to: "../puzzle.zip", command: "{app: store}", want: "safe relative ZIP"},
+		{name: "optional path", from: "install: bundled", to: "install: optional", command: "{app: store}", want: "only bundled"},
+		{name: "unknown install", from: "install: bundled", to: "install: auto", command: "{app: store}", want: "bundled or optional"},
+		{name: "unbounded range", from: "version: 1.0.0", to: "version: '>=1.0.0'", command: "{app: store}", want: "version"},
+		{name: "reversed range", from: "version: 1.0.0", to: "version: '>=2.0.0 <1.0.0'", command: "{app: store}", want: "empty version interval"},
+		{name: "bad package", from: "demo/puzzle", to: "puzzle", command: "{app: store}", want: "namespaced"},
+		{name: "bad ID", from: "id: puzzle", to: "id: ../puzzle", command: "{app: store}", want: "local identifier"},
+		{name: "bad condition", from: "flag.unlocked", to: "unknown.value", command: "{app: store}", want: "unknown"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defs := phone
+			if tc.from != "" {
+				defs = strings.Replace(defs, tc.from, tc.to, 1)
+			}
+			_, err := testgame.TryLoad(map[string]string{"game.yaml": testgame.Game + defs, "data/phone.yaml": "events: {phone_test: {do: [{phone: " + tc.command + "}]}}"})
+			if tc.want == "" && err != nil {
+				t.Fatal(err)
+			}
+			if tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+}

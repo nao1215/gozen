@@ -160,7 +160,7 @@ func TestWldMusicWordsRunInAnEvent(t *testing.T) {
 	if !g.talk.active || g.talk.say.Text != "Quiet." {
 		t.Fatalf("the event did not get to the line after the words: %+v", g.talk.say)
 	}
-	if soundTicks("no such sound") != 0 {
+	if g.soundTicks("no such sound") != 0 {
 		t.Fatal("a sound that does not exist lasts no time")
 	}
 }

@@ -652,3 +652,170 @@ scenarios:
       stdout: {equals: ''}
       stderr: {contains: 'runtime.json'}
       changes: {created: [], modified: [], deleted: []}
+
+- name: phone games install through browser fetch and reopen offline with isolated saves
+  tags: [web, phone-browser]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host
+  - assert: {exit_code: 0}
+  - run:
+      command: |
+        python3 -c '
+        from pathlib import Path
+        import shutil
+        p = Path("host/game.yaml")
+        p.write_text(p.read_text().replace("      install: bundled\n      path: apps/trail.zip", "      install: optional"))
+        Path("site/downloads").mkdir(parents=True)
+        shutil.copyfile("host/apps/trail.zip", "site/downloads/trail.zip")
+        '
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen export host --target web --out site/game --runtime "${env:GOZEN_WEB_RUNTIME}"
+  - assert: {exit_code: 0}
+  - assert:
+      file: {path: site/game/game/apps/trail.zip, exists: false}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/game/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *controls
+      - eval: &phone_controls |
+          window.phoneSave = name => {
+            const value = localStorage.getItem('gozen/cli-expedition/' + name);
+            return value ? JSON.parse(value.slice(value.indexOf('\n') + 1)) : null;
+          };
+          window.phoneKeys = async (...keys) => { for (const code of keys) await key(code); };
+          window.leavePhoneGame = async () => {
+            const canvas = document.querySelector('canvas');
+            canvas.dispatchEvent(new KeyboardEvent('keydown', {code: 'ShiftLeft', key: 'Shift', shiftKey: true, bubbles: true}));
+            await testFrames(2);
+            await key('Escape');
+            canvas.dispatchEvent(new KeyboardEvent('keyup', {code: 'ShiftLeft', key: 'Shift', bubbles: true}));
+            await testFrames(60);
+          };
+          window.phoneSaved = async name => {
+            for (let i = 0; i < 300; i++) {
+              if (phoneSave(name)) return phoneSave(name);
+              await testFrames(2);
+            }
+            throw new Error('save not published: ' + name);
+          };
+          window.counterPrefix = 'phone-save-f062259e267921ea10a1d47d0ce9b7b9f519390aeeee402864e834dd38eacdaa-';
+          window.trailPrefix = 'phone-save-90089037c7085635ce8987c7bb138decd3ae1e3661789878efb8745a65cf9890-';
+          true
+      - eval: &phone_fetch |
+          window.phoneFetches = 0;
+          window.phoneFetchMode = 'failure';
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = async (input, options) => {
+            if (String(input) === 'https://raw.githubusercontent.com/nao1215/gozen/0000000000000000000000000000000000000000/test-fixtures/trail.zip') {
+              phoneFetches++;
+              if (phoneFetchMode === 'failure') throw new Error('test download unavailable');
+              if (phoneFetchMode === 'corrupt') return new Response(new Uint8Array([1, 2, 3]));
+              if (phoneFetchMode === 'cancel') {
+                return await new Promise((resolve, reject) => {
+                  options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), {once: true});
+                });
+              }
+              return originalFetch('/site/downloads/trail.zip', options);
+            }
+            return originalFetch(input, options);
+          }; true
+      - eval: |
+          (async () => {
+            try {
+              await key('Enter'); await testFrames(90);
+              await key('Enter'); await testFrames(40);
+              await phoneKeys('ArrowRight', 'Enter'); await testFrames(80);
+              await key('Enter'); await testFrames(60);
+              await key('Enter'); await testFrames(60);
+              await phoneKeys('Enter', 'Escape', 'Enter', 'Enter');
+              const counter = await phoneSaved(counterPrefix + 'save1.json');
+              if (counter.state.gold !== 4) throw new Error('bundled child did not collect four tokens');
+              await leavePhoneGame();
+              await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
+              // The first button plays Counter; the second installs optional Trail.
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(120);
+              if (phoneFetches !== 1 || phoneSave('phone-apps.json')) throw new Error('failed download published an app');
+              phoneFetchMode = 'corrupt';
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(120);
+              if (phoneFetches !== 2 || phoneSave('phone-apps.json')) throw new Error('corrupt download published an app');
+              phoneFetchMode = 'cancel';
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
+              await key('Escape'); await testFrames(40);
+              if (phoneFetches !== 3 || phoneSave('phone-apps.json')) throw new Error('cancelled download published an app');
+              phoneFetchMode = 'success';
+              await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter');
+              const apps = await phoneSaved('phone-apps.json');
+              if (apps.trail.version !== '1.0.0') throw new Error('wrong installed version');
+              await testFrames(40);
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(80);
+              await key('Enter'); await testFrames(60);
+              await key('Enter'); await testFrames(40);
+              await phoneKeys('ArrowDown', 'Enter'); await testFrames(60);
+              await phoneKeys('Enter', 'Escape', 'Enter', 'Enter');
+              const trail = await phoneSaved(trailPrefix + 'save1.json');
+              if (trail.state.gold !== 7) throw new Error('installed child did not reach hill');
+              await leavePhoneGame();
+              document.body.dataset.phoneResult = JSON.stringify({counter: counter.state.gold, trail: trail.state.gold, downloads: phoneFetches, version: apps.trail.version});
+            } catch (error) { document.body.dataset.phoneResult = JSON.stringify({error: String(error)}); }
+          })(); true
+      - wait_visible: 'body[data-phone-result]'
+      - screenshot: {path: phone-installed.png, selector: canvas}
+      - eval: 'JSON.parse(document.body.dataset.phoneResult)'
+  - assert:
+      value:
+        json:
+        - {path: $.counter, equals: 4}
+        - {path: $.trail, equals: 7}
+        - {path: $.downloads, equals: 4}
+        - {path: $.version, equals: 1.0.0}
+  # Reload discards the running child's memory and the store's open archive handles.
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/game/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *controls
+      - eval: *phone_controls
+      - eval: *phone_fetch
+      - eval: |
+          (async () => {
+            try {
+              phoneFetchMode = 'failure';
+              await testFrames(90);
+              // Choose a fresh host game; the installed release and child saves survive.
+              await key('Enter'); await testFrames(90);
+              await key('Enter'); await testFrames(40);
+              await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(80);
+              await key('Enter'); await testFrames(40);
+              await key('Enter'); await testFrames(80);
+              await phoneKeys('Escape', 'Enter', 'ArrowDown', 'Enter');
+              const restored = await phoneSaved(trailPrefix + 'save2.json');
+              if (restored.state.gold !== 7) throw new Error('child save was not restored');
+              await leavePhoneGame();
+              await key('Escape'); await testFrames(80);
+              await key('Enter'); await testFrames(30);
+              // Completing the host event publishes its normal autosave.
+              const host = await phoneSaved('auto.json');
+              document.body.dataset.phoneOffline = JSON.stringify({gold: restored.state.gold, downloads: phoneFetches, hostSave: host.state.gold, hostLocation: host.state.location});
+            } catch (error) { document.body.dataset.phoneOffline = JSON.stringify({error: String(error), storage: Object.keys(localStorage).filter(k => k.includes('cli-expedition')), screen: document.querySelector('canvas').toDataURL()}); }
+          })(); true
+      - wait_visible: 'body[data-phone-offline]'
+      - screenshot: {path: phone-offline.png, selector: canvas}
+      - eval: 'JSON.parse(document.body.dataset.phoneOffline)'
+  - assert:
+      value:
+        json:
+        - {path: $.gold, equals: 7}
+        - {path: $.downloads, equals: 0}
+        - {path: $.hostSave, equals: 0}
+        - {path: $.hostLocation, equals: camp}

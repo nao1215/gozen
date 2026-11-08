@@ -30,8 +30,8 @@ import (
 	"github.com/nao1215/gozen/internal/layer1/memo"
 	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
-	"github.com/nao1215/gozen/internal/layer5/sound"
 	"github.com/nao1215/gozen/internal/savefile"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -192,7 +192,7 @@ func (g *Game) traceStart() error {
 		return err
 	}
 	setup := traceSetup{Config: g.cfg, Read: g.read, Unlocked: g.unlocked}
-	setup.Resources, err = traceResources(g.opts.FS)
+	setup.Resources, err = g.tracePhoneResources()
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,11 @@ func (g *Game) traceStart() error {
 		setup.SaveData = map[string][]byte{}
 		setup.SaveTimes = map[string]time.Time{}
 		for name := range setup.Saves {
-			b, err := g.storeRead(name)
+			b, err := g.traceSaveRead(name)
+			if errors.Is(err, gamepackage.ErrSizeLimit) {
+				setup.Unsupported = append(setup.Unsupported, fmt.Sprintf("initial phone package %q exceeds the 8 MiB encoded snapshot limit", name))
+				continue
+			}
 			if err != nil {
 				return err
 			}
@@ -415,9 +419,33 @@ func (g *Game) traceSaves() (map[string]string, error) {
 	if g.db.FS == nil && g.opts.FS == nil {
 		return out, nil
 	}
+	names := make([]string, 0, saveSlots+1)
 	for i := range saveSlots + 1 {
-		name := g.slotPath(i)
-		b, err := g.storeRead(name)
+		names = append(names, g.slotPath(i))
+	}
+	if g.db.Game.Phone != nil {
+		extra, err := g.store.List()
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range extra {
+			if strings.HasPrefix(name, "phone-save-") || strings.HasPrefix(name, "phone-package-") || name == "phone-apps.json" || name == "phone-catalog.json" {
+				names = append(names, name)
+			}
+		}
+	}
+	virtual, e := g.tracePhoneArchiveNames()
+	if e != nil {
+		return nil, e
+	}
+	names = append(names, virtual...)
+	slices.Sort(names)
+	for _, name := range slices.Compact(names) {
+		b, err := g.traceSaveRead(name)
+		if errors.Is(err, gamepackage.ErrSizeLimit) {
+			out[name] = "oversized phone package"
+			continue
+		}
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -537,8 +565,8 @@ func (g *Game) traceTick() {
 	} else if g.lastMood != "" {
 		mood = g.lastMood
 	}
-	song, module := sound.Playing()
-	wanted := sound.WantedSong()
+	song, module := g.audioSession().Playing()
+	wanted := g.audioSession().WantedSong()
 	tr := g.tr
 	if wanted != tr.wantSong {
 		tr.wantSong, tr.wantAt, tr.waiting = wanted, g.tick, wanted != "" && wanted != song
@@ -780,6 +808,7 @@ func (g *Game) isAutopilot() bool {
 }
 
 type replay struct {
+	phoneLaunches   map[int]phoneLaunchClock
 	startupViewport *traceformat.Viewport
 	drawSkips       [][2]int
 	saveWrites      map[int]map[string][]*time.Time
@@ -1037,6 +1066,21 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				stamp = &write.Time
 			}
 			r.saveWrites[tick][write.File] = append(r.saveWrites[tick][write.File], stamp)
+		case "phone_game":
+			var launch phoneLaunchClock
+			if err := json.Unmarshal(sc.Bytes(), &launch); err != nil {
+				return nil, err
+			}
+			if launch.ID == "" || launch.Version == "" || len(launch.Digest) != 64 || launch.Offset < -86400 || launch.Offset > 86400 {
+				return nil, errors.New("invalid phone game clock record")
+			}
+			if r.phoneLaunches == nil {
+				r.phoneLaunches = map[int]phoneLaunchClock{}
+			}
+			if _, exists := r.phoneLaunches[tick]; exists {
+				return nil, errors.New("duplicate phone game clock record")
+			}
+			r.phoneLaunches[tick] = launch
 		case "now":
 			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
 		default:
@@ -1131,7 +1175,7 @@ func (r *replay) prepare(g *Game) error {
 		return errors.New(lang.T("replay のデータの指紋が一致しない"))
 	}
 	if r.setup.Resources != "" {
-		resources, err := traceResources(g.opts.FS)
+		resources, err := g.tracePhoneResources()
 		if err != nil {
 			return err
 		}
@@ -1564,4 +1608,75 @@ func (g *Game) traceInputOutcome(phone bool) {
 			g.emit("autoplay_wait", traceLine{"waiting": what, "event": g.evName})
 		}
 	}
+}
+
+// tracePhoneResources includes the exact bundled packages and trusted catalog in
+// replay prerequisites. Optional installed archives are included in traceSaves.
+func (g *Game) tracePhoneResources() (string, error) {
+	base, err := traceResources(g.opts.FS)
+	if err != nil {
+		return "", err
+	}
+	if g.db == nil || g.db.Game.Phone == nil {
+		return base, nil
+	}
+	h := sha256.New()
+	_, _ = h.Write([]byte(base))
+	paths := []string{g.db.Game.Phone.Catalog}
+	for _, app := range g.db.Game.Phone.Apps {
+		if app.Install == "bundled" {
+			paths = append(paths, app.Path)
+		}
+	}
+	slices.Sort(paths)
+	for _, name := range slices.Compact(paths) {
+		f, err := g.opts.FS.Open(name)
+		if err != nil {
+			return "", err
+		}
+		info, err := f.Stat()
+		if err != nil {
+			return "", errors.Join(err, f.Close())
+		}
+		if _, err = fmt.Fprintf(h, "%d:%s:%d:", len(name), name, info.Size()); err != nil {
+			return "", errors.Join(err, f.Close())
+		}
+		_, err = io.Copy(h, f)
+		err = errors.Join(err, f.Close())
+		if err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// phoneLaunchClock fixes the wall clock separately for each embedded attempt.
+// The approved digest also prevents a replay from opening a different release.
+type phoneLaunchClock struct {
+	ID      string `json:"id"`
+	Version string `json:"package_version"`
+	Digest  string `json:"sha256"`
+	UnixMS  int64  `json:"unix_ms"`
+	Offset  int    `json:"utc_offset"`
+}
+
+func (g *Game) phoneGameClock(installed *gamepackage.Installed) (time.Time, error) {
+	r := installed.Release
+	var launch phoneLaunchClock
+	if g.rep != nil {
+		var ok bool
+		launch, ok = g.rep.phoneLaunches[g.tick]
+		if !ok || launch.ID != r.ID || launch.Version != r.Version || launch.Digest != r.SHA256 {
+			return time.Time{}, errors.New("cannot reproduce phone game: missing clock or changed package")
+		}
+	} else {
+		now := time.Now()
+		if g.opts.Now != nil {
+			now = g.opts.Now()
+		}
+		_, offset := now.Zone()
+		launch = phoneLaunchClock{r.ID, r.Version, r.SHA256, now.UnixMilli(), offset}
+	}
+	g.emit("phone_game", traceLine{"id": launch.ID, "package_version": launch.Version, "sha256": launch.Digest, "unix_ms": launch.UnixMS, "utc_offset": launch.Offset})
+	return time.UnixMilli(launch.UnixMS).In(time.FixedZone("", launch.Offset)), nil
 }

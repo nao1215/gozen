@@ -152,6 +152,7 @@ GalleryScene:
   title: "The title shown for the scene in the gallery."
   when: "An expression that must hold for the scene to open."
 Game:
+  phone: "Pinned game catalog and phone app declarations. Games without this field do not offer a game store."
   carry: "Variables and flags (var.NAME, flag.NAME, or a prefix ending in *) a new game starts with from the last play that ran carry (schema 10)."
   planning: "Optional typed entities, calendar, activities and period ledgers."
   _: "The contents of game.yaml: the game's title, screen and starting state."
@@ -302,13 +303,14 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
+  game: "Local phone app ID to launch. Required for app game; other apps do not accept it."
   history: "True displays authored chat messages as a scrollable history. Visibility is evaluated when opened; no dynamic transcript is stored."
   replies: "Fixed chat reply buttons with optional id, set and when. Explicit selection sends one reply; Cancel never sends. Requires app chat and history: true."
   timeout: "Seconds after the entrance without a chosen outcome, for lock, page or banner. Requires var; zero disables it. Input wins ties; scrolling does not extend it."
   timeout_result: "Value stored in var when timeout expires; default expired. Requires a positive timeout."
   _: "A phone over the scene; the event waits until it is put down (a banner waits when var is set)."
   hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
-  app: "chat, feed, video, page, home, contacts, lock or banner; names the view the phone shows."
+  app: "chat, feed, video, page, home, contacts, lock, banner, game or store; names the view the phone shows."
   title: "Interpolated header of the app (a page's app bar)."
   url: "Interpolated address shown in a page's browser bar, instead of a title."
   color: "A page's app bar and buttons color, #rrggbb."
@@ -452,3 +454,21 @@ ScreenCall:
   _: "A plain authored screen invocation with frozen typed arguments (schema 10), or a scalar name for parameterless screens."
   screen: "Literal authored screen ID. Built-in screens use the scalar form."
   args: "Pure expressions for every declared parameter, evaluated once in the caller scope before opening."
+
+PhoneApps:
+  catalog_public_key: "Pinned base64 Ed25519 public key (32 bytes). Signed refresh requires both catalog URLs and this key."
+  catalog_signature_url: "HTTPS URL of the detached signature for catalog_url. Required together with the public key and catalog URL."
+  _: "Host declarations for games offered by the phone. Loading does not download packages."
+  catalog: "Safe relative path to the pinned catalog snapshot."
+  catalog_url: "Optional HTTPS URL for explicit signed catalog refresh. Requires catalog_signature_url and catalog_public_key; catalog_sha256 still pins the local initial snapshot."
+  catalog_sha256: "Expected SHA-256 of the catalog snapshot, as 64 hexadecimal digits."
+  apps: "Games selected by the host author; registry additions do not add apps here."
+PhoneApp:
+  bundled_version: "Exact version of the included ZIP, allowed by version. Required for bundled apps when version is a range; forbidden for optional apps."
+  _: "One local app selecting a registered game and allowed release versions."
+  id: "Unique lowercase local app ID, used by phone.game."
+  package: "Namespaced registry package ID, owner/name."
+  version: "Exact stable version or bounded range such as >=1.0.0 <2.0.0."
+  install: "bundled or optional. Optional packages download only after an explicit player action."
+  path: "Safe relative ZIP path for a bundled game. Not accepted for optional apps."
+  when: "Condition controlling this app's availability in the phone."

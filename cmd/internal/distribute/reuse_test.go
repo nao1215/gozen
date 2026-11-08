@@ -113,7 +113,7 @@ func TestWebReusesUnchangedFiles(t *testing.T) {
 	}
 	parent := t.TempDir()
 	first := filepath.Join(parent, "first")
-	if err := Web(src, first, bundle, "devel", ""); err != nil {
+	if err := Web(t.Context(), src, first, bundle, "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	before := manifest(t, first)
@@ -137,11 +137,11 @@ func TestWebReusesUnchangedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := filepath.Join(parent, "second")
-	if err := Web(src, second, bundle, "devel", first); err != nil {
+	if err := Web(t.Context(), src, second, bundle, "devel", first); err != nil {
 		t.Fatal(err)
 	}
 	full := filepath.Join(parent, "full")
-	if err := Web(src, full, bundle, "devel", ""); err != nil {
+	if err := Web(t.Context(), src, full, bundle, "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	got, want := manifest(t, second), manifest(t, full)
@@ -176,7 +176,7 @@ func TestWebReusesUnchangedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	third := filepath.Join(parent, "third")
-	if err := Web(src, third, bundle, "devel", first); err != nil {
+	if err := Web(t.Context(), src, third, bundle, "devel", first); err != nil {
 		t.Fatal(err)
 	}
 	if b, err := os.ReadFile(filepath.Join(third, "game", "assets", "kept.png.webp")); err != nil || !bytes.Equal(b, served) { //nolint:gosec // Test-owned exported file.
@@ -193,13 +193,13 @@ func TestWebReuseNeedsAnExport(t *testing.T) {
 	}
 	parent := t.TempDir()
 	out := filepath.Join(parent, "site")
-	if err := Web(src, out, bundle, "devel", t.TempDir()); err == nil || !strings.Contains(err.Error(), "not a web export") {
+	if err := Web(t.Context(), src, out, bundle, "devel", t.TempDir()); err == nil || !strings.Contains(err.Error(), "not a web export") {
 		t.Fatalf("reuse of an empty folder: %v", err)
 	}
 	if _, err := os.Stat(out); err == nil {
 		t.Error("output written")
 	}
-	if err := Web(src, out, bundle, "devel", src); err == nil {
+	if err := Web(t.Context(), src, out, bundle, "devel", src); err == nil {
 		t.Fatal("reuse of the game itself was accepted")
 	}
 }
