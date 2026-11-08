@@ -98,7 +98,14 @@ allows 600 allocations per battle, 64 MiB heap in use and 3 seconds. The time
 margin accommodates concurrent unit-test jobs. Graphics allocation ceilings for
 pictures-4k, standing-pictures and phone-video
 are 350, 1,900 and 1,300 per steady frame, respectively. The picture startup
-ceiling is 1,700 allocations per frame. An Xvfb run measured approximately
+ceiling is 1,700 allocations per frame. Standing-picture startup uses a total
+allocation ceiling of 57,000 (the original 1,900 times 30 nominal frames),
+because loading the 32 figures is fixed work. In repeated Xvfb runs, the same
+38 startup updates produced 30 frames with about 32,000 allocations or 11 frames
+with about 24,000 allocations. Dividing fixed startup work by the variable frame
+count incorrectly rejected the latter. The steady-frame, heap and time limits
+remain unchanged. Failure logs include frames, ticks and total allocations.
+An Xvfb run measured approximately
 165 steady and 838 startup allocations per frame for pictures, 433–1,028 for
 standing pictures and 267–600 for phone video. Their sampled heap ceiling
 is 256 MiB (measured peaks up to 120 MB), and their section time ceiling is five
