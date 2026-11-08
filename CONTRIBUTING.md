@@ -22,3 +22,7 @@ Keep explanatory documentation under `docs/`. In a pull request, explain the cha
 Create original general-audience examples. Record third-party asset sources and licenses in [ASSETS.md](ASSETS.md); do not include models or private game material. Contributions are provided under the repository's [MIT license](LICENSE), with separate notices preserved for third-party assets.
 
 Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
+
+Run `go tool dango lint` for maintainer decision checks; see [Dango](docs/development/dango.md).
+
+Runtime changes must preserve the [speed budgets](docs/development/speed-budgets.md). Run the headless budget with `go test ./internal/dev/perf`; run the graphics cases on a desktop or with Xvfb. Report each named section and distinguish measured runtime results from compile-only checks.

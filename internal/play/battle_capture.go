@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/battle"
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -116,7 +117,7 @@ func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
 	defer func() { err = errors.Join(err, f.Close()) }()
 	r := &replay{inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, version: traceVersion}
 	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 1<<20), TraceLineLimit)
+	sc.Buffer(make([]byte, 1<<20), traceformat.LineLimit)
 	n, previous, first := 0, -1, true
 	for sc.Scan() {
 		var l traceLine

@@ -47,8 +47,32 @@ The input is the neutral game of the CLI contract tests,
 
 Not measured yet: `check` and `book` on a large game. There is no generator
 for a large neutral game; add one as `bench/gen.sh` before adding those rows.
-The graphical commands (`shots`) and `mosaic` with ONNX inference need a
-display or user-supplied models and are not measured.
+`mosaic` with ONNX inference needs user-supplied models and is not measured.
 
 Numbers from different machines are not comparable; compare revisions on one
 machine, as `make bench-compare` and CI do.
+
+## Generated hard cases
+
+The `speed` cases share `internal/dev/perf` with the [speed budget tests](../docs/development/speed-budgets.md):
+a 2,000-point map, a 3840x2160 picture, 32 simultaneous standing pictures,
+a phone video with 24 generated 1280x720 frames, a 200-line conversation,
+and 5,000 battles. Setup generates neutral pictures and copies the existing
+licensed test font; no large assets are committed. Both revisions use the
+head fixture generator. Fixture changes reset the CI comparison baseline.
+
+```sh
+# No display: the original CLI comparisons plus the large simulation.
+himorime run --skip-tag graphics bench
+# Linux: graphical whole-process comparisons (one warmup, five runs each).
+xvfb-run --auto-servernum --error-file=/dev/stderr himorime run --tag graphics bench
+# One scenario, comparing revisions with the same fixture:
+xvfb-run --auto-servernum --error-file=/dev/stderr himorime compare --against main --filter '^speed phone-video$' bench
+```
+
+`make bench` now includes graphics and needs a desktop (use Xvfb on Linux).
+The graphics commands omit `--trace`, measuring the ordinary author runtime;
+the budget tests separately measure traced sections. CLI timings include loading,
+decoding, and exit. Setup generation and compilation are outside the measurement.
+CI retains the original headless job and runs the five graphics comparisons in
+parallel, only for relevant source changes. It does not modify himorime.

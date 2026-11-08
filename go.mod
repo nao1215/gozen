@@ -2,6 +2,8 @@ module github.com/nao1215/gozen
 
 go 1.26.10
 
+tool github.com/nao1215/gozen/cmd/internal/dango
+
 require (
 	github.com/deepteams/webp v1.2.8
 	github.com/goccy/go-yaml v1.19.2

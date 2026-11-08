@@ -22,6 +22,8 @@ import (
 // A package that starts raising codes has to be listed, so the choice is
 // deliberate.
 var familyOf = map[string][]int{
+	"cmd/internal/repro":            {1},
+	"cmd/internal/dango":            {1, 2},
 	"cmd/gozen":                     {0, 1, 2},
 	"cmd/internal/cli":              {1},
 	"internal/cliio":                {2},

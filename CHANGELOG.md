@@ -4,6 +4,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Maintenance
+
+- Add factual per-section trace measurements with script `mark NAME`, generated speed-budget workloads, maintainer allocation/heap/time checks, and parallel path-filtered graphics benchmarks.
+
+- Add the maintainer-only `go tool dango lint`, with decision metadata, executable policy checks, structured results and CI enforcement, plus a `repro` wrapper sharing trace bundle generation; no author command or release binary is added.
+
 ### Added
 
 - Phone lock screens, pages and result banners share `timeout`, `timeout_result` and `var`, preserving call `ring`/`missed`. Result banners wait for keyboard or pointer open/dismiss outcomes. Game-wide `ui.phone_background`, `phone_text`, `phone_muted` and `phone_accent` customize page bodies and owner chat bubbles; default visuals stay unchanged.

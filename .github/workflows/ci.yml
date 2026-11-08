@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.scope.outputs.code }}
+      perf: ${{ steps.scope.outputs.perf }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -492,3 +493,27 @@ jobs:
             ~/go/pkg/mod
             ~/.cache/go-build
           key: ${{ steps.go-cache.outputs.cache-primary-key }}
+
+  speed-budgets:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.perf != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [huge-map, pictures-4k, standing-pictures, phone-video, long-conversation]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
+        with:
+          xvfb: true
+      - name: Check the named section's speed budget
+        env:
+          GOZEN_PERF_CASE: ${{ matrix.scenario }}
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./internal/dev/perf -run '^TestGraphicsSpeedBudget$' -count=1 -v

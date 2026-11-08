@@ -15,10 +15,10 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/play"
 
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/text/catalog"
@@ -91,7 +91,7 @@ func (c *command) traceCmd() clihelp.Operation {
 		var shown []string
 		count := map[string]int{}
 		sc := bufio.NewScanner(inputStream)
-		sc.Buffer(make([]byte, 1<<20), play.TraceLineLimit)
+		sc.Buffer(make([]byte, 1<<20), traceformat.LineLimit)
 		for sc.Scan() {
 			l, err := decodeTrace(sc.Bytes())
 			if err != nil {
@@ -198,6 +198,11 @@ func (c *command) traceCmd() clihelp.Operation {
 				}
 				if sh := str(l["shot"]); sh != "" {
 					what += "  [" + sh + "]"
+				}
+			case "section":
+				what = fmt.Sprintf("%s (%s): %v frames, %v ticks, %.2f FPS, %.2f TPS, heap %.0f bytes", str(l["name"]), str(l["scope"]), l["frames"], l["ticks"], num(l["fps"]), num(l["tps"]), num(l["heap_inuse_bytes"]))
+				if _, ok := l["slow_frame_share"]; ok {
+					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", num(l["slow_frame_share"]), num(l["allocations_per_frame"]))
 				}
 			case "layout":
 				what = layoutText(l)

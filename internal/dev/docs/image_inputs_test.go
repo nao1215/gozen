@@ -207,7 +207,16 @@ func (h *inputHasher) tree(p string) (string, error) {
 
 // goModule hashes go.mod: the Go version and the versions of every dependency
 // outside this module.
-func (h *inputHasher) goModule() (string, error) { return h.file("go.mod") }
+func (h *inputHasher) goModule() (string, error) {
+	b, err := os.ReadFile(h.abs("go.mod"))
+	if err != nil {
+		return "", err
+	}
+	// This local maintainer entry has no effect on runtime dependencies. Keep
+	// hashing all dependency directives, including any future external tools.
+	b = bytes.ReplaceAll(b, []byte("\n\ntool github.com/nao1215/gozen/cmd/internal/dango\n"), []byte("\n"))
+	return sum(b), nil
+}
 
 // encoder hashes the files of this package that make, encode and compare the pictures.
 func (h *inputHasher) encoder() (string, error) {
@@ -571,6 +580,12 @@ func TestImageInputsFollowChanges(t *testing.T) {
 	write("engine/e_test.go", "package engine // tests\n")
 	write("internal/dev/docs/steps_test.go", "package docs // steps\n")
 	stale() // comments, tests and the other docs checks change no picture
+	write("go.mod", "module example.com/m\n\ngo 1.26\n\ntool github.com/nao1215/gozen/cmd/internal/dango\n")
+	stale() // the local maintainer command cannot change runtime pictures
+	write("go.mod", "module example.com/m\n\ngo 1.26\n\ntool github.com/nao1215/gozen/cmd/internal/dango\n\nrequire example.com/library v1.0.0\n")
+	stale("a.jpg", "b.jpg") // dependency changes remain rendering inputs
+	write("go.mod", "module example.com/m\n\ngo 1.26\n")
+	stale("a.jpg", "b.jpg")
 	write("engine/e.go", "package engine\n\nfunc Draw() int { return 2 }\n")
 	stale("a.jpg")
 	write("game/game.yaml", "title: b\n")

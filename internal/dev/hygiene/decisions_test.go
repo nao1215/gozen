@@ -1,0 +1,639 @@
+package hygiene_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"maps"
+	"os"
+	"path"
+	"reflect"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/goccy/go-yaml"
+
+	"github.com/nao1215/gozen/internal/dev/hygiene"
+)
+
+const module = "github.com/nao1215/gozen/"
+
+func sourceFiles(t *testing.T, visit func(string, []byte)) {
+	t.Helper()
+	err := fs.WalkDir(os.DirFS("../../.."), ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", ".cache", ".agents", ".codex", ".aws", "bin", "build", "dist", "vendor", "node_modules", "public", "resources":
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(name, ".go") {
+			b, err := fs.ReadFile(os.DirFS("../../.."), name)
+			if err != nil {
+				return err
+			}
+			visit(name, b)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func parsed(t *testing.T, name string, b []byte) *ast.File {
+	t.Helper()
+	f, err := parser.ParseFile(token.NewFileSet(), name, b, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+func TestDecisionCoverage(t *testing.T) {
+	found := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasSuffix(name, "_test.go") || regexp.MustCompile(`(?m)^//go:build `).Match(b) {
+			return
+		}
+		f := parsed(t, name, b)
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if ok && fn.Recv == nil && fn.Type.Params.NumFields() == 1 && fn.Type.Results == nil {
+				found[path.Dir(name)+"/"+fn.Name.Name] = true
+			}
+		}
+	})
+	ids := map[string]bool{}
+	for _, d := range hygiene.Decisions() {
+		if ids[d.ID] || d.ID == "" || d.Name == "" || d.Reason == "" || d.Fix == "" || len(d.Tests) == 0 {
+			t.Errorf("invalid decision: %+v", d)
+		}
+		ids[d.ID] = true
+		for _, test := range d.Tests {
+			if !strings.HasPrefix(test.Name, "Test") || !found[test.Package+"/"+test.Name] {
+				t.Errorf("%s: missing unconditional enforcing test %s/%s", d.ID, test.Package, test.Name)
+			}
+		}
+	}
+	// Dango runs exactly the table's tests; its protocol tests reject missing or skipped tests.
+	for file, required := range map[string]string{"Makefile": "\n\t$(GO) tool dango lint\n", ".github/workflows/ci.yml": "run: make lint"} {
+		b, err := fs.ReadFile(os.DirFS("../../.."), file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := string(b)
+		if file == "Makefile" {
+			body = regexp.MustCompile(`(?m)^lint:[^\n]*\n(?:\t[^\n]*\n)*`).FindString(body)
+		}
+		if !strings.Contains(body, required) {
+			t.Errorf("%s must enforce the decision table through make lint", file)
+		}
+	}
+}
+
+type archComponent struct {
+	In any `yaml:"in"`
+}
+type archDeps struct {
+	May     []string `yaml:"mayDependOn"`
+	Vendors []string `yaml:"canUse"`
+}
+type archPolicy struct {
+	Components map[string]archComponent `yaml:"components"`
+	Vendors    map[string]archComponent `yaml:"vendors"`
+	Deps       map[string]archDeps      `yaml:"deps"`
+}
+
+func componentOf(name string, components map[string]archComponent) string {
+	for id, c := range components {
+		var patterns []string
+		switch v := c.In.(type) {
+		case string:
+			patterns = []string{v}
+		case []any:
+			for _, p := range v {
+				patterns = append(patterns, fmt.Sprint(p))
+			}
+		}
+		for _, p := range patterns {
+			base := strings.TrimSuffix(p, "/**")
+			if name == base || (strings.HasSuffix(p, "/**") && strings.HasPrefix(name, base+"/")) {
+				return id
+			}
+		}
+	}
+	return ""
+}
+
+func TestDependencyDirection(t *testing.T) {
+	b, err := os.ReadFile("../../../.go-arch-lint.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy archPolicy
+	if err := yaml.Unmarshal(b, &policy); err != nil {
+		t.Fatal(err)
+	}
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || strings.Contains(name, "/testdata/") {
+			return
+		}
+		owner := componentOf(path.Dir(name), policy.Components)
+		if owner == "" {
+			t.Errorf("%s: package has no architecture component", name)
+			return
+		}
+		for _, imp := range parsed(t, name, b).Imports {
+			target, err := strconv.Unquote(imp.Path.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(strings.Split(target, "/")[0], ".") {
+				continue
+			}
+			if local, ok := strings.CutPrefix(target, module); ok {
+				dep := componentOf(local, policy.Components)
+				if dep != owner && !slices.Contains(policy.Deps[owner].May, dep) {
+					t.Errorf("%s: %s must not import %s (%s); move the dependency downward", name, owner, target, dep)
+				}
+			} else {
+				vendor := componentOf(target, policy.Vendors)
+				if vendor == "" || !slices.Contains(policy.Deps[owner].Vendors, vendor) {
+					t.Errorf("%s: vendor %s is not permitted for %s", name, target, owner)
+				}
+			}
+		}
+	})
+}
+
+func exprText(t *testing.T, n ast.Node) string {
+	var b bytes.Buffer
+	if err := format.Node(&b, token.NewFileSet(), n); err != nil {
+		t.Fatal(err)
+	}
+	return b.String()
+}
+
+// Existing specialized loaders are frozen by signature. New exceptions are forbidden.
+var loaderBaseline = map[string]string{
+	"cmd/internal/checkdata/check.go:Load":         "func(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error)",
+	"internal/session/game.go:Load":                "func(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error)",
+	"internal/layer2/gamedata/load.go:Load":        "func(fsys fs.FS) (*DB, error)",
+	"internal/layer2/gamedata/load_dir.go:LoadDir": "func(fsys fs.FS, path string) (*DB, error)",
+	"internal/layer5/sound/files.go:LoadEffects":   "func(fsys fs.FS) int",
+	"internal/layer5/sound/bgm.go:LoadBGM":         "func(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64)",
+	"internal/play/msgfit.go:LoadFonts":            "func(db *data.DB, fsys fs.FS) error",
+}
+
+func TestAPIShape(t *testing.T) {
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || strings.Contains(name, "/testdata/") {
+			return
+		}
+		f := parsed(t, name, b)
+		ast.Inspect(f, func(n ast.Node) bool {
+			spec, ok := n.(*ast.TypeSpec)
+			if ok && ast.IsExported(spec.Name.Name) && (strings.HasSuffix(spec.Name.Name, "Option") || strings.HasSuffix(spec.Name.Name, "Options")) {
+				if _, ok := spec.Type.(*ast.FuncType); ok {
+					t.Errorf("%s: %s: use a Config struct, not functional options", name, spec.Name.Name)
+				}
+			}
+			return true
+		})
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv != nil || !ast.IsExported(fn.Name.Name) {
+				continue
+			}
+			sig := exprText(t, fn.Type)
+			if !strings.HasPrefix(fn.Name.Name, "Load") || !slices.ContainsFunc(fn.Type.Params.List, func(field *ast.Field) bool { return strings.Contains(exprText(t, field.Type), "fs.FS") }) {
+				continue
+			}
+			if loaderBaseline[name+":"+fn.Name.Name] == sig {
+				continue
+			}
+			ps := fn.Type.Params.List
+			valid := fn.Name.Name == "Load" && len(ps) == 2 && exprText(t, ps[0].Type) == "fs.FS" && exprText(t, ps[1].Type) == "string" && fn.Type.Results != nil && fn.Type.Results.NumFields() == 2 && exprText(t, fn.Type.Results.List[len(fn.Type.Results.List)-1].Type) == "error"
+			if !valid {
+				t.Errorf("%s: %s: use Load(fsys fs.FS, path string) (T, error)", name, fn.Name.Name)
+			}
+		}
+	})
+}
+
+func TestCommandExecution(t *testing.T) {
+	factories := map[string]bool{"operation": true, "top": true, "group": true}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "cmd/gozen/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		for _, decl := range parsed(t, name, b).Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if ok && fn.Recv != nil && fn.Type.Results != nil && len(fn.Type.Results.List) == 1 && exprText(t, fn.Type.Results.List[0].Type) == "clihelp.Operation" {
+				factories[fn.Name.Name] = true
+			}
+		}
+	})
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || (!strings.HasPrefix(name, "cmd/gozen/") && !strings.HasPrefix(name, "cmd/internal/repro/") && !strings.Contains(name, "/command/")) {
+			return
+		}
+		f := parsed(t, name, b)
+		for _, violation := range commandExecutionViolations(f, name) {
+			t.Errorf("%s: %s", name, violation)
+		}
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+			// These are the existing parser/dispatcher infrastructure, not operations.
+			if name == "cmd/gozen/main.go" && slices.Contains([]string{"main", "run", "parse", "top", "group"}, fn.Name.Name) {
+				continue
+			}
+			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				callee := exprText(t, call.Fun)
+				if strings.HasSuffix(callee, ".parse") {
+					// A batch case is an external input boundary using the shared grammar.
+					// Its original input may be parsed; reconstructed command argv may not.
+					externalCase := name == "cmd/gozen/simbatch.go" && fn.Name.Name == "runCase" && len(call.Args) == 3 && exprText(t, call.Args[1]) == "bc.Args"
+					if !externalCase {
+						t.Errorf("%s: %s parses constructed command arguments through %s; use typed settings", name, fn.Name.Name, callee)
+					}
+				}
+				if name == "cmd/gozen/help.go" && fn.Name.Name == "describeCommand" && strings.HasSuffix(callee, ".Run") {
+					t.Error("machine help must not execute operations")
+				}
+				if selector, ok := call.Fun.(*ast.SelectorExpr); ok && strings.HasPrefix(name, "cmd/gozen/") && factories[selector.Sel.Name] {
+					// Machine help consumes registration metadata but must never execute it.
+					if name == "cmd/gozen/help.go" && fn.Name.Name == "describeCommand" {
+						return true
+					}
+					t.Errorf("%s: %s re-enters command registration through %s; call typed operations", name, fn.Name.Name, callee)
+				}
+				if (callee == "run" && strings.HasPrefix(name, "cmd/gozen/")) || callee == "clihelp.Parse" || callee == "exec.Command" || callee == "exec.CommandContext" {
+					t.Errorf("%s: %s calls %s; call typed operations instead of CLI dispatch", name, fn.Name.Name, callee)
+				}
+				return true
+			})
+		}
+	})
+}
+
+// YAML words are checked lexically, not as a proof of gameplay generality.
+// The frozen baseline below may only shrink; new words cannot be added to it.
+const (
+	yamlBaselineLimit = 744
+	yamlBaseline      = `
+acceleration accent accepts act action activation activity activity_attributes
+add add_state addresses admission advice affect affection affiliation
+after_win again all anim answer answer_chance answers any
+appear args armies army asides ask assignee at_point
+attack_skill attribute attributes auto auto_start auto_tactics auto_tempo auto_wait
+avoid away back back_weight backdrop backgrounds backlog bad
+badge balloon band bar bare bars battle_ai_history battle_background
+battle_foe_names battle_fx battle_message battle_music beats_per_bar before behind below
+bestiary blink block_lines blocked blocks blur body bold
+bonus bonus_item bonus_skill border boss boss_win_music bottom bounce
+bounds bpm breed breeding bridges brightness browse burnup
+bust button buttons buy c call_view camera camera_off
+camera_on can_escape cap_hours caption capture card card_bubbles carousel
+carry ceiling ceiling_texture cg_review cgs chance channels char
+charge checkpoint child children choice_position chrome clash clear
+col colors columns command comment compact complete condition
+consume control controls cost count counter cover crit
+critical critical_rate critical_ratio crowd currency cursor cut cutin
+cutin_box cutin_lines cx damage damage_rate darkness data data_version
+date date_format date_link day deadline deal defeat defend
+defense dependency_ratio depth depth_bias desc description destination detail
+dim dir dive done door dot drag drain
+draw_roads drop drops due duo_chance duos each east
+echo edge effect effects element elements else enabled
+end_turn end_turn_button endings endure enemy enter entity episodes
+equip equip_slots equip_stones escape evening event_label event_when every
+exclusive exp expr expression_depth expression_length extra face_at face_box
+face_expr face_rules face_shade face_shade_top face_shape families family far
+fatal field_notices fight fighters file_lines files filled filter_label
+finish first first_person fit flag flash flat floor
+floor_texture floors flows focus foe_scale foe_scale_when foes fonts
+footer for forecast_label fps frame free_move front_weight fronts
+full full_color fullscreen fusions fx gallery game_over garrison
+gauge generate give goods greet greeting grid group
+groups guard_rate guard_skill guest guest_backdrops guests hair hard
+haze head header header_face header_tint heading heal held
+hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
+hit hits hitstop hold host hp hp_triggers hurt
+icon image_height images in indexed_names initial instant instead
+into intro item items join join_exp joined keeper
+kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
+leave ledger ledgers left legacy_keys legend_rank level_scale light
+likes lines live lobby locked logo look looks
+loop_start loops lore lose lost manual mark mark_labels
+marker markers marks mask match material materials max
+max_level max_party max_runes max_soldiers max_value max_zoom maximum maximum_key
+meet memo menus merge met meter meters might
+milestone min min_block_nodes min_level min_plus min_share minutes missed
+missing_voice monster_class monster_families mood mood_names moods morning motion
+mp music_pictures muted name_tag nav near new no_map
+no_menu no_standing node north note notice novel_window now
+npc observation observations observed ok on on_appear on_draw
+on_enter on_escape on_leave on_lose on_turn on_turn_end on_turn_end_allies on_user
+on_win once one_shot one_way only opacities opacity open_wall
+optional options order_view origin_u origin_v others_title out outfit
+over over_size page pages pairs pan paper param
+params parent parents passives path patterns peek per_char
+per_hour per_soldier per_turn percent period persist phase phone_accent
+phone_background phone_muted phone_text picture_fit pictures pin_end_turn pitch place
+planned planned_label play policies policy pop portrait posts
+power preferred preset price primary primary_card primary_text priority
+profile profile_book progress prompt q qr question quick_menu
+quiet r rank rare_rank reaction reactions read reason
+recoil recover recruit rect refraction region_borders region_numbers region_roads
+release remove remove_on_damage remove_state repetitions replies reply reposts
+requires reserve reset_actor reset_tree resist respond rest restart
+restore_checkpoint restrict restrict_chance resume_to retain retry revive ring
+rise roamers rollback roofs rooms rope rounds row
+rule rules sacrifice safe safe_area sample sample_freshness sample_label
+save scene_review scenes schedule screen_operations scroll search seed
+seed_xor seen selection_panel selector self self_backdrop self_label self_stage
+sell send sex sex_ratio sfx sfx_vary shadow shake
+shape share shop shops short side sight sign
+simple_tactics size skill skill_slots skip sky slide slot
+soldiers solid song songs sortie south sp sp_apply
+sp_decline sp_pitch sp_suggest speaking speech spent spin stage_drop
+stage_framing stage_puppets stage_scale stages staging stairs stand_ins star_bonus
+start_sp stat state_resist states stats_by stay stayed step
+step_ticks still stone_apply stone_choose stone_decline stone_sets stone_suggest stone_wearer
+stones stop streak stream streams strict style subject
+subtitle subtitle_size subtitle_tracking summon summon_max surfaces symbol tabs
+tactic tactic_actions tactic_conditions tactic_presets tactic_targets tactics tag tagline
+take talk_on_enter talk_portrait tempo terms terrain text_expr text_key
+theme thickness things ticket tile timeout timeout_result timing
+tint tip_lines tip_per tips title_art title_background title_figures title_music
+title_text today token tone tones top total tracking
+transform transform_clear transform_hp travel_speed tree turn turn_speed turn_ticks
+unavailable unbounded underside unit units unknown unlock until
+until_taken unused_definitions url values variance vars verbs via
+video visible voice voice_fallback voices volume wait walk_speed
+walked wall wall_regions wallpaper wallpaper_strength warning_key wash web
+week_start weekdays weekdays_off weight west wheel_up win win_music
+window window_opacity with won written_in x y zoom
+`
+)
+
+func TestYAMLWords(t *testing.T) {
+	keys := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "internal/layer2/gamedata/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		ast.Inspect(parsed(t, name, b), func(n ast.Node) bool {
+			f, ok := n.(*ast.Field)
+			if !ok || f.Tag == nil {
+				return true
+			}
+			tag, err := strconv.Unquote(f.Tag.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			key, _, _ := strings.Cut(reflect.StructTag(tag).Get("yaml"), ",")
+			if key != "" && key != "-" {
+				keys[key] = true
+			}
+			return true
+		})
+	})
+	schema, docs, specs := "", "", ""
+	fixtures := map[string]string{}
+	err := fs.WalkDir(os.DirFS("../../.."), ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if strings.HasPrefix(name, ".") && name != "." {
+				return fs.SkipDir
+			}
+			switch d.Name() {
+			case "build", "bin", "dist", "public", "resources", "node_modules":
+				return fs.SkipDir
+			}
+			return nil
+		}
+		wanted := (strings.HasPrefix(name, "data/schema/") && strings.HasSuffix(name, ".json")) || ((strings.HasPrefix(name, "docs/") || strings.HasPrefix(name, "website/content/")) && strings.HasSuffix(name, ".md") && !strings.HasPrefix(name, "docs/decisions/")) || strings.HasSuffix(name, ".yaml")
+		if !wanted {
+			return nil
+		}
+		b, err := fs.ReadFile(os.DirFS("../../.."), name)
+		if err != nil {
+			return err
+		}
+		switch {
+		case strings.HasPrefix(name, "data/schema/"):
+			schema += string(b)
+			var v any
+			if err := json.Unmarshal(b, &v); err != nil {
+				return err
+			}
+			schemaKeys(v, keys)
+		case strings.HasSuffix(name, ".md"):
+			docs += string(b)
+		case strings.HasSuffix(name, ".atago.yaml"):
+			specs += string(b)
+		case strings.HasPrefix(name, "examples/") || strings.Contains(name, "/testdata/") || strings.Contains(name, "/fixtures/"):
+			fixtures[name] = string(b)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseline := strings.Fields(yamlBaseline)
+	if !slices.IsSorted(baseline) || len(slices.Compact(slices.Clone(baseline))) != len(baseline) {
+		t.Fatal("YAML baseline must contain sorted, unique words")
+	}
+	if len(baseline) > yamlBaselineLimit {
+		t.Fatal("YAML exception allowlist may only shrink")
+	}
+	docWords := map[string]bool{}
+	for _, word := range regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`).FindAllString(docs, -1) {
+		docWords[word] = true
+	}
+	field := regexp.MustCompile(`(?:^|[\s{,])([A-Za-z_][A-Za-z0-9_]*)\s*:`)
+	specWords := map[string]bool{}
+	for _, match := range field.FindAllStringSubmatch(specs, -1) {
+		specWords[match[1]] = true
+	}
+	counts := map[string]int{}
+	groups := map[string]map[string]bool{}
+	for name, body := range fixtures {
+		seen := map[string]bool{}
+		for _, match := range field.FindAllStringSubmatch(body, -1) {
+			seen[match[1]] = true
+		}
+		for key := range seen {
+			group := fixtureRoot(name)
+			if groups[key] == nil {
+				groups[key] = map[string]bool{}
+			}
+			groups[key][group] = true
+		}
+	}
+	for key, set := range groups {
+		counts[key] = len(set)
+	}
+	for _, key := range slices.Sorted(maps.Keys(keys)) {
+		covered := strings.Contains(schema, `"`+key+`"`) && docWords[key] && specWords[key] && counts[key] >= 2
+		if slices.Contains(baseline, key) {
+			if covered {
+				t.Errorf("%s: now covered; remove its YAML baseline exception", key)
+			}
+			continue
+		}
+		if !covered {
+			t.Errorf("%s: YAML word needs schema, docs, E2E and two fixtures (fixtures=%d)", key, counts[key])
+		}
+	}
+	for _, key := range baseline {
+		if !keys[key] {
+			t.Errorf("%s: obsolete YAML baseline exception", key)
+		}
+	}
+}
+
+func schemaKeys(v any, keys map[string]bool) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, v := range x {
+			if k == "properties" {
+				if p, ok := v.(map[string]any); ok {
+					for key := range p {
+						keys[key] = true
+					}
+				}
+			}
+			schemaKeys(v, keys)
+		}
+	case []any:
+		for _, v := range x {
+			schemaKeys(v, keys)
+		}
+	}
+}
+
+// Several YAML files in one game are one example, not independent evidence.
+func fixtureRoot(name string) string {
+	if rest, ok := strings.CutPrefix(name, "examples/"); ok {
+		sample, _, _ := strings.Cut(rest, "/")
+		return "examples/" + sample
+	}
+	for _, marker := range []string{"/fixtures/", "/testdata/"} {
+		if before, after, ok := strings.Cut(name, marker); ok {
+			sample, _, _ := strings.Cut(after, "/")
+			return before + marker + sample
+		}
+	}
+	return name
+}
+
+// No production file under cmd/gozen currently needs os/exec. This frozen
+// allowlist has a zero-entry ceiling; it must never grow to admit a handler.
+var commandExecAllowlist = []string{}
+
+func commandExecutionViolations(f *ast.File, name string) []string {
+	var violations []string
+	if !strings.HasPrefix(name, "cmd/gozen/") && !strings.HasPrefix(name, "cmd/internal/repro/") {
+		return violations
+	}
+	parsers := map[string]bool{}
+	dotParser := false
+	for _, imp := range f.Imports {
+		imported, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			violations = append(violations, "invalid import path")
+			continue
+		}
+		if imported == "os/exec" && !slices.Contains(commandExecAllowlist, name) {
+			violations = append(violations, "os/exec import is forbidden; write artifacts or call typed operations")
+		}
+		if imported == module+"internal/clihelp" {
+			alias := "clihelp"
+			if imp.Name != nil {
+				alias = imp.Name.Name
+			}
+			parsers[alias] = true
+			dotParser = alias == "."
+		}
+	}
+	// Inspect references as well as calls: assigning dispatch to a local alias
+	// must not bypass the rule. String literals containing argv are just output.
+	for _, decl := range f.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && name == "cmd/gozen/main.go" &&
+			slices.Contains([]string{"main", "run", "parse", "top", "group"}, fn.Name.Name) {
+			continue
+		}
+		fn, isFunc := decl.(*ast.FuncDecl)
+		externalCase := name == "cmd/gozen/simbatch.go" && isFunc && fn.Name.Name == "runCase"
+		ast.Inspect(decl, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.Ident:
+				if n.Name == "runWith" || (n.Name == "run" && (n.Obj == nil || n.Obj.Kind == ast.Fun) && path.Dir(name) == "cmd/gozen") || (dotParser && n.Name == "Parse") {
+					violations = append(violations, "CLI dispatch reference "+n.Name+" is forbidden in handlers")
+				}
+			case *ast.SelectorExpr:
+				if n.Sel.Name == "parse" && !externalCase {
+					violations = append(violations, "command parser reference is forbidden in handlers")
+				}
+				if id, ok := n.X.(*ast.Ident); ok && parsers[id.Name] && n.Sel.Name == "Parse" {
+					violations = append(violations, "command parser reference is forbidden in handlers")
+				}
+			}
+			return true
+		})
+	}
+	return violations
+}
+
+func TestCommandExecutionGuard(t *testing.T) {
+	if len(commandExecAllowlist) != 0 {
+		t.Fatal("os/exec allowlist may not grow")
+	}
+	for _, tc := range []struct {
+		name, source string
+		bad          bool
+	}{
+		{"exec", `package main; import "os/exec"; func handler() { exec.Command("gozen") }`, true},
+		{"alias", `package main; import child "os/exec"; func handler() { child.Command("gozen") }`, true},
+		{"blank", `package main; import _ "os/exec"`, true},
+		{"dot", `package main; import . "os/exec"; func handler() { Command("gozen") }`, true},
+		{"dispatch", "package main; func handler() { runWith(nil) }", true},
+		{"method parser", "package main; func handler(c *command) { c.parse(nil,nil,nil) }", true},
+		{"method parser alias", "package main; func handler(c *command) { f := c.parse; f(nil,nil,nil) }", true},
+		{"dispatch alias", "package main; func handler() { f := runWith; f(nil) }", true},
+		{"parser", `package main; import cli "github.com/nao1215/gozen/internal/clihelp"; func handler() { cli.Parse(nil,nil) }`, true},
+		{"output", `package main; func handler() { argv := []string{"gozen", "run"}; script := "exec gozen run"; _, _ = argv, script }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := commandExecutionViolations(parsed(t, tc.name, []byte(tc.source)), "cmd/gozen/trace_repro.go")
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}

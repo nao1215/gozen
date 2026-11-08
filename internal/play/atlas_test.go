@@ -7,13 +7,18 @@ import (
 	"image/color"
 	"image/png"
 	"math"
+	"os"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/hajimehoshi/ebiten/v2"
+
+	"github.com/nao1215/gozen/internal/dev/perf"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/geom"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -727,5 +732,100 @@ func TestAtlasCameraCoversScreen(t *testing.T) {
 			}
 			atlasCornersCovered(t, g, s)
 		})
+	}
+}
+
+// BenchmarkAtlasHugeMap measures CPU-side layout and drawing submission only.
+// Native frame budgets remain in internal/dev/perf's graphics suite.
+func BenchmarkAtlasHugeMap(b *testing.B) {
+	dir := b.TempDir()
+	if err := perf.Generate(dir, "huge-map", "../../e2e/atago/fixtures/game/assets/regular.ttf"); err != nil {
+		b.Fatal(err)
+	}
+	g, err := New(Options{FS: os.DirFS(dir), Location: "room", NoSound: true, SaveDir: b.TempDir(), Seed: 1})
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			b.Error(err)
+		}
+	})
+	s, ok := g.stack[0].(*atlasScene)
+	if !ok {
+		b.Fatalf("top scene is %T, want *atlasScene", g.stack[0])
+	}
+	dst := ebiten.NewImage(960, 540)
+	defer dst.Deallocate()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for range 30 {
+		if err := g.Update(); err != nil {
+			b.Fatal(err)
+		}
+		s.draw(g, dst)
+	}
+	runtime.ReadMemStats(&after)
+	startupAllocs := float64(after.Mallocs-before.Mallocs) / 30
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if err := g.Update(); err != nil {
+			b.Fatal(err)
+		}
+		s.draw(g, dst)
+	}
+	b.ReportMetric(startupAllocs, "startup-allocs/frame")
+}
+
+func TestAtlasPointLayerInvalidation(t *testing.T) {
+	g, s := wldAtlas(t, "fx_mark")
+	s.pointLayerValid = true
+	s.refresh(g)
+	if !s.pointLayerValid {
+		t.Fatal("unchanged periodic refresh discarded layer")
+	}
+	s.location(g).Map.Points[s.points[0].id].Label = "Changed label"
+	s.refresh(g)
+	if s.pointLayerValid {
+		t.Fatal("changed label retained layer")
+	}
+	original := s.points[0]
+	original.marker = ""
+	s.location(g).Map.Marker = nil
+	s.points = make([]mapPoint, 128)
+	for i := range s.points {
+		s.points[i] = original
+	}
+	dst := ebiten.NewImage(960, 540)
+	defer dst.Deallocate()
+	s.drawPoints(g, dst)
+	if !s.pointLayerValid {
+		t.Fatal("large static map was not retained")
+	}
+	layer, key := s.pointLayer, s.pointLayerKey
+	s.drawPoints(g, dst)
+	if layer != s.pointLayer || key != s.pointLayerKey {
+		t.Fatal("unchanged frame replaced layer")
+	}
+	g.th.border.R++
+	s.drawPoints(g, dst)
+	if key == s.pointLayerKey {
+		t.Fatal("theme change kept stale layer")
+	}
+	s.refresh(g)
+	if s.pointLayerValid {
+		t.Fatal("state refresh kept stale layer")
+	}
+	// A smaller destination replaces the backing image on the next large layout.
+	s.points = make([]mapPoint, 128)
+	for i := range s.points {
+		s.points[i] = original
+	}
+	smaller := ebiten.NewImage(640, 360)
+	defer smaller.Deallocate()
+	s.drawPoints(g, smaller)
+	if s.pointLayer == layer || s.pointLayer.Bounds() != smaller.Bounds() {
+		t.Fatal("resize kept old layer bounds")
 	}
 }
