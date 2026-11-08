@@ -121,6 +121,11 @@ var pads = [numButtons][]ebiten.StandardGamepadButton{
 }
 
 type input struct {
+	runnerCapture, runnerCancel bool
+	runnerPointers              []runnerPointerSample
+	runnerScale                 float64
+	runnerMouseQuiet            int
+
 	supplied *input
 	physical bool
 	// offer exists only between script dispatch and the end of Update. Rendering,
@@ -182,19 +187,26 @@ func (in *input) update() {
 	in.pressed, in.pad = [numButtons]bool{}, [numButtons]bool{}
 	in.click, in.rclick, in.moved, in.wheel = false, false, false, 0
 	in.pdown, in.pheld, in.pup = false, false, false
+	in.runnerCancel = false
+	in.runnerPointers = in.runnerPointers[:0]
 	in.began, in.swipe, in.swiped = false, 0, in.swiped && in.touching
 	in.esc, in.shift = false, false
 	in.digit = 0
 	if in.script != nil {
 		in.script.step(in)
+		if in.runnerCapture && in.pheld {
+			in.runnerPointers = append(in.runnerPointers, runnerPointerSample{ID: runnerMouseID, X: float64(in.mouse.X), Y: float64(in.mouse.Y)})
+		}
 		return
 	}
 	if in.replay != nil {
 		in.replay.feed(in, in.tick)
 		return
 	}
+	previousRunnerHeld := in.held
 	alt := ebiten.IsKeyPressed(ebiten.KeyAltLeft) || ebiten.IsKeyPressed(ebiten.KeyAltRight)
 	for b, ks := range keys {
+		ks = in.runnerKeys(button(b), ks)
 		held := false
 		for _, k := range ks {
 			if alt && k == ebiten.KeyEnter {
@@ -228,6 +240,8 @@ func (in *input) update() {
 		}
 	}
 	in.gamepads()
+	in.runnerPadExtras()
+	in.runnerButtonEdges(previousRunnerHeld)
 	x, y := ebiten.CursorPosition()
 	if in.ui > 0 && in.ui != 1 {
 		x, y = int(float64(x)/in.ui), int(float64(y)/in.ui)
@@ -244,6 +258,7 @@ func (in *input) update() {
 	in.pheld = ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
 	in.pup = inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft)
 	in.touch()
+	in.readRunnerPointers()
 }
 
 // dragTicks is how many ticks a script's drag moves before it lifts.
@@ -263,7 +278,8 @@ const swipeFrom = 12
 func (in *input) touch() {
 	in.longPress = false
 	in.touches = ebiten.AppendTouchIDs(in.touches[:0])
-	if len(in.touches) >= 2 && !in.touchDone {
+	in.quietRunnerMouse(len(in.touches) > 0)
+	if len(in.touches) >= 2 && !in.touchDone && !in.runnerCapture {
 		in.rclick, in.touchDone = true, true
 		return
 	}
@@ -356,10 +372,14 @@ func (in *input) gamepads() {
 		}
 		x := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
 		y := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical)
-		stick[0] = stick[0] || y < -0.6
-		stick[1] = stick[1] || y > 0.6
-		stick[2] = stick[2] || x < -0.6
-		stick[3] = stick[3] || x > 0.6
+		dead := 0.6
+		if in.runnerCapture {
+			dead = 0.5
+		}
+		stick[0] = stick[0] || y < -dead
+		stick[1] = stick[1] || y > dead
+		stick[2] = stick[2] || x < -dead
+		stick[3] = stick[3] || x > dead
 	}
 	for i, on := range stick {
 		if !on {

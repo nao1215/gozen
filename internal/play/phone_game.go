@@ -167,6 +167,7 @@ func (g *Game) updatePhoneGame(p *phoneView) error {
 	c.input.mouse = image.Pt(int((px-vx)*sw/vw), int((py-vy)*sh/vh))
 	c.input.touchFrom = image.Pt(int((float64(g.in.touchFrom.X)-x-vx)*sw/vw), int((float64(g.in.touchFrom.Y)-y-vy)*sh/vh))
 	c.input.swipe = g.in.swipe * sh / vh
+	transformRunnerPointers(&c.input, &g.in, x+vx, y+vy, vw, vh, sw, sh)
 	if px < vx || px >= vx+vw || py < vy || py >= vy+vh {
 		c.input.click, c.input.rclick, c.input.pdown, c.input.pheld, c.input.pup = false, false, false, false, false
 		c.input.wheel = 0

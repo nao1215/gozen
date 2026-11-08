@@ -167,7 +167,7 @@ func (g *Game) checkSavedReplay(st *rpg.State) error {
 	if err != nil {
 		return err
 	}
-	_, err = probe.runner.ReplayTo(c.Line, c.Answers)
+	_, err = probe.runner.ReplayTo(c.Line, c.Answers, c.Games)
 	return err
 }
 
@@ -251,7 +251,7 @@ func (g *Game) savedScreens(st *rpg.State) (*savedReplay, event.ScreenReplay, sc
 	}
 	var pending event.Request
 	if root.cursor.Line > 0 {
-		pending, err = probe.runner.ReplayTo(root.cursor.Line, root.cursor.Answers)
+		pending, err = probe.runner.ReplayTo(root.cursor.Line, root.cursor.Answers, root.cursor.Games)
 		if err != nil {
 			return nil, replay, root, err
 		}

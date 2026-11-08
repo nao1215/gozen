@@ -1,4 +1,5 @@
 Command:
+  run_game: "Run a named scrolling game and assign selected outcome fields. Requires schema 12."
   carry: "Keep the values game.yaml carry names for the next new game (schema 10); written beside the saves, never in a save."
   plan: "Apply one deterministic planning operation."
   respond: "Submit text to a speaker reaction book; the reply uses the ordinary dialog flow."

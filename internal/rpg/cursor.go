@@ -19,6 +19,8 @@ import (
 // on to Line with Answers, the same replay as a note of F9 and F5. Session screen
 // continuations additionally replay Inputs after that optional dialogue prefix.
 type Cursor struct {
+	// Games records accepted casual outcomes for event reconstruction, never active frames.
+	Games []GameOutcome `json:"games,omitempty"`
 	// Inputs is a bounded session continuation transcript from the named root's
 	// snapshot. Session replays it on private state; other frontends must reject it
 	// until they implement the same input contract. Line/Answers optionally describe
@@ -68,6 +70,14 @@ func badAnswer(n int) bool { return n < -1 }
 // valid checks the dialogue cursor or bounded input transcript shape. The frontend
 // must also check reachability against the named root before installing the state.
 func (c Cursor) valid() bool {
+	if len(c.Games) > 4096 || (len(c.Games) > 0 && (c.Line < 1 || len(c.Inputs) > 0)) {
+		return false
+	}
+	for i, g := range c.Games {
+		if !g.Valid() || g.Invocation != i+1 {
+			return false
+		}
+	}
 	if len(c.Inputs) > 0 {
 		if len(c.Inputs) > 20000 || c.Event == "" || c.Arrival || c.Line < 0 {
 			return false
@@ -107,6 +117,7 @@ func WithCursor(save []byte, c Cursor, rnd []byte) ([]byte, error) {
 		return nil, errors.New(lang.T("カーソルの行またはイベントが不正"))
 	}
 	c.Answers = slices.Clone(c.Answers)
+	c.Games = slices.Clone(c.Games)
 	c.Args = maps.Clone(c.Args)
 	e.Cursor, e.Rand = &c, slices.Clone(rnd)
 	return json.MarshalIndent(e, "", "  ")
@@ -152,6 +163,9 @@ func (c *Cursor) Seal(db *data.DB) error {
 }
 
 func (c Cursor) validateBindings(db *data.DB, version int) error {
+	if len(c.Games) > 0 && (version < 4 || db.Game.SchemaVersion < data.SchemaVersion12) {
+		return errors.New("casual outcomes require save format 4 and schema 12")
+	}
 	for _, name := range c.Opened {
 		if ev := db.Events[name]; ev == nil || len(ev.Params) > 0 {
 			return fmt.Errorf("opened event %q is not a parameterless event", name)

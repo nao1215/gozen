@@ -653,8 +653,11 @@ scenarios:
       stderr: {contains: 'runtime.json'}
       changes: {created: [], modified: [], deleted: []}
 
-- name: phone games install through browser fetch and reopen offline with isolated saves
+- name: phone games install through browser fetch and reopen offline with isolated saves ${package_scale}
   tags: [web, phone-browser]
+  matrix:
+  - {package_scale: small, package_mode: valid, update_mode: browser-small-update}
+  - {package_scale: large, package_mode: browser-large, update_mode: browser-large-update}
   services:
   - name: site
     command: >-
@@ -662,21 +665,37 @@ scenarios:
     ready: {file: address, store: origin, timeout: 5s}
   steps:
   - run:
-      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host ${package_mode}
+  - assert: {exit_code: 0}
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' update-host ${update_mode}
   - assert: {exit_code: 0}
   - run:
       command: |
         python3 -c '
         from pathlib import Path
-        import shutil
+        import shutil, json, hashlib
         p = Path("host/game.yaml")
         p.write_text(p.read_text().replace("      install: bundled\n      path: apps/trail.zip", "      install: optional"))
         Path("site/downloads").mkdir(parents=True)
         shutil.copyfile("host/apps/trail.zip", "site/downloads/trail.zip")
+        catalog = Path("update-host/apps/catalog.yaml")
+        old_digest = hashlib.sha256(catalog.read_bytes()).hexdigest()
+        updated = json.loads(catalog.read_text())
+        updated["releases"].append(json.loads(Path("host/apps/catalog.yaml").read_text())["releases"][1])
+        catalog.write_text(json.dumps(updated, sort_keys=True, indent=2) + "\n")
+        p = Path("update-host/game.yaml")
+        p.write_text(p.read_text().replace(old_digest, hashlib.sha256(catalog.read_bytes()).hexdigest()))
+        p.write_text(p.read_text().replace("      install: bundled\n      path: apps/trail.zip", "      install: optional"))
+        shutil.copyfile("update-host/apps/trail.zip", "site/downloads/trail-update.zip")
+        assert (Path("site/downloads/trail.zip").stat().st_size > 8 * 1024 * 1024) == ("${package_scale}" == "large")
         '
   - assert: {exit_code: 0}
   - run:
       command: gozen export host --target web --out site/game --runtime "${env:GOZEN_WEB_RUNTIME}"
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen export update-host --target web --out site/update --runtime "${env:GOZEN_WEB_RUNTIME}"
   - assert: {exit_code: 0}
   - assert:
       file: {path: site/game/game/apps/trail.zip, exists: false}
@@ -690,6 +709,20 @@ scenarios:
           window.phoneSave = name => {
             const value = localStorage.getItem('gozen/cli-expedition/' + name);
             return value ? JSON.parse(value.slice(value.indexOf('\n') + 1)) : null;
+          };
+          window.phoneArchive = async digest => {
+            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cli-expedition'));
+            const prefix = Array.from(new Uint8Array(hash), n => n.toString(16).padStart(2, '0')).join('');
+            return new Promise((resolve, reject) => {
+              const opening = indexedDB.open('gozen-phone-packages', 1);
+              opening.onerror = () => reject(opening.error);
+              opening.onsuccess = () => {
+                const db = opening.result;
+                const request = db.transaction('archives').objectStore('archives').get(prefix + ':' + digest);
+                request.onerror = () => { db.close(); reject(request.error); };
+                request.onsuccess = () => { db.close(); resolve(request.result); };
+              };
+            });
           };
           window.phoneKeys = async (...keys) => { for (const code of keys) await key(code); };
           window.leavePhoneGame = async () => {
@@ -724,7 +757,7 @@ scenarios:
                   options.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), {once: true});
                 });
               }
-              return originalFetch('/site/downloads/trail.zip', options);
+              return originalFetch(phoneFetchMode === 'update' ? '/site/downloads/trail-update.zip' : '/site/downloads/trail.zip', options);
             }
             return originalFetch(input, options);
           }; true
@@ -791,6 +824,13 @@ scenarios:
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter');
               const apps = await phoneSaved('phone-apps.json');
               if (apps.trail.version !== '1.0.0') throw new Error('wrong installed version');
+              const archive = await phoneArchive(apps.trail.sha256);
+              if (!(archive instanceof Uint8Array) || archive.byteLength !== apps.trail.size || (archive.byteLength > 8 * 1024 * 1024) !== ('${package_scale}' === 'large')) throw new Error('large archive not stored as binary');
+              let exceeded = false;
+              try { localStorage.setItem('phone-quota-probe', 'x'.repeat(Math.ceil(archive.byteLength * 4 / 3))); }
+              catch (error) { exceeded = error.name === 'QuotaExceededError'; }
+              finally { localStorage.removeItem('phone-quota-probe'); }
+              if (exceeded !== ('${package_scale}' === 'large')) throw new Error('unexpected localStorage quota result');
               await testFrames(40);
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(80);
               await key('Enter'); await testFrames(60);
@@ -800,7 +840,7 @@ scenarios:
               const trail = await phoneSaved(trailPrefix + 'save1.json');
               if (trail.state.gold !== 7) throw new Error('installed child did not reach hill');
               await leavePhoneGame();
-              document.body.dataset.phoneResult = JSON.stringify({counter: counter.state.gold, trail: trail.state.gold, downloads: phoneFetches, version: apps.trail.version});
+              document.body.dataset.phoneResult = JSON.stringify({counter: counter.state.gold, trail: trail.state.gold, downloads: phoneFetches, version: apps.trail.version, binaryBytes: archive.byteLength, quotaExpected: exceeded === ('${package_scale}' === 'large')});
             } catch (error) { document.body.dataset.phoneResult = JSON.stringify({error: String(error)}); }
           })(); true
       - wait_visible: 'body[data-phone-result]'
@@ -813,6 +853,69 @@ scenarios:
         - {path: $.trail, equals: 7}
         - {path: $.downloads, equals: 4}
         - {path: $.version, equals: 1.0.0}
+        - {path: $.quotaExpected, equals: true}
+  # A failed archive update must retain the previous release, bytes and child save.
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/update/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *controls
+      - eval: *phone_controls
+      - eval: *phone_fetch
+      - eval: |
+          (async () => {
+            try {
+              const before = JSON.stringify(phoneSave('phone-apps.json'));
+              const old = phoneSave('phone-apps.json').trail;
+              const oldSave = JSON.stringify(phoneSave(trailPrefix + 'save1.json'));
+              const originalPut = IDBObjectStore.prototype.put;
+              window.failedArchiveWrites = 0;
+              IDBObjectStore.prototype.put = function(...args) {
+                const request = originalPut.apply(this, args);
+                if (this.name === 'archives') {
+                  failedArchiveWrites++;
+                  const transaction = this.transaction;
+                  request.addEventListener('success', () => transaction.abort(), {once: true});
+                }
+                return request;
+              };
+              phoneFetchMode = 'update';
+              await key('Enter'); await testFrames(90);
+              await key('Enter'); await testFrames(40);
+              await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
+              await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter');
+              for (let i = 0; i < 600 && failedArchiveWrites === 0; i++) await testFrames(2);
+              await testFrames(60);
+              IDBObjectStore.prototype.put = originalPut;
+              if (failedArchiveWrites !== 1) throw new Error('archive failure was not reached');
+              if (JSON.stringify(phoneSave('phone-apps.json')) !== before) throw new Error('failed update changed selected release');
+              if (JSON.stringify(phoneSave(trailPrefix + 'save1.json')) !== oldSave) throw new Error('failed update changed child progress');
+              const retained = await phoneArchive(old.sha256);
+              if (!retained || retained.byteLength !== old.size) throw new Error('failed update removed old archive');
+              if ('${package_scale}' === 'small') {
+                const header = localStorage.getItem('gozen/cli-expedition/phone-apps.json').split('\n')[0] + '\n';
+                const legacy = header + btoa(String.fromCharCode(...retained));
+                localStorage.setItem('gozen/cli-expedition/phone-package-' + old.sha256 + '.b64', legacy);
+                await new Promise((resolve, reject) => {
+                  const request = indexedDB.deleteDatabase('gozen-phone-packages');
+                  request.onsuccess = resolve;
+                  request.onerror = () => reject(request.error);
+                  request.onblocked = () => reject(new Error('archive database remained open'));
+                });
+              }
+              document.body.dataset.phoneStorageFailure = JSON.stringify({writes: failedArchiveWrites, version: phoneSave('phone-apps.json').trail.version, gold: phoneSave(trailPrefix + 'save1.json').state.gold});
+            } catch (error) { document.body.dataset.phoneStorageFailure = JSON.stringify({error: String(error)}); }
+          })(); true
+      - wait_visible: 'body[data-phone-storage-failure]'
+      - screenshot: {path: phone-storage-failure.png, selector: canvas}
+      - eval: 'JSON.parse(document.body.dataset.phoneStorageFailure)'
+  - assert:
+      value:
+        json:
+        - {path: $.writes, equals: 1}
+        - {path: $.version, equals: 1.0.0}
+        - {path: $.gold, equals: 7}
   # Reload discards the running child's memory and the store's open archive handles.
   - cdp:
       runner: browser
@@ -826,6 +929,14 @@ scenarios:
           (async () => {
             try {
               phoneFetchMode = 'failure';
+              const installed = phoneSave('phone-apps.json').trail;
+              const legacyKey = 'gozen/cli-expedition/phone-package-' + installed.sha256 + '.b64';
+              const legacyBefore = localStorage.getItem(legacyKey);
+              window.deniedArchiveReads = 0;
+              if ('${package_scale}' === 'small') {
+                if (!legacyBefore) throw new Error('legacy archive missing before reload');
+                indexedDB.open = () => { deniedArchiveReads++; throw new DOMException('Injected blocked IDB', 'SecurityError'); };
+              }
               await testFrames(90);
               // Choose a fresh host game; the installed release and child saves survive.
               await key('Enter'); await testFrames(90);
@@ -836,6 +947,7 @@ scenarios:
               await phoneKeys('Escape', 'Enter', 'ArrowDown', 'Enter');
               const restored = await phoneSaved(trailPrefix + 'save2.json');
               if (restored.state.gold !== 7) throw new Error('child save was not restored');
+              if ('${package_scale}' === 'small' && (deniedArchiveReads === 0 || localStorage.getItem(legacyKey) !== legacyBefore)) throw new Error('legacy fallback was skipped or rewrote cached bytes');
               await leavePhoneGame();
               await key('Escape'); await testFrames(80);
               await key('Enter'); await testFrames(30);
@@ -854,3 +966,109 @@ scenarios:
         - {path: $.downloads, equals: 0}
         - {path: $.hostSave, equals: 0}
         - {path: $.hostLocation, equals: camp}
+- name: a runner completes and restores its result after a browser reload
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - run: {command: 'cp -R "${specdir}/fixtures/runner" game'}
+  - assert: {exit_code: 0}
+  - run:
+      command: >-
+        python3 -c "from pathlib import Path; p=Path('game/game.yaml'); s=p.read_text().replace('id: harbor-lane', 'id: browser-runner'+chr(10)+'menus: none').replace('event: opening', 'event: run').replace('..#..', '.....'); p.write_text(s)"
+  - assert: {exit_code: 0}
+  - fixture:
+      file: game/data/world.yaml
+      content: |
+        locations:
+          lodge:
+            name: Route desk
+            actions:
+              - label: Inspect restored score
+                do:
+                  - set: {gold: 'gold + 1'}
+                  - save: true
+        events:
+          run:
+            - run_game:
+                id: trail
+                outputs: {score: var.score, completed: flag.completed, failed: flag.failed, cancelled: flag.cancelled}
+            - set: {gold: var.score}
+            - save: true
+  - run: {command: 'gozen export game --target web --out site/runner --runtime "${env:GOZEN_WEB_RUNTIME}" --format jsonl'}
+  - assert: {exit_code: 0}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/runner/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - click: canvas
+      - eval: &runner_controls |
+          window.testFrames = count => new Promise(resolve => {
+            const next = () => --count === 0 ? resolve() : requestAnimationFrame(next);
+            requestAnimationFrame(next);
+          });
+          window.key = async code => {
+            const canvas = document.querySelector('canvas');
+            canvas.focus();
+            canvas.dispatchEvent(new KeyboardEvent('keydown', {code, key: code, bubbles: true}));
+            await testFrames(2);
+            canvas.dispatchEvent(new KeyboardEvent('keyup', {code, key: code, bubbles: true}));
+            await testFrames(15);
+          };
+          window.runnerSave = slot => {
+            const text = localStorage.getItem('gozen/browser-runner/save' + slot + '.json');
+            if (!text) return null;
+            return JSON.parse(text.slice(text.indexOf('\n') + 1));
+          }; true
+      - eval: |
+          (async () => {
+            await testFrames(60);
+            await key('Enter');
+            await testFrames(600);
+            await key('Enter');
+            await key('Enter');
+            document.body.dataset.runnerSaved = 'true';
+          })()
+      - wait_visible: 'body[data-runner-saved=true]'
+      - eval: 'runnerSave(1)'
+  - assert:
+      value:
+        json:
+        - {path: $.state.flags.completed, equals: true}
+        - {path: $.state.flags.failed, equals: false}
+        - {path: $.state.flags.cancelled, equals: false}
+        - {path: $.state.gold, equals: 90}
+  - cdp:
+      runner: browser
+      actions:
+      - screenshot: {path: runner-complete.png, selector: canvas}
+      - navigate: '${origin}/site/runner/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - click: canvas
+      - eval: *runner_controls
+      - eval: |
+          (async () => {
+            await testFrames(60);
+            await key('Enter');
+            await key('ArrowDown');
+            await key('Enter');
+            document.body.dataset.runnerSaved = 'true';
+          })()
+      - wait_visible: 'body[data-runner-saved=true]'
+      - eval: 'runnerSave(2)'
+  - assert:
+      value:
+        json:
+        - {path: $.state.flags.completed, equals: true}
+        - {path: $.state.gold, equals: 91}
+        - {path: $.state.vars.score, equals: 90}
+  - cdp:
+      runner: browser
+      actions:
+      - screenshot: {path: runner-restored.png, selector: canvas}
+  - assert: {image: {path: runner-complete.png, format: png}}
+  - assert: {image: {path: runner-restored.png, format: png}}

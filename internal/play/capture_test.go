@@ -299,6 +299,7 @@ func TestCaptureStructureIndependentOfDrawCadence(t *testing.T) {
 	for _, job := range []CaptureJob{
 		{ID: "same", Start: "camp", WaitTicks: 2},
 		{ID: "edited", Event: "finish", Line: 1, WaitTicks: 2},
+		{ID: "implicit-first-line", Event: "finish", WaitTicks: 2},
 	} {
 		t.Run(job.ID, func(t *testing.T) {
 			var baseline []byte

@@ -761,7 +761,7 @@ func TestReplayTo(t *testing.T) {
 			st := testgame.State(db, 7)
 			r := event.New(db, st, &host{})
 			r.Start(db.Events["receipt"].Do)
-			q, err := r.ReplayTo(tc.line, tc.answers)
+			q, err := r.ReplayTo(tc.line, tc.answers, nil)
 			if (err == nil) != tc.valid {
 				t.Fatalf("request %v, error %v", q, err)
 			}
@@ -795,7 +795,7 @@ func TestReplayTo(t *testing.T) {
 		st := testgame.State(db, 7)
 		r := event.New(db, st, &host{})
 		r.Start(append([]data.Command{command}, db.Events["receipt"].Do...))
-		if _, err := r.ReplayTo(1, nil); err == nil {
+		if _, err := r.ReplayTo(1, nil, nil); err == nil {
 			t.Fatal("accepted boundary", command)
 		}
 	}
@@ -1337,12 +1337,12 @@ events:
 		t.Fatalf("an option of a muted choice: flags %v vars %v", st.Flags, st.Vars)
 	}
 	r, st = run()
-	q, err := r.ReplayTo(2, []int{2})
+	q, err := r.ReplayTo(2, []int{2}, nil)
 	if say, ok := q.(event.Say); err != nil || !ok || say.Text != "after" || !st.Flags["quiet"] {
 		t.Fatalf("replaying a kept quiet: %v %v %v", q, err, st.Flags)
 	}
 	r, _ = run()
-	if _, err := r.ReplayTo(2, []int{3}); err == nil {
+	if _, err := r.ReplayTo(2, []int{3}, nil); err == nil {
 		t.Fatal("an answer past keeping quiet replayed")
 	}
 }
@@ -1374,7 +1374,7 @@ func TestReplayToPhoneAnswers(t *testing.T) {
 				st := testgame.State(db, 7)
 				r := event.New(db, st, &host{})
 				r.Start([]data.Command{{Phone: p}, {Say: &data.Say{Text: "Receipt."}}})
-				_, err := r.ReplayTo(1, tc.answers)
+				_, err := r.ReplayTo(1, tc.answers, nil)
 				if (err == nil) != tc.valid {
 					t.Fatalf("ReplayTo = %v, valid=%v", err, tc.valid)
 				}

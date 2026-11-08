@@ -155,3 +155,50 @@ func TestScreenReplayCacheOwnership(t *testing.T) {
 		*in[1].Answer = 99
 	}
 }
+
+func TestGameOutcomeCursorVersionAndOwnership(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.SchemaVersion = data.SchemaVersion12
+	st := testgame.State(db, 7)
+	base := saveBytes(t, st)
+	outcome := rpg.GameOutcome{ID: "trail", Definition: strings.Repeat("a", 64), Invocation: 1, Status: "cancelled"}
+	cursor := rpg.Cursor{Event: "greet", Line: 1, Games: []rpg.GameOutcome{outcome}}
+	if err := cursor.Seal(db); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := rpg.WithCursor(base, cursor, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range []int{1, 2, 3} {
+		old := rewriteSave(t, saved, func(m map[string]any) { m["format_version"] = version })
+		if _, err := rpg.Parse(db, old, nil); err == nil {
+			t.Fatalf("format %d accepted casual outcomes", version)
+		}
+	}
+	loaded, err := rpg.Parse(db, saved, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded.Resume.Cursor.Games[0].Score = 999
+	again, err := rpg.Parse(db, saved, nil)
+	if err != nil || again.Resume.Cursor.Games[0].Score != 0 {
+		t.Fatal("cached save shares mutable outcome storage")
+	}
+	for _, mutate := range []func(*rpg.Cursor){
+		func(c *rpg.Cursor) { c.Games[0].Invocation = 2 },
+		func(c *rpg.Cursor) { c.Games[0].Status = "running" },
+		func(c *rpg.Cursor) { c.Games[0].Score = -1 },
+		func(c *rpg.Cursor) { c.Games[0].Definition = "short" },
+		func(c *rpg.Cursor) { c.Line = 0 },
+		func(c *rpg.Cursor) { c.Inputs = []rpg.ReplayInput{{Request: strings.Repeat("b", 64)}} },
+		func(c *rpg.Cursor) { c.Games = make([]rpg.GameOutcome, 4097) },
+	} {
+		bad := cursor
+		bad.Games = slices.Clone(cursor.Games)
+		mutate(&bad)
+		if _, err := rpg.WithCursor(base, bad, nil); err == nil {
+			t.Fatalf("invalid outcome cursor accepted: %+v", bad)
+		}
+	}
+}

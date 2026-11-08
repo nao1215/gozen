@@ -188,7 +188,7 @@ func (s *Session) resume(c rpg.Cursor) error {
 	onEffect := s.cfg.OnEffect
 	s.cfg.OnEffect = nil
 	defer func() { s.cfg.OnEffect = onEffect }()
-	request, err := s.runner.ReplayTo(c.Line, c.Answers)
+	request, err := s.runner.ReplayTo(c.Line, c.Answers, c.Games)
 	if err != nil {
 		return err
 	}
@@ -588,6 +588,10 @@ func (s *Session) request(r event.Request) Request {
 		return Request(q)
 	}
 	switch r := r.(type) {
+	case event.RunGame:
+		s.runner.Log(errors.New("run_game requires the graphical player; headless sessions can only restore saved game outcomes"))
+		s.runner.Stop()
+		return Request{}
 	case event.Battle:
 		s.battle = r
 		var flags []string
@@ -665,6 +669,9 @@ func (s *Session) effect(e event.Effect) {
 // screen uses a bounded input transcript for schema-10 named roots. Unsupported
 // boundaries and older schemas reject the save rather than losing its caller.
 func (s *Session) Save() ([]byte, error) {
+	if s.runner.GamePending() {
+		return nil, errors.New("finish or leave the running game before saving")
+	}
 	if len(s.screens) > 0 || s.runner.Running() && s.sawScreen {
 		c := s.replayRoot
 		if s.db.Game.SchemaVersion < gamedata.SchemaVersion10 || s.replayBlocked || c.name == "" || c.arrival || len(s.inputs) == 0 {
@@ -680,7 +687,7 @@ func (s *Session) Save() ([]byte, error) {
 	if !s.runner.Running() || c.noBack || c.lines == 0 || c.snap == nil || c.name == "" && !c.arrival {
 		return s.saveBetween()
 	}
-	cur := rpg.Cursor{Event: c.name, Args: c.args, Line: c.lines, Answers: c.answers}
+	cur := rpg.Cursor{Event: c.name, Args: c.args, Line: c.lines, Answers: c.answers, Games: s.runner.GameResults()}
 	if err := cur.Seal(s.db); err != nil {
 		return nil, err
 	}

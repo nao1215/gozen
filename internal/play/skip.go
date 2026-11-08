@@ -63,6 +63,8 @@ func (g *Game) skipBefore(r event.Request) {
 		if r.Results > 0 {
 			why = "phone"
 		}
+	case event.RunGame:
+		why = "game"
 	case event.Battle:
 		why = "battle"
 	}

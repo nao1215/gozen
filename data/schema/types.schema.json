@@ -5026,6 +5026,15 @@
         {
           "additionalProperties": false,
           "properties": {
+            "run_game": {}
+          },
+          "required": [
+            "run_game"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "plan": {}
           },
           "required": [
@@ -6492,6 +6501,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        },
+        "run_game": {
+          "$ref": "#/$defs/RunGameCommand",
+          "description": "Run a named scrolling game and assign selected outcome fields. Requires schema 12.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "[RunGameCommand](#rungamecommand)"
         },
         "save": {
           "const": true,
@@ -11397,7 +11419,8 @@
               8,
               9,
               10,
-              11
+              11,
+              12
             ]
           }
         },
@@ -11764,6 +11787,25 @@
           },
           "x-type": "string → string"
         },
+        "runners": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RunnerDefinition"
+          },
+          "description": "Named finite scrolling games, invoked by run_game. Requires schema 12.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string → [RunnerDefinition](#runnerdefinition)"
+        },
         "scene_review": {
           "$ref": "#/$defs/SceneReviewCfg",
           "description": "Settings for the scene review debug page, such as the tags attached to scenes.",
@@ -11791,7 +11833,8 @@
             8,
             9,
             10,
-            11
+            11,
+            12
           ],
           "type": "integer",
           "x-contract": {
@@ -19572,6 +19615,924 @@
             "version": "0, 1, 2"
           },
           "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "RunGameCommand": {
+      "additionalProperties": false,
+      "description": "Run a declared scrolling game and assign its terminal result once.",
+      "properties": {
+        "id": {
+          "description": "A runner ID declared in game.yaml runners.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "outputs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Result fields mapped to distinct var or flag targets: score, lives, stock, stage, completed_stages, best_completed_stages, misses, ticks, distance, collected, streak and life_progress are numbers; completed, failed and cancelled are booleans.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string → string"
+        }
+      },
+      "type": "object"
+    },
+    "RunnerDefinition": {
+      "additionalProperties": false,
+      "description": "A finite scrolling course with continuous steering, pickups and bounded retries. Rates use cells per second and simulation runs at 60 ticks per second.",
+      "properties": {
+        "action_sound": {
+          "description": "Optional named sound effect played when the limited action starts.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "ahead": {
+          "description": "Initial preview row of tile keys; omitted uses an empty row.",
+          "type": "string",
+          "x-contract": {
+            "default": "A row of empty cells",
+            "legacy_default": "A row of empty cells",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "background": {
+          "description": "Optional course backdrop under assets.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "boost_max": {
+          "description": "Maximum scroll multiplier, 1 to 10; zero uses 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "1",
+            "legacy_default": "1",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "boost_rate": {
+          "description": "Boost multiplier gained per second while boosting, 0 to 10. The multiplier stays after release and resets on retry. Zero disables boosting.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "clear_ticks": {
+          "description": "Ticks that movement pauses after the limited action immediately clears visible and preview walls, 0 to 3600.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "fail_sound": {
+          "description": "Optional named sound effect played on collision failure.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "finish_rows": {
+          "description": "Empty rows scrolled after the final stage; zero uses view_rows. Must be at least player_row plus 2 and at most 128.",
+          "type": "integer",
+          "x-contract": {
+            "default": "view_rows",
+            "legacy_default": "view_rows",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "finish_sound": {
+          "description": "Optional named sound effect played on completion.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "finish_speed": {
+          "description": "Scroll rate during the final empty tail; zero keeps the last stage rate.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "finish_steer_speed": {
+          "description": "Maximum lateral rate during the final tail; zero keeps the last stage rate.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "life_every": {
+          "description": "Ordinary pickups needed to gain a spare life, up to 1000000; zero disables pickup-based life gain.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "lives": {
+          "description": "Spare lives at the start, 0 to 999.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "max_lives": {
+          "description": "Maximum spare lives, at least lives and at most 999; zero uses lives.",
+          "type": "integer",
+          "x-contract": {
+            "default": "lives",
+            "legacy_default": "lives",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "max_stock": {
+          "description": "Maximum limited-action stock, at least stock and at most 999; zero uses stock.",
+          "type": "integer",
+          "x-contract": {
+            "default": "stock",
+            "legacy_default": "stock",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "pickup_sound": {
+          "description": "Optional named sound effect played on a pickup.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "player_color": {
+          "description": "Fallback player color when no image is selected.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "color string"
+        },
+        "player_image": {
+          "description": "Optional player picture under assets.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "player_row": {
+          "description": "Player row within the viewport, 1 through view_rows minus 2; zero uses view_rows minus 3.",
+          "type": "integer",
+          "x-contract": {
+            "default": "view_rows - 3",
+            "legacy_default": "view_rows - 3",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "radius": {
+          "description": "Horizontal collision half-width, 0.01 to 0.49 cells; zero uses 0.15.",
+          "type": "number",
+          "x-contract": {
+            "default": "0.15",
+            "legacy_default": "0.15",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "ramp_ticks": {
+          "description": "Ticks of held direction before full lateral speed, 0 to 3600; zero reaches full speed immediately.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "retry_rows": {
+          "description": "Rows to rewind on retry, 0 to 65536. Zero returns to the start. Collected cells remain consumed.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "speed": {
+          "description": "Default scroll rate, 0.01 to 60 rows per second; zero uses 3. Rate times boost_max must not exceed 60.",
+          "type": "number",
+          "x-contract": {
+            "default": "3",
+            "legacy_default": "3",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "stages": {
+          "description": "One to 256 ordered stages, with at most 65536 rows in total.",
+          "items": {
+            "$ref": "#/$defs/RunnerStage"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "[RunnerStage](#runnerstage)[]"
+        },
+        "start_x": {
+          "description": "Initial player center in cells; zero uses width divided by 2.",
+          "type": "number",
+          "x-contract": {
+            "default": "width / 2",
+            "legacy_default": "width / 2",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "steer_speed": {
+          "description": "Default maximum lateral rate, 0.01 to 60 cells per second; zero uses 7.",
+          "type": "number",
+          "x-contract": {
+            "default": "7",
+            "legacy_default": "7",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "steer_start": {
+          "description": "Initial lateral rate while accelerating; zero uses steer_speed. Must not exceed any authored maximum lateral rate.",
+          "type": "number",
+          "x-contract": {
+            "default": "steer_speed",
+            "legacy_default": "steer_speed",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "stock": {
+          "description": "Initial limited-action stock, 0 to 999.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "tiles": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RunnerTile"
+          },
+          "description": "One printable non-space ASCII key per tile definition; a dot must be defined with kind empty.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string → [RunnerTile](#runnertile)"
+        },
+        "title": {
+          "description": "Heading shown while playing.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "view_rows": {
+          "description": "Visible course rows, 4 to 64; omitted or zero uses 16.",
+          "type": "integer",
+          "x-contract": {
+            "default": "16",
+            "legacy_default": "16",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "visuals": {
+          "$ref": "#/$defs/RunnerVisuals",
+          "description": "Optional board placement, portrait reactions, ready delay and action cut-in.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "[RunnerVisuals](#runnervisuals)"
+        },
+        "width": {
+          "description": "Course columns, 3 to 64; omitted or zero uses 9.",
+          "type": "integer",
+          "x-contract": {
+            "default": "9",
+            "legacy_default": "9",
+            "zero": "Uses the default",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "RunnerReaction": {
+      "additionalProperties": false,
+      "description": "Portrait feedback for one rules event.",
+      "properties": {
+        "event": {
+          "description": "Optional rules event matched by this named reaction, overriding its map key. A colon followed by a tile key narrows the match to that tile.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "every": {
+          "description": "Show on each multiple of this streak count; zero shows every matching event. Images cycle between matching multiples.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "images": {
+          "description": "One to sixteen image paths under assets.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string[]"
+        },
+        "priority": {
+          "description": "Priority when reactions overlap, 0 to 100.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "ticks": {
+          "description": "Portrait duration, 1 to 3600 presentation ticks.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "RunnerStage": {
+      "additionalProperties": false,
+      "description": "A named sequence of rows, read in the order they enter the scrolling view.",
+      "properties": {
+        "background": {
+          "description": "Optional stage backdrop under assets; empty inherits the runner background.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "clear": {
+          "description": "Emit a stage-clear milestone when the final row of this stage becomes the preview row.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "boolean"
+        },
+        "id": {
+          "description": "Unique stage identifier within this runner.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "rows": {
+          "description": "Nonempty list of ASCII tile-key rows. Every row has exactly width cells and names declared tiles.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string[]"
+        },
+        "speed": {
+          "description": "Scroll rate override; zero inherits the runner speed. Rate times boost_max must not exceed 60.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        },
+        "steer_speed": {
+          "description": "Maximum lateral speed override; zero inherits the runner steer_speed.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "RunnerTile": {
+      "additionalProperties": false,
+      "description": "Rules and appearance for one authored course cell.",
+      "properties": {
+        "color": {
+          "description": "Fallback tile color.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "color string"
+        },
+        "image": {
+          "description": "Optional tile image under assets.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "kind": {
+          "description": "empty, wall, pickup, life or stock.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "value": {
+          "description": "Score gained when collected, 0 to 1000000; empty and wall tiles require zero.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "RunnerVisuals": {
+      "additionalProperties": false,
+      "description": "Optional fixed layout and portrait feedback for a scrolling game.",
+      "properties": {
+        "board": {
+          "description": "Board rectangle [x, y, width, height] in logical screen coordinates; omitted fits the viewport.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number[]"
+        },
+        "board_background": {
+          "description": "Confine the backdrop to the board instead of filling the canvas.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "boolean"
+        },
+        "board_color": {
+          "description": "Optional tint over the board backdrop.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "color string"
+        },
+        "canvas_color": {
+          "description": "Optional color behind the board and portrait.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "color string"
+        },
+        "cutin": {
+          "description": "Optional image under assets displayed during the limited-action pause.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string"
+        },
+        "cutin_ticks": {
+          "description": "Duration of the cut-in, 0 to 3600 ticks.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
+        },
+        "idle": {
+          "description": "Up to five idle images under assets, selected by increasing danger.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string[]"
+        },
+        "player_offset": {
+          "description": "Optional sprite horizontal and vertical offset in cells, each from minus four to four.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number[]"
+        },
+        "player_size": {
+          "description": "Optional sprite width and height in cells; each is positive and at most four.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number[]"
+        },
+        "portrait": {
+          "description": "Portrait rectangle [x, y, width, height] in logical screen coordinates.",
+          "items": {
+            "type": "number"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "number[]"
+        },
+        "reactions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RunnerReaction"
+          },
+          "description": "Named portrait reactions. The map key is the event unless the reaction supplies event.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty map",
+            "legacy_default": "empty map",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "string → [RunnerReaction](#runnerreaction)"
+        },
+        "ready_ticks": {
+          "description": "Ready countdown before movement starts, 1 to 3600 ticks; zero shows a start confirmation instead.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "12"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"

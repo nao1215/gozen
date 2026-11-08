@@ -320,6 +320,12 @@ func (g *Game) word(key string) string {
 
 // defaults fills in what was left out.
 func (db *DB) defaults() {
+	for _, runner := range db.Game.Runners {
+		if runner != nil {
+			runner.defaults()
+		}
+	}
+
 	db.EachCommand(func(c *Command) { db.resolveVerb(c) })
 	g := &db.Game
 	if g.Screen.Width == 0 {

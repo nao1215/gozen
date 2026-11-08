@@ -449,6 +449,12 @@ Authors choose bundled games or optional downloads from an approved catalog. Pla
 
 To share your game, [submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submissions are reviewed before publication; submitting does not install or publish a game automatically.
 
+#### Scrolling runners (unreleased)
+
+Schema 12 adds finite scrolling courses through `runners` in game.yaml. Authors choose rows, obstacles, pickups, steering and boost rates, limited actions, retry distance, images and sound cues. An event starts a course with `run_game` and maps its result to flags or variables. The [Meadow courier game](https://github.com/nao1215/gozen/tree/main/examples/runner/game) is a complete original example; the [runner authoring reference](https://github.com/nao1215/gozen/blob/main/docs/architecture/casual-activities.md#runner-authoring-in-development) describes the fields and controls.
+
+Runners use the ordinary game package, so the same game can run standalone or inside the phone. Progress can be saved after the result; an active attempt cannot be saved midway. Loading a completed result preserves its story rewards without making the player repeat the course. Ricochet and tile-route games remain planned and have no supported authoring fields yet.
+
 #### Chats, feeds and other apps
 
 A home screen opens contacts, chats and feeds. Authors define history and replies in YAML; flags reveal contacts, messages and posts. Players choose fixed replies without typing, and read-only apps need no reply handling. See the [flag-based phone recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-flags.md).

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -206,7 +207,7 @@ func TestPhoneBannerRecordingReplay(t *testing.T) {
     - set: {var.finished: 'var.finished + 1'}
 `)}
 	var recording bytes.Buffer
-	g, err := New(Options{FS: fsys, Location: "camp", Event: "notify", Seed: 7, Trace: &recording, NoSound: true, Store: savefile.MemStore()})
+	g, err := New(Options{FS: fsys, Location: "camp", Event: "notify", Line: 1, Seed: 7, Trace: &recording, NoSound: true, Store: savefile.MemStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -764,6 +765,22 @@ func TestPhoneChildAudioFailureDuringEntry(t *testing.T) {
 			}
 			if p.child != nil || !child.closed || parent.failure != nil || !strings.Contains(p.gameError, "child audio failed") {
 				t.Fatal("entry failure did not preserve host with visible child error")
+			}
+		})
+	}
+}
+
+func TestPhoneAtEventEntryIsNotSkippedWithoutSeek(t *testing.T) {
+	for _, line := range []int{0, 1} {
+		t.Run(fmt.Sprintf("line_%d", line), func(t *testing.T) {
+			g, _ := btlOpen(t, Options{Event: "phone_entry", Line: line}, "", "events:\n  phone_entry:\n    do:\n    - phone: {app: chat, title: Entry, messages: [{text: Read this first.}]}\n    - say: After the phone.\n")
+			sysFrames(t, g, 60)
+			if line == 0 {
+				if g.phone == nil || g.talk.active || g.fast != nil {
+					t.Fatal("default event entry skipped its first phone")
+				}
+			} else if g.phone != nil || !g.talk.active || g.talk.say.Text != "After the phone." {
+				t.Fatal("explicit first-line seek did not retain its replay behavior")
 			}
 		})
 	}

@@ -1,6 +1,6 @@
 # Phone games and extensible casual activities
 
-Phone hosting, approved packages and explicit installation are available in Gozen 0.23.0. Runner gameplay and the casual activity model below remain proposals. Public catalog publication is tracked separately from the engine release.
+Phone hosting, approved packages and explicit installation are available in Gozen 0.23.0. Runner gameplay is implemented in the working tree for schema 12; ricochet and tile-route gameplay remain proposals. Public catalog publication is tracked separately from the engine release.
 
 ## Delivery order
 
@@ -18,7 +18,7 @@ Authors can submit games through the [registration form](https://github.com/nao1
 
 ## Initial casual-game scope
 
-Prioritize one existing runner port and two original casual games. These are priorities, not a limit on the number of samples. The phone host is implemented; the gameplay capabilities below are proposed and must pass the acceptance checks before being advertised. A catching game or charge-jump game may follow when it can reuse the implemented capabilities and demonstrate a distinct authoring use without requiring a large dedicated subsystem.
+Prioritize one existing runner port and two original casual games. These are priorities, not a limit on the number of samples. The phone host and runner are implemented; ricochet and tile-route capabilities remain proposed and must pass the acceptance checks before being advertised. A catching game or charge-jump game may follow when it can reuse the implemented capabilities and demonstrate a distinct authoring use without requiring a large dedicated subsystem.
 
 | Game | Player decisions | Primary controls | What it verifies |
 | --- | --- | --- | --- |
@@ -83,7 +83,7 @@ No diagonal matching, irregular boards, special-tile combo taxonomy, team system
 
 ## Runtime and result ownership
 
-Gamedata owns definitions and validation. Rules below the presentation layer own attempt state and deterministic updates. Presentation translates input and renders snapshots; it does not decide scores or grant story rewards. [Proposed ADR 0064](../decisions/0064-casual-game-runtime.md) specifies package ownership, typed results, input gaps and the first integrated implementation gate. It does not add supported YAML or change the current runtime.
+Gamedata owns definitions and validation. Rules below the presentation layer own attempt state and deterministic updates. Presentation translates input and renders snapshots; it does not decide scores or grant story rewards. [ADR 0064](../decisions/0064-casual-game-runtime.md) specifies package ownership, typed results, input handling and implementation gates. Schema 12 implements the runner family; the other two families do not yet have authoring fields.
 
 An activity within a game returns one completed, failed or cancelled outcome and explicitly declared counters. The waiting event applies assignments once. Reopening a result screen cannot repeat a reward. An independently installed phone game has its own state and saves under ADR 0063; its score does not automatically modify its parent game.
 
@@ -99,3 +99,35 @@ Games that do not use these capabilities allocate no attempt state and run no ac
 4. For every supported game, verify starting, cancelling, losing focus, retrying, completing, restoring progression and returning from the phone. Test deterministic replay, failed I/O and resource limits, then desktop and browser exports and real touch operation. Add schema documentation and dango coverage for observable contracts.
 
 Evaluate additional samples by completion cost, reuse and the distinct authoring capability they verify, rather than by a fixed count. Defer additions that require a large dedicated subsystem. Arbitrary physics and arbitrary code remain outside this proposal. The implementation is ready to advertise only when each promised capability has a playable example and the corresponding runtime evidence.
+
+## Runner authoring in development
+
+The schema-12 implementation uses `runners` in game.yaml and `run_game: {id: NAME, outputs: ...}` in an event. It is not part of the 0.23.0 release. The engine owns collision ordering, while authors supply finite rows and their appearance. The original [Meadow courier example](../../examples/runner/game/game.yaml) and [Harbor lane fixture](../../e2e/atago/fixtures/runner/game.yaml) exercise different widths, speeds and layouts.
+
+| Fields | Meaning |
+| --- | --- |
+| `title`, `width`, `view_rows`, `player_row`, `start_x`, `radius` | Heading, visible course dimensions and the player's collision footprint |
+| `speed`, `steer_speed`, `steer_start`, `ramp_ticks` | Scroll speed, maximum and initial steering speed, and held-direction acceleration |
+| `boost_rate`, `boost_max` | Optional increase to forward speed while holding boost |
+| `lives`, `max_lives`, `life_every`, `stock`, `max_stock` | Spare lives, pickup-based life rewards and limited-action stock |
+| `retry_rows`, `clear_ticks` | In-memory rewind distance and the wall-clear action's pause |
+| `ahead`, `finish_rows`, `finish_speed`, `finish_steer_speed` | Initial preview row and the empty tail after the last stage |
+| `tiles`, `kind`, `value`, `image`, `color` | Tile keys, cell rules, collectible score and appearance |
+| `stages`, `id`, `rows`, `clear` | Ordered course rows and authored stage-clear milestones; stages can override speed and background |
+| `player_image`, `player_color`, `background` | Player art, fallback color and backdrop |
+| `pickup_sound`, `action_sound`, `fail_sound`, `finish_sound` | Named sound effects for gameplay feedback |
+| `visuals`, `board`, `portrait`, `idle`, `reactions` | Optional fixed rectangles and portrait images selected by gameplay events |
+| `board_background`, `board_color`, `canvas_color`, `player_size`, `player_offset` | Backdrop placement, board tint and player sprite dimensions/offset in cells |
+| `ready_ticks`, `cutin`, `cutin_ticks` | Ready delay and the limited-action cut-in |
+| `event`, `images`, `ticks`, `priority`, `every` | Reaction event, image choices, duration, overlap priority and streak interval |
+| `run_game`, `outputs` | Start one attempt and assign its recorded terminal fields to authored flags or variables |
+
+A dot is an empty tile. Other printable ASCII keys select `wall`, `pickup`, `life` or `stock` cells. Every row must have exactly `width` cells. The course contains at most 256 stages and 65536 rows. Scroll speed multiplied by maximum boost cannot exceed 60 rows per second. A stage's zero speed inherits the runner rate; explicit per-stage rates let authors change difficulty without embedding a generator in the engine.
+
+Holding Up increases the boost multiplier; releasing it keeps the gained speed until retry. The limited action spends one stock, immediately clears walls in the visible and preview rows, and freezes movement for `clear_ticks`. A retry spends one spare life, rewinds `retry_rows` (zero restarts the course), restores walls and keeps collected cells consumed. `ready_ticks: 0` waits for start confirmation; a positive value starts after that countdown.
+
+Portrait reactions accept `pickup`, `life`, `stock`, `miss`, `near_wall`, `crash`, `failed`, `course`, `completed`, `cancelled`, `retry`, `action` and `stage_clear`. Use `event` to give several named reactions the same trigger, or append `:TILE` to match one tile. `every` filters pickup streak multiples and cycles the image choice between those multiples; it does not animate the images frame by frame.
+
+The result's `score`, `lives`, `stock`, `stage`, `completed_stages`, `best_completed_stages`, `misses`, `ticks`, `distance`, `collected`, `streak` and `life_progress` are numbers; `completed`, `failed` and `cancelled` are booleans. `outputs` maps these names to distinct `var.` or `flag.` targets. The event accepts the result once, and loading a later save restores that recorded result instead of replaying the attempt. A phone child's result remains inside the child game. `stage` is a zero-based generation-stage index; `completed_stages` counts courses the player has passed, and `best_completed_stages` keeps the furthest count across retries. `misses` counts collisions, not uncollected pickups. `ticks` excludes pauses and action freezes. Live attempts require the graphical player; headless sessions can restore an accepted outcome but cannot play the challenge. A single event can record at most 4096 invocations.
+
+Runner controls use arrows, WASD or HJKL for direction, Enter/Space/X for the limited action, and Escape/Backspace/Z to cancel or pause. F1 and P also pause. Opposite directions use the most recently pressed side, including keyboard and pointer overlap. These bindings apply only while the runner owns input; covered menus retain ordinary Gozen controls. Touch uses a floating directional anchor and a double tap for the action, including a second finger while steering. The automated tests cover gesture state and phone-coordinate transforms; physical device verification is a separate acceptance step.

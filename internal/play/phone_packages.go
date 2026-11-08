@@ -26,7 +26,7 @@ import (
 
 // Development builds target the next release's package contract. Release builds
 // always use their actual version; unknown versions do not bypass constraints.
-const phoneDevelopmentVersion = "0.23.0"
+const phoneDevelopmentVersion = "0.24.0"
 
 var phonePseudoVersion = regexp.MustCompile(`^(\d+\.\d+\.\d+)-(?:0\.)?(\d{14})-[0-9a-f]{12}$`)
 
@@ -236,8 +236,9 @@ func (g *Game) selectPhonePackage(id string, inst *gamepackage.Installed) error 
 	return errors.Join(errClose, inst.Close())
 }
 
-// Cache payloads are base64 because the browser save adapter stores UTF-8 text.
-// Digest names are immutable; selection is published only after a successful save.
+// Custom save stores and legacy browser caches encode archive payloads as text.
+// The default browser cache uses IndexedDB. Digest names remain immutable;
+// selection is published only after a successful save.
 type phoneArchiveStore struct{ store Store }
 
 func (s phoneArchiveStore) Load(ctx context.Context, digest string) ([]byte, error) {
