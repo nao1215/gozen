@@ -408,7 +408,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 		}
 		return out.String()
 	}
-	for _, mode := range []string{"novel", "script-pick", "timed-fade", "map-zoom", "campaign", "campaign-warm", "battle-puppet", "native-window", "native-script", "guides"} {
+	for _, mode := range []string{"novel", "script-pick", "timed-fade", "map-zoom", "campaign", "campaign-warm", "battle-puppet", "party-hit", "seek-1000", "native-window", "native-script", "guides"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := filepath.Join(root, mode)
 			if err := os.Mkdir(dir, 0o700); err != nil {
@@ -423,6 +423,12 @@ func TestGraphicsScreensRepro(t *testing.T) {
 				fixture = "novel"
 			}
 			source := os.DirFS(filepath.Join("testdata", fixture))
+			if mode == "party-hit" {
+				source = partyHitFiles(t)
+			}
+			if mode == "seek-1000" {
+				source = gameFiles(t)
+			}
 			if mode == "map-zoom" {
 				source = atlasCameraFiles(t)
 			}
@@ -446,7 +452,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			}
 			if mode == "campaign-warm" {
 				// Exercise atlas promotion after many intermediate portrait draws;
-				// seeking skips those draws but must retain exact pixel equality.
+				// uncapped seeking must retain exact pixel equality.
 				body = "wait 180\npress ok\nwait 180\nshot frame\nquit\n"
 			}
 			if fixture == "novel" {
@@ -499,6 +505,14 @@ func TestGraphicsScreensRepro(t *testing.T) {
 			if mode == "battle-puppet" {
 				start = []string{"--start", "field", "--party", "scout,guide", "--battle", "one"}
 				body = "wait 90\nshot frame\nquit\n"
+			}
+			if mode == "party-hit" {
+				start = []string{"--start", "field", "--party", "scout", "--battle", "one"}
+				body = partyHitScript
+			}
+			if mode == "seek-1000" {
+				start = []string{"--start", "camp"}
+				body = "wait 1010\nshot frame\nquit\n"
 			}
 			if strings.HasPrefix(mode, "native-") || mode == "guides" {
 				gameRoot, err := os.OpenRoot(game)
@@ -582,6 +596,12 @@ screens:
 				}
 			}
 			targets := []string{"frame.png", "60"}
+			if mode == "party-hit" {
+				targets = []string{"frame.png", "settled.png"}
+			}
+			if mode == "seek-1000" {
+				targets = []string{"1000"}
+			}
 			if mode == "guides" || mode == "native-script" {
 				targets = []string{"frame.png", "frame.png"}
 			}
@@ -594,7 +614,7 @@ screens:
 				t.Fatal(err)
 			}
 			for _, line := range traceLines(t, data, "view") {
-				if shot, ok := line["shot"].(string); ok && shot != "" {
+				if shot, ok := line["shot"].(string); ok && shot != "" && mode != "seek-1000" {
 					targets = append(targets, shot)
 					break
 				}
@@ -654,10 +674,28 @@ screens:
 				cmd.Env = append(os.Environ(), "PATH="+root+string(os.PathListSeparator)+os.Getenv("PATH"))
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				started := time.Now()
 				err := cmd.Run()
+				elapsed := time.Since(started)
 				cancel()
 				if err != nil {
 					t.Fatalf("reproduce: %v\n%s\n%s", err, &stdout, &stderr)
+				}
+				if mode == "seek-1000" {
+					t.Logf("seek 1000 ticks (including process startup and PNG): %s", elapsed)
+					if baseline := os.Getenv("GOZEN_REPRO_BASELINE"); baseline != "" {
+						ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+						before := exec.CommandContext(ctx, baseline, "run", game, "--dev", "--mute", "--replay", trace, "--until", "1000", "--shots", filepath.Join(dir, "before"), "--save-dir", filepath.Join(dir, "before-saves")) //nolint:gosec // Explicit test binary supplied by the coordinator.
+						before.Stdout, before.Stderr = &stdout, &stderr
+						started := time.Now()
+						err := before.Run()
+						duration := time.Since(started)
+						cancel()
+						if err != nil {
+							t.Fatalf("baseline seek: %v\n%s\n%s", err, &stdout, &stderr)
+						}
+						t.Logf("baseline seek 1000 ticks (including process startup and PNG): %s", duration)
+					}
 				}
 				if strings.HasSuffix(target, ".png") {
 					originalPath := target

@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/token"
 	"image"
+	"image/color"
 	"io"
 	"os"
 	"path/filepath"
@@ -465,7 +466,7 @@ func TestTraceReproRestoresSavesAndMemo(t *testing.T) {
 	}
 }
 
-func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
+func TestTraceReproPreservesTargetState(t *testing.T) {
 	trace := wldRecord(t, wldRecordScript)
 	normal, err := wldReplayGame(t, trace, func(o *Options) { o.Until = 100 })
 	if err != nil {
@@ -487,10 +488,9 @@ func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	loop := &seekLoop{Game: fast, drew: true}
 	calls := 0
 	for !fast.untilShot {
-		if err := loop.Update(); err != nil {
+		if err := fast.Update(); err != nil {
 			t.Fatal(err)
 		}
 		calls++
@@ -502,13 +502,12 @@ func TestTraceReproBatchesPreserveTargetState(t *testing.T) {
 	if fast.tick != 99 || !bytes.Equal(got, want) {
 		t.Fatalf("seek at %d: %s; want %s", fast.tick, got, want)
 	}
-	// This event-driven replay now draws each tick; idle batching is checked separately.
-	if calls > 100 {
-		t.Fatalf("seek did not reach its target promptly: %d calls", calls)
+	if calls != 100 {
+		t.Fatalf("seek must advance one tick per update: %d calls", calls)
 	}
 	fast.autoShot = "" // A successful target Draw releases the stop handshake.
 	for range 3 {
-		if err := loop.Update(); errors.Is(err, errQuit) {
+		if err := fast.Update(); errors.Is(err, errQuit) {
 			break
 		} else if err != nil {
 			t.Fatal(err)
@@ -657,18 +656,6 @@ func TestTraceRejectsScriptMutations(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestTraceReproBatchesIdleTicks(t *testing.T) {
-	g := wldOpenWith(t, Options{FS: gameFiles(t), Location: "camp", Until: 100})
-	g.rep = &replay{partial: true}
-	loop := &seekLoop{Game: g, drew: true}
-	if err := loop.Update(); err != nil {
-		t.Fatal(err)
-	}
-	if g.tick <= 1 {
-		t.Fatalf("idle seek did not batch: tick %d", g.tick)
 	}
 }
 
@@ -2287,4 +2274,45 @@ func TestTraceReviewGalleryBoundary(t *testing.T) {
 	newGallery(g)
 	assertSourceRefused(t, &buf, "cg_review")
 	assertReplaySourceBoundary(t, buf.Bytes(), "cg_review", 3)
+}
+
+// partyHitFiles makes a real enemy attack cross the actor's HP-face threshold.
+func partyHitFiles(t *testing.T) fstest.MapFS {
+	t.Helper()
+	files := gameFiles(t)
+	files["game.yaml"].Data = append(files["game.yaml"].Data, []byte("schema_version: 7\n")...)
+	body := string(files["data/main.yaml"].Data)
+	body = strings.Replace(body, "scout: {name: Scout,", "scout: {faces: party, face: normal, images: [{below: 0.9, face: hurt}], name: Scout,", 1)
+	body = strings.Replace(body, "mhp: 30, mmp: 0", "mhp: 500, mmp: 0", 1)
+	body = strings.Replace(body, `damage: "1", variance: 0`, `damage: "25", variance: 0`, 1)
+	files["data/main.yaml"].Data = []byte(body)
+	files["assets/party/normal.png"] = &fstest.MapFile{Data: wldPNG(t, 64, 64, color.NRGBA{R: 40, G: 180, B: 80, A: 255})}
+	files["assets/party/hurt.png"] = &fstest.MapFile{Data: wldPNG(t, 64, 64, color.NRGBA{R: 220, G: 80, B: 40, A: 255})}
+	return files
+}
+
+const partyHitScript = "wait 90\npress ok\npress ok\nwait 107\nshot frame\nwait 30\nshot settled\nquit\n"
+
+func TestTracePartyHitFixture(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: partyHitFiles(t), Location: "field", Battle: "one", Party: []string{"scout"}, Seed: 7, Script: partyHitScript})
+
+	for range 300 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		shot := g.in.script.shot
+		g.in.script.shot = "" // Pixel capture is exercised by TestGraphicsScreensRepro.
+		g.Draw(btlImage())
+		if shot != "frame" {
+			continue
+		}
+		s := g.currentBattle()
+		u := s.b.Party[0]
+		if s.shownHP[u] != 25 || s.faceOf(u) != "hurt" || s.foeFade[u].ticks <= 0 || s.foeFade[u].ticks >= 18 {
+			t.Fatalf("expected a real hit and an in-progress HP portrait fade at tick %d: HP %d face %s fade %+v", g.tick, s.shownHP[u], s.faceOf(u), s.foeFade[u])
+		}
+		t.Logf("party hit screenshot at tick %d, fade %d", g.tick, s.foeFade[u].ticks)
+		return
+	}
+	t.Fatal("fixture did not capture the hit")
 }

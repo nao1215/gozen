@@ -183,13 +183,13 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
 	g.StartRendering()
-	var loop ebiten.Game = g
-	if g.rep != nil && opts.Until > 0 && opts.Video == nil && opts.Audio == nil {
-		loop = &seekLoop{Game: g}
+	if g.rep != nil && opts.Until > 0 {
+		// Draw every replay tick: presentation transitions can begin in Draw.
+		// Uncap the frame rate, not the number of updates between draws.
 		ebiten.SetVsyncEnabled(false)
 		ebiten.SetTPS(ebiten.SyncWithFPS)
 	}
-	err = ebiten.RunGameWithOptions(loop, &ebiten.RunGameOptions{InitUnfocused: unwatched})
+	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	if errors.Is(err, errQuit) {
 		err = nil
 	}
@@ -2498,38 +2498,4 @@ func (g *Game) Close() error {
 	gfx.Reset()
 	activeGame.Store(false)
 	return err
-}
-
-// seekLoop batches ordinary ticks without intermediate drawing. The first draw
-// initializes renderer resources; the target draw still completes before quitting.
-type seekLoop struct {
-	*Game
-	drew bool
-}
-
-func (s *seekLoop) Draw(screen *ebiten.Image) {
-	s.Game.Draw(screen)
-	s.drew = true
-}
-
-func (s *seekLoop) Update() error {
-	deadline := time.Now().Add(12 * time.Millisecond)
-	for range 256 {
-		if err := s.Game.Update(); err != nil {
-			return err
-		}
-		// Events can freeze the previous frame after a timed wait. Keep drawing
-		// while an event advances so lastView is the frame before the transition.
-		// Direct actions, like inputs, can also start a transition on the next tick.
-		_, inputNext := s.rep.inputs[s.tick+1]
-		_, actNext := s.rep.acts[s.tick+1]
-		eventRunning := s.events != nil && s.events.Running()
-		if b := s.currentBattle(); b != nil && b.runner != nil && b.runner.Running() {
-			eventRunning = true
-		}
-		if !s.drew || s.untilShot || inputNext || actNext || eventRunning || time.Now().After(deadline) {
-			return nil
-		}
-	}
-	return nil
 }

@@ -1486,7 +1486,7 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 }
 
 // stepFoePictures prepares the visible enemies once per simulation tick. Drawing
-// only consumes this state, including when replay skips intermediate frames.
+// only consumes this state, so repeated draws cannot advance puppet motion.
 func (s *battleScene) stepFoePictures(g *Game) {
 	for u, p := range g.puppets.enemies {
 		if !slices.Contains(s.b.Foes, u) || s.gone[u] >= 40 || u.Def.Puppet == "" {
