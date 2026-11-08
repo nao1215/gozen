@@ -9,7 +9,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/hajimehoshi/ebiten/v2 v2.10.5
 	github.com/nao1215/markdown v1.1.1
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/yalue/onnxruntime_go v1.38.0
 	golang.org/x/image v0.47.0
 	golang.org/x/text v0.43.0
