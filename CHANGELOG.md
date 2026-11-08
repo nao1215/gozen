@@ -10,6 +10,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - `gozen trace --repro TICK|TIME|PNG` prints a command to retake a recorded screen; `--format json` reports the reproduction bundle and `--out DIR` writes a cut trace, initial saves and a portable reproduction script. Traces preserve initial save bytes, slot times and memo starts, and `run --replay --until` reproduces recorded draw cadence without real-time pacing (older traces assume a draw every tick).
 
+### Fixed
+
+- Replay input cannot be overwritten by its trace output, including file aliases. Recording keeps a fixed canvas through window resizes, and phone frame rates and screenshot dimensions are bounded before indexing or allocation.
+- Save backups preserve unreadable existing files. Repeated screenshots to one path finish in order and replace the file atomically. Restoring phone answers rejects missing or invalid values, and line-zero checkpoints resume without consuming dialogue.
+- `sim batch` emits versioned item records and a final success/failure summary, exits 1 when any case fails, and shares typed script execution. Missing game inputs are fatal diagnostics on stderr in every check format. Headless runs report unsupported state-bearing requests and invalid answers, keep errors local to each operation, and avoid preparing phone puppet images.
+
 ## v0.21.2 - 2026-11-07
 
 Scripted play that only moves on when a screen acts on the input: a press or click that does nothing is retried and then reported, instead of silently drifting from the route.

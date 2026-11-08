@@ -374,7 +374,9 @@ The cases are JSON Lines, one object a line, from `--cases FILE` (`-` is the sta
 gozen sim batch --cases cases.jsonl
 ```
 
-When a case ends, one line is written to the standard output: `{"id":"night","exit":0,"stdout":"31 ticks, 13 trace lines in night.jsonl\n","stderr":""}`, the exit status and what `sim script` with the same arguments would have printed. The trace goes where the case's `--trace` says, and is the same as `sim script` writes. Each case has its own seed, saves and state, and nothing of one case reaches the next. A line that does not parse gives a result with exit 2, and the next line is played. Cases cannot use `-` for their script or trace. A program can stream cases and read each result before it sends the next. Cases play one at a time; to play them in parallel, run several processes.
+When a case ends, stdout receives a version-1 JSONL envelope with `command: "sim batch"`, `type: "item"`, its `id` and `status` (`ok` or `failed`). Its `data` contains the case's `id`, `exit`, `stdout` and `stderr`: the exit status and output that `sim script` with the same arguments would have produced. A final `summary` contains `succeeded` and `failed` counts; any failed case makes the batch exit 1. Fatal input or processing errors go to stderr and may prevent this summary.
+
+The trace goes where the case's `--trace` says, and is the same as `sim script` writes. Each case has its own seed, saves and state. A line that does not parse gives a result with exit 2, and the next line is played. Cases cannot use `-` for their script or trace. A program can stream cases and read each result before it sends the next. Cases play one at a time; to play them in parallel, run several processes.
 
 | Option | Meaning |
 |:--|:--|

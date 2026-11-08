@@ -90,12 +90,18 @@ or stderr write exits 1, including when reporting invalid arguments. A failed
 result already written to stdout uses `cliio.ErrReported` to avoid a duplicate
 diagnostic.
 
-`new`, `export`, `capture`, `theme list`, `trace` and every `sim` command support `--format text|json|jsonl`. JSON emits one
+`new`, `export`, `capture`, `theme list`, `trace` and the `sim` commands other than `sim batch` support `--format text|json|jsonl`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the
 existing GZN codes and exit values. Other commands retain their documented
 formats until their migration batch; do not assume the new envelope everywhere.
+
+`sim batch` always emits JSONL: a version-1 `item` per case, with the case's
+`exit`, `stdout` and `stderr` inside `data`, followed by a `summary` with
+`succeeded` and `failed` counts. A failed case does not stop later cases;
+any failed case makes the batch exit 1. Fatal input or processing errors go
+to stderr and may prevent the terminal summary.
 
 The real-binary contracts live in `e2e/atago/new.atago.yaml`,
 `e2e/atago/theme.atago.yaml` and the existing `errors.atago.yaml`. They cover
