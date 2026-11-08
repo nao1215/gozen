@@ -36,3 +36,5 @@ Gozen is a no-code game creation toolkit for 2D RPGs, visual novels and strategy
 - When you change README.md, the website or a picture they show, run `make docs-images` and the docs checks (`go test ./internal/dev/docs`, `make docs-steps`, `make website website-check`); see [README and site pictures and steps](docs/development/docs.md).
 - Never report skipped, placeholder, cross-compiled, or unexecuted tests as runtime verification.
 - Report completed work, commands and outcomes, limitations, and remaining work in the change description. Follow [the release checklist](docs/development/release-checklist.md) before publication. Keep private inspection records outside this repository.
+
+Run `go tool dango lint` for maintainer decision checks; see [Dango](docs/development/dango.md).

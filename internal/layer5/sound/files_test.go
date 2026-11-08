@@ -1,6 +1,7 @@
 package sound
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -103,7 +104,7 @@ func TestEffectDurationsWithoutPlayback(t *testing.T) {
 	if err := Close(); err != nil {
 		t.Fatal(err)
 	}
-	if n := LoadEffectDurations(fsys); n != 2 {
+	if n, err := Load(fsys, SfxDir); err != nil || n != 2 {
 		t.Fatalf("loaded %d durations", n)
 	}
 	for name, seconds := range want {
@@ -119,6 +120,26 @@ func TestEffectDurationsWithoutPlayback(t *testing.T) {
 	}
 	if EffectSeconds("tone") != 0 || EffectSeconds("decide") == want["decide"] {
 		t.Fatal("custom duration leaked across sessions")
+	}
+}
+
+func TestLoadDurationDirectory(t *testing.T) {
+	freshSession(t)
+	fsys := fstest.MapFS{"clips/tone.wav": {Data: testgame.Wav(0.25)}}
+	if n, err := Load(fsys, "clips"); err != nil || n != 1 {
+		t.Fatalf("load clips: count=%d, error=%v", n, err)
+	}
+	if math.Abs(EffectSeconds("tone")-0.25) > 0.01 || len(effects) != 0 {
+		t.Fatal("directory load changed duration or created PCM")
+	}
+	if _, err := Load(fsys, "../clips"); !errors.Is(err, fs.ErrInvalid) {
+		t.Fatalf("invalid directory: %v", err)
+	}
+	if n, err := Load(fsys, "clips/tone.wav"); err == nil || n != 0 {
+		t.Fatalf("file used as directory: count=%d, error=%v", n, err)
+	}
+	if n, err := Load(fsys, "missing"); err != nil || n != 0 {
+		t.Fatalf("optional directory: count=%d, error=%v", n, err)
 	}
 }
 
@@ -142,10 +163,10 @@ func TestReloadEffectsDropsRemovedFiles(t *testing.T) {
 					"assets/sfx/custom.wav": {Data: testgame.Wav(0.75)},
 					"assets/sfx/decide.wav": {Data: testgame.Wav(0.75)},
 				}
-				if n := loadEffects(fsys, lengthsOnly); n != 2 {
+				if n, err := loadEffects(fsys, SfxDir, lengthsOnly); err != nil || n != 2 {
 					t.Fatalf("loaded %d effects", n)
 				}
-				if n := loadEffects(replacement, lengthsOnly); n != 0 {
+				if n, err := loadEffects(replacement, SfxDir, lengthsOnly); err != nil || n != 0 {
 					t.Fatalf("loaded %d removed effects", n)
 				}
 				if EffectSeconds("custom") != 0 || EffectSeconds("decide") != builtin {

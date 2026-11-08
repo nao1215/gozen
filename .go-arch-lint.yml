@@ -55,8 +55,10 @@ components:
   private5: { in: "internal/layer5/**" }
   private6: { in: "internal/layer6/**" }
   # One CLI (ADR 0016): gozen owns prompt and mosaic through their internal command packages.
-  commands: { in: ["cmd/gozen/**", "cmd/internal/**"] }
+  commands: { in: ["cmd/gozen/**", "cmd/internal/checkdata/**", "cmd/internal/cli/**", "cmd/internal/distribute/**", "cmd/internal/starter/**", "cmd/internal/themes/**", "cmd/internal/trial/**"] }
   # GNU-style options and help pages shared by gozen, its production commands, and runner (ADR 0018).
+  repro: { in: "cmd/internal/repro/**" }
+  dango: { in: "cmd/internal/dango/**" }
   player: { in: "cmd/gozen-player/**" }
   cliio: { in: "internal/cliio/**" }
   clihelp: { in: "internal/clihelp/**" }
@@ -119,8 +121,12 @@ deps:
     mayDependOn: [private6, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5]
     canUse: [ebiten, image]
   commands:
-    mayDependOn: [commands, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
+    mayDependOn: [repro, commands, expr, text, savefile, chat, rpg, battle, event, world, react, headless, play, private1, private2, private3, private4, private5, promptcmd, mosaiccmd, mosaic, clihelp, cliio, diag]
     canUse: [yaml, ebiten, image, pflag, markdown]
+  repro:
+    mayDependOn: [diag, private1]
+  dango:
+    mayDependOn: [repro, dev, clihelp, cliio, diag]
   player:
     mayDependOn: [play, private2, webfs]
     canUse: [ebiten, js]

@@ -22,3 +22,5 @@ Keep explanatory documentation under `docs/`. In a pull request, explain the cha
 Create original general-audience examples. Record third-party asset sources and licenses in [ASSETS.md](ASSETS.md); do not include models or private game material. Contributions are provided under the repository's [MIT license](LICENSE), with separate notices preserved for third-party assets.
 
 Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
+
+Run `go tool dango lint` for maintainer decision checks; see [Dango](docs/development/dango.md).

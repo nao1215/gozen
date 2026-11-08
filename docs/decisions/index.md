@@ -49,7 +49,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0039](0039-shared-yaml-paths.md) | Shared YAML path selection and removal of the unused dungeon relay | Accepted | |
 | [0040](0040-stacked-spaces.md) | Bounded stacked spaces: streets, interiors and continuous stairs | Accepted | Upright tile pictures added 2026-10-25 |
 | [0041](0041-yaml-authoring-and-distribution.md) | YAML authoring and distribution; public Go API retirement last | Accepted for phased implementation | |
-| [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Accepted for phased implementation | |
+| [0042](0042-command-and-output-contract.md) | Direct commands, capture and structured output | Implemented | Reproduction argv and scripts are output artifacts only (2026-11-08 clarification) |
 | [0043](0043-narrative-authoring.md) | Narrative authoring and executable YAML extensions | Accepted | |
 | [0044](0044-continuous-space-movement.md) | Opt-in continuous movement, collision and held-input acceleration | Accepted | Implemented 2026-10-25 |
 | [0045](0045-building-surfaces-and-roofs.md) | Building surfaces and bounded roofs | Accepted | Implemented 2026-10-25 |
@@ -68,6 +68,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0058](0058-layout-records-in-traces.md) | Where a trace says standing pictures and texts were drawn, with the contrast behind each text; gozen records and does not judge | Accepted and implemented | |
 | [0059](0059-call-framing-self-backdrop-and-toast-cards.md) | A call's view keeps the hair inside, a picture self view takes a backdrop (`call.self_backdrop`), and notices stand on nearly opaque cards under `ui.material` | Accepted and implemented | |
 | [0060](0060-general-phone-outcomes.md) | General phone timeout outcomes, keyboard operation and game-wide colors | Accepted | |
+| [0061](0061-dango-maintainer-tests.md) | Maintainer decision tests with dango | Implemented | Reproduction shares the typed author CLI bundle operation |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

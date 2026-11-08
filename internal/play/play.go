@@ -27,6 +27,7 @@ import (
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/memo"
 	"github.com/nao1215/gozen/internal/layer1/pace"
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/atlas"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
@@ -692,7 +693,9 @@ func New(opts Options) (_ *Game, err error) {
 	}
 
 	if opts.Audio == nil && opts.NoSound {
-		sound.LoadEffectDurations(opts.FS)
+		if _, err := sound.Load(opts.FS, sound.SfxDir); err != nil {
+			log.Printf("sfx durations: %v", err)
+		}
 	}
 	silentBGM := opts.Audio == nil && opts.NoSound && opts.Trace != nil
 	if opts.Audio != nil || !opts.NoSound || silentBGM {
@@ -880,7 +883,7 @@ func (g *Game) fitView(ow, oh, dsf float64) {
 	}
 	if g.tr != nil {
 		w, h := g.pixels()
-		viewport := traceViewport{Width: int(w), Height: int(h), Scale: g.ui, Tall: g.view.tall}
+		viewport := traceformat.Viewport{Width: int(w), Height: int(h), Scale: g.ui, Tall: g.view.tall}
 		if g.tr.viewport != viewport {
 			g.tr.viewport = viewport
 			g.emit("viewport", traceLine{"width": viewport.Width, "height": viewport.Height, "scale": viewport.Scale, "tall": viewport.Tall})

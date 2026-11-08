@@ -3,6 +3,8 @@ package sound
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -18,15 +20,27 @@ const SfxDir = "assets/sfx"
 
 // LoadEffects replaces the game effects and durations for startup and live reload.
 // Removed overrides revert to built-in sounds; unreadable files are logged and skipped.
-func LoadEffects(fsys fs.FS) int { return loadEffects(fsys, false) }
+func LoadEffects(fsys fs.FS) int {
+	n, err := loadEffects(fsys, SfxDir, false)
+	if err != nil {
+		log.Printf("sfx: %v", err)
+	}
+	return n
+}
 
-// LoadEffectDurations loads only stream lengths for play's muted sessions.
-// It creates no players or PCM buffers; unreadable effects are logged and skipped
-// just as in LoadEffects. Each load replaces custom durations, including removals.
-// Close releases the session's custom durations.
-func LoadEffectDurations(fsys fs.FS) int { return loadEffects(fsys, true) }
+// Load installs effect durations for the player's muted startup and live reload,
+// returning the number of readable effects in dir (a relative FS directory).
+// It creates no players or PCM buffers. Missing directories and a nil FS mean
+// no custom effects. Invalid directories return an error; unreadable individual
+// effects are logged and skipped, as in LoadEffects. Each call replaces custom
+// durations; Close clears them. Call only between sessions or on the game thread.
+func Load(fsys fs.FS, dir string) (int, error) { return loadEffects(fsys, dir, true) }
 
-func loadEffects(fsys fs.FS, lengthsOnly bool) int {
+func loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (int, error) {
+	if !fs.ValidPath(dir) {
+		return 0, fmt.Errorf("sfx directory %q: %w", dir, fs.ErrInvalid)
+	}
+
 	mu.Lock()
 	restoreBuiltins := false
 	for name := range effectDurations {
@@ -42,11 +56,14 @@ func loadEffects(fsys fs.FS, lengthsOnly bool) int {
 	}
 
 	if fsys == nil {
-		return 0
+		return 0, nil
 	}
-	ents, err := fs.ReadDir(fsys, SfxDir)
+	ents, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		return 0
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, err
 	}
 	n := 0
 	for _, e := range ents {
@@ -54,7 +71,7 @@ func loadEffects(fsys fs.FS, lengthsOnly bool) int {
 		if e.IsDir() || (ext != ".ogg" && ext != ".wav") {
 			continue
 		}
-		b, err := fs.ReadFile(fsys, SfxDir+"/"+e.Name())
+		b, err := fs.ReadFile(fsys, path.Join(dir, e.Name()))
 		if err != nil {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
@@ -84,7 +101,7 @@ func loadEffects(fsys fs.FS, lengthsOnly bool) int {
 		mu.Unlock()
 		n++
 	}
-	return n
+	return n, nil
 }
 
 type effectStream interface {

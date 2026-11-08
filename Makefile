@@ -41,6 +41,7 @@ coverage:
 	tail -n +2 "$$work/cli.out" >> coverage.out
 
 lint: arch boundary tidy workflows deadcode complexity
+	$(GO) tool dango lint
 	$(GOLANGCI_LINT) run ./...
 	$(GOLANGCI_LINT) fmt --diff
 	cd examples/go-zen && $(GOLANGCI_LINT) run ./... && $(GOLANGCI_LINT) fmt --diff

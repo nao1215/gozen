@@ -1,0 +1,135 @@
+version: '1'
+suite:
+  name: maintainer dango decision contracts
+  timeout: 180s
+scenarios:
+- name: list and real passing decision tests
+  steps:
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --list
+  - assert:
+      exit_code: 0
+      stdout: {contains: '0047 headless pictures:'}
+      stderr: {equals: ''}
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: dango lint}
+        - {path: $.status, equals: ok}
+        - {path: '$.data.decisions[0].status', equals: pass}
+        - {path: '$.data.decisions[0].details', equals: []}
+      stderr: {equals: ''}
+- name: invalid invocation has structured diagnostics and exit two
+  steps:
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --json --format json
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.severity, equals: error}
+  - run:
+      command: go -C "${specdir}/../.." tool dango lint --list --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.decisions[0].id', equals: '0004'}
+        - {path: '$.data.decisions[0].status', equals: not_run}
+        - {path: '$.data.decisions[0].tests[0].name', equals: TestRepositoryLocations}
+- name: an isolated functional option violates the real API decision
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/dango/prepare.py' '${specdir}/../..' checkout
+      timeout: 120s
+  - assert: {exit_code: 0}
+  - run:
+      command: go tool dango lint
+      cwd: checkout
+  - assert:
+      exit_code: 1
+      stdout: {contains: 'use a Config struct, not functional options'}
+      stderr: {equals: ''}
+  - run:
+      command: go tool dango lint --format json
+      cwd: checkout
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.status, equals: failed}
+        - {path: '$.data.decisions[1].id', equals: '0008'}
+        - {path: '$.data.decisions[1].status', equals: fail}
+        # The injected runtime source also invalidates recorded picture inputs.
+        - {path: '$.data.decisions[2].status', equals: fail}
+        - {path: '$.data.decisions[4].status', equals: fail}
+        - {path: '$.data.decisions[8].status', equals: pass}
+      stderr: {equals: ''}
+- name: reproduction writes artifacts without running the game
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: |
+        {"t":"start","tick":0,"exact_version":3,"game_dir":"nonexistent neutral game","seed":7,"setup":{"save_data":{"slot.json":"e30="}}}
+        {"t":"input","tick":1,"press":["ok"]}
+        {"t":"shot","tick":60,"file":"shots/frame.png"}
+        {"t":"end","tick":120}
+  - run:
+      command: go -C "${specdir}/../.." build -buildvcs=false -o "${workdir}/dango.exe" ./cmd/internal/dango
+  - assert: {exit_code: 0}
+  - run:
+      command: '"${workdir}/dango.exe" repro trace.jsonl --repro 1s --out "bundle space" --format json'
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.command, equals: dango repro}
+        - {path: $.data.tick, equals: 60}
+        - {path: $.data.until, equals: 61}
+        - {path: '$.data.argv[0]', equals: gozen}
+      file: {path: bundle space/repro.sh, contains: "exec 'gozen' 'run'"}
+  - assert:
+      file: {path: bundle space/trace.jsonl, contains: '"t":"repro","tick":60'}
+  - assert:
+      file: {path: bundle space/saves/slot.json, equals: '{}'}
+  - assert:
+      file: {path: bundle space/shots, exists: false}
+  - run:
+      command: gozen trace trace.jsonl --repro frame.png --out author --format text
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file: {path: author/repro.sh, equals_file: bundle space/repro.sh}
+  - assert:
+      file: {path: author/trace.jsonl, equals_file: bundle space/trace.jsonl}
+  - run:
+      command: '"${workdir}/dango.exe" repro trace.jsonl --repro 60 --out "bundle space" --format json'
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.severity, equals: error}
+  - run:
+      command: '"${workdir}/dango.exe" repro trace.jsonl --repro 60 --format text'
+  - assert:
+      exit_code: 0
+      stdout: {contains: "'--until' '61'"}
+      stderr: {equals: ''}
+  - run:
+      command: '"${workdir}/dango.exe" repro trace.jsonl --format json'
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.command, equals: dango repro}
+        - {path: $.severity, equals: error}

@@ -243,3 +243,33 @@ func TestTraceCheckMusicArrivesLateOrNever(t *testing.T) {
 	invoke(t, 0, "trace", file, "--check", "--music-late", "2")
 	invoke(t, 1, "trace", file, "--check", "--music-late", "1")
 }
+
+// These recorded observations do not define quality thresholds. Layout ratios
+// use the actual trace field, including unreadable equal-color text and cropping.
+func TestTraceFactsNeverFailCheck(t *testing.T) {
+	records := []string{
+		`{"t":"layout","tick":1,"since":0,"figures":[{"picture":"x.png","rect":[-100,-100,500,500],"content":[-100,-100,500,500],"clip":[0,0,10,10],"source_cut":["top","bottom"],"alpha":1}],"texts":[{"text":"Note","rect":[0,0,100,24],"size":24,"color":"#000000","back":"#000000","ratio":1}]}`,
+		`{"t":"layout","tick":2,"since":1,"texts":[{"text":"Note","rect":[1000,1000,5000,5000],"size":24,"color":"#000000","back":"#ffffff","ratio":21}]}`,
+		`{"t":"state","tick":1000000,"gold":0,"party":[{"name":"Guide","hp":0,"mhp":1000000,"mp":0,"mmp":100}]}`,
+	}
+	for _, record := range records {
+		report, err := checkTrace(strings.NewReader(record+"\n"), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(report.issues) != 0 {
+			t.Fatalf("facts produced diagnostics: %+v", report.issues)
+		}
+		file := traceFile(t, record)
+		for _, format := range []string{"text", "json", "jsonl"} {
+			_, stderr := invoke(t, 0, "trace", file, "--check", "--format", format)
+			if stderr != "" {
+				t.Fatal(stderr)
+			}
+			_, stderr = invoke(t, 0, "trace", file, "--format", format)
+			if stderr != "" {
+				t.Fatal(stderr)
+			}
+		}
+	}
+}
