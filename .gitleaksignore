@@ -1,0 +1,3 @@
+# Public Ed25519 verification key in a negative HTTPS-validation fixture.
+# Exact historical finding only; no rule-wide or file-wide suppression.
+582a5e50952fc90cf16ccfb297ef68a224067890:e2e/atago/desktop.atago.yaml:generic-api-key:339

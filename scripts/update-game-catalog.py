@@ -84,8 +84,12 @@ def candidates(catalog, sources, fetch):
             if len(assets) != 1 or not archive_url(assets[0]["browser_download_url"], repository):
                 raise ValueError("metadata asset leaves the approved repository")
             metadata = fetch(assets[0]["browser_download_url"], 256 << 10, False)
-            if metadata["id"] != source["id"] or not archive_url(metadata["url"], repository):
-                raise ValueError("release changes approved identity or repository")
+            # A repository may publish several approved games under separate tags.
+            # Only this source's identity is a candidate; other IDs gain no approval.
+            if metadata["id"] != source["id"]:
+                continue
+            if not archive_url(metadata["url"], repository):
+                raise ValueError("release leaves approved repository")
             if metadata.get("browser_url") and not browser_url(metadata["browser_url"], repository):
                 raise ValueError("browser mirror must pin a commit in the approved repository")
             if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", metadata["version"]):

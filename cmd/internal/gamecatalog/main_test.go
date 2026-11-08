@@ -110,6 +110,27 @@ except ValueError: pass
 else: raise AssertionError('different release tag accepted')
 release['draft']=True
 assert update(empty,sources,fetch)==empty
+# Multiple approved packages may share a repository and metadata asset name.
+mono_sources={'sources':[
+    {'id':name,'repository':'sample/game','manifest_asset':'gozen-package.json'}
+    for name in ('sample/counter','sample/trail')]}
+mono_releases=[]
+mono_metadata={}
+for name in ('counter','trail','unregistered'):
+    tag_base=base.replace('v1/',name+'-v1/')
+    address=tag_base+'gozen-package.json'
+    mono_releases.append({'assets':[{'name':'gozen-package.json','browser_download_url':address}]})
+    mono_metadata[address]={'id':'sample/'+name,'version':'1.0.0','url':tag_base+name+'.zip'}
+def mono_fetch(url,limit,api):
+    return copy.deepcopy(mono_releases if api else mono_metadata[url])
+mono=update(empty,mono_sources,mono_fetch)
+assert [r['id'] for r in mono['releases']]==['sample/counter','sample/trail'], 'unregistered package approved or shared source lost'
+assert update(mono,mono_sources,mono_fetch)==mono, 'monorepo update not idempotent'
+# Ignored packages cannot redirect the matching package's archive verification.
+mono_metadata[base.replace('v1/','counter-v1/')+'gozen-package.json']['url']='https://github.com/foreign/game/releases/download/v1/game.zip'
+try: update(empty,mono_sources,mono_fetch)
+except ValueError: pass
+else: raise AssertionError('matching monorepo package escaped approved repository')
 print('updater review boundary passed')
 `
 	cmd := exec.CommandContext(t.Context(), "python3", "-c", program, script) //nolint:gosec // Fixed maintainer program and repository script, no network fixture.
