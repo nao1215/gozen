@@ -36,4 +36,4 @@ probe.mkdir()
 # Replace the hard link before corrupting generated data in the isolated copy.
 schema = destination / "data/schema/types.schema.json"
 schema.unlink()
-schema.write_text("{}\n")
+schema.write_bytes(b"{}\n")
