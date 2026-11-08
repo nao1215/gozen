@@ -4,13 +4,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
-### Maintenance
-
-- Add factual per-section trace measurements with script `mark NAME`, generated speed-budget workloads, maintainer allocation/heap/time checks, and parallel path-filtered graphics benchmarks.
-
-- Add the maintainer-only `go tool dango lint`, with decision metadata, executable policy checks, structured results and CI enforcement, plus a `repro` wrapper sharing trace bundle generation; no author command or release binary is added.
+## v0.22.0 - 2026-11-08
 
 ### Added
+
+- Script `mark NAME` records named performance sections in traces, including frame and tick ranges, allocation, heap and timing measurements.
 
 - Phone home grids and contact directories can open authored events and return to their parent. Flag conditions unlock messages, posts, rows and fixed replies; optional scrollable chat history reconstructs from saved flags without free-text input or a dynamic transcript.
 
@@ -27,6 +25,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen trace --repro TICK|TIME|PNG` prints a command to retake a recorded screen; `--format json` reports the reproduction bundle and `--out DIR` writes a cut trace, initial saves and a portable reproduction script. Traces preserve initial save bytes, slot times and memo starts, and `run --replay --until` reproduces recorded draw cadence without real-time pacing (older traces assume a draw every tick).
 
 ### Fixed
+
+- Repeated captures draw identical text pixels instead of shifting glyphs between atlas allocations.
+- Auto waits for explicit phone outcomes, and Cancel dismisses pages without a timeout.
+- Muted playback preserves sound-length waits, and live reload refreshes sound-effect durations.
 
 - Screen observations exclude phone controls hidden behind app headers and reflect unavailable novel toolbar actions.
 
