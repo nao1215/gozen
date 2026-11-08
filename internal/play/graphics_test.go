@@ -841,7 +841,6 @@ func TestGraphicsScreensCaptureIdenticalPixels(t *testing.T) {
 // title/gameplay draws, so visual inspection cannot mistake dark phone chrome for
 // a missing parent layer. The child must change while the host controls stay put.
 func TestGraphicsScreensPhoneChrome(t *testing.T) {
-	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("../../e2e/atago/fixtures/game")); err != nil {
