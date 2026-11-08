@@ -1,3 +1,9 @@
 {
-  "sources": []
+  "sources": [
+    {
+      "id": "gozen/counter",
+      "repository": "nao1215/gozen",
+      "manifest_asset": "gozen-package.json"
+    }
+  ]
 }

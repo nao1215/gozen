@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.23.0 - 2026-11-08
+
 ### Added
 
 - Run standalone Gozen games inside the phone, in portrait or landscape, with a host-owned Back control. Child games keep separate input, fonts, audio, progress and saves; closing one resumes its host. The office sample includes two original games and custom app icons.

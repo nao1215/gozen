@@ -1,6 +1,6 @@
 # Approved phone game catalog
 
-The catalog lists reviewed game releases for the phone store. Host authors choose which package IDs and version ranges to offer. Publishing a catalog does not install an app or change an active game. The initial catalog has no registered third-party releases; examples use their own neutral fixtures.
+The catalog lists reviewed game releases for the phone store. Host authors choose which package IDs and version ranges to offer. Publishing a catalog does not install an app or change an active game. The catalog includes Counter, an example maintained with Gozen. The office sample uses its own local fixture catalog.
 
 `catalog.json` is the reviewed source. `sources.json` lists repositories from which the scheduled updater may propose new versions. Each source has `id` (`owner/name`), `repository` (`owner/repository`) and `manifest_asset` (`gozen-package.json`). Registering a source and its first release requires maintainer review, including distribution rights for the game and icon. The game registration issue form collects that information.
 
