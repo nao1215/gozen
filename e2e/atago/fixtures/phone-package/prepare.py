@@ -113,7 +113,7 @@ start: {{location: room, gold: 3}}
                    orientation="portrait" if index == 0 else "landscape",
                    url="https://example.com/fixtures/" + name + "-" + version + ".zip",
                    sha256=hashlib.sha256(package).hexdigest(), size=len(package),
-                   unpacked_size=sum(map(len, files.values())), engine=">=0.23.0 <0.25.0")
+                   unpacked_size=sum(map(len, files.values())), engine=">=0.23.0 <0.24.0")
     if mode != "packages-only":
         # This all-zero commit is synthetic and intercepted by browser E2E tests.
         release["browser_url"] = "https://raw.githubusercontent.com/nao1215/gozen/" + "0" * 40 + "/test-fixtures/" + name + ".zip"

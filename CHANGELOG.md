@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.23.1 - 2026-11-09
+
 ### Fixed
 
 - Browser phone installs use IndexedDB for archive bytes, allowing valid packages larger than localStorage can hold. Failed writes preserve the selected release and saves; older cached packages remain readable.
