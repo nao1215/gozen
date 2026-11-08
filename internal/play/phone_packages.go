@@ -26,7 +26,7 @@ import (
 
 // Development builds target the next release's package contract. Release builds
 // always use their actual version; unknown versions do not bypass constraints.
-const phoneDevelopmentVersion = "0.24.0"
+const phoneDevelopmentVersion = "0.23.1"
 
 var phonePseudoVersion = regexp.MustCompile(`^(\d+\.\d+\.\d+)-(?:0\.)?(\d{14})-[0-9a-f]{12}$`)
 
