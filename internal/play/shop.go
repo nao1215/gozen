@@ -471,8 +471,15 @@ func (s *saveMenu) refresh(g *Game) {
 	} else if !s.saving {
 		sel, _ = g.newestSave()
 	}
-	s.slots = newList(items, sw/2-400, sh/2-110, 800, n)
-	s.slots.rowH = 60
+	width := math.Min(800, sw-32)
+	_, _, titleGap := s.heading(width)
+	y := math.Max(sh/2-110, 16+titleGap)
+	// Reserve the status window even before a write, so saving does not move
+	// the selected slot and short landscape views retain every row.
+	rowHeight := math.Min(60, (sh-y-24-20-64-16)/float64(n))
+	s.slots = newList(items, (sw-width)/2, y, width, n)
+	s.slots.rowH = math.Max(24, rowHeight)
+	s.slots.size = math.Min(sizeM, s.slots.rowH/1.5)
 	s.slots.sel = sel
 }
 
@@ -528,17 +535,36 @@ func (s *saveMenu) write(g *Game, i int) {
 	s.msgT = 80
 }
 
-func (s *saveMenu) draw(g *Game, dst *ebiten.Image) {
-	sw, _ := g.screen()
-	fill(dst, withAlpha(colorBlack, 0x90))
+// heading fits the prompt above the slots without changing ordinary layouts.
+func (s *saveMenu) heading(width float64) ([]string, float64, float64) {
 	title := lang.T("どこに セーブしますか？")
 	if !s.saving {
 		title = lang.T("どの きろくから はじめますか？")
 	}
-	gfx.DrawTextOutlineColor(dst, title, sw/2, s.slots.y-70, sizeL, g.th.text, g.th.window, 1)
+	lines, size := gfx.FitLines(title, sizeL, width, 2)
+	return lines, size, math.Max(70, float64(len(lines))*gfx.LineHeight(size)+16)
+}
+
+func (s *saveMenu) draw(g *Game, dst *ebiten.Image) {
+	sw, _ := g.screen()
+	fill(dst, withAlpha(colorBlack, 0x90))
+	lines, size, gap := s.heading(s.slots.w)
+	for i, line := range lines {
+		gfx.DrawTextOutlineColor(dst, line, sw/2, s.slots.y-gap+float64(i)*gfx.LineHeight(size), size, g.th.text, g.th.window, 1)
+	}
 	s.slots.draw(g, dst, s.msgT == 0)
 	if s.msgT > 0 {
-		g.window(dst, sw/2-300, s.slots.y+s.slots.height()+20, 600, 64)
-		gfx.DrawText(dst, s.msg, sw/2, s.slots.y+s.slots.height()+36, sizeM, g.th.text)
+		width := math.Min(600, s.slots.w)
+		y := s.slots.y + s.slots.height() + 20
+		g.window(dst, (sw-width)/2, y, width, 64)
+		lines, size := gfx.FitLines(s.msg, sizeM, width-32, 2)
+		top := y + (64-float64(len(lines))*gfx.LineHeight(size))/2
+		// Preserve the established single-line baseline on ordinary screens.
+		if len(lines) == 1 && size == sizeM {
+			top = y + 16
+		}
+		for i, line := range lines {
+			gfx.DrawText(dst, line, sw/2, top+float64(i)*gfx.LineHeight(size), size, g.th.text)
+		}
 	}
 }

@@ -15,6 +15,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Fixed
 
+- Save/load, settings and confirmation dialogs fit portrait and short landscape game canvases.
 - Trace reproduction rejects a last-frame target that would overflow the exclusive replay boundary, including screenshot targets.
 - The dead-code gate propagates checker and filter errors and ignores blank or comment-only allowlist lines.
 

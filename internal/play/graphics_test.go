@@ -874,7 +874,7 @@ phone:
 		}
 	}
 	script := filepath.Join(root, "script.txt")
-	if err := os.WriteFile(script, []byte("gap 12\nwait 90\npress ok\nwait 100\npress ok\nwait 100\nshot child-title\npress ok\nwait 100\nshot child-play\npress ok\nwait 50\npress ok\nwait 30\npress menu\nwait 30\npress ok\nwait 30\npress ok\nwait 60\nhold shift+cancel 1\nwait 40\nshot host-return\nquit\n"), 0o600); err != nil {
+	if err := os.WriteFile(script, []byte("gap 12\nwait 90\npress ok\nwait 100\npress ok\nwait 100\nshot child-title\npress ok\nwait 100\nshot child-play\npress ok\nwait 50\npress ok\nwait 30\npress menu\nwait 30\npress ok\nwait 30\nshot child-save-menu\npress ok\nwait 60\nshot child-save-message\nwait 60\npress down\npress ok\nwait 30\nshot child-load-menu\npress ok\nwait 30\nshot child-confirm\npress cancel\nwait 20\npress cancel\nwait 20\npress down\npress ok\nwait 30\nshot child-settings\npress cancel\nwait 20\nhold shift+cancel 1\nwait 40\nshot host-return\nquit\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -996,5 +996,100 @@ phone:
 	}
 	if !changed {
 		t.Fatal("child title and gameplay are identical; transition was not exercised")
+	}
+}
+
+// Render compact ordinary menus in the same authored dimensions used by phone
+// children, and inspect drawn text rather than accepting an image-size smoke.
+func TestGraphicsScreensCompactMenus(t *testing.T) {
+	for _, screen := range [][2]int{{360, 540}, {640, 360}} {
+		t.Run(fmt.Sprintf("%dx%d", screen[0], screen[1]), func(t *testing.T) {
+			root := t.TempDir()
+			game := filepath.Join(root, "game")
+			if err := os.MkdirAll(filepath.Join(game, "data"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			config := fmt.Sprintf("schema_version: 11\nid: compact-menu-test\nlanguage: en\nscreen: {width: %d, height: %d}\nstart: {location: room}\n", screen[0], screen[1])
+			if err := os.WriteFile(filepath.Join(game, "game.yaml"), []byte(config), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(game, "data", "world.yaml"), []byte("locations:\n  room:\n    name: A long location label that must keep its slot number visible\n    safe: true\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			script := "gap 12\nwait 30\ndo open: save\nwait 30\nshot save-empty\npress ok\nwait 20\nshot save-message\nwait 100\ndo open: load\nwait 30\nshot load\npress ok\nwait 30\nshot confirm\npress cancel\npress cancel\ndo open: config\nwait 30\nshot settings\n"
+			for range 12 {
+				script += "press down\n"
+			}
+			script += "wait 30\nshot settings-bottom\nquit\n"
+			scriptPath := filepath.Join(root, "script.txt")
+			if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--start", "room", "--dev", "--mute", "--script", scriptPath, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--trace", filepath.Join(root, "trace.jsonl")) //nolint:gosec // Built graphics host with private fixtures.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("menus: %v\n%s\n%s", err, &stdout, &stderr)
+			}
+			body, err := fs.ReadFile(os.DirFS(root), "trace.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			seenSlot, seenSettings := false, false
+			logicalWidth := float64(screen[0]) * 720 / float64(screen[1])
+			for _, line := range traceLines(t, body, "layout") {
+				encoded, err := json.Marshal(line)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var layout struct {
+					Texts []struct {
+						Text string     `json:"text"`
+						Rect [4]float64 `json:"rect"`
+					} `json:"texts"`
+				}
+				if err := json.Unmarshal(encoded, &layout); err != nil {
+					t.Fatal(err)
+				}
+				for _, text := range layout.Texts {
+					slot := strings.HasPrefix(text.Text, "1:") || strings.HasPrefix(text.Text, "2:") || strings.HasPrefix(text.Text, "3:")
+					settings := text.Text == "Settings" || strings.Contains(text.Text, "Text speed")
+					if !slot && !settings {
+						continue
+					}
+					seenSlot = seenSlot || slot
+					seenSettings = seenSettings || settings
+					r := text.Rect
+					if r[0] < 0 || r[1] < 0 || r[0]+r[2] > logicalWidth+1 || r[1]+r[3] > 721 {
+						t.Errorf("drawn menu text outside %vx720: %q %v", logicalWidth, text.Text, r)
+					}
+				}
+			}
+			if !seenSlot || !seenSettings {
+				t.Fatalf("missing rendered menu coverage: slots=%v settings=%v", seenSlot, seenSettings)
+			}
+			// Centered confirmation text is drawn directly by gfx, so the layout
+			// trace does not contain it. Check the actual overlay pixels here;
+			// TestConfirmFitsPortraitAndLandscape checks its text and button bounds.
+			load, confirm := shotImage(t, root, "load"), shotImage(t, root, "confirm")
+			changed := 0
+			for y := range screen[1] {
+				for x := range screen[0] {
+					if load.At(x, y) != confirm.At(x, y) {
+						changed++
+					}
+				}
+			}
+			if changed < screen[0]*screen[1]/10 {
+				t.Fatalf("confirmation overlay did not visibly cover load menu: %d changed pixels", changed)
+			}
+			for _, name := range []string{"save-empty", "save-message", "load", "confirm", "settings", "settings-bottom"} {
+				if img := shotImage(t, root, name); img.Bounds().Dx() != screen[0] || img.Bounds().Dy() != screen[1] {
+					t.Fatalf("%s dimensions: %v", name, img.Bounds())
+				}
+			}
+		})
 	}
 }

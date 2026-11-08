@@ -125,6 +125,8 @@ type configScreen struct {
 	voiced   []string
 	// langRow is the row of the language (-1: the game offers one).
 	langRow int
+	// valueWidth is the widest current right-hand value at sizeM.
+	valueWidth float64
 }
 
 // cfgRow is what a row of the settings sets. The settings show only the rows the game
@@ -162,22 +164,31 @@ func (g *Game) hasBattles() bool { return len(g.db.Troops) > 0 }
 
 func newConfigScreen(g *Game) *configScreen {
 	s := &configScreen{list: newList(nil, 0, 0, 640, 11), streams: g.streamBase()}
-	sw, sh := g.screen()
-	s.list.x, s.list.y = (sw-640)/2, sh*0.13
-	s.place(g)
 	s.refresh(g)
 	return s
 }
 
-// place puts the list of a stream page under the bar and the heading, as wide as the
-// screen allows (the screen's size follows the window).
+// place keeps ordinary settings and their preview inside authored small screens.
+// Stream settings retain their page layout under the site bar.
 func (s *configScreen) place(g *Game) {
-	if !s.streams {
+	sw, sh := g.screen()
+	if s.streams {
+		s.list.w = min(640, sw-48)
+		s.list.x, s.list.y = (sw-s.list.w)/2, streamBarH+80
 		return
 	}
-	sw, _ := g.screen()
-	s.list.w = min(640, sw-48)
-	s.list.x, s.list.y = (sw-s.list.w)/2, streamBarH+80
+	l := s.list
+	l.w = min(640, sw-76)
+	l.x, l.y = (sw-l.w)/2, max(88, sh*0.13)
+	// The panel has 80 pixels above the list, 110 below it, and an
+	// eight-pixel screen margin. The list itself includes 24 pixels of padding.
+	l.rows = max(1, min(11, int((sh-8-l.y-110-24)/l.rowH)))
+	l.size = sizeM
+	if l.w < 400 && s.valueWidth > 0 {
+		// Reserve room for the cursor, label, and gap before the value.
+		l.size = min(l.size, sizeM*(l.w-144)/s.valueWidth)
+	}
+	l.scroll()
 }
 
 func (s *configScreen) overlay() bool { return true }
@@ -195,10 +206,12 @@ func (s *configScreen) refresh(g *Game) {
 	bar := func(v int) string { return fmt.Sprintf("%3d%%", clampInt(v, 0, 10)*10) }
 	on := map[bool]string{true: lang.T("オン"), false: lang.T("オフ")}
 	s.list.items, s.rows = nil, nil
+	s.valueWidth = 0
 	add := func(r cfgRow, label, value string) {
 		it := listItem{label: label}
 		if value != "" {
 			it.right = "◀ " + value + " ▶"
+			s.valueWidth = max(s.valueWidth, gfx.TextWidth(it.right, sizeM))
 		}
 		s.list.items, s.rows = append(s.list.items, it), append(s.rows, r)
 	}
@@ -240,6 +253,7 @@ func (s *configScreen) refresh(g *Game) {
 		add(rowLanguage, lang.T("言語"), languageName(g.language()))
 	}
 	add(rowBack, lang.T("もどる"), "")
+	s.place(g)
 }
 
 func (g *Game) showSP() bool {
