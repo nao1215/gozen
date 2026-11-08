@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -904,4 +905,53 @@ func TestLoadRejectsMalformedScreenReplay(t *testing.T) {
 		t.Fatal("malformed replay replaced the live state")
 	}
 	g.failure = nil // The direct internal call deliberately exercised the guard.
+}
+
+func TestSaveMenuFitsPortraitAndShortLandscape(t *testing.T) {
+	for _, screen := range [][2]int{{360, 540}, {640, 360}, {960, 540}} {
+		t.Run(fmt.Sprintf("%dx%d", screen[0], screen[1]), func(t *testing.T) {
+			g := sysInn(t, Options{})
+			g.db.Game.Screen.Width, g.db.Game.Screen.Height = screen[0], screen[1]
+			g.ui = 1
+			if err := g.save(0); err != nil {
+				t.Fatal(err)
+			}
+			for _, saving := range []bool{true, false} {
+				menu := newSaveMenu(g, saving, func() {})
+				l := menu.slots
+				sw, sh := g.screen()
+				lines, size, gap := menu.heading(l.w)
+				if l.x < 16 || l.x+l.w > sw-16 || l.y-gap < 16 || l.y+l.height()+20+64 > sh-16 {
+					t.Fatalf("saving=%v menu escapes %vx%v: list=%+v gap=%v", saving, sw, sh, l, gap)
+				}
+				for _, line := range lines {
+					if gfx.TextWidth(line, size) > l.w {
+						t.Fatalf("prompt escapes width: %q", line)
+					}
+				}
+				for i, item := range l.items {
+					if i == saveSlots {
+						// Autosave uses a descriptive prefix.
+						continue
+					}
+					room := l.w - 64
+					label := gfx.Ellipsis(item.label, l.size*.8, room)
+					if !strings.HasPrefix(label, fmt.Sprintf("%d:", i+1)) {
+						t.Fatalf("slot identity lost in narrow row: %q", label)
+					}
+					if gfx.TextWidth(label, l.size*.8) > room {
+						t.Fatalf("label escapes row: %q", label)
+					}
+				}
+				if screen == [2]int{960, 540} && (l.x != 80 || l.y != 160 || l.w != 800 || l.rowH != 60 || l.size != sizeM) {
+					t.Fatalf("ordinary geometry changed: %+v", l)
+				}
+				selected := l.sel
+				menu.refresh(g)
+				if menu.slots.sel != selected {
+					t.Fatal("refresh moved slot selection")
+				}
+			}
+		})
+	}
 }

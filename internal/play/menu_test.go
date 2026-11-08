@@ -1,11 +1,297 @@
 package play
 
 import (
+	"fmt"
+	"image"
+	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/nao1215/gozen/internal/layer5/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
 )
+
+// mnuTop is the scene on top of the stack.
+func mnuTop(g *Game) scene { return g.stack[len(g.stack)-1] }
+
+// mnuAs is the scene on top of the stack as type T; the test stops when it is another one.
+func mnuAs[T scene](t *testing.T, g *Game) T {
+	t.Helper()
+	v, ok := mnuTop(g).(T)
+	if !ok {
+		t.Fatalf("top scene is %T", mnuTop(g))
+	}
+	return v
+}
+
+// mnuKeep is the scene a live reload keeps, as type T.
+func mnuKeep[T scene](t *testing.T, s scene) T {
+	t.Helper()
+	v, ok := s.(T)
+	if !ok {
+		t.Fatalf("kept scene is %T", s)
+	}
+	return v
+}
+
+// mnuPress feeds one tick of input (the given buttons pressed) to the top scene.
+func mnuPress(g *Game, btns ...button) {
+	g.in.pressed = [numButtons]bool{}
+	for _, b := range btns {
+		g.in.pressed[b] = true
+	}
+	mnuTop(g).update(g)
+	g.in.pressed = [numButtons]bool{}
+}
+
+// mnuShiftTab is a Shift+Tab tick.
+func mnuShiftTab(g *Game) {
+	g.in.shift = true
+	mnuPress(g, btnNext)
+	g.in.shift = false
+}
+
+// mnuDrawAll draws the whole game once (only queues GPU commands, no pixel reads).
+func mnuDrawAll(g *Game) { g.Draw(covScreen()) }
+
+// mnuMenu opens the field menu of a new camp game with the guide in the party.
+func mnuMenu(t *testing.T) (*Game, *menu) {
+	t.Helper()
+	g := openGame(t, Options{Location: "camp", Seed: 3})
+	g.st.Join("guide")
+	g.push(newMenu(g))
+	return g, mnuAs[*menu](t, g)
+}
+
+// mnuTab picks the tab with the label and presses OK.
+func mnuTab(t *testing.T, g *Game, label string) {
+	t.Helper()
+	m := mnuAs[*menu](t, g)
+	for i, it := range m.tabs.items {
+		if it.label == label {
+			m.tabs.sel = i
+			mnuPress(g, btnOK)
+			return
+		}
+	}
+	t.Fatalf("no tab %q in %v", label, labels(m.tabs.items))
+}
+
+func TestMenuTabsAndSaveRules(t *testing.T) {
+	g, m := mnuMenu(t)
+	// camp is not marked safe in the test game: saving is disabled (shown with a cross).
+	var save, load *listItem
+	for i := range m.tabs.items {
+		switch m.tabs.items[i].label {
+		case lang.T("セーブ"):
+			save = &m.tabs.items[i]
+		case lang.T("ロード"):
+			load = &m.tabs.items[i]
+		}
+	}
+	if save == nil || load == nil {
+		t.Fatalf("tabs %v", labels(m.tabs.items))
+	}
+	if !save.disabled || save.right != "×" {
+		t.Fatalf("save on an unsafe place is allowed: %+v", save)
+	}
+	if !load.disabled {
+		t.Fatal("load offered with no save")
+	}
+	// choosing the disabled save says why
+	mnuTab(t, g, lang.T("セーブ"))
+	if m.msgT == 0 || len(m.msgs) != 1 || !strings.Contains(m.msgs[0], lang.T("ここでは セーブ できない。安全な 場所で セーブ しよう。")) {
+		t.Fatalf("no reason for the disabled save: %v", m.msgs)
+	}
+	m.msgT = 0
+	// an empty bag says so in the item list
+	for id := range g.st.Items {
+		delete(g.st.Items, id)
+	}
+	m.openItems(g)
+	if len(m.items.items) != 0 || m.items.empty == "" {
+		t.Fatalf("empty bag: %d rows, empty text %q", len(m.items.items), m.items.empty)
+	}
+	m.mode = "item"
+	mnuDrawAll(g)
+	m.mode = ""
+	mnuPress(g, btnCancel)
+	if len(g.stack) != 1 {
+		t.Fatalf("cancel left the menu open: %d scenes", len(g.stack))
+	}
+}
+
+func TestMenuUseItemOnAMember(t *testing.T) {
+	g, m := mnuMenu(t)
+	scout, guide := g.st.Members()[0], g.st.Members()[1]
+	scout.HP, guide.HP = 5, 5
+	mnuTab(t, g, lang.T("どうぐ"))
+	if m.mode != "item" || len(m.ids) == 0 {
+		t.Fatalf("mode %q ids %v", m.mode, m.ids)
+	}
+	for i, id := range m.ids {
+		if id == "potion" {
+			m.items.sel = i
+		}
+	}
+	mnuPress(g, btnOK)
+	if !m.targetOn {
+		t.Fatal("a one-ally item did not ask for a target")
+	}
+	mnuDrawAll(g)
+	mnuPress(g, btnDown)
+	if m.tsel != 1 {
+		t.Fatalf("target %d", m.tsel)
+	}
+	mnuPress(g, btnUp)
+	mnuPress(g, btnDown)
+	mnuPress(g, btnOK)
+	if guide.HP != 35 || scout.HP != 5 {
+		t.Fatalf("heal landed on the wrong member: scout %d guide %d", scout.HP, guide.HP)
+	}
+	if g.st.Items["potion"] != 1 || len(m.msgs) == 0 || m.msgT == 0 {
+		t.Fatalf("potions %d msgs %v", g.st.Items["potion"], m.msgs)
+	}
+	mnuDrawAll(g)
+	// the message is soft: it counts down by itself and the list is usable again
+	for range 120 {
+		mnuPress(g)
+	}
+	if m.msgT != 0 {
+		t.Fatalf("message stuck at %d", m.msgT)
+	}
+	// use the last potion; with the bag empty the target picker closes
+	scout.HP = 5
+	m.targetOn = false
+	mnuPress(g, btnOK)
+	if !m.targetOn {
+		t.Fatal("no target picker for the last potion")
+	}
+	mnuPress(g, btnOK)
+	if g.st.Items["potion"] != 0 || m.targetOn {
+		t.Fatalf("last potion: %d target %v", g.st.Items["potion"], m.targetOn)
+	}
+	mnuDrawAll(g)
+	// cancel leaves the item list
+	for range 120 {
+		mnuPress(g)
+	}
+	mnuPress(g, btnCancel)
+	if m.mode != "" {
+		t.Fatalf("mode %q", m.mode)
+	}
+}
+
+func TestMenuItemWithFullHealthIsRefused(t *testing.T) {
+	g, m := mnuMenu(t)
+	mnuTab(t, g, lang.T("どうぐ"))
+	for i, id := range m.ids {
+		if id == "potion" {
+			m.items.sel = i
+		}
+	}
+	mnuPress(g, btnOK)
+	mnuPress(g, btnOK) // everyone is at full health: a heal changes nothing
+	if g.st.Items["potion"] != 2 {
+		t.Fatalf("a wasted potion was consumed: %d left", g.st.Items["potion"])
+	}
+	if m.msgT == 0 || len(m.msgs) != 1 || m.msgs[0] != lang.T("つかっても こうかが ない") {
+		t.Fatalf("msgs %v", m.msgs)
+	}
+	// a hard message blocks input until it is clicked away or runs out
+	m.msgT = 50
+	mnuPress(g, btnOK)
+	if m.msgT != 0 {
+		t.Fatalf("OK did not dismiss the message: %d", m.msgT)
+	}
+	mnuPress(g, btnCancel)
+	if m.targetOn {
+		t.Fatal("cancel did not close the target picker")
+	}
+}
+
+func TestMenuSkillsAndMembers(t *testing.T) {
+	g, m := mnuMenu(t)
+	guide := g.st.Members()[1]
+	guide.HP = 1
+	mnuTab(t, g, lang.T("スキル"))
+	if !m.picker || m.mode != "skill" {
+		t.Fatalf("picker %v mode %q", m.picker, m.mode)
+	}
+	mnuDrawAll(g)
+	mnuPress(g, btnDown)
+	mnuPress(g, btnDown) // wraps to the first
+	mnuPress(g, btnRight)
+	mnuPress(g, btnLeft)
+	mnuPress(g, btnUp) // up from the first wraps to the guide
+	if m.member != 1 {
+		t.Fatalf("member %d", m.member)
+	}
+	mnuPress(g, btnOK)
+	if m.picker || m.items == nil {
+		t.Fatal("picking a member did not open the skills")
+	}
+	mnuDrawAll(g)
+	mnuShiftTab(g)
+	if m.member != 0 {
+		t.Fatalf("shift-tab member %d", m.member)
+	}
+	mnuPress(g, btnNext)
+	if m.member != 1 {
+		t.Fatalf("tab member %d", m.member)
+	}
+	guide.GainExp(1_000_000)
+	guide.MP = 10
+	m.openSkills(g)
+	healAt := -1
+	for i, id := range m.ids {
+		if id == "heal" {
+			healAt = i
+		}
+	}
+	if healAt < 0 {
+		t.Fatalf("the guide does not know Heal: %v", m.ids)
+	}
+	m.items.sel = healAt
+	mnuPress(g, btnOK)
+	if !m.targetOn {
+		t.Fatal("Heal did not ask for a target")
+	}
+	for m.tsel != 1 {
+		mnuPress(g, btnDown)
+	}
+	before := guide.MP
+	mnuPress(g, btnOK)
+	if guide.HP <= 1 || guide.MP != before-3 {
+		t.Fatalf("hp %d mp %d (was %d)", guide.HP, guide.MP, before)
+	}
+	// run out of MP: the target picker closes by itself
+	for range 120 {
+		mnuPress(g)
+	}
+	guide.MP = 3
+	guide.HP = 1
+	mnuPress(g, btnOK)
+	mnuDrawAll(g)
+	for m.tsel != 1 {
+		mnuPress(g, btnDown)
+	}
+	mnuPress(g, btnOK)
+	if guide.MP != 0 || m.targetOn {
+		t.Fatalf("mp %d target %v", guide.MP, m.targetOn)
+	}
+	for range 120 {
+		mnuPress(g)
+	}
+	mnuPress(g, btnCancel) // back to the picker
+	if !m.picker {
+		t.Fatal("cancel from the skill list did not return to the member picker")
+	}
+	mnuPress(g, btnCancel)
+	if m.picker || m.mode != "" {
+		t.Fatalf("picker %v mode %q", m.picker, m.mode)
+	}
+}
 
 const mnuEventItems = `
 items:
@@ -431,5 +717,117 @@ func TestSaveMenuReportsBrokenSlots(t *testing.T) {
 	}
 	if done != 1 {
 		t.Fatalf("done called %d times", done)
+	}
+}
+
+func TestConfirmFitsPortraitAndLandscape(t *testing.T) {
+	for _, dims := range []image.Point{image.Pt(960, 540), image.Pt(360, 540), image.Pt(640, 360)} {
+		t.Run(fmt.Sprintf("%dx%d", dims.X, dims.Y), func(t *testing.T) {
+			g, _ := mnuMenu(t)
+			g.view.w, g.view.h = dims.X, dims.Y
+			const warning = "Loading this saved game will replace your current progress. Any progress since your last save will be lost. Do you want to continue?"
+			accepted, refused := 0, 0
+			c := newConfirm(warning, func() { accepted++ })
+			c.onNo = func() { refused++ }
+			lines, size, y, h, yes, no := c.layout(g)
+			if y < 0 || y+h > float64(dims.Y) {
+				t.Fatalf("dialog outside screen: y=%v h=%v", y, h)
+			}
+			for _, line := range lines {
+				if gfx.TextWidth(line, size) > float64(dims.X-40) {
+					t.Fatalf("warning outside screen: %q", line)
+				}
+			}
+			if dims.X < 720 && strings.Contains(strings.Join(lines, ""), "…") {
+				t.Fatal("compact warning was truncated instead of wrapped")
+			}
+			bounds := image.Rect(0, 0, dims.X, dims.Y)
+			if !yes.In(bounds) || !no.In(bounds) || yes.Overlaps(no) {
+				t.Fatalf("buttons outside screen: %v %v", yes, no)
+			}
+			for _, button := range []image.Rectangle{no, yes} {
+				c.age = 6
+				g.push(c)
+				g.in = input{click: true, mouse: button.Min.Add(image.Pt(button.Dx()/2, button.Dy()/2))}
+				c.update(g)
+				if mnuTop(g) == scene(c) {
+					t.Fatal("pointer did not close confirmation")
+				}
+			}
+			if accepted != 1 || refused != 1 {
+				t.Fatalf("wrong callbacks yes=%d no=%d", accepted, refused)
+			}
+		})
+	}
+}
+
+// The field menu offers the character book when the game asks for it, and the entries
+// after it keep working (Settings, Title, Close are numbered past the extra row).
+func TestMenuCharactersEntryKeepsOtherEntries(t *testing.T) {
+	g := mnuBookGame(t, Options{})
+	g.push(newMenu(g))
+	m := mnuAs[*menu](t, g)
+	mnuTab(t, g, lang.T("キャラクター"))
+	if _, ok := mnuTop(g).(*profileScreen); !ok {
+		t.Fatalf("scene %T", mnuTop(g))
+	}
+	mnuPress(g, btnCancel)
+	if mnuTop(g) != scene(m) {
+		t.Fatalf("scene %T", mnuTop(g))
+	}
+	mnuTab(t, g, lang.T("せってい"))
+	if _, ok := mnuTop(g).(*configScreen); !ok {
+		t.Fatalf("scene %T", mnuTop(g))
+	}
+	g.stack = g.stack[:2]
+	mnuTab(t, g, lang.T("とじる"))
+	if len(g.stack) != 1 {
+		t.Fatalf("Close left %d scenes", len(g.stack))
+	}
+}
+
+// The status page lists the states a member has that describe themselves, and the stats.
+func TestMenuStatusShowsStates(t *testing.T) {
+	g, m := mnuMenu(t)
+	g.db.States["poison"].Desc = "Loses a little each turn."
+	g.st.Members()[0].States["poison"] = 3
+	mnuTab(t, g, lang.T("ステータス"))
+	mnuDrawAll(g)
+	if m.mode != "status" {
+		t.Fatalf("mode %q", m.mode)
+	}
+	// a click leaves the status page
+	g.in.click, g.in.mouse = true, image.Pt(5, 5)
+	mnuTop(g).update(g)
+	g.in.click = false
+	if m.mode != "" {
+		t.Fatalf("mode %q", m.mode)
+	}
+}
+
+// With the mouse the item list follows the pointer and a click chooses.
+func TestMenuMouseChoosesItemAndMember(t *testing.T) {
+	g, m := mnuMenu(t)
+	g.st.Members()[1].HP = 3
+	mnuTab(t, g, lang.T("どうぐ"))
+	row := m.items.rowRect(0)
+	g.in.click, g.in.mouse = true, image.Pt(row.Min.X+5, row.Min.Y+5)
+	mnuTop(g).update(g)
+	g.in.click = false
+	if !m.targetOn {
+		t.Fatal("a click on the item did not ask for a target")
+	}
+	card := m.cardRect(g, 1)
+	g.in.moved, g.in.mouse = true, image.Pt(card.Min.X+5, card.Min.Y+5)
+	mnuTop(g).update(g)
+	g.in.moved = false
+	if m.tsel != 1 {
+		t.Fatalf("pointer over the second card: tsel %d", m.tsel)
+	}
+	g.in.click = true
+	mnuTop(g).update(g)
+	g.in.click = false
+	if g.st.Members()[1].HP <= 3 {
+		t.Fatalf("hp %d: the click did not heal the member under it", g.st.Members()[1].HP)
 	}
 }

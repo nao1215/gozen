@@ -43,7 +43,7 @@ phone:
 
 ## Open a game or the store
 
-Existing home buttons call ordinary events. `app: game` selects a local app ID; `app: store` displays the declared apps. The catalog release selects the child's portrait or landscape orientation; `hold` controls the phone's resting orientation when the child closes. Closing the child returns to the phone event that opened it. The host's Back control stays outside the child's viewport; Shift+Escape closes the child, while Escape remains available to its own menus.
+Existing home buttons call ordinary events. `app: game` selects a local app ID; `app: store` displays the declared apps. The catalog release selects the child's portrait or landscape orientation; `hold` controls the phone's resting orientation when the child closes. The phone scales the child's authored canvas to fit that frame, preserving its layout. Closing the child returns to the phone event that opened it. The host's Back control stays outside the child's viewport; Shift+Escape closes the child, while Escape remains available to its own menus.
 
 <!-- verify: load group=phone-games -->
 ```yaml

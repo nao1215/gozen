@@ -748,12 +748,20 @@ func (c *confirm) overlay() bool { return true }
 
 func (c *confirm) layout(g *Game) (lines []string, size, y, h float64, yes, no image.Rectangle) {
 	sw, sh := g.screen()
-	lines, size = gfx.FitLines(c.msg, sizeM, 640, 2)
+	width := min(720.0, sw-32)
+	maxLines := 2
+	if width < 720 {
+		// Compact viewports need more wrapped lines, while keeping the controls
+		// below the message and the whole dialog inside the screen.
+		maxLines = max(2, int((sh-32-104)/gfx.LineHeight(sizeM)))
+	}
+	lines, size = gfx.FitLines(c.msg, sizeM, min(640, width-40), maxLines)
 	h = 104 + float64(len(lines))*gfx.LineHeight(size)
 	y = sh/2 - h/2
 	by := int(y + h - 66)
-	yes = image.Rect(int(sw/2-170), by, int(sw/2-20), by+44)
-	no = image.Rect(int(sw/2+20), by, int(sw/2+170), by+44)
+	buttonWidth := min(150.0, (width-60)/2)
+	yes = image.Rect(int(sw/2-20-buttonWidth), by, int(sw/2-20), by+44)
+	no = image.Rect(int(sw/2+20), by, int(sw/2+20+buttonWidth), by+44)
 	return
 }
 
@@ -801,7 +809,8 @@ func (c *confirm) draw(g *Game, dst *ebiten.Image) {
 	sw, _ := g.screen()
 	fill(dst, withAlpha(colorBlack, 0x70))
 	ls, sz, y, h, yes, no := c.layout(g)
-	g.window(dst, sw/2-360, y, 720, h)
+	width := min(720.0, sw-32)
+	g.window(dst, (sw-width)/2, y, width, h)
 	for i, ln := range ls {
 		gfx.DrawText(dst, ln, sw/2, y+20+float64(i)*gfx.LineHeight(sz), sz, g.th.text)
 	}
