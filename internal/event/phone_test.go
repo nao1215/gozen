@@ -84,15 +84,15 @@ events:
 	r := event.New(db, st, &phoneHost{})
 	r.Log = func(err error) { t.Error(err) }
 	r.Start(db.Events["e"].Do)
-	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 2 {
-		t.Fatalf("the page did not wait with its two buttons: %+v", tap)
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 4 {
+		t.Fatalf("the page did not wait with its two buttons and close outcomes: %+v", tap)
 	}
 	r.Answer(0)
 	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
 		t.Fatalf("the lock screen did not wait with two answers and a decline: %+v", tap)
 	}
 	r.Answer(1)
-	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 1 {
+	if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
 		t.Fatalf("the last page did not wait: %+v", tap)
 	}
 	r.Answer(-1)
@@ -329,5 +329,41 @@ events:
 	r.Next()
 	if st.Flags["second"] != true || st.Flags["first"] == true {
 		t.Fatalf("flags %v", st.Flags)
+	}
+}
+
+// Shared outcomes resume only after an answer and can immediately show another phone.
+func TestPhoneSharedOutcomes(t *testing.T) {
+	for _, tc := range []struct {
+		cue      string
+		outcomes []string
+	}{
+		{`{app: lock, timeout: 2, timeout_result: retry, var: var.outcome}`, []string{"open", "dismiss", "retry"}},
+		{`{app: page, timeout: 2, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "expired", "open"}},
+		{`{app: page, var: var.outcome, rows: [{button: Read, id: read}]}`, []string{"read", "dismiss", "open"}},
+		{`{app: banner, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss"}},
+		{`{app: banner, timeout: 2, var: var.outcome, notices: [{text: Hello}]}`, []string{"open", "dismiss", "expired"}},
+	} {
+		for i, outcome := range tc.outcomes {
+			t.Run(outcome, func(t *testing.T) {
+				db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 11\nid: timed-phone\n" + testgame.Game, "data/timed.yaml": "events:\n  timed:\n    - phone: " + tc.cue + "\n    - say: '{var.outcome}'\n    - phone: " + tc.cue + "\n"})
+				st := testgame.State(db, 1)
+				r := event.New(db, st, &phoneHost{})
+				r.Start(db.Events["timed"].Do)
+				if tap, ok := r.Next().(event.Tap); !ok || tap.Results != len(tc.outcomes) {
+					t.Fatalf("not waiting with outcomes: %+v", tap)
+				}
+				if st.Vars["outcome"] != nil {
+					t.Fatal("outcome chosen before input")
+				}
+				r.Answer(i)
+				if say, ok := r.Next().(event.Say); !ok || say.Text != outcome {
+					t.Fatalf("outcome: %+v", say)
+				}
+				if tap, ok := r.Next().(event.Tap); !ok || tap.Results != len(tc.outcomes) {
+					t.Fatalf("did not ring again: %+v", tap)
+				}
+			})
+		}
 	}
 }

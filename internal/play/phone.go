@@ -113,8 +113,10 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 		bubbles: map[int]chatBubble{}, imageUse: map[*ebiten.Image]bool{}, bodies: map[*phoneClip]bool{},
 	}
 	switch cue.App {
-	case "chat", "lock":
+	case "chat":
 		p.shown = 1
+	case "lock":
+		p.shown = min(1, len(cue.Notices))
 	case "video":
 		p.watch = p.clip("video", cue.Video)
 	}
@@ -310,6 +312,14 @@ func (g *Game) updatePhone() bool {
 	if !p.ready() {
 		return false
 	}
+	if p.cue.App == "banner" {
+		g.updatePhoneBanner(p)
+		p.expire()
+		return false
+	}
+	if p.cue.Timeout > 0 {
+		defer p.expire()
+	}
 	in := &g.in
 	// The auto and skip keys work over the phone as over the lines.
 	if in.pressedKey(btnAuto) {
@@ -336,7 +346,7 @@ func (g *Game) updatePhone() bool {
 			p.putDown(-1, -1, false)
 			return false
 		}
-		p.closing = phoneRise
+		p.putDown(-4, -4, false)
 		return false
 	}
 	switch {
@@ -355,7 +365,21 @@ func (g *Game) updatePhone() bool {
 	case p.cue.App == "lock":
 		g.updatePhoneLock(p)
 	}
+	if p.closing > 0 && p.result < 0 {
+		p.putDown(-3, -3, false)
+	}
 	return false
+}
+
+// expire shares one timeout outcome for lock, page and banner. Input wins ties.
+func (p *phoneView) expire() {
+	entrance := phoneRise
+	if p.cue.Hold == "landscape" {
+		entrance += phoneTurn
+	}
+	if p.closing == 0 && p.cue.Timeout > 0 && float64(p.age-entrance) >= p.cue.Timeout*60 {
+		p.putDown(-2, -2, false)
+	}
 }
 
 func (p *phoneView) watchKey() string {
@@ -390,11 +414,11 @@ func (g *Game) stopWatching(p *phoneView) {
 
 // phoneAuto lets the auto mode read a chat as it reads lines.
 func (g *Game) phoneAuto(p *phoneView) bool {
-	return g.autoRead && p.age%int(120*g.cfg.autoScale()+1) == 0
+	return g.autoRead && p.age%int(120*g.cfg.autoScale()+1) == 0 && !p.asks()
 }
 
-// Phone colors: a light app on a dark body. They are fixed rather than taken
-// from the game's theme so that the phone reads as a phone in every game.
+// Default phone colors: a light app on a dark body. Page theme and the
+// UI phone accent are opt-in; all other phones keep these neutral colors.
 var (
 	phoneBody    = color.NRGBA{0x16, 0x17, 0x1b, 0xff}
 	phoneEdge    = color.NRGBA{0x4a, 0x4d, 0x55, 0xff}
@@ -445,6 +469,14 @@ func (g *Game) phoneScreenRect(side bool) (x, y, w, h float64) {
 func (g *Game) drawPhone(dst *ebiten.Image) {
 	p := g.phone
 	if p == nil {
+		return
+	}
+	if p.cue.App == "banner" {
+		age := min(p.age, bannerSlide+bannerStay)
+		if p.closing > 0 {
+			age = bannerSlide*2 + bannerStay - p.closing
+		}
+		g.drawBanner(dst, phoneBanner{n: p.cue.Notices[0], age: age})
 		return
 	}
 	clear(p.imageUse)
@@ -559,7 +591,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneMedia(screen, p, "rising", p.watch, 0, 0, scw, sch, 0)
 	}
 	if !p.side {
-		_, bar := p.pageAccent()
+		_, bar := g.pageAccent(p)
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))

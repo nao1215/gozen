@@ -55,6 +55,8 @@ type Options struct {
 	Now func() time.Time
 
 	SaveDir string
+	// GameDir is the CLI game directory recorded for reproduction; empty for embedded games.
+	GameDir string
 
 	// Locales are the device's languages, the preferred first (BCP 47 tags such as "en-US";
 	// DeviceLocales reads them). A game offering two languages or more is shown in the
@@ -169,9 +171,6 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	ebiten.SetWindowSize(max(1, int(sw*scale)), max(1, int(sh*scale)))
 
-	if opts.Fullscreen {
-		g.cfg.Fullscreen = true
-	}
 	ebiten.SetFullscreen(g.cfg.Fullscreen)
 	if opts.Script != "" || opts.Autopilot != nil {
 		ebiten.SetVsyncEnabled(false)
@@ -184,6 +183,12 @@ func Run(ctx context.Context, opts Options) (err error) {
 	}
 	unwatched := opts.Script != "" || opts.Autopilot != nil
 	g.StartRendering()
+	if g.rep != nil && opts.Until > 0 {
+		// Give each recorded tick a Draw opportunity; Draw applies recorded gaps.
+		// Skip real-time pacing while preserving presentation transitions.
+		ebiten.SetVsyncEnabled(false)
+		ebiten.SetTPS(ebiten.SyncWithFPS)
+	}
 	err = ebiten.RunGameWithOptions(g, &ebiten.RunGameOptions{InitUnfocused: unwatched})
 	if errors.Is(err, errQuit) {
 		err = nil
@@ -203,6 +208,13 @@ func (g *Game) StartRendering() {
 	}
 	g.loopStarted = true
 	g.rendering = true
+	// Only the real loop may query the display. Offscreen layouts use unit scale.
+	g.deviceScale = func() float64 {
+		if m := ebiten.Monitor(); m != nil {
+			return m.DeviceScaleFactor()
+		}
+		return 1
+	}
 	// A browser keeps running unfocused: an embedded page can start without focus and would
 	// never begin, and the browser already slows a hidden tab. Scripted captures keep running.
 	g.pauseUnfocused = runtime.GOOS != "js" && g.opts.Script == "" && g.opts.Autopilot == nil
@@ -334,6 +346,7 @@ type Game struct {
 
 	quit           bool
 	loopStarted    bool
+	deviceScale    func() float64 // Installed by startup; nil for offscreen layout.
 	rendering      bool
 	pauseUnfocused bool      // Set only by the desktop loop (StartRendering), not a browser or offscreen tests.
 	debugDrawTime  time.Time // Previous Draw start, used only by explicit timing diagnostics.
@@ -444,11 +457,12 @@ type Game struct {
 	// evOpened are the events a phone banner's click opened while the event
 	// ran, each with the line it was clicked at (a save and a roll back queue
 	// them again).
-	evOpened  []bannerOpen
-	fast      *fastTo
-	untilShot bool
-	quick     []*memoBox
-	quickN    int
+	evOpened        []bannerOpen
+	fast            *fastTo
+	untilShot       bool
+	pictureDeadline time.Time
+	quick           []*memoBox
+	quickN          int
 
 	live liveState
 
@@ -525,6 +539,9 @@ func New(opts Options) (_ *Game, err error) {
 		return nil, err
 	}
 	if rep != nil {
+		if err := rep.restoreSaves(g); err != nil {
+			return nil, err
+		}
 		if err := rep.prepare(g); err != nil {
 			return nil, err
 		}
@@ -539,6 +556,7 @@ func New(opts Options) (_ *Game, err error) {
 		g.tr = newTracer(opts.Trace)
 		if rep != nil {
 			g.in.replay = rep
+			g.in.replayPick = g.replayPick
 		}
 	}
 	g.loadTheme()
@@ -598,6 +616,7 @@ func New(opts Options) (_ *Game, err error) {
 				return
 			}
 			g.currentBattle().hideTacticLog = !enabled
+			g.emit("unsupported_script", traceLine{"operation": "battle-log"})
 		}
 		s.battleHP = func(team string, index, hp int) {
 			if !g.opts.Development {
@@ -623,13 +642,14 @@ func New(opts Options) (_ *Game, err error) {
 			g.emit("battle_setup", traceLine{"team": team, "index": index, "id": u.EID, "hp": hp, "mhp": u.MHP()})
 		}
 		s.typeText = g.typeMemo
-		s.jump = g.devJump
-		s.do = g.devDo
+		s.jump = func(name string, line int) { g.act("dev_jump", traceLine{"event": name, "line": line}) }
+		s.do = func(src string) { g.act("dev_do", traceLine{"do": src}) }
 		s.recruit = func(species string, level int) {
 			if !g.opts.Development || g.st == nil {
 				g.failure = errors.New("script: recruit needs a development session")
 				return
 			}
+			g.emit("unsupported_script", traceLine{"operation": "recruit"})
 			if _, ok := g.st.Recruit(species, level, 0, nil); !ok {
 				g.failure = fmt.Errorf("script: cannot recruit %s", species)
 			}
@@ -645,6 +665,7 @@ func New(opts Options) (_ *Game, err error) {
 				return
 			}
 			e.Recruit.Chance = 1
+			g.emit("unsupported_script", traceLine{"operation": "guarantee-recruit"})
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
@@ -655,9 +676,9 @@ func New(opts Options) (_ *Game, err error) {
 			}
 		}
 		s.look = g.scriptLook
-		s.guides = func(on bool) { g.guideScripted = on }
+		s.guides = func(on bool) { g.act("guides", traceLine{"on": on}) }
 		if !opts.headless {
-			s.window = func(w, h int) { ebiten.SetWindowSize(w, h) }
+			s.window = func(w, h int) { g.act("window", traceLine{"width": w, "height": h}) }
 		}
 		g.in.script = s
 	}
@@ -669,6 +690,9 @@ func New(opts Options) (_ *Game, err error) {
 		}
 	}
 
+	if opts.Audio == nil && opts.NoSound {
+		sound.LoadEffectDurations(opts.FS)
+	}
 	silentBGM := opts.Audio == nil && opts.NoSound && opts.Trace != nil
 	if opts.Audio != nil || !opts.NoSound || silentBGM {
 		if !silentBGM {
@@ -708,12 +732,15 @@ func New(opts Options) (_ *Game, err error) {
 	}
 
 	g.loadConfig()
-	if err := g.useLanguage(); err != nil {
-		return nil, err
-	}
 	if rep != nil && rep.version == traceVersion {
 		g.cfg, g.read, g.unlocked = rep.setup.Config, rep.setup.Read, rep.setup.Unlocked
 		g.applyConfig()
+	}
+	if err := g.useLanguage(); err != nil {
+		return nil, err
+	}
+	if opts.Fullscreen {
+		g.cfg.Fullscreen = true
 	}
 	if err := g.traceStart(); err != nil {
 		return nil, err
@@ -758,6 +785,13 @@ func New(opts Options) (_ *Game, err error) {
 	if opts.Review {
 		g.opts.GalleryAll = true
 		g.push(newCGReview(g))
+	}
+	if rep != nil && rep.setup.Memo != nil {
+		m := rep.setup.Memo
+		g.opts.AllowLegacySave = m.AllowLegacy
+		if err := g.startMemo(m.Path, m.Memo, m.Save); err != nil {
+			return nil, err
+		}
 	}
 	if opts.FromMemo != "" {
 		if err := g.startFromMemo(opts.FromMemo); err != nil {
@@ -816,9 +850,11 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 		if s.size[0] > 0 {
 			w, h = float64(s.size[0]), float64(s.size[1])
 		}
+	case g.rep != nil && g.rep.scripted:
+		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
 	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
-		if m := ebiten.Monitor(); m != nil {
-			dsf = m.DeviceScaleFactor()
+		if g.deviceScale != nil {
+			dsf = g.deviceScale()
 		}
 	}
 	g.fitView(w, h, dsf)
@@ -836,12 +872,19 @@ func (g *Game) fitView(ow, oh, dsf float64) {
 		k := UIScale(&g.db.Game)
 		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
 	}
-	if v == g.view {
-		return
+	if v != g.view {
+		g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
+		gfx.SetScale(g.ui)
+		g.in.ui = g.ui
 	}
-	g.view, g.ui = v, cmp.Or(v.ui, UIScale(&g.db.Game))
-	gfx.SetScale(g.ui)
-	g.in.ui = g.ui
+	if g.tr != nil {
+		w, h := g.pixels()
+		viewport := traceViewport{Width: int(w), Height: int(h), Scale: g.ui, Tall: g.view.tall}
+		if g.tr.viewport != viewport {
+			g.tr.viewport = viewport
+			g.emit("viewport", traceLine{"width": viewport.Width, "height": viewport.Height, "scale": viewport.Scale, "tall": viewport.Tall})
+		}
+	}
 }
 
 func (g *Game) stateRng() *rand.Rand {
@@ -875,8 +918,15 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) pauseForFocus(focused bool) bool {
+	if focused && g.tr != nil {
+		g.tr.focusLost = false
+	}
 	if focused || !g.rendering || g.in.script != nil || g.auto != nil || g.rep != nil {
 		return false
+	}
+	if g.tr != nil && (!g.tr.focusLost || (g.tr.focusTick == 0 && g.tick > 0)) {
+		g.tr.focusLost, g.tr.focusTick = true, g.tick
+		g.emit("focus_pause", nil)
 	}
 	g.resetFreeMotion()
 	// The external memo editor intentionally completes while the game lacks
@@ -916,6 +966,18 @@ func (g *Game) Update() error {
 		}
 	}
 
+	// The initial Update can precede the window manager's settled layout.
+	// Compare at tick 1, after both runs have had their startup layout.
+	// A tick-0 capture stops before advancing, so validate its layout now.
+	if (g.tick == 1 || (g.tick == 0 && g.opts.Until == 1)) && g.rep != nil && g.rep.startupViewport != nil {
+		w, h := g.pixels()
+		v := g.rep.startupViewport
+		if int(w) != v.Width || int(h) != v.Height {
+			g.failure = fmt.Errorf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport %dx%d", int(w), int(h), v.Width, v.Height)
+			return g.failure
+		}
+	}
+
 	if s := g.in.script; g.rendering && s != nil && s.shot != "" {
 		return nil
 	}
@@ -945,6 +1007,12 @@ func (g *Game) Update() error {
 		return nil
 	}
 	g.tick++
+	defer func(tick int) {
+		// Memo and tag editors roll the tick back while they hold the game.
+		if g.tick == tick {
+			g.stepBattlePictures()
+		}
+	}(g.tick)
 	g.in.tick = g.tick
 	if g.noticesShown() {
 		g.notices.update(g.noticeVisible())
@@ -955,23 +1023,50 @@ func (g *Game) Update() error {
 		return err
 	}
 	if g.opts.NoSound && g.tr != nil {
-		sound.Pump(ebiten.TPS())
-	}
-	if g.fast != nil {
-		if g.fast.page {
-			g.seekReplayPage()
-		} else {
-			g.fastStep()
+		tps := ebiten.TPS()
+		if g.rep != nil && g.rep.partial && g.opts.Video == nil && g.opts.Audio == nil {
+			tps = 60 * max(1, g.opts.Speed)
 		}
-	} else {
-		g.in.update()
+		sound.Pump(tps)
 	}
+	g.applyTickInput()
 	if s := g.in.script; s != nil && s.err != nil {
 		g.emit("script_error", traceLine{"error": s.err.Error()})
 		return s.err
 	}
 	defer g.in.finishOffer()
+	if g.rep != nil {
+		defer func() {
+			if g.failure == nil && g.rep.picks[g.tick] != nil && g.rep.pickTick != g.tick {
+				g.failure = fmt.Errorf("replay: pick receiver not reached at tick %d", g.tick)
+			}
+		}()
+	}
 	g.in.observing = false
+	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.panelModal() && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
+		g.openMemo()
+	}
+	if g.memo != nil {
+		g.in.observing = true
+		g.tick--
+		g.updateMemo()
+		return nil
+	}
+	if g.updateTag() {
+		g.tick--
+		return nil
+	}
+	if g.tr != nil {
+		// Preserve physical input before overlays consume it. Receivers and
+		// autopilot can add presses later; emit their union once per tick.
+		raw := g.in
+		defer func() {
+			for b := range numButtons {
+				raw.pressed[b] = raw.pressed[b] || g.in.pressed[b]
+			}
+			g.traceInput(&raw)
+		}()
+	}
 	g.updateBanners()
 	g.memoToastT = max(0, g.memoToastT-1)
 	g.stepMemoFocus()
@@ -983,25 +1078,10 @@ func (g *Game) Update() error {
 	if g.panelModal() {
 		g.in.observing = true
 		g.updatePanel()
-		g.traceInput()
 		return nil
 	}
 
-	if g.opts.MemoDir != "" && g.memo == nil && g.rep == nil && g.auto == nil && g.db != nil && !g.memoKeyTaken() && g.in.pressedKey(btnMemo) {
-		g.openMemo()
-	}
-	if g.memo != nil {
-		g.in.observing = true
-		g.updateMemo()
-		g.tick--
-		return nil
-	}
-	if g.updateTag() {
-		g.tick--
-		return nil
-	}
 	if g.updateLoadNotice() {
-		g.traceInput()
 		g.traceTick()
 		return nil
 	}
@@ -1012,10 +1092,6 @@ func (g *Game) Update() error {
 	if g.auto != nil && len(g.stack) > 0 {
 		g.auto.step(g)
 	}
-	if g.rep != nil {
-		g.rep.doActs(g)
-	}
-	g.traceInput()
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" && g.tick%30 == 0 && g.in.script != nil {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
 	}
@@ -1094,7 +1170,46 @@ func (g *Game) Update() error {
 	return nil
 }
 
+// applyTickInput applies inputs and direct actions before any Update handler can
+// consume the tick. Scripts execute actions inside input.update; replay must run
+// its recorded actions in this same phase, including while an overlay is open.
+func (g *Game) applyTickInput() {
+	if g.fast != nil {
+		if g.fast.page {
+			g.seekReplayPage()
+		} else {
+			g.fastStep()
+		}
+	} else {
+		g.in.update()
+	}
+	if g.rep != nil {
+		g.rep.doActs(g)
+	}
+}
+
+// stepBattlePictures follows the same visible stack as Draw, including battles
+// behind overlays. It also runs on ticks that end early for fades or guides.
+func (g *Game) stepBattlePictures() {
+	for _, s := range slices.Backward(g.stack) {
+		if b, ok := s.(*battleScene); ok {
+			b.stepFoePictures(g)
+		}
+		if o, ok := s.(overlay); !ok || !o.overlay() {
+			break
+		}
+	}
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
+	if g.rep != nil && g.opts.Until > 0 && !g.untilShot && g.rep.skipDraw(g.tick) {
+		return
+	}
+	g.traceDrawGap(g.tick - 1)
+	if g.waitsForDolls() {
+		g.pictureDeadline = time.Now().Add(10 * time.Second)
+		defer func() { g.pictureDeadline = time.Time{} }()
+	}
 	g.pics.beginFrame()
 	g.beginMaterialFrame()
 	g.rendering = true
@@ -1209,7 +1324,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.quit = true
 		}
 	}
-	if g.autoShot != "" {
+	if g.autoShot != "" && !g.untilShot {
 		g.saveShot(screen, g.autoShot)
 		g.autoShot = ""
 	}
@@ -1229,6 +1344,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		// Over everything else and before a script's shot, so the shot shows it.
 		g.drawMeter(screen)
 	}
+	if g.untilShot && g.autoShot != "" {
+		g.saveShot(screen, g.autoShot)
+		g.autoShot = ""
+	}
 	if s := g.in.script; s != nil && s.shot != "" {
 		g.saveShot(screen, s.shot)
 		s.shot = ""
@@ -1244,7 +1363,9 @@ func (g *Game) shotDir() string {
 
 func (g *Game) saveShot(screen *ebiten.Image, name string) {
 	g.saveShotQuiet(screen, name)
-	g.emit("shot", traceLine{"file": filepath.Join(g.shotDir(), name+".png")})
+	if g.tr != nil {
+		g.emit("shot", traceLine{"file": g.traceShotPath(name)})
+	}
 	if g.st != nil {
 		if d := dungeon.Of(g.db, g.st); d != nil && d.Space != nil {
 			g.traceState()
@@ -1253,6 +1374,9 @@ func (g *Game) saveShot(screen *ebiten.Image, name string) {
 }
 
 func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
+	if g.failure != nil {
+		return
+	}
 	if name == "" || name == "." || name == ".." || filepath.Base(name) != name || strings.ContainsAny(name, "/\\") {
 		g.failure = errors.New("screenshot: invalid basename")
 		return
@@ -1329,11 +1453,15 @@ func (g *Game) push(s scene) {
 
 func (g *Game) pop() {
 	if len(g.stack) > 1 {
+		if _, ok := g.stack[len(g.stack)-1].(*battleScene); ok {
+			g.closeEnemyPuppets()
+		}
 		g.stack = g.stack[:len(g.stack)-1]
 	}
 }
 
 func (g *Game) replace(s scene) {
+	g.closeEnemyPuppets()
 	g.stack = []scene{s}
 	g.talk = talk{}
 	g.recruit = nil
@@ -2314,7 +2442,7 @@ func (g *Game) Handle(e event.Effect) {
 		g.Image(e.Picture)
 	case event.PhoneEffect:
 		g.pics.warm(phonePictures(e.Phone)...)
-		if e.Phone.App == "banner" {
+		if e.Phone.App == "banner" && e.Phone.Var == "" {
 			if g.fast != nil {
 				break // a replay reads on: the click it had is in the cursor
 			}

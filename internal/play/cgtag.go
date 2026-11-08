@@ -21,6 +21,7 @@ func (g *Game) updateTag() bool {
 	if g.rep != nil || g.auto != nil || g.db == nil || !g.cgReviewEnabled() || g.reviewOpen() != nil || g.tagKeyTaken() || !g.in.pressedKey(btnTag) {
 		return false
 	}
+	g.emit("cg_review", traceLine{"tag": true})
 	page := shownPicture(g.cg)
 	if page == "" || g.db.StandIn(page) {
 		g.tag = &cgReview{inPlay: true}

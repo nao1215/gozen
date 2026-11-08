@@ -76,6 +76,7 @@ func (g *Game) loadConfig() {
 }
 
 func (g *Game) saveConfig() error {
+	g.emit("config_write", nil)
 	b, err := json.MarshalIndent(g.cfg, "", "  ")
 	if err == nil {
 		err = g.store.Write(g.configPath(), b)
@@ -99,6 +100,10 @@ func (g *Game) applyConfig() {
 }
 
 func (g *Game) toggleFullscreen() {
+	// Device hotkeys must not inject configuration into a recorded replay.
+	if g.rep != nil {
+		return
+	}
 	g.cfg.Fullscreen = !g.cfg.Fullscreen
 	g.applyConfig()
 	if err := g.saveConfig(); err != nil {

@@ -57,8 +57,10 @@ func (g *Game) openMemo() {
 		items = append(items, listItem{label: k.Label, id: k.ID})
 	}
 	m.list = newList(items, 0, 0, 420, len(items))
-	m.start(g, g.memoCaret)
 	g.memo = m
+	// Memo editing freezes the simulation at the preceding tick.
+	g.emit("memo_open", traceLine{"tick": max(0, g.tick-1)})
+	m.start(g, g.memoCaret)
 	g.sfx("decide")
 }
 
@@ -312,6 +314,9 @@ func (g *Game) closeMemo() {
 }
 
 func (g *Game) typeMemo(s string) {
+	if g.memo == nil {
+		g.emit("text_input", nil)
+	}
 	if g.memo != nil && g.memo.typed {
 		g.memo.text += s
 	}
@@ -386,6 +391,7 @@ func (g *Game) quickMemo(kind, text, source string) {
 	if g.opts.MemoDir == "" || g.db == nil || g.quickN >= 40 {
 		return
 	}
+	g.emit("unsupported_script", traceLine{"operation": "memo"})
 	g.quickN++
 	m := &memoBox{info: g.memoInfo()}
 	m.save = g.memoResume(&m.info)

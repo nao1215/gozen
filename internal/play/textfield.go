@@ -24,6 +24,9 @@ type textField struct {
 // start connects the input method; caret is where the caret is, in UI units, for the
 // input method's window.
 func (f *textField) start(g *Game, caret func() (x, y float64)) {
+	if g.memo == nil {
+		g.emit("text_input", nil)
+	}
 	f.composer.OnNewSession = func() *textinput.SessionOptions {
 		x, y := caret()
 		return &textinput.SessionOptions{CaretBounds: image.Rect(int(x*g.ui), int(y*g.ui), int(x*g.ui)+2, int((y+sizeM*1.3)*g.ui)), TextBeforeCaret: f.text}

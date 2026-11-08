@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
+
+	"github.com/nao1215/gozen/internal/savefile"
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
@@ -177,5 +182,103 @@ func TestPhoneScriptInputWaitsForReceiver(t *testing.T) {
 				t.Fatalf("ready phone did not receive input: pc=%d", s.pc)
 			}
 		})
+	}
+}
+
+// Raw pointer edges must survive banner consumption in the recording, while
+// dispatch still consumes them before the opened event receives input.
+func TestPhoneBannerRecordingReplay(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append([]byte("schema_version: 11\n"), fsys["game.yaml"].Data...)
+	fsys["data/banner.yaml"] = &fstest.MapFile{Data: []byte(`events:
+  notify:
+    - say: Ready.
+    - phone: {app: banner, notices: [{title: Notice, event: opened}]}
+  opened:
+    - set: {var.opened: 'var.opened + 1', flag.opened: true}
+    - phone: {app: banner, var: var.result, notices: [{title: Dismiss me}]}
+    - set: {var.finished: 'var.finished + 1'}
+`)}
+	var recording bytes.Buffer
+	g, err := New(Options{FS: fsys, Location: "camp", Event: "notify", Seed: 7, Trace: &recording, NoSound: true, Store: savefile.MemStore()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	sw, _ := g.screen()
+	// Supply physical-frame input through the existing input adapter, without
+	// installing a game replay or bypassing Update's normal dispatch.
+	g.in.replay = &replay{inputs: map[int]traceLine{
+		20:  {"press": []any{"ok"}},
+		60:  {"click": true, "pointer_held": true, "pointer_up": true, "mouse": []any{sw / 2, float64(40)}},
+		100: {"esc": true, "press": []any{"cancel", "menu"}},
+	}}
+	type frame struct {
+		Banners          []phoneBanner
+		Phone            bool
+		Closing          int
+		Opened, Finished any
+		Result           any
+	}
+	snapshot := func(g *Game) frame {
+		f := frame{Banners: append([]phoneBanner(nil), g.banners...), Phone: g.phone != nil, Opened: g.st.Vars["opened"], Finished: g.st.Vars["finished"], Result: g.st.Vars["result"]}
+		if g.phone != nil {
+			f.Closing = g.phone.closing
+		}
+		return f
+	}
+	var frames []frame
+	for range 140 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		frames = append(frames, snapshot(g))
+	}
+	if g.st.Vars["opened"] != float64(1) || g.st.Vars["finished"] != float64(1) || g.st.Vars["result"] != "dismiss" || !g.st.Flags["opened"] {
+		t.Fatalf("event did not run exactly once and dismiss: %+v\n%s", snapshot(g), &recording)
+	}
+	g.traceEnd()
+	inputs := traceLines(t, recording.Bytes(), "input")
+	if len(inputs) != 5 || inputs[3]["click"] != true || inputs[3]["pointer_up"] != true || inputs[3]["pointer_held"] != true || inputs[4]["esc"] != true {
+		t.Fatalf("lost or duplicated raw input: %v", inputs)
+	}
+	if opens := traceLines(t, recording.Bytes(), "banner_open"); len(opens) != 1 {
+		t.Fatalf("banner dispatched %d times", len(opens))
+	}
+	path := filepath.Join(t.TempDir(), "banner.jsonl")
+	if err := os.WriteFile(path, recording.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var replayTrace bytes.Buffer
+	r, err := New(Options{FS: fsys, Replay: path, Trace: &replayTrace, NoSound: true, Store: savefile.MemStore()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	for i, want := range frames {
+		if err := r.Update(); err != nil {
+			t.Fatal(err)
+		}
+		if got := snapshot(r); !reflect.DeepEqual(got, want) {
+			t.Fatalf("frame %d: got %+v, want %+v", i+1, got, want)
+		}
+	}
+	r.traceEnd()
+	if r.rep.diverge != "" || !r.rep.finished {
+		t.Fatalf("replay: %s", r.rep.report())
+	}
+	if opens := traceLines(t, replayTrace.Bytes(), "banner_open"); len(opens) != 1 {
+		t.Fatalf("replay dispatched %d times", len(opens))
 	}
 }

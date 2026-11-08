@@ -19,7 +19,9 @@ import (
 // and the rigs they are made of, which the stream screens share.
 type puppetSet struct {
 	live map[string]*puppet.Puppet
-	rigs map[string]*puppet.Rig
+	// enemies own animation state per battle unit; rigs remain shared.
+	enemies map[*battle.Unit]*puppet.Puppet
+	rigs    map[string]*puppet.Rig
 	// failed are the puppet files that did not load.
 	failed map[string]bool
 	// staged is the tick each actor's puppet last stood on the novel stage (ui.stage_puppets).
@@ -96,23 +98,27 @@ func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppe
 		return nil
 	}
 	key := "enemy." + u.EID
-	p := g.puppets.live[key]
+	p := g.puppets.enemies[u]
+	if p != nil && p.Rig() != g.rig(u.Def.Puppet) {
+		p.Close()
+		delete(g.puppets.enemies, u)
+		p = nil
+	}
 	if p == nil {
 		rig := g.rig(u.Def.Puppet)
 		if rig == nil {
 			return nil
 		}
 		p = seededPuppet(rig, key)
-		if g.puppets.live == nil {
-			g.puppets.live = map[string]*puppet.Puppet{}
+		if g.puppets.enemies == nil {
+			g.puppets.enemies = map[*battle.Unit]*puppet.Puppet{}
 		}
-		g.puppets.live[key] = p
+		g.puppets.enemies[u] = p
 	}
 	if i, ok := p.Rig().Face(strings.TrimSuffix(path.Base(picture), path.Ext(picture))); ok {
 		p.Motion.SetFace(i)
 	}
 	p.Motion.SetHealth(float64(hp) / float64(max(1, u.MHP())))
-	p.Motion.Step()
 	return p
 }
 
@@ -169,7 +175,15 @@ func (g *Game) drawPuppet(dst *ebiten.Image, p *puppet.Puppet, cx, bottom, h flo
 	p.Draw(dst, op)
 }
 
+func (g *Game) closeEnemyPuppets() {
+	for u, p := range g.puppets.enemies {
+		p.Close()
+		delete(g.puppets.enemies, u)
+	}
+}
+
 func (g *Game) closePuppets() {
+	g.closeEnemyPuppets()
 	for _, p := range g.puppets.live {
 		p.Close()
 	}

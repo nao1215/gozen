@@ -12,6 +12,7 @@ import (
 	"github.com/nao1215/gozen/internal/cliio"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/play"
 
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -262,7 +263,7 @@ func checkTrace(input io.Reader, musicLate float64) (*traceChecker, error) {
 		carried: map[string]bool{}, spoke: map[string]bool{},
 	}
 	sc := bufio.NewScanner(input)
-	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	sc.Buffer(make([]byte, 1<<20), play.TraceLineLimit)
 	last := 0
 	for sc.Scan() {
 		l, err := decodeTrace(sc.Bytes())

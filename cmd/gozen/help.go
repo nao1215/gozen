@@ -340,12 +340,14 @@ var pages = map[string]clihelp.Page{
 			"faults of the standing pictures and the music instead and exits 1 if there are any. Use - for standard input. Check mode does not accept display filters.",
 		Examples: []clihelp.Example{
 			{"print a trace", "gozen trace run.jsonl"},
+			{"retake a recorded screenshot", "gozen trace run.jsonl --repro shots/view_000120.png --out repro"},
 			{"print only dialog and battles between seconds 10 and 60", "gozen trace run.jsonl --only say --only battle --from 10 --to 60"},
 			{"check pictures and music", "gozen trace run.jsonl --check"},
 		},
 		Groups: []clihelp.Group{
 			{Title: "Filter", Flags: []string{"only", "from", "to", "input"}},
 			{Title: "Check", Flags: []string{"check", "music-late"}},
+			{Title: "Reproduction", Flags: []string{"repro", "out"}},
 			{Title: "Output", Flags: []string{"format"}},
 			general,
 		},

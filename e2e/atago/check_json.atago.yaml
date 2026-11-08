@@ -366,3 +366,52 @@ scenarios:
       stdout:
         json: {path: $.data, equals: []}
       stderr: {equals: ''}
+- name: opt-in phone outcomes and colors validate
+  steps:
+  - fixture:
+      file: phone/game.yaml
+      content: |
+        schema_version: 11
+        id: phone-options
+        language: en
+        start: {location: studio}
+        ui: {phone_accent: '#6750a4', phone_background: '#182430', phone_text: '#ffffff', phone_muted: '#cccccc'}
+  - fixture:
+      file: phone/data/world.yaml
+      content: |
+        locations: {studio: {name: Studio}}
+        events:
+          timeout:
+            - phone: {app: lock, var: var.timeout, timeout: 8, timeout_result: retry}
+            - phone: {app: banner, var: var.notice, timeout: 4, notices: [{text: Hello}]}
+            - phone: {app: page, var: var.page, timeout: 4, rows: [{text: Hello}]}
+            - phone: {app: chat, messages: [{mine: true, text: Hello}]}
+  - run: {command: 'gozen check phone --format json'}
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - fixture:
+      file: phone/data/world.yaml
+      content: |
+        locations: {studio: {name: Studio}}
+        events:
+          invalid:
+            - phone: {app: lock, var: var.timeout, timeout: -1, timeout_result: woke}
+            - phone: {app: banner, var: var.notice, timeout: 4, notices: [{text: Hello}, {text: Again}]}
+            - phone: {app: chat, var: var.page, timeout: 4, messages: [{text: Hello}]}
+            - phone: {app: page, timeout: 4, rows: [{text: Hello}]}
+  - run: {command: 'gozen check phone --format json'}
+  - assert:
+      exit_code: 1
+      stdout:
+        contains: ['timeout must be finite positive', 'exactly one notice', 'needs var', 'timeout needs app']
+  - fixture:
+      file: phone/game.yaml
+      content: |
+        schema_version: 11
+        id: phone-options
+        ui: {phone_accent: not-a-color}
+  - run: {command: 'gozen check phone --format json'}
+  - assert:
+      exit_code: 1
+      stdout: {contains: ['phone_accent']}

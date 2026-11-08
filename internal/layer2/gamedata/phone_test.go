@@ -20,6 +20,16 @@ func TestPhoneChecks(t *testing.T) {
 		}
 	})
 	for _, tc := range []struct{ name, command, want string }{
+		{"timeout", `phone: {app: lock, var: var.timeout, timeout: 1, timeout_result: retry}`, ""},
+		{"waiting banner", `phone: {app: banner, var: var.notice, timeout: 4, notices: [{text: Hello}]}`, ""},
+		{"timeout no var", `phone: {app: lock, timeout: 1, timeout_result: retry}`, "needs var"},
+		{"timeout no timeout", `phone: {app: lock, var: var.x, timeout_result: retry}`, "timeout must"},
+		{"timeout notices", `phone: {app: lock, var: var.x, timeout: 1, timeout_result: retry, notices: [{text: Hi}]}`, ""},
+		{"multiple waiting notices", `phone: {app: banner, var: var.x, timeout: 4, notices: [{text: Hi}, {text: Again}]}`, "exactly one notice"},
+		{"waiting event", `phone: {app: banner, var: var.x, timeout: 4, notices: [{text: Hi, event: e}]}`, "uses var instead of event"},
+		{"nonfinite timeout", `phone: {app: lock, var: var.x, timeout: .nan, timeout_result: retry}`, "timeout must"},
+		{"negative timeout", `phone: {app: lock, var: var.x, timeout: -1, timeout_result: retry}`, "timeout must"},
+		{"timeout wrong app", `phone: {app: chat, timeout: 1, messages: [{text: Hi}]}`, "timeout needs"},
 		{"chat", `phone: {app: chat, title: Team, messages: [{from: Ann, text: Hi}, {mine: true, text: Hello}]}`, ""},
 		{"chat picture and video", `phone: {app: chat, messages: [{picture: x.png}, {video: {picture: x.png, seconds: 5, bounce: [1, 4]}}]}`, ""},
 		{"feed", `phone: {app: feed, posts: [{who: ann, picture: x.png, likes: 3}, {video: {picture: x.png}}]}`, ""},

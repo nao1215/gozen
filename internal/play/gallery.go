@@ -111,6 +111,9 @@ func (g *Game) saveUnlocks() {
 			err = g.store.Write(g.galleryPath(), b)
 		}
 	}
+	if err != nil {
+		g.emit("persistence_error", nil)
+	}
 	g.unlockSaveRetry.record(g.tick, "gallery", err)
 	if err != nil {
 		return
@@ -277,6 +280,9 @@ func (s *galleryScreen) tabLabels(g *Game) []string {
 }
 
 func (s *galleryScreen) build(g *Game) {
+	if g.opts.GalleryAll && (g.cgReviewEnabled() || (g.opts.ReviewLog != "" && g.db.Game.SceneReview.Configured())) {
+		g.emit("cg_review", traceLine{"gallery": true})
+	}
 	sw, sh := g.screen()
 	var items []listItem
 	gal := g.db.Game.Gallery

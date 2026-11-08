@@ -2,12 +2,14 @@ package play
 
 import (
 	"bufio"
+	"bytes"
 	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"io"
 	"io/fs"
 	"log"
@@ -24,16 +26,26 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
+	"github.com/nao1215/gozen/internal/layer1/memo"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/layer3/dungeon"
 	"github.com/nao1215/gozen/internal/layer5/sound"
+	"github.com/nao1215/gozen/internal/savefile"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 
 type tracer struct {
-	enc   *lineWriter
-	lines int
-	err   error
+	// inAct suppresses redundant panel mutation records already replayed by act.
+	inAct     bool
+	focusLost bool
+	focusTick int
+	mouse     image.Point
+	viewport  traceViewport
+	enc       *lineWriter
+	lines     int
+	lastTick  int
+	drawTick  int // Last drawn tick; zero is the state before the first update.
+	err       error
 
 	scenes string
 	music  string
@@ -76,6 +88,12 @@ type traceList struct {
 type traceLine = map[string]any
 
 const traceVersion = 2
+
+// TraceLineLimit is the shared JSONL scanner limit used by the player and CLI.
+// Writers leave room for the newline and scanner lookahead.
+const TraceLineLimit = 16 << 20
+
+const initialSaveLimit = 8 << 20
 
 func newTracer(w io.Writer) *tracer {
 	t := &tracer{}
@@ -121,6 +139,9 @@ func (lw *lineWriter) Encode(l traceLine) error {
 		b.WriteString(strings.TrimSuffix(vb.String(), "\n"))
 	}
 	b.WriteString("}\n")
+	if b.Len() >= TraceLineLimit {
+		return errors.New("trace record exceeds the 16 MiB line limit")
+	}
 	n, err := io.WriteString(lw.w, b.String())
 	if err == nil && n != b.Len() {
 		return io.ErrShortWrite
@@ -140,8 +161,15 @@ func (g *Game) emit(kind string, fields traceLine) {
 	if g.tr == nil {
 		return
 	}
+	if g.tr.inAct && (kind == "dev_set" || kind == "dev_do" || kind == "jump") {
+		return
+	}
 	line := traceLine{"t": kind, "tick": g.tick}
 	maps.Copy(line, fields)
+	// Editors can freeze the simulation after this update has emitted actions.
+	// Keep their boundary and subsequent observations at the latest record tick.
+	g.tr.lastTick = max(g.tr.lastTick, int(num(line["tick"])))
+	line["tick"] = g.tr.lastTick
 	g.tr.lines++
 	if g.tr.enc != nil && g.tr.err == nil {
 		g.tr.err = g.tr.enc.Encode(line)
@@ -161,25 +189,138 @@ func (g *Game) traceStart() error {
 		return err
 	}
 	setup := traceSetup{Config: g.cfg, Read: g.read, Unlocked: g.unlocked}
+	setup.Resources, err = traceResources(g.opts.FS)
+	if err != nil {
+		return err
+	}
+	if g.meter.on {
+		setup.Unsupported = append(setup.Unsupported, "frame meter")
+	}
 	setup.Saves, err = g.traceSaves()
 	if err != nil {
 		return err
 	}
 	if o.FromMemo != "" {
-		setup.Unsupported = append(setup.Unsupported, "from_memo")
+		m, b, err := memo.Read(o.FromMemo)
+		if err != nil {
+			return err
+		}
+		setup.Memo = &traceMemo{Memo: m, Save: b, Path: o.FromMemo, AllowLegacy: o.AllowLegacySave}
 	}
-	if o.Review {
-		setup.Unsupported = append(setup.Unsupported, "review")
+	if g.opts.Trace != nil {
+		setup.SaveData = map[string][]byte{}
+		setup.SaveTimes = map[string]time.Time{}
+		for name := range setup.Saves {
+			b, err := g.storeRead(name)
+			if err != nil {
+				return err
+			}
+			setup.SaveData[name] = b
+			if len(b) > initialSaveLimit {
+				setup.Unsupported = append(setup.Unsupported, fmt.Sprintf("initial save %q exceeds the 8 MiB limit", name))
+			}
+			if t, ok := g.storeTime(name); ok {
+				setup.SaveTimes[name] = t
+			}
+		}
+	}
+	if setup.Memo != nil && len(setup.Memo.Save) > initialSaveLimit {
+		setup.Memo = nil
+		setup.Unsupported = append(setup.Unsupported, "initial memo save exceeds the 8 MiB limit")
+	}
+	if o.Replay != "" {
+		setup.Unsupported = append(setup.Unsupported, "recording a replay")
+	}
+	if o.State != nil {
+		setup.Unsupported = append(setup.Unsupported, "injected state")
+	}
+	initial := setup.SaveData
+	if initial != nil {
+		setup.SaveData = map[string][]byte{}
 	}
 	g.emit("start", traceLine{
-		"version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"game_dir": o.GameDir, "scripted": o.Script != "", "locales": o.Locales, "book_as_played": o.BookAsPlayed,
+		"exact_version": 3, "version": traceVersion, "game": g.db.Game.Title, "language": cmp.Or(g.db.Game.Language, lang.English), "seed": o.Seed,
+		"window": o.Window, "fullscreen": g.cfg.Fullscreen, "development": o.Development,
 		"screen":   []int{g.db.Game.Screen.Width, g.db.Game.Screen.Height},
 		"location": o.Location, "party": o.Party, "level": o.Level, "flags": o.Flags, "gold": o.Gold, "items": o.Items, "calm": o.Calm,
 		"floor": o.Floor, "battle": o.Battle, "speed": max(1, o.Speed), "gallery_all": o.GalleryAll,
 		"scene": o.Scene, "event": o.Event, "line": o.Line, "picture": o.Picture, "answers": o.Answers,
 		"autopilot": g.isAutopilot(), "fingerprint": fingerprint, "setup": setup,
 	})
+	if g.opts.Trace != nil {
+		for _, name := range slices.Sorted(maps.Keys(initial)) {
+			if len(initial[name]) <= initialSaveLimit {
+				g.emit("initial_save", traceLine{"file": name, "data": initial[name]})
+			}
+		}
+		g.store = &traceStore{Store: g.store, game: g, initial: initial, times: setup.SaveTimes}
+	}
 	return g.tr.err
+}
+
+// traceStore detects external slot edits at the I/O boundary. Only recordings
+// install it; ordinary play pays no additional read or per-frame cost.
+type traceStore struct {
+	Store
+	game    *Game
+	initial map[string][]byte
+	times   map[string]time.Time
+}
+
+func (s *traceStore) slot(name string) bool {
+	for i := range saveSlots + 1 {
+		if name == s.game.slotPath(i) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *traceStore) Read(name string) ([]byte, error) {
+	b, err := s.Store.Read(name)
+	if s.slot(name) {
+		want, exists := s.initial[name]
+		if (exists && (err != nil || !bytes.Equal(b, want))) ||
+			(!exists && !errors.Is(err, fs.ErrNotExist)) {
+			s.game.emit("external_save", nil)
+		}
+	}
+	return b, err
+}
+
+func (s *traceStore) Write(name string, b []byte) error {
+	err := s.Store.Write(name, b)
+	if err == nil && s.slot(name) {
+		s.initial[name] = bytes.Clone(b)
+		if st, ok := s.Store.(interface {
+			ModTime(string) (time.Time, error)
+		}); ok {
+			if stamp, err := st.ModTime(name); err == nil {
+				s.times[name] = stamp
+			} else {
+				delete(s.times, name)
+			}
+		}
+	}
+	return err
+}
+
+func (s *traceStore) ModTime(name string) (time.Time, error) {
+	var t time.Time
+	err := fs.ErrNotExist
+	if st, ok := s.Store.(interface {
+		ModTime(string) (time.Time, error)
+	}); ok {
+		t, err = st.ModTime(name)
+	}
+	if s.slot(name) {
+		want, exists := s.times[name]
+		if (exists && (err != nil || !want.Equal(t) || want.Format("01/02 15:04") != t.Format("01/02 15:04"))) || (!exists && err == nil) {
+			s.game.emit("external_save", nil)
+		}
+	}
+	return t, err
 }
 
 func traceFingerprint(fsys fs.FS) (string, error) {
@@ -213,12 +354,57 @@ func traceFingerprint(fsys fs.FS) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), err
 }
 
+// traceResources fingerprints fonts, pictures, sounds, metadata and translations
+// once at startup. These files must stay immutable during a recorded run.
+func traceResources(fsys fs.FS) (string, error) {
+	h := sha256.New()
+	if fsys != nil {
+		for _, root := range []string{"assets", "lang"} {
+			err := fs.WalkDir(fsys, root, func(name string, d fs.DirEntry, err error) error {
+				if errors.Is(err, fs.ErrNotExist) && name == root {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+				b, err := fs.ReadFile(fsys, name)
+				if err != nil {
+					return err
+				}
+				if _, err := fmt.Fprintf(h, "%d:%s:%d:", len(name), name, len(b)); err != nil {
+					return err
+				}
+				_, err = h.Write(b)
+				return err
+			})
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+type traceMemo struct {
+	Memo        memo.Memo `json:"memo"`
+	Save        []byte    `json:"save"`
+	Path        string    `json:"path"`
+	AllowLegacy bool      `json:"allow_legacy,omitempty"`
+}
+
 type traceSetup struct {
-	Config      config            `json:"config"`
-	Read        map[uint64]bool   `json:"read"`
-	Unlocked    map[string]bool   `json:"unlocked"`
-	Saves       map[string]string `json:"saves"`
-	Unsupported []string          `json:"unsupported,omitempty"`
+	Resources   string               `json:"resources,omitempty"`
+	SaveData    map[string][]byte    `json:"save_data"`
+	SaveTimes   map[string]time.Time `json:"save_times,omitempty"`
+	Memo        *traceMemo           `json:"memo,omitempty"`
+	Config      config               `json:"config"`
+	Read        map[uint64]bool      `json:"read"`
+	Unlocked    map[string]bool      `json:"unlocked"`
+	Saves       map[string]string    `json:"saves"`
+	Unsupported []string             `json:"unsupported,omitempty"`
 }
 
 func (g *Game) traceSaves() (map[string]string, error) {
@@ -240,15 +426,22 @@ func (g *Game) traceSaves() (map[string]string, error) {
 	return out, nil
 }
 
+// buttonNames is the canonical table for trace encoding, validation and replay.
+// TestTraceButtonsRoundTrip requires a unique nonempty name for every button.
 var buttonNames = [numButtons]string{
 	btnUp: "up", btnDown: "down", btnLeft: "left", btnRight: "right", btnOK: "ok", btnCancel: "cancel",
 	btnMenu: "menu", btnLog: "log", btnAuto: "auto", btnHide: "hide", btnConfig: "config", btnNext: "next",
 	btnMemo: "memo", btnReload: "reload", btnTag: "tag", btnGraphs: "graphs", btnSkip: "skip", btnSceneSkip: "scene_skip",
 	btnBack: "back", btnSave: "save", btnLoad: "load", btnPanel: "panel",
+	btnBook: "characters", btnBestiary: "bestiary", btnCaptions: "captions",
+	btnMapZoomIn: "map_zoom_in", btnMapZoomOut: "map_zoom_out", btnMapOverview: "map_overview",
+	btnMapFocus: "map_focus", btnMapPan: "map_pan", btnEndTurn: "end_turn_key", btnInbox: "inbox",
 }
 
-func (g *Game) traceInput() {
-	in := &g.in
+func (g *Game) traceInput(in *input) {
+	if g.tr == nil {
+		return
+	}
 	var press, held []string
 	for b := range numButtons {
 		if in.pressed[b] {
@@ -258,10 +451,14 @@ func (g *Game) traceInput() {
 			held = append(held, buttonNames[b])
 		}
 	}
-	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pheld && !in.pup {
+	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pdown && !in.pheld && !in.pup && !in.longPress && in.mouse == g.tr.mouse {
 		return
 	}
-	l := traceLine{}
+	g.tr.mouse = in.mouse
+	l := traceLine{"moved": in.moved, "mouse": []int{in.mouse.X, in.mouse.Y}}
+	if in.longPress {
+		l["long_press"] = true
+	}
 	if in.digit != 0 {
 		l["digit"] = in.digit
 	}
@@ -280,17 +477,11 @@ func (g *Game) traceInput() {
 	if in.shift {
 		l["shift"] = true
 	}
-	if in.click || in.rclick || in.moved || in.wheel != 0 {
-		l["mouse"] = []int{in.mouse.X, in.mouse.Y}
-	}
 	if in.click {
 		l["click"] = true
 	}
 	if in.rclick {
 		l["rclick"] = true
-	}
-	if in.pheld || in.pup {
-		l["mouse"] = []int{in.mouse.X, in.mouse.Y}
 	}
 	// A press goes down with a click unless a finger began it; only the
 	// difference is written.
@@ -451,6 +642,27 @@ func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
 	}
 }
 
+// traceDrawGap writes only exceptional cadence, with no allocation on ordinary frames.
+// through is the last tick that ran without drawing (inclusive).
+func (g *Game) traceDrawGap(through int) {
+	if g.tr == nil || g.tr.ended {
+		return
+	}
+	if first := g.tr.drawTick + 1; first <= through {
+		g.emit("draw_skip", traceLine{"first": first, "last": through})
+	}
+	g.tr.drawTick = g.tick
+}
+
+// skipDraw keeps draw-owned presentation transitions on their recorded ticks.
+// Traces without draw_skip records retain the legacy draw-every-tick behavior.
+func (r *replay) skipDraw(tick int) bool {
+	i, _ := slices.BinarySearchFunc(r.drawSkips, tick, func(span [2]int, tick int) int {
+		return cmp.Compare(span[1], tick)
+	})
+	return i < len(r.drawSkips) && r.drawSkips[i][0] <= tick
+}
+
 func (g *Game) traceFrameStart() {
 	if g.tr == nil {
 		return
@@ -489,7 +701,7 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 		if g.opts.TraceShots {
 
 			name := fmt.Sprintf("view_%06d", g.tick)
-			l["shot"] = filepath.Join(g.shotDir(), name+".png")
+			l["shot"] = g.traceShotPath(name)
 			g.saveShotQuiet(screen, name)
 		}
 		g.emit("view", l)
@@ -544,10 +756,24 @@ func (g *Game) isAutopilot() bool {
 	return g.auto != nil || g.opts.Autopilot != nil || (g.rep != nil && g.rep.autopilot)
 }
 
+// traceViewport records layout changes so exact reproduction can reject resized runs.
+type traceViewport struct {
+	Width  int     `json:"width"`
+	Height int     `json:"height"`
+	Scale  float64 `json:"scale"`
+	Tall   bool    `json:"tall,omitempty"`
+}
+
 type replay struct {
+	startupViewport *traceViewport
+	drawSkips       [][2]int
+	saveWrites      map[int]map[string][]*time.Time
+	scripted        bool
 	// now is the time the recorded run read for its streams, at its offset from UTC (the
 	// "now" line).
 	now         time.Time
+	picks       map[int]traceLine
+	pickTick    int
 	inputs      map[int]traceLine
 	acts        map[int][]traceLine
 	expect      map[string][]traceLine
@@ -592,28 +818,35 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
-	r := &replay{inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
+	r := &replay{picks: map[int]traceLine{}, saveWrites: map[int]map[string][]*time.Time{}, inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, partial: o.Until > 0}
 	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	sc.Buffer(make([]byte, 1<<20), TraceLineLimit)
 	if o.Until < 0 {
 		return nil, errors.New(lang.T("--until は正のティックを指定する"))
 	}
 	lines, lastTick := 0, 0
 	var start traceLine
+	var exact ExactReplay
 	var reloads []int
 	var startOptions struct {
-		Seed        uint64      `json:"seed"`
-		Version     int         `json:"version"`
-		Speed       int         `json:"speed"`
-		Fingerprint string      `json:"fingerprint"`
-		Setup       *traceSetup `json:"setup"`
-		Scene       string      `json:"scene"`
-		Event       string      `json:"event"`
-		Line        int         `json:"line"`
-		Picture     string      `json:"picture"`
-		Answers     []int       `json:"answers"`
-		Autopilot   bool        `json:"autopilot"`
-		GalleryAll  bool        `json:"gallery_all"`
+		Development  *bool       `json:"development"`
+		Window       float64     `json:"window"`
+		Fullscreen   bool        `json:"fullscreen"`
+		Seed         uint64      `json:"seed"`
+		Version      int         `json:"version"`
+		Speed        int         `json:"speed"`
+		Fingerprint  string      `json:"fingerprint"`
+		Setup        *traceSetup `json:"setup"`
+		Scene        string      `json:"scene"`
+		Event        string      `json:"event"`
+		Line         int         `json:"line"`
+		Picture      string      `json:"picture"`
+		Answers      []int       `json:"answers"`
+		Autopilot    bool        `json:"autopilot"`
+		GalleryAll   bool        `json:"gallery_all"`
+		Scripted     bool        `json:"scripted"`
+		Locales      []string    `json:"locales"`
+		BookAsPlayed bool        `json:"book_as_played"`
 	}
 	for sc.Scan() {
 		lines++
@@ -636,6 +869,11 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		if lines == 1 && (k != "start" || tick != 0) {
 			return nil, fmt.Errorf(lang.T("replay %s に先頭の開始行がない"), path)
 		}
+		if r.partial && tick < o.Until {
+			if err := exact.Check(k, tick, sc.Bytes()); err != nil {
+				return nil, err
+			}
+		}
 		switch k {
 		case "start":
 			if lines != 1 {
@@ -647,6 +885,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			}
 			start = l
 			r.autopilot = startOptions.Autopilot
+			r.scripted = startOptions.Scripted
 			r.version = startOptions.Version
 			if r.version != 1 && r.version != traceVersion {
 				return nil, fmt.Errorf(lang.T("replay の記録版 %d には対応していない"), r.version)
@@ -663,6 +902,48 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 					return nil, fmt.Errorf(lang.T("replay で再現できない開始条件 %v"), r.setup.Unsupported)
 				}
 			}
+		case "viewport":
+			if r.partial && tick <= 1 && tick < o.Until {
+				var viewport traceViewport
+				if err := json.Unmarshal(sc.Bytes(), &viewport); err != nil {
+					return nil, err
+				}
+				r.startupViewport = &viewport
+			}
+		case "draw_skip":
+			var span struct {
+				First int `json:"first"`
+				Last  int `json:"last"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &span); err != nil {
+				return nil, err
+			}
+			if span.First < 1 || span.Last < span.First || span.Last > tick ||
+				(len(r.drawSkips) > 0 && span.First <= r.drawSkips[len(r.drawSkips)-1][1]) {
+				return nil, errors.New("invalid draw_skip interval")
+			}
+			r.drawSkips = append(r.drawSkips, [2]int{span.First, span.Last})
+		case "initial_save":
+			var save struct {
+				File string `json:"file"`
+				Data []byte `json:"data"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &save); err != nil {
+				return nil, err
+			}
+			if tick != 0 || r.setup.SaveData == nil || len(save.Data) > initialSaveLimit {
+				return nil, errors.New("invalid initial save record")
+			}
+			if _, exists := r.setup.SaveData[save.File]; exists {
+				return nil, errors.New("duplicate initial save record")
+			}
+			r.setup.SaveData[save.File] = save.Data
+		case "unsupported_script", "battle_setup":
+			if !r.partial {
+				return nil, fmt.Errorf("cannot reproduce exactly: %s at tick %d", k, tick)
+			}
+		case "live_reload":
+			reloads = append(reloads, tick)
 		case "end":
 			r.end = l
 			if r.version == traceVersion {
@@ -686,6 +967,9 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			}
 			for _, field := range []string{"press", "held"} {
 				for _, name := range strs(l[field]) {
+					if name == "" {
+						return nil, fmt.Errorf("replay: empty button name in %s at tick %d; older recordings lost the button identity; record a new trace", field, tick)
+					}
 					if !slices.Contains(buttonNames[:], name) {
 						return nil, fmt.Errorf(lang.T("replay の未知のボタン %q"), name)
 					}
@@ -695,6 +979,14 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, fmt.Errorf(lang.T("replay の入力ティック %d が重複"), tick)
 			}
 			r.inputs[tick] = l
+		case "pick":
+			index, ok := l["index"].(float64)
+			on, onOK := l["on"].(string)
+			_, labelOK := l["label"].(string)
+			if tick <= 0 || !ok || index < 0 || index != float64(int(index)) || !onOK || on == "" || !labelOK || r.picks[tick] != nil {
+				return nil, errors.New("replay: invalid pick record")
+			}
+			r.picks[tick] = l
 		case "act":
 			if tick == 0 {
 				return nil, errors.New(lang.T("replay の直接操作は１ティック以降でなければならない"))
@@ -703,12 +995,33 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if !ok {
 				return nil, errors.New("replay: action name must be a string")
 			}
-			if !slices.Contains([]string{"battle_auto", "run", "use_item", "raise", "equip_best", "buy", "walk"}, name) {
+			if name == "window" {
+				if !r.partial || tick < o.Until {
+					return nil, errors.New("cannot reproduce exactly: the recording changed the window size")
+				}
+				continue
+			}
+			if !exactReplayActions[name] {
 				return nil, fmt.Errorf(lang.T("replay の未知の直接操作 %q"), name)
 			}
 			r.acts[tick] = append(r.acts[tick], l)
-		case "live_reload":
-			reloads = append(reloads, tick)
+		case "save_write":
+			var write struct {
+				File  string    `json:"file"`
+				Time  time.Time `json:"time"`
+				Known bool      `json:"time_known"`
+			}
+			if err := json.Unmarshal(sc.Bytes(), &write); err != nil {
+				return nil, err
+			}
+			if r.saveWrites[tick] == nil {
+				r.saveWrites[tick] = map[string][]*time.Time{}
+			}
+			var stamp *time.Time
+			if write.Known {
+				stamp = &write.Time
+			}
+			r.saveWrites[tick][write.File] = append(r.saveWrites[tick][write.File], stamp)
 		case "now":
 			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
 		default:
@@ -743,7 +1056,24 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			return nil, errors.New(lang.T("replay は途中の素材・データ再読込に対応していない"))
 		}
 	}
+	if startOptions.Development != nil {
+		o.Development = *startOptions.Development
+	}
+	// Older traces omit these fields; only recorded values replace caller options.
+	if _, ok := start["window"]; ok {
+		o.Window = startOptions.Window
+	}
+	if _, ok := start["fullscreen"]; ok {
+		o.Fullscreen = startOptions.Fullscreen
+	}
 	o.Seed = startOptions.Seed
+	// A recorded null locale list deliberately clears the caller's locales.
+	if _, ok := start["locales"]; ok {
+		o.Locales = startOptions.Locales
+	}
+	if _, ok := start["book_as_played"]; ok {
+		o.BookAsPlayed = startOptions.BookAsPlayed
+	}
 
 	if value, ok := start["location"].(string); ok {
 		o.Location = value
@@ -785,6 +1115,15 @@ func (r *replay) prepare(g *Game) error {
 	if fingerprint == "" || fingerprint != r.fingerprint {
 		return errors.New(lang.T("replay のデータの指紋が一致しない"))
 	}
+	if r.setup.Resources != "" {
+		resources, err := traceResources(g.opts.FS)
+		if err != nil {
+			return err
+		}
+		if resources != r.setup.Resources {
+			return errors.New("replay: assets or translations changed")
+		}
+	}
 	saves, err := g.traceSaves()
 	if err != nil {
 		return err
@@ -799,6 +1138,7 @@ func (r *replay) feed(in *input, tick int) {
 	in.pressed, in.held = [numButtons]bool{}, [numButtons]bool{}
 	in.fast, in.click, in.rclick, in.moved, in.wheel = false, false, false, false, 0
 	in.pdown, in.pheld, in.pup = false, false, false
+	in.longPress = false
 	in.esc, in.shift = false, false
 	in.digit = 0
 	l, ok := r.inputs[tick]
@@ -815,6 +1155,9 @@ func (r *replay) feed(in *input, tick int) {
 			in.held[i] = true
 		}
 	}
+	if r.picks[tick] != nil {
+		in.pressed[btnOK] = false
+	}
 	in.fast = l["fast"] == true
 	in.esc = l["esc"] == true
 	in.shift = l["shift"] == true
@@ -824,11 +1167,16 @@ func (r *replay) feed(in *input, tick int) {
 	if down, ok := l["pointer_down"].(bool); ok {
 		in.pdown = down
 	}
+	in.longPress = l["long_press"] == true
 	in.wheel = num(l["wheel"])
 	in.digit = int(num(l["digit"]))
 	if m, ok := l["mouse"].([]any); ok && len(m) == 2 {
 		in.mouse.X, in.mouse.Y = int(num(m[0])), int(num(m[1]))
+		// Ordinary replay retains support for older coordinate-only records.
 		in.moved = true
+	}
+	if moved, ok := l["moved"].(bool); ok {
+		in.moved = moved
 	}
 }
 
@@ -990,6 +1338,7 @@ func (g *Game) traceEnd() {
 	if g.tr == nil || g.tr.ended {
 		return
 	}
+	g.traceDrawGap(g.tick)
 	g.tr.ended = true
 	g.traceState(true)
 	if g.rep != nil {
@@ -1014,6 +1363,11 @@ func (g *Game) traceAct(name string, args traceLine) {
 
 func (g *Game) act(name string, args traceLine) bool {
 	g.traceAct(name, args)
+	if g.tr != nil {
+		previous := g.tr.inAct
+		g.tr.inAct = true
+		defer func() { g.tr.inAct = previous }()
+	}
 	s := func(k string) string {
 		v, ok := args[k].(string)
 		if !ok {
@@ -1024,6 +1378,25 @@ func (g *Game) act(name string, args traceLine) bool {
 	n := func(k string) int { return int(num(args[k])) }
 	st := g.st
 	switch name {
+	case "dev_do":
+		g.devDo(s("do"))
+		return true
+	case "dev_jump":
+		g.devJump(s("event"), n("line"))
+		return true
+	case "guides":
+		g.guideScripted = args["on"] == true
+		return true
+	case "window":
+		w, h := n("width"), n("height")
+		if w <= 0 || h <= 0 {
+			g.failure = errors.New("replay: invalid window dimensions")
+			return false
+		}
+		if !g.opts.headless {
+			ebiten.SetWindowSize(w, h)
+		}
+		return true
 	case "walk":
 		// A script's walk on a map or in a painted scene (sceneWalk); in a dungeon the walk
 		// presses keys, which the trace has as input.
@@ -1082,4 +1455,277 @@ func (g *Game) traceBattleDecisions(b *battle.Battle) {
 			g.emit("ai_decision", traceLine{"decision": d})
 		}
 	}
+}
+
+// replayStore preserves slot ordering for Continue while isolating replay writes.
+type replayStore struct {
+	game   *Game
+	writes map[int]map[string][]*time.Time
+	Store
+	times map[string]time.Time
+}
+
+func (s *replayStore) ModTime(name string) (time.Time, error) {
+	t, ok := s.times[name]
+	if !ok {
+		return time.Time{}, fs.ErrNotExist
+	}
+	return t, nil
+}
+
+func (s *replayStore) Write(name string, b []byte) error {
+	if s.game != nil && s.game.rep != nil && s.game.rep.partial {
+		for i := range saveSlots + 1 {
+			if name == s.game.slotPath(i) {
+				if len(s.writes[s.game.tick][name]) == 0 {
+					s.game.failure = fmt.Errorf("cannot reproduce exactly: unrecorded save write at tick %d", s.game.tick)
+					return s.game.failure
+				}
+			}
+		}
+	}
+	if err := s.Store.Write(name, b); err != nil {
+		return err
+	}
+	// A recorded write preserves both the local offset and timestamp availability.
+	if s.game != nil {
+		if stamps := s.writes[s.game.tick][name]; len(stamps) > 0 {
+			stamp := stamps[0]
+			s.writes[s.game.tick][name] = stamps[1:]
+			if stamp == nil {
+				delete(s.times, name)
+			} else {
+				s.times[name] = *stamp
+			}
+			return nil
+		}
+	}
+	// Older ordinary replays have no clock record; exact replay refuses them.
+	s.times[name] = time.Unix(0, 0).UTC()
+	return nil
+}
+
+func (r *replay) restoreSaves(g *Game) error {
+	if r.setup.SaveData == nil {
+		return nil
+	}
+	s := &replayStore{game: g, writes: r.saveWrites, Store: savefile.MemStore(), times: maps.Clone(r.setup.SaveTimes)}
+	if s.times == nil {
+		s.times = map[string]time.Time{}
+	}
+	for name, b := range r.setup.SaveData {
+		if fmt.Sprintf("%x", sha256.Sum256(b)) != r.setup.Saves[name] {
+			return fmt.Errorf("replay: save digest mismatch: %s", name)
+		}
+		if err := s.Store.Write(name, b); err != nil {
+			return err
+		}
+	}
+	g.store, g.storeGiven = s, true
+	return nil
+}
+
+func (g *Game) traceShotPath(name string) string {
+	path := filepath.Join(g.shotDir(), name+".png")
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		g.tr.err = err
+		return path
+	}
+	return abs
+}
+
+// ExactReplay validates the record stream used by the trace CLI's reproduction
+// bundles and the player's replay loader. The zero value starts a stream. Call
+// Check in trace order, only through the target tick; it retains viewport state.
+// It validates replay support, not the trace's ordering or start prerequisites.
+type ExactReplay struct {
+	viewport *traceViewport
+}
+
+// exactReplayKinds is the explicit allow-list. Input and act drive replay; start
+// restores its context and save_write restores storage clocks. Remaining records
+// describe deterministic outcomes or presentation, not additional mutations.
+// repro is a seek boundary.
+var exactReplayKinds = map[string]bool{
+	"draw_skip":           true, // Recorded presentation cadence.
+	"act":                 true,
+	"activate":            true,
+	"ai_decision":         true,
+	"answer":              true,
+	"autosave":            true,
+	"banner_open":         true,
+	"battle":              true,
+	"battle_capture":      true,
+	"battle_close":        true,
+	"battle_end":          true,
+	"battle_fx":           true,
+	"battle_music":        true,
+	"battle_result":       true,
+	"battle_step":         true,
+	"checkpoint_restored": true,
+	"clash":               true,
+	"clash_hit":           true,
+	"clash_skill":         true,
+	"end":                 true,
+	"end_turn":            true,
+	"flow_enter":          true,
+	"flow_next":           true,
+	"focus_pause":         true, // Only before the first update; checked below.
+	"from_memo":           true,
+	"from_memo_ready":     true,
+	"gallery":             true,
+	"input":               true,
+	"initial_save":        true,
+	"layout":              true,
+	"look":                true,
+	"menu":                true,
+	"pick":                true,
+	"message_open":        true,
+	"music":               true,
+	"notice":              true,
+	"order":               true,
+	"ready":               true,
+	"region":              true,
+	"repro":               true,
+	"request":             true,
+	"resume":              true,
+	"rollback":            true,
+	"save_load":           true,
+	"save_write":          true,
+	"say":                 true,
+	"scene":               true,
+	"screen_action":       true,
+	"screen_carry":        true,
+	"screen_drop":         true,
+	"screen_peek":         true,
+	"screen_refused":      true,
+	"shot":                true,
+	"skip":                true,
+	"snapshot":            true,
+	"sortie":              true,
+	"spot":                true,
+	"stand":               true,
+	"start":               true,
+	"state":               true,
+	"travel":              true,
+	"turn":                true,
+	"unlock":              true,
+	"view":                true,
+	"viewport":            true,
+}
+
+// Action names are checked separately: an act record is not permission to run
+// an unknown future operation. Both replay modes share the supported actions.
+var exactReplayActions = map[string]bool{
+	"battle_auto": true,
+	"run":         true,
+	"use_item":    true,
+	"raise":       true,
+	"equip_best":  true,
+	"buy":         true,
+	"walk":        true,
+	"dev_do":      true,
+	"dev_jump":    true,
+	"guides":      true,
+}
+
+// Non-reproducible kinds are explicitly classified for the constructor audit.
+// This is not a fallback: every kind absent from exactReplayKinds is rejected.
+var inexactReplayKinds = map[string]bool{
+	"async_picture":      true,
+	"audio_timing":       true,
+	"battle_setup":       true,
+	"carry":              true,
+	"carry_read":         true,
+	"cg_review":          true,
+	"cg_review_tag":      true,
+	"config_write":       true,
+	"dev_do":             true,
+	"dev_set":            true,
+	"diverge":            true,
+	"external_save":      true,
+	"graphs":             true,
+	"guide":              true,
+	"guide_blocked":      true,
+	"guide_done":         true,
+	"jump":               true,
+	"live_reload":        true,
+	"memo":               true,
+	"memo_open":          true,
+	"now":                true,
+	"panel":              true, // Typed text and wall-clock frame measurements are not recorded.
+	"persistence_error":  true,
+	"pick_error":         true,
+	"problem":            true,
+	"profiles":           true,
+	"save_backup":        true,
+	"scene_review":       true,
+	"script_error":       true,
+	"stream":             true,
+	"stream_comment":     true,
+	"stream_error":       true,
+	"stream_tip":         true,
+	"text_input":         true,
+	"unsupported_script": true,
+	"voice":              true,
+}
+
+// Check rejects any record not known to replay exactly, including future kinds.
+// Errors identify the first unsupported kind and tick for CLI diagnostics.
+func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
+	if !exactReplayKinds[kind] {
+		return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
+	}
+	switch kind {
+	case "focus_pause":
+		// Replay skips focus handling. Before the first update there is no
+		// movement to reset and no simulation tick has advanced.
+		if tick != 0 {
+			return fmt.Errorf("cannot reproduce exactly: %s at tick %d", kind, tick)
+		}
+	case "start":
+		var start struct {
+			Autopilot    bool       `json:"autopilot"`
+			ExactVersion int        `json:"exact_version"`
+			Setup        traceSetup `json:"setup"`
+		}
+		if err := json.Unmarshal(raw, &start); err != nil {
+			return err
+		}
+		if start.Autopilot {
+			return errors.New("cannot reproduce exactly: autopilot changes selections without recording them")
+		}
+		if start.ExactVersion != 3 {
+			return errors.New("cannot reproduce exactly: trace lacks the source audit revision; record again")
+		}
+		if len(start.Setup.Unsupported) > 0 {
+			return fmt.Errorf("cannot reproduce exactly: unsupported start conditions %v", start.Setup.Unsupported)
+		}
+	case "act":
+		var act struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(raw, &act); err != nil {
+			return err
+		}
+		if act.Name == "window" {
+			return errors.New("cannot reproduce exactly: the recording changed the window size")
+		}
+		if !exactReplayActions[act.Name] {
+			return fmt.Errorf("cannot reproduce exactly: act at tick %d (unknown action %q)", tick, act.Name)
+		}
+	case "viewport":
+		var current traceViewport
+		if err := json.Unmarshal(raw, &current); err != nil {
+			return err
+		}
+		// Startup layout can settle around the first game tick.
+		// Later scale changes can change rendered dimensions even with the same logical layout.
+		if tick > 1 && v.viewport != nil && current != *v.viewport {
+			return errors.New("cannot reproduce exactly: the recording changed the window size")
+		}
+		v.viewport = &current
+	}
+	return nil
 }

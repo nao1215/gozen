@@ -171,12 +171,8 @@ func (g *Game) scriptPick(in *input, text string) error {
 		}
 		in.offer.accepted = true
 	}
-	items[found].selectIt()
+	g.selectPick(kind, items, found)
 	in.pressed[btnOK] = true
-	if in.offer != nil {
-		// The receiver resolved this pick after Update's ordinary input trace.
-		g.traceInput()
-	}
 	return nil
 }
 
@@ -263,4 +259,33 @@ func (g *Game) scriptReady(verb string) bool {
 		return g.in.idleRead
 	}
 	return true
+}
+
+// selectPick records the resolved control, including its index to disambiguate
+// duplicate labels. Replay invokes it only when that same receiver is reached.
+func (g *Game) selectPick(kind string, items []pickable, index int) {
+	items[index].selectIt()
+	if g.tr != nil {
+		g.emit("pick", traceLine{"on": kind, "index": index, "label": items[index].label})
+	}
+}
+
+func (g *Game) replayPick(target any) {
+	r := g.rep
+	line := r.picks[g.tick]
+	if line == nil || r.pickTick == g.tick {
+		return
+	}
+	kind, items := g.scriptPickables()
+	index := int(num(line["index"]))
+	if kind != line["on"] || index < 0 || index >= len(items) || items[index].label != line["label"] || items[index].disabled {
+		g.failure = fmt.Errorf("replay: pick target changed at tick %d", g.tick)
+		return
+	}
+	if items[index].target != target {
+		return
+	}
+	r.pickTick = g.tick
+	g.selectPick(kind, items, index)
+	g.in.pressed[btnOK] = true
 }

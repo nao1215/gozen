@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"math/rand/v2"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -555,4 +556,57 @@ func BenchmarkGraphicsLargePuppet(b *testing.B) {
 			})
 		})
 	}
+}
+
+// TestGraphicsSeekMatchesPlayback checks the same simulation with and without
+// intermediate GPU draws. Motion (including time, random phases and springs)
+// must match exactly before comparing pixels; no channel tolerance is used.
+func TestGraphicsSeekMatchesPlayback(t *testing.T) {
+	rig, err := puppet.Load(os.DirFS("../../../examples/puppet/assets/streamer"), "puppet.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newBody := func() *puppet.Puppet {
+		p := puppet.New(rig, rand.New(rand.NewPCG(7, 1)), 60) //nolint:gosec // Deterministic animation timing.
+		t.Cleanup(func() { onLoop(p.Close) })
+		return p
+	}
+	played, sought := newBody(), newBody()
+	var dst *ebiten.Image
+	onLoop(func() {
+		dst = ebiten.NewImageWithOptions(image.Rect(0, 0, 960, 720), &ebiten.NewImageOptions{Unmanaged: true})
+	})
+	t.Cleanup(func() { onLoop(dst.Deallocate) })
+	op := &ebiten.DrawImageOptions{}
+	_, height := rig.Size()
+	scale := 400 / float64(height)
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(400.25, 150.75)
+	for range 90 {
+		onLoop(func() {
+			played.Motion.Step()
+			sought.Motion.Step()
+			dst.Clear()
+			played.Draw(dst, op)
+		})
+	}
+	onLoop(func() {
+		if !reflect.DeepEqual(played.Motion, sought.Motion) {
+			t.Error("playback and seeking motion states differ (time, phases, springs or RNG)")
+			return
+		}
+		if played.Motion.Pose() != sought.Motion.Pose() {
+			t.Error("playback and seeking poses differ")
+			return
+		}
+		dst.Clear()
+		played.Draw(dst, op)
+		want := px(dst)
+		dst.Clear()
+		sought.Draw(dst, op)
+		got := px(dst)
+		if !bytes.Equal(want.Pix, got.Pix) {
+			t.Error("identical motion produces different pixels after intermediate draws")
+		}
+	})
 }

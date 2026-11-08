@@ -43,7 +43,7 @@ scenarios:
         shot saved
         quit
   - run:
-      command: '"${workdir}/moved/gozen-player${env:GOZEN_EXE_SUFFIX}" --dev --mute --start village --gold 37 --script save.txt --shots first --save-dir saves'
+      command: '"${workdir}/moved/gozen-player${env:GOZEN_EXE_SUFFIX}" --dev --mute --start village --gold 37 --script save.txt --shots first --save-dir saves --trace packaged.jsonl'
       env: {PATH: '${workdir}/empty-tools'}
       timeout: 30s
   - assert:
@@ -52,6 +52,19 @@ scenarios:
       file:
         path: saves/save1.json
         json: {path: $.state.gold, equals: 37}
+  # The player runs from the workspace, outside moved/, without --dir.
+  - run:
+      command: python3 -c "import json, pathlib; start = json.loads(pathlib.Path('packaged.jsonl').read_text().splitlines()[0]); assert pathlib.Path(start['game_dir']) == pathlib.Path('moved/game').resolve(), start"
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen trace packaged.jsonl --repro 0 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: '$.data.argv[0]', equals: gozen}
+        - {path: '$.data.argv[1]', equals: run}
   - fixture:
       file: load.txt
       content: |

@@ -153,6 +153,7 @@ func (g *Game) updateLive() {
 }
 
 func (g *Game) askReload() {
+	g.emit("live_reload", traceLine{"requested": true})
 	if g.opts.LiveDir == "" {
 		g.liveSay(lang.T("埋め込みのデータで動いている（--dir で起動すると読み直せる）"), 180)
 		return
@@ -239,6 +240,8 @@ func (g *Game) reloadAssets() {
 		sound.LoadEffects(g.opts.FS)
 		sound.SetVary(g.db.Game.UI.SfxVary.Values())
 		sound.Relearn(g.opts.FS, songsOf(g.db))
+	} else {
+		sound.LoadEffectDurations(g.opts.FS)
 	}
 	for _, s := range g.stack {
 		if gs, ok := s.(*galleryScreen); ok {
@@ -452,6 +455,7 @@ func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 }
 
 func (g *Game) dropReplay(r *sceneReplay, at int) {
+	g.closeEnemyPuppets()
 	g.stack = g.stack[:at]
 	g.st, g.events, g.req = r.saved, r.events, nil
 	g.backlog, g.logView = r.log, nil

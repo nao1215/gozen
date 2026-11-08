@@ -9,7 +9,7 @@ import (
 
 // TestSimScriptWritesTheTrace: gozen sim script plays a run --script script without a
 // window, writes the trace to a file and says how far it went; with --trace - the trace is
-// the standard output. The same seed gives the same trace.
+// the standard output. The same seed gives the same gameplay records, apart from storage clocks.
 func TestSimScriptWritesTheTrace(t *testing.T) {
 	dir := fixture(t)
 	script := filepath.Join(t.TempDir(), "script.txt")
@@ -21,7 +21,7 @@ func TestSimScriptWritesTheTrace(t *testing.T) {
 	}
 	file := string(read(t, trace))
 	piped, _ := invoke(t, 0, "sim", "script", dir, "--start", "camp", "--seed", "5", "--script", script, "--trace", "-")
-	if piped != file {
+	if simTraceWithoutClocks(t, piped) != simTraceWithoutClocks(t, file) {
 		t.Error("the trace on the standard output differs from the file of the same run")
 	}
 	kinds := map[string]bool{}
@@ -38,7 +38,7 @@ func TestSimScriptWritesTheTrace(t *testing.T) {
 		kinds[kind] = true
 		end = m
 	}
-	for _, k := range []string{"start", "say", "dev_do", "battle", "snapshot", "end"} {
+	for _, k := range []string{"start", "say", "act", "battle", "snapshot", "end"} {
 		if !kinds[k] {
 			t.Errorf("no %s line", k)
 		}
@@ -76,4 +76,39 @@ func TestSimScriptArguments(t *testing.T) {
 	if !strings.Contains(stderr, "unknown location") {
 		t.Errorf("stderr: %q", stderr)
 	}
+}
+
+// simTraceWithoutClocks compares separate runs without their recorded storage
+// timestamps. Every other field, including timestamp availability, must match.
+func simTraceWithoutClocks(t *testing.T, trace string) string {
+	t.Helper()
+	var out strings.Builder
+	for line := range strings.Lines(trace) {
+		var record map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatal(err)
+		}
+		if string(record["t"]) == `"save_write"` {
+			delete(record, "time")
+		}
+		if string(record["t"]) == `"start"` && record["setup"] != nil {
+			var setup map[string]json.RawMessage
+			if err := json.Unmarshal(record["setup"], &setup); err != nil {
+				t.Fatal(err)
+			}
+			delete(setup, "save_times")
+			b, err := json.Marshal(setup)
+			if err != nil {
+				t.Fatal(err)
+			}
+			record["setup"] = b
+		}
+		b, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out.Write(b)
+		out.WriteByte('\n')
+	}
+	return out.String()
 }

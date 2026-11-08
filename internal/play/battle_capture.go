@@ -116,7 +116,7 @@ func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
 	defer func() { err = errors.Join(err, f.Close()) }()
 	r := &replay{inputs: map[int]traceLine{}, acts: map[int][]traceLine{}, expect: map[string][]traceLine{}, at: map[string]int{}, version: traceVersion}
 	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	sc.Buffer(make([]byte, 1<<20), TraceLineLimit)
 	n, previous, first := 0, -1, true
 	for sc.Scan() {
 		var l traceLine

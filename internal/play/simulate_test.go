@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"maps"
 	"runtime"
 	"strings"
@@ -81,7 +82,7 @@ func TestSimulateWritesTheTraceOfAScript(t *testing.T) {
 		}
 		count[kind]++
 	}
-	for _, k := range []string{"start", "say", "dev_do", "battle", "snapshot", "end"} {
+	for _, k := range []string{"start", "say", "act", "battle", "snapshot", "end"} {
 		if count[k] == 0 {
 			t.Errorf("no %s line: %v", k, count)
 		}
@@ -107,7 +108,7 @@ func TestSimulateIsDeterministicAndInteractive(t *testing.T) {
 	file, _ := simTrace(t, simulateScript, "")
 	again, _ := simTrace(t, simulateScript, "")
 	piped, _ := simTrace(t, "", strings.Replace(simulateScript, "shot fire\n", "shot fire\npress nowhere\n", 1))
-	kinds := []string{"say", "dev_do", "battle", "input", "scene", "state", "snapshot", "end"}
+	kinds := []string{"say", "act", "battle", "input", "scene", "state", "snapshot", "end"}
 	want := simKinds(file, kinds...)
 	if got := simKinds(again, kinds...); strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatal("the same script and seed went another way")
@@ -207,4 +208,43 @@ func TestSimulateStopsInputWorkerOnQuit(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	t.Fatal("input worker remains blocked after simulation quits")
+}
+
+// enemyPictureReader counts reads of puppet-only pictures, which the ordinary
+// enemy portrait does not use. Headless simulation must never request them.
+type enemyPictureReader struct {
+	fs.FS
+	reads int
+}
+
+func (r *enemyPictureReader) Open(name string) (fs.File, error) {
+	if strings.HasPrefix(name, "assets/streamer/") && strings.HasSuffix(name, ".png") {
+		r.reads++
+	}
+	return r.FS.Open(name)
+}
+
+func TestSimulateDoesNotReadEnemyPuppetPixels(t *testing.T) {
+	files := enemyPuppetFiles(t)
+	// The normal enemy picture uses the header-only picture path independently
+	// of the puppet's base and expression pictures.
+	files["data/main.yaml"].Data = []byte(strings.ReplaceAll(string(files["data/main.yaml"].Data), "image: streamer/streamer.png", "image: x.png"))
+	reader := &enemyPictureReader{FS: files}
+	g := wldOpenWith(t, Options{FS: reader, Location: "field", Party: []string{"scout", "guide"}, Seed: 7, headless: true})
+	// Loading fingerprints the assets. Count only the battle's picture requests,
+	// including its initial frame, after that metadata pass.
+	reader.reads = 0
+	g.startBattle("one", nil)
+	for range 90 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(g.puppets.live) != 0 || len(g.puppets.rigs) != 0 {
+		t.Fatal("headless battle created visual puppet state")
+	}
+
+	if reader.reads != 0 {
+		t.Fatalf("headless battle read enemy puppet pictures %d times", reader.reads)
+	}
 }

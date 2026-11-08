@@ -1,2 +1,12 @@
 locations:
   studio: {name: Studio}
+events:
+  phone_timeout:
+    - phone: {app: lock, time: '07:00', var: var.timeout, timeout: 1, timeout_result: retry}
+    - set: {var.finished: 1}
+  phone_waiting_banner:
+    - phone: {app: banner, var: var.notice, timeout: 1, notices: [{app: Mail, text: Hello}]}
+    - set: {var.finished: 1}
+  phone_page:
+    - phone: {app: page, var: var.page, timeout: 1, timeout_result: unread, rows: [{text: Note}, {button: Read, id: read}]}
+    - set: {var.finished: 1}

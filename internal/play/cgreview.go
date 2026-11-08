@@ -85,6 +85,7 @@ func (g *Game) cgReviewEnabled() bool {
 }
 
 func newCGReview(g *Game) *cgReview {
+	g.emit("cg_review", traceLine{"open": true})
 	r := &cgReview{skipOK: true, groups: make([]bool, len(g.db.Game.CGReview.Groups))}
 	r.all = reviewPages(g)
 	r.load(g)

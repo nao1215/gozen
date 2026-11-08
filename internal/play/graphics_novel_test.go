@@ -293,16 +293,7 @@ func TestGraphicsNovel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// A tall magenta figure for stand (a portrait 600 pixels or taller stands on the stage).
-	fig := image.NewNRGBA(image.Rect(0, 0, 240, 720))
-	draw.Draw(fig, fig.Bounds(), &image.Uniform{color.NRGBA{0xff, 0, 0xff, 0xff}}, image.Point{}, draw.Src)
-	var pb bytes.Buffer
-	if err := png.Encode(&pb, fig); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(game, "assets", "fig.png"), pb.Bytes(), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeNovelFigure(t, game)
 	saves := filepath.Join(root, "saves")
 	run := func(name, body string, event ...string) []map[string]any {
 		t.Helper()
@@ -593,5 +584,82 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("texts %+v, want the line", last.Texts)
+	}
+}
+
+// writeNovelFigure supplies the generated portrait referenced by testdata/novel.
+func writeNovelFigure(t *testing.T, game string) {
+	t.Helper()
+	// A tall magenta figure for stand (a portrait 600 pixels or taller stands on the stage).
+	fig := image.NewNRGBA(image.Rect(0, 0, 240, 720))
+	draw.Draw(fig, fig.Bounds(), &image.Uniform{color.NRGBA{0xff, 0, 0xff, 0xff}}, image.Point{}, draw.Src)
+	var pb bytes.Buffer
+	if err := png.Encode(&pb, fig); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(game, "assets", "fig.png"), pb.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Compare actual body and bubble pixels; no existing golden is rewritten.
+func TestGraphicsNovelPhonePalette(t *testing.T) {
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(game, path), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("data/phone.yaml", `events:
+  page:
+    do: [{phone: {app: page, title: Journal, rows: [{text: Hello}, {button: Continue}]}}]
+  themed:
+    do: [{phone: {app: page, title: Journal, rows: [{text: Hello}, {button: Continue}]}}]
+  chat:
+    do: [{phone: {app: chat, messages: [{mine: true, text: Hello from the studio}]}}]
+`)
+	for _, tc := range []struct {
+		name, event, ui string
+		rgb             color.NRGBA
+	}{
+		{"default-page", "page", "", phoneBubble},
+		{"default-chat", "chat", "", phoneMine},
+		{"theme-page", "themed", "phone_background: '#503020', phone_text: '#ffffff'", color.NRGBA{0x50, 0x30, 0x20, 255}},
+		{"accent-page", "page", "phone_accent: '#b030a0'", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
+		{"accent-chat", "chat", "phone_accent: '#b030a0'", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			write("game.yaml", "schema_version: 11\nid: phone-palette\n"+testgame.Game+"\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui: {"+tc.ui+"}\n")
+			script := filepath.Join(root, tc.name+".txt")
+			if err := os.WriteFile(script, []byte("wait 20\ndo call: "+tc.event+"\nwait 45\nshot "+tc.name+"\nquit\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--start", "camp", "--dev", "--mute", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves")) //nolint:gosec // Fixed test host and isolated paths.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("%v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			img := shotImage(t, root, tc.name)
+			count := 0
+			for y := 150; y < 680; y++ {
+				for x := 490; x < 790; x++ {
+					r, g, b, _ := img.At(x, y).RGBA()
+					if abs(int(r>>8)-int(tc.rgb.R)) <= 2 && abs(int(g>>8)-int(tc.rgb.G)) <= 2 && abs(int(b>>8)-int(tc.rgb.B)) <= 2 {
+						count++
+					}
+				}
+			}
+			if count < 500 {
+				t.Fatalf("only %d pixels of expected phone color %v", count, tc.rgb)
+			}
+		})
 	}
 }

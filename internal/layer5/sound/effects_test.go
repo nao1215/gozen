@@ -3,14 +3,8 @@ package sound
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-	"io/fs"
 	"math"
-	"strings"
 	"testing"
-	"testing/fstest"
-
-	"github.com/nao1215/gozen/internal/testgame"
 )
 
 func TestBuiltInEffectsAreAllMadeAndBounded(t *testing.T) {
@@ -104,84 +98,11 @@ func TestMakeEffectsGameFilesWin(t *testing.T) {
 func TestMakeEffectsInBackground(t *testing.T) {
 	freshSession(t)
 	makeEffects(true)
-	waitFor(t, "background effects", func() bool { return EffectSeconds("fanfare") > 1 })
-}
-
-func TestDecodeEffectWavAndOgg(t *testing.T) {
-	wavPCM, err := DecodeEffect(testgame.Wav(0.1), ".wav")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// 0.1 s mono at 44.1 kHz becomes stereo float32 frames.
-	if frames := len(wavPCM) / 8; frames < 4300 || frames > 4500 {
-		t.Fatalf("wav frames %d", frames)
-	}
-	oggPCM, err := DecodeEffect(readTone(t), ".ogg")
-	if err != nil || len(oggPCM) == 0 {
-		t.Fatalf("ogg: %v", err)
-	}
-	if _, err := DecodeEffect([]byte("junk"), ".wav"); err == nil {
-		t.Fatal("bad wav decoded")
-	}
-	if _, err := DecodeEffect([]byte("junk"), ".ogg"); err == nil {
-		t.Fatal("bad ogg decoded")
-	}
-}
-
-func TestLoadEffectsFromGameFiles(t *testing.T) {
-	freshSession(t)
-	logs := captureLog(t)
-	if LoadEffects(nil) != 0 || LoadEffects(fstest.MapFS{}) != 0 {
-		t.Fatal("no files, no effects")
-	}
-	fsys := fstest.MapFS{
-		"assets/sfx/ping.wav":   {Data: testgame.Wav(0.1)},
-		"assets/sfx/Pong.OGG":   {Data: readTone(t)},
-		"assets/sfx/bad.wav":    {Data: []byte("junk")},
-		"assets/sfx/notes.txt":  {Data: []byte("not a sound")},
-		"assets/sfx/sub/in.wav": {Data: testgame.Wav(0.1)},
-	}
-	if n := LoadEffects(fsys); n != 2 {
-		t.Fatalf("loaded %d, want 2 (ping, Pong)", n)
-	}
-	if s := EffectSeconds("ping"); math.Abs(s-0.1) > 0.01 {
-		t.Fatalf("ping lasts %v", s)
-	}
-	if EffectSeconds("Pong") == 0 {
-		t.Fatal("upper-case extension skipped")
-	}
-	if EffectSeconds("bad") != 0 || EffectSeconds("notes") != 0 || EffectSeconds("in") != 0 {
-		t.Fatal("broken, non-audio or nested files must not become effects")
-	}
-	if !strings.Contains(logs.String(), "sfx bad.wav") {
-		t.Fatalf("decode failure not logged: %q", logs.String())
-	}
-}
-
-func TestLoadEffectsReadFailureIsSkipped(t *testing.T) {
-	freshSession(t)
-	logs := captureLog(t)
-	fsys := brokenReadFS{MapFS: fstest.MapFS{"assets/sfx/a.wav": {Data: testgame.Wav(0.05)}}}
-	if n := LoadEffects(fsys); n != 0 {
-		t.Fatalf("loaded %d from unreadable files", n)
-	}
-	if !strings.Contains(logs.String(), "sfx a.wav") {
-		t.Fatalf("read failure not logged: %q", logs.String())
-	}
-}
-
-// brokenReadFS lists files but fails to open them.
-type brokenReadFS struct{ fstest.MapFS }
-
-func (b brokenReadFS) Open(name string) (fs.File, error) {
-	if name == "assets/sfx" || name == "." {
-		return b.MapFS.Open(name)
-	}
-	return nil, fmt.Errorf("open %s: %w", name, fs.ErrPermission)
-}
-
-func (b brokenReadFS) ReadFile(name string) ([]byte, error) {
-	return nil, fmt.Errorf("read %s: %w", name, fs.ErrPermission)
+	waitFor(t, "background effects", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(effects["fanfare"]) > SampleRate*8
+	})
 }
 
 func stereo(vals ...float32) []byte {

@@ -24,7 +24,8 @@ import (
 // lines of what happened (talk, choices, battles, dungeon steps, campaign orders and turns,
 // inputs, scenes, saves and states) are the same, tick for tick, and so is the state at the
 // end. Only the lines of drawing (shot, view, stand, menu) and the music, whose songs are
-// decoded in the background at the speed of the machine, are left out.
+// decoded in the background at the speed of the machine, are left out. Save-write
+// records are compared without their wall-clock time.
 func TestGraphicsSimulateMatchesRun(t *testing.T) {
 	for _, c := range []struct {
 		name, fixture string
@@ -33,12 +34,44 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 		opts          Options
 		script        string
 		state         string
+		outcome       string
+		result        string
 	}{
 		{
 			name: "date card retains pick", fixture: "../../e2e/atago/fixtures/input-readiness",
 			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
 			script: "wait 20\ndo open: board\nwait 10\npick Next phase\npress ok\npick Count\nwait 10\nsnapshot\nshot counted\nquit\n",
 			state:  "counted",
+		},
+		{
+			name: "phone lock timeout", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo call: phone_timeout\nwait 35\nsnapshot\nshot timeout\nwait 100\nsnapshot\nquit\n", state: "finished",
+			outcome: "timeout", result: "retry",
+		},
+		{
+			name: "waiting banner timeout", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo call: phone_waiting_banner\nwait 35\nsnapshot\nshot banner\nwait 100\nsnapshot\nquit\n", state: "finished",
+			outcome: "notice", result: "expired",
+		},
+		{
+			name: "phone page timeout", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo call: phone_page\nwait 35\nsnapshot\nshot page\nwait 100\nsnapshot\nquit\n", state: "finished",
+			outcome: "page", result: "unread",
+		},
+		{
+			name: "banner keyboard open", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo call: phone_waiting_banner\nwait 25\nsnapshot\nshot banner\npress ok\nwait 30\nsnapshot\nquit\n", state: "finished",
+			outcome: "notice", result: "open",
+		},
+		{
+			name: "banner keyboard dismiss", fixture: "../../e2e/atago/fixtures/input-readiness",
+			args: []string{"--start", "studio"}, opts: Options{Location: "studio"},
+			script: "wait 20\ndo call: phone_waiting_banner\nwait 25\nsnapshot\nshot banner\npress cancel\nwait 30\nsnapshot\nquit\n", state: "finished",
+			outcome: "notice", result: "dismiss",
 		},
 		{
 			name: "phone lines finish chat", fixture: "../../e2e/atago/fixtures/input-readiness",
@@ -116,19 +149,45 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 					var end struct {
 						Type  string `json:"t"`
 						State struct {
-							Vars map[string]float64 `json:"vars"`
+							Vars map[string]any `json:"vars"`
 						} `json:"state"`
 					}
 					if err := json.Unmarshal(lines[len(lines)-1], &end); err != nil {
 						t.Fatal(err)
 					}
-					if end.Type != "end" || end.State.Vars[c.state] != 1 {
+					if c.outcome != "" {
+						if end.State.Vars[c.outcome] != c.result {
+							t.Fatalf("%s outcome: want %s=%s, got %v", name, c.outcome, c.result, end.State.Vars)
+						}
+						snapshots := traceLines(t, trace, "snapshot")
+						if len(snapshots) != 2 {
+							t.Fatalf("%s: want snapshots before and after the outcome, got %d", name, len(snapshots))
+						}
+						state, ok := snapshots[0]["state"].(map[string]any)
+						if !ok {
+							t.Fatalf("%s snapshot lacks state: %v", name, snapshots[0])
+						}
+						before, ok := state["vars"].(map[string]any)
+						if !ok {
+							t.Fatalf("%s snapshot lacks vars: %v", name, state)
+						}
+						if before[c.state] != nil || before[c.outcome] != nil {
+							t.Fatalf("%s continued before expiry: %v", name, before)
+						}
+					}
+					if end.Type != "end" || end.State.Vars[c.state] != float64(1) {
 						t.Fatalf("%s final state: want %s=1: %s", name, c.state, lines[len(lines)-1])
 					}
 				}
 			}
 			want, got := simulateComparable(t, ran, c.state == ""), simulateComparable(t, sim.Bytes(), c.state == "")
-			if len(want) < 10 {
+			minimum := 10
+			if c.outcome != "" {
+				// Timeout scripts have no input and emit nine comparable records
+				// without the redundant dev_do. Their before/after state is checked above.
+				minimum = 9
+			}
+			if len(want) < minimum {
 				t.Fatalf("the run wrote only %d lines to compare", len(want))
 			}
 			for i := range max(len(want), len(got)) {
@@ -150,8 +209,9 @@ func TestGraphicsSimulateMatchesRun(t *testing.T) {
 	}
 }
 
-// simulateComparable is the trace's lines but those of drawing and music, each with its
-// tick when requested; the end line without its count of lines. Presentation
+// simulateComparable is the trace's lines but those of presentation and music, each with its
+// tick when requested; the end line without its count of lines and save_write
+// without its wall-clock time. Presentation
 // readiness can add render-wait ticks without changing the event sequence.
 func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 	t.Helper()
@@ -162,11 +222,13 @@ func simulateComparable(t *testing.T, b []byte, ticks bool) []string {
 			t.Fatalf("%v: %q", err, l)
 		}
 		switch m["t"] {
-		case "shot", "view", "stand", "layout", "menu", "music", "start":
+		case "shot", "view", "viewport", "draw_skip", "stand", "layout", "menu", "music", "start":
 			continue
 		case "end":
 			m = maps.Clone(m)
 			delete(m, "lines")
+		case "save_write":
+			delete(m, "time")
 		}
 		line := comparableLine(m)
 		if ticks {

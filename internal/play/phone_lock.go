@@ -29,7 +29,7 @@ var (
 
 // calling tells that the newest notice on the lock screen is a call.
 func (p *phoneView) calling() bool {
-	return p.cue.App == "lock" && p.shown > 0 && p.cue.Notices[p.shown-1].Call
+	return p.cue.App == "lock" && p.shown > 0 && p.shown <= len(p.cue.Notices) && p.cue.Notices[p.shown-1].Call
 }
 
 // rangOut tells that the call on the screen has rung its ring unanswered.

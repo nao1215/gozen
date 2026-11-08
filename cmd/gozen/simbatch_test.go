@@ -79,7 +79,7 @@ func TestSimBatchPlaysEachCaseAsSimScript(t *testing.T) {
 		}
 		if p := traceOf(cases[i]); p != "" && want.exit == 0 {
 			got := string(read(t, p))
-			if got != want.trace {
+			if simTraceWithoutClocks(t, got) != simTraceWithoutClocks(t, want.trace) {
 				t.Errorf("case %d: the trace differs from gozen sim script's", i)
 			}
 			traces[p] = got

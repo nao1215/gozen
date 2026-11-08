@@ -16,8 +16,12 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 )
 
-// EntryConfig supplies the host's output, save store and CLI operand mode.
+// EntryConfig supplies the host's output, save store, game directory and CLI operand mode.
 type EntryConfig struct {
+	// GameDir is the filesystem directory backing the supplied game FS, used by
+	// packaged startup for trace reproduction. Leave empty for embedded sources
+	// without a directory. An explicit --dir or directory operand takes precedence.
+	GameDir   string
 	Store     func(string) (Store, error)
 	Mute      bool
 	Output    io.Writer
@@ -104,7 +108,7 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 	memos := fl.String("memos", "", "write the test player's notes (F9) to this `DIR` as <dir>/<date>/<number>.png and .json")
 	fromMemo := fl.String("from-memo", "", "start from a test player's note `FILE` (.json or .save): its event begun again and read on to its line")
 	allowLegacySave := fl.Bool("allow-legacy-save", false, "with --from-memo, migrate an external note without a version, after checking that it is from the same game")
-	until := fl.Int("until", 0, "stop before this `TICK`, saving the screen as until_<tick>.png in --shots (with --replay, up to a note's tick)")
+	until := fl.Int("until", 0, "stop before this `TICK`, saving the screen as until_<tick>.png in --shots (with --replay, reproduces draw cadence without real-time pacing)")
 	traceShots := fl.Bool("trace-shots", false, "with --trace, save the screen in --shots each time what is shown changes")
 	scene := fl.String("scene", "", "start this gallery `SCENE` at once (its title, or its number from 1) and read on to --line")
 	event := fl.String("event", "", "start this `EVENT` at once (an event id, or location.action as the notes name it) and read on to --line")
@@ -197,6 +201,16 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 			opts.Script = string(b)
 		}
 		if *trace != "" {
+			gameDir := cfg.GameDir
+			if *dirFlag != "" {
+				gameDir = *dirFlag
+			}
+			if gameDir != "" {
+				opts.GameDir, err = filepath.Abs(gameDir)
+				if err != nil {
+					return err
+				}
+			}
 			if d := filepath.Dir(*trace); d != "." {
 				if err := os.MkdirAll(d, 0o700); err != nil {
 					return err

@@ -1,0 +1,4 @@
+{"t":"start","tick":0,"exact_version":3,"version":2,"game_dir":"fixture-game","seed":7,"location":"camp","setup":{"config":{},"read":null,"unlocked":null,"saves":{},"save_data":{}}}
+{"t":"input","tick":1,"press":["ok"]}
+{"t":"shot","tick":60,"file":"shots/example.png"}
+{"t":"end","tick":120,"lines":4,"state":null}

@@ -44,7 +44,7 @@ func TestEnemyPuppetUsesActorRigFormat(t *testing.T) {
 	if p == nil {
 		t.Fatal("enemy puppet was not loaded")
 	}
-	if g.puppets.live["enemy."+u.EID] == nil {
+	if g.puppets.enemies[u] == nil {
 		t.Fatal("enemy puppet was not retained")
 	}
 	before := p.Motion.Pose()
@@ -88,11 +88,13 @@ func TestBattleHPPictureCrossfades(t *testing.T) {
 	u.Def.Images = []data.HPImage{{Below: 0.5, File: "hurt.png"}}
 	u.Def.Motion = "breathe"
 	s.shownHP[u] = u.MHP()
+	s.stepFoePictures(g)
 	s.drawFoes(g, btlImage())
 	if got := s.foeImages[u]; got != u.Def.Image.File {
 		t.Fatalf("healthy picture %q", got)
 	}
 	s.shownHP[u] = u.MHP() / 4
+	s.stepFoePictures(g)
 	s.drawFoes(g, btlImage())
 	if got := s.foeImages[u]; got != "hurt.png" || s.foeFade[u].ticks == 0 {
 		t.Fatalf("hurt picture %q fade %+v", got, s.foeFade[u])
