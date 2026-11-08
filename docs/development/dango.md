@@ -51,6 +51,15 @@ Dango also checks generated schemas against the Go types and translation keys ag
   values and require no diagnostic or failure status for layout and state measurements.
 - Phone input tests cover picture taps followed by keyboard advancement, controls disabled during typing, input on timeout deadlines, shared close outcomes and replay of saved timed results. These tests do not compare pixels.
 - Flag-based phone tests cover hidden result indices, hidden media reads, fixed replies, navigation and save replay. They also check that ordinary idle chat updates allocate nothing. They do not test a physical touch device.
+- Embedded-game checks cover parent resource ownership, child failure and shutdown, approved archive validation, transactional installation, offline signed catalogs, installed-game replay and browser export limits. Graphics and browser E2E remain separate runtime checks.
+- Reproduction tests require tick and screenshot targets to leave room for the
+  exclusive replay boundary, preserve draw cadence, and reject unsupported
+  mutations. They validate generated bundles without launching a player.
+- The dead-code gate test checks that tool failures, invalid filters, and blank
+  or comment-only allowlists cannot silently suppress real findings.
+- CI scope tests use isolated Git histories to keep runtime documentation checks
+  enabled unless a pull request changes only the changelog. Missing history and
+  other uncertain cases retain those checks.
 - `TestDocImageInputs` and `TestImageManifest` retain the existing visual evidence
   checks. Pixel regeneration/comparison still requires `make docs-images-check`
   in a graphics environment; passing dango does not prove rendering.

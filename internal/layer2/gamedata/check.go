@@ -2,11 +2,14 @@ package gamedata
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"image"
 	"io/fs"
 	"maps"
 	"math"
+	"net/url"
 	"path"
 	"regexp"
 	"slices"
@@ -19,6 +22,7 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
 	"github.com/nao1215/gozen/internal/layer2/puppetdef"
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/text/catalog"
@@ -173,6 +177,37 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
 	apps := []string{"chat", "feed", "video", "page", "lock", "banner", "home", "contacts"}
+	if p.App == "game" || p.App == "store" {
+		if len(p.Messages)+len(p.Posts)+len(p.Rows)+len(p.Notices)+len(p.Replies) > 0 || p.Video != nil || p.History || p.Auto || p.Browse || p.Scroll != "" || p.Timeout != 0 || p.TimeoutResult != "" || p.Var != "" || p.URL != "" || p.Time != "" || p.Date != "" {
+			c.errorf(diag.Shape, where, "game and store apps do not accept other app content or outcomes")
+		}
+		if c.db.Game.Phone == nil || len(c.db.Game.Phone.Apps) == 0 {
+			c.errorf(diag.Shape, where, "game and store apps require game.yaml phone.apps")
+		}
+		if p.App == "game" {
+			found := false
+			if c.db.Game.Phone != nil {
+				for _, a := range c.db.Game.Phone.Apps {
+					if a.ID == p.Game {
+						found = true
+					}
+				}
+			}
+			if !found || p.Game == "" {
+				c.errorf(diag.UnknownReference, where+".game", "unknown phone app %q", p.Game)
+			}
+		} else if p.Game != "" {
+			c.errorf(diag.Shape, where+".game", "game is only for app game")
+		}
+		c.text(where+".title", p.Title, names)
+		if p.Color != "" && !phoneColor.MatchString(p.Color) {
+			c.errorf(diag.Shape, where+".color", "color must be #rrggbb")
+		}
+		return
+	}
+	if p.Game != "" {
+		c.errorf(diag.Shape, where+".game", "game is only for app game")
+	}
 	lists := map[string]bool{
 		"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
 		"page": len(p.Rows) > 0, "home": len(p.Rows) > 0, "contacts": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0,
@@ -699,6 +734,7 @@ func (db *DB) Check() []error {
 	c.requiredDefinitions()
 	c.declarations()
 	c.planning()
+	c.phoneApps()
 	c.stateDeclarations()
 	c.campaign()
 	c.callLoops()
@@ -2878,4 +2914,87 @@ func activityAttribute(c *checker, name string) (*vtype, string) {
 
 func validMaterialKind(kind string) bool {
 	return kind == "mica" || kind == "acrylic" || kind == "glass" || kind == "opaque"
+}
+
+// phoneApps validates host declarations without downloading catalog or package bytes.
+// phoneApps checks the catalog contract and local app identifiers independently.
+func (c *checker) phoneApps() {
+	p := c.db.Game.Phone
+	if p == nil {
+		return
+	}
+	const w = "game.yaml phone"
+	c.phoneCatalog(w, p)
+	if len(p.Apps) == 0 {
+		c.errorf(diag.Shape, w+".apps", "phone needs at least one app")
+	}
+	ids := map[string]bool{}
+	for i, a := range p.Apps {
+		at := fmt.Sprintf("%s.apps[%d]", w, i)
+		if ids[a.ID] {
+			c.errorf(diag.Duplicate, at+".id", "duplicate phone app %q", a.ID)
+		}
+		ids[a.ID] = true
+		c.phonePackage(at, a)
+	}
+}
+
+// phoneCatalog validates the offline trust pin and optional signed refresh pair.
+func (c *checker) phoneCatalog(w string, p *PhoneApps) {
+	if !gamepackage.PortablePath(p.Catalog) {
+		c.errorf(diag.Shape, w+".catalog", "catalog needs a safe relative file path")
+	}
+	digest, err := hex.DecodeString(p.CatalogSHA256)
+	if err != nil || len(digest) != 32 || p.CatalogSHA256 != strings.ToLower(p.CatalogSHA256) {
+		c.errorf(diag.Shape, w+".catalog_sha256", "catalog_sha256 needs a SHA-256 digest")
+	}
+	if p.CatalogURL == "" && p.CatalogSignatureURL == "" && p.CatalogPublicKey == "" {
+		return
+	}
+	for _, entry := range []struct{ key, raw string }{{"catalog_url", p.CatalogURL}, {"catalog_signature_url", p.CatalogSignatureURL}} {
+		u, e := url.Parse(entry.raw)
+		if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+			c.errorf(diag.Shape, w+"."+entry.key, "%s needs an HTTPS URL without credentials or fragment; catalog refresh requires both URLs and a public key", entry.key)
+		}
+	}
+	key, e := base64.StdEncoding.DecodeString(p.CatalogPublicKey)
+	if e != nil || len(key) != 32 {
+		c.errorf(diag.Shape, w+".catalog_public_key", "catalog_public_key needs a base64 Ed25519 public key (32 bytes)")
+	}
+}
+
+// phonePackage checks one selection without resolving or downloading its release.
+func (c *checker) phonePackage(at string, a PhoneApp) {
+	if !gamepackage.ValidID("local/" + a.ID) {
+		c.errorf(diag.Shape, at+".id", "id needs a lowercase local identifier")
+	}
+	if !gamepackage.ValidID(a.Package) {
+		c.errorf(diag.Shape, at+".package", "package needs a namespaced registry ID")
+	}
+	if _, e := gamepackage.Allows(a.Version, "0.0.0"); e != nil {
+		c.errorf(diag.Shape, at+".version", "%s", e)
+	}
+	switch a.Install {
+	case "bundled":
+		included := a.BundledVersion
+		if included == "" {
+			included = a.Version
+		}
+		if allowed, e := gamepackage.Allows(a.Version, included); e != nil || !allowed {
+			c.errorf(diag.Shape, at+".bundled_version", "bundled_version must be an exact release allowed by version; required when version is a range")
+		}
+		if !gamepackage.PortablePath(a.Path) || path.Ext(a.Path) != ".zip" {
+			c.errorf(diag.Shape, at+".path", "bundled path needs a safe relative ZIP path")
+		}
+	case "optional":
+		if a.BundledVersion != "" {
+			c.errorf(diag.Shape, at+".bundled_version", "only bundled apps have bundled_version")
+		}
+		if a.Path != "" {
+			c.errorf(diag.Shape, at+".path", "only bundled apps have a path")
+		}
+	default:
+		c.errorf(diag.Shape, at+".install", "install must be bundled or optional")
+	}
+	c.expr(at+".when", a.When, FieldNames)
 }

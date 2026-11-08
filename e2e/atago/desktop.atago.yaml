@@ -155,3 +155,215 @@ scenarios:
         - {path: $.command, equals: export}
         - {path: $.code, equals: '${code}'}
       changes: {created: [], modified: [], deleted: []}
+
+- name: phone packages export with their pinned catalog and original bytes
+  tags: [graphics, desktop, phone-package]
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen check host
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen export host --runtime "${env:GOZEN_RUNTIME}" --out packaged --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: python3 -c "from pathlib import Path; names = ['catalog.yaml', 'counter.zip', 'trail.zip']; assert all((Path('host/apps') / n).read_bytes() == (Path('packaged/game/apps') / n).read_bytes() for n in names)"
+  - assert: {exit_code: 0}
+
+  - assert:
+      file: {path: packaged/game/apps/undeclared.zip, exists: false}
+
+- name: phone export rejects invalid packages before publishing ${mode}
+  tags: [graphics, desktop, phone-package]
+  matrix:
+  - {mode: corrupt, error: package checksum mismatch}
+  - {mode: traversal, error: unsafe archive entry}
+  - {mode: catalog-digest, error: catalog checksum mismatch}
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host ${mode}
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen export host --runtime "${env:GOZEN_RUNTIME}" --out packaged
+  - assert:
+      exit_code: 1
+      stderr: {contains: '${error}'}
+      file: {path: packaged, exists: false}
+  - assert:
+      file: {path: outside.txt, exists: false}
+
+- name: phone children keep independent saves and return to the unchanged host
+  tags: [graphics, desktop, phone-package]
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host
+  - assert: {exit_code: 0}
+  - fixture:
+      file: host/data/phone.yaml
+      content: |
+        events:
+          phone_home:
+            do:
+              - say: Open the games phone.
+              - phone:
+                  app: home
+                  title: Games
+                  rows:
+                    - {button: Counter, event: phone_counter}
+                    - {button: Trail, event: phone_trail}
+                    - {button: Store, event: phone_store}
+              - say: Back in the host.
+          phone_counter:
+            do: [{phone: {app: game, game: counter, hold: portrait}}]
+          phone_trail:
+            do: [{phone: {app: game, game: trail, hold: landscape}}]
+          phone_store:
+            do: [{phone: {app: store, title: Game library}}]
+  - fixture:
+      file: play.txt
+      content: |
+        gap 20
+        wait 100
+        press ok
+        wait 100
+        press right
+        press ok
+        wait 100
+        press ok
+        wait 80
+        press ok
+        wait 50
+        press ok
+        wait 30
+        press menu
+        wait 30
+        press ok
+        wait 30
+        press ok
+        wait 60
+        shot counter-saved
+        hold shift+cancel 1
+        wait 100
+        shot home-returned
+        press right
+        press right
+        press ok
+        wait 100
+        press ok
+        wait 80
+        press ok
+        wait 40
+        press down
+        press ok
+        wait 40
+        press ok
+        wait 30
+        press menu
+        wait 30
+        press ok
+        wait 30
+        press ok
+        wait 60
+        shot trail-saved
+        hold shift+cancel 1
+        wait 100
+        press right
+        press ok
+        wait 100
+        press ok
+        wait 40
+        press ok
+        wait 80
+        shot counter-restored
+        press menu
+        wait 30
+        press ok
+        wait 30
+        press down
+        press ok
+        wait 60
+        hold shift+cancel 1
+        wait 100
+        press right
+        press right
+        press right
+        press ok
+        wait 80
+        shot store
+        press cancel
+        wait 80
+        snapshot
+        quit
+  - run:
+      command: gozen run host --dev --mute --seed 7 --event phone_home --script play.txt --shots shots --save-dir saves --trace phone.jsonl
+      timeout: 75s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - assert:
+      image: {path: shots/counter-saved.png, format: png, width: 960, height: 540}
+  - assert:
+      image: {path: shots/trail-saved.png, format: png, width: 960, height: 540}
+  - assert:
+      image: {path: shots/counter-restored.png, format: png, width: 960, height: 540}
+  - run:
+      command: |
+        python3 -c '
+        import hashlib, json
+        from pathlib import Path
+        def save(package, slot):
+            identity = "cli-expedition\0fixtures/" + package + "\0" + "1.0.0"
+            prefix = "phone-save-" + hashlib.sha256(identity.encode()).hexdigest() + "-"
+            return json.loads((Path("saves") / (prefix + slot + ".json")).read_text())["state"]
+        assert save("counter", "save1")["gold"] == 4
+        assert save("trail", "save1")["gold"] == 7
+        assert save("counter", "save2")["gold"] == 4
+        assert save("counter", "save2")["location"] == "room"
+        records = [json.loads(line) for line in Path("phone.jsonl").read_text().splitlines()]
+        last = next(r["state"] for r in reversed(records) if r["t"] == "snapshot")
+        assert last["gold"] == 0 and last["location"] == "camp", last
+        assert "phone_counter" in last["ran"] and "phone_trail" in last["ran"], last
+        assert any(r.get("phone") == "store" for r in records if r["t"] == "screen")
+        assert not Path("saves/save1.json").exists()
+        '
+  - assert: {exit_code: 0}
+
+- name: phone trust declarations reject invalid signing configuration ${key}
+  tags: [phone-declarations]
+  matrix:
+  - {key: 'YQ==', signature: 'https://example.com/catalog.sig', error: catalog_public_key}
+  - {key: 'O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik=', signature: 'http://example.com/catalog.sig', error: catalog_signature_url}
+  steps:
+  - run:
+      command: python3 '${specdir}/fixtures/phone-package/prepare.py' '${specdir}/fixtures/game' host
+  - assert: {exit_code: 0}
+  - fixture:
+      file: phone.yaml
+      content: |
+        phone:
+          catalog: apps/catalog.yaml
+          catalog_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          catalog_url: https://example.com/catalog.yaml
+          catalog_signature_url: '${signature}'
+          catalog_public_key: '${key}'
+          apps:
+            - id: counter
+              package: fixtures/counter
+              version: '>=1.0.0 <2.0.0'
+              bundled_version: 1.0.0
+              install: bundled
+              path: apps/counter.zip
+              when: true
+  - run:
+      command: python3 -c "from pathlib import Path; p = Path('host/game.yaml'); p.write_text(p.read_text().split('phone:', 1)[0] + Path('phone.yaml').read_text())"
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen check host
+  - assert:
+      exit_code: 1
+      stderr: {contains: '${error}'}
+      changes: {created: [], modified: [], deleted: []}

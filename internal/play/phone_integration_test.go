@@ -3,17 +3,23 @@ package play
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
-
-	"github.com/nao1215/gozen/internal/savefile"
+	"time"
 
 	"github.com/nao1215/gozen/internal/event"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
+	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/layer5/sound"
+	"github.com/nao1215/gozen/internal/savefile"
+	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // Phone lifecycle tests integrate the view with event replay, saves and battle waits.
@@ -386,5 +392,379 @@ events:
 	g.loadSavedGame(st)
 	if g.failure != nil || g.phone != nil || at(g) != "Saved" || !g.st.Flags["sent"] || g.st.Vars["sent_count"] != float64(1) {
 		t.Fatalf("saved phone results: phone=%v line=%q flags=%v vars=%v error=%v", g.phone != nil, at(g), g.st.Flags, g.st.Vars, g.failure)
+	}
+}
+
+func TestPhoneEmbeddedGameOwnership(t *testing.T) {
+	files := gameFiles(t)
+	parent, err := New(Options{FS: files, NoSound: true, Store: savefile.MemStore(), headless: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if e := parent.Close(); e != nil {
+			t.Error(e)
+		}
+	})
+	restore := parent.activatePresentation()
+	defer restore()
+	gfx.SetScale(1.75)
+	parentScale := gfx.Scale()
+	child, err := newGame(Options{FS: files, NoSound: true, Store: phoneGameStore{Store: parent.store, prefix: "phone-save-test-"}, headless: true}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gfx.Scale() != parentScale {
+		t.Fatal("child constructor changed parent scale")
+	}
+	parent.newGame()
+	resumeChild := child.activatePresentation()
+	child.newGame()
+	resumeChild()
+	if child.st == parent.st || child.audio == parent.audio || child.graphics == parent.graphics {
+		t.Fatal("child shares mutable runtime resources")
+	}
+	if err := child.store.Write("slot.json", []byte("child")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parent.store.Read("slot.json"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("child wrote host save: %v", err)
+	}
+	closedListener := 0
+	child.hiddenCleanup = func() { closedListener++ }
+	if err := child.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if closedListener != 1 || child.hiddenCleanup != nil {
+		t.Fatal("child retained browser visibility listener")
+	}
+	if gfx.Scale() != parentScale {
+		t.Fatal("child Close changed parent presentation")
+	}
+	if _, err := New(Options{FS: files, NoSound: true}); err == nil {
+		t.Fatal("closing child released outer runtime ownership")
+	}
+	if err := parent.Update(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPhoneGameStoreIsolation(t *testing.T) {
+	host := savefile.MemStore()
+	a := phoneGameStore{Store: host, prefix: "phone-save-a-"}
+	b := phoneGameStore{Store: host, prefix: "phone-save-b-"}
+	if err := a.Write("slot.json", []byte("a")); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Write("slot.json", []byte("b")); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"", "../slot", ".hidden", "a/b", `a\b`} {
+		if err := a.Write(bad, nil); !errors.Is(err, fs.ErrInvalid) {
+			t.Fatalf("accepted %q: %v", bad, err)
+		}
+	}
+	names, err := a.List()
+	if err != nil || !reflect.DeepEqual(names, []string{"slot.json"}) {
+		t.Fatalf("list: %v %v", names, err)
+	}
+	if err := a.Remove("slot.json"); err != nil {
+		t.Fatal(err)
+	}
+	value, err := b.Read("slot.json")
+	if err != nil || string(value) != "b" {
+		t.Fatalf("removed another release save: %q %v", value, err)
+	}
+}
+
+func TestPhoneEmbeddedGamePauseAndReturn(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "store"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+	p := parent.phone
+	p.age, p.turned = phoneRise, phoneTurn
+	beforeFrames := parent.st.Frames
+	launchTime := time.Unix(4567890, 0)
+	parent.opts.Now = func() time.Time { return launchTime }
+	if err := parent.startPhoneGame(p, "child"); err != nil {
+		t.Fatal(err)
+	}
+	child := p.child.game
+	if !child.opts.Now().Equal(launchTime) {
+		t.Fatal("child did not receive deterministic launch clock")
+	}
+	if err := child.startPhoneGame(newPhoneView(data.PhoneCue{}), "child"); err == nil {
+		t.Fatal("nested embedding accepted")
+	}
+	parent.desk = &streamDesk{base: time.Unix(1000, 0), tick0: parent.tick}
+	beforeTime := parent.streamNow()
+	kind, items := parent.scriptPickables()
+	if kind != "title" || len(items) == 0 {
+		t.Fatal("script controls did not follow child foreground")
+	}
+	script, err := parseScript("wait 100")
+	parent.in.script = script
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if err := parent.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !parent.streamNow().Equal(beforeTime) {
+		t.Fatal("host stream clock advanced during child")
+	}
+	if parent.st.Frames != beforeFrames || child.tick == 0 {
+		t.Fatalf("host advanced or child did not: host %d/%d child %d", parent.st.Frames, beforeFrames, child.tick)
+	}
+	parent.desk = nil
+	// The host's explicit exit leaves the original app in place.
+	parent.in = input{esc: true, shift: true}
+	if err := parent.updatePhoneGame(p); err != nil {
+		t.Fatal(err)
+	}
+	if p.child != nil || !child.closed || parent.phone != p || p.cue.App != "store" || p.closing != 0 {
+		t.Fatal("child exit discarded the parent app")
+	}
+	if parent.in.esc || parent.in.click {
+		t.Fatal("exit input leaked into parent")
+	}
+}
+
+func TestPhoneInstalledHomePreservesResults(t *testing.T) {
+	cue := data.PhoneCue{App: "home", Var: "picked", Rows: []data.PhoneRow{{Button: "Contacts", ID: "contacts"}}}
+	parent := phoneGame(t, cue)
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0", Title: "Child"}}}}
+	p := parent.phone
+	before := cue.Results()
+	parent.addPhoneGameApps(p)
+	if len(p.cue.Rows) != 2 || p.appRows[1] != "child" || len(cue.Rows) != 1 {
+		t.Fatal("installed app changed authored rows")
+	}
+	p.putDown(1, -1, false)
+	if p.closing != 0 || p.selectedApp != "child" {
+		t.Fatal("installed app became an authored result")
+	}
+	p.putDown(-4, -4, false)
+	want := -1
+	for i, r := range before {
+		if r.Row == -4 && r.Notice == -4 {
+			want = i
+		}
+	}
+	if p.result != want {
+		t.Fatalf("dismiss result moved: %d, want %d", p.result, want)
+	}
+}
+
+func TestPhoneChildFailurePreservesHost(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+	p := parent.phone
+	p.age, p.turned = phoneRise, phoneTurn
+	if err := parent.startPhoneGame(p, "child"); err != nil {
+		t.Fatal(err)
+	}
+	child := p.child.game
+	child.failure = errors.New("child failed")
+	parent.in = input{}
+	before := parent.st
+	if err := parent.updatePhoneGame(p); err != nil {
+		t.Fatalf("child error escaped into host: %v", err)
+	}
+	if p.child != nil || !child.closed || parent.st != before || parent.failure != nil || p.closing != 0 || !strings.Contains(p.gameError, "child failed") {
+		t.Fatal("child error did not preserve host with visible failure")
+	}
+}
+
+func TestPhoneChildRecordingIncludesTurnFrames(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0", Orientation: "landscape"}}}}
+	var pcm bytes.Buffer
+	parent.opts.Audio = &pcm
+	parent.audioSession().InitRecord(&pcm, 60)
+	p := parent.phone
+	if err := parent.startPhoneGame(p, "child"); err != nil {
+		t.Fatal(err)
+	}
+	for range 5 {
+		if err := parent.updatePhoneGame(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const frameBytes = sound.SampleRate / 60 * 8
+	if pcm.Len() != 5*frameBytes {
+		t.Fatalf("turn lost audio frames: %d bytes", pcm.Len())
+	}
+	p.turned = phoneTurn
+	parent.in = input{pheld: true}
+	for range 3 {
+		if err := parent.updatePhoneGame(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if pcm.Len() != 8*frameBytes {
+		t.Fatalf("held-entry gate lost audio frames: %d bytes", pcm.Len())
+	}
+	parent.in = input{esc: true, shift: true}
+	if err := parent.updatePhoneGame(p); err != nil {
+		t.Fatal(err)
+	}
+	if pcm.Len() != 9*frameBytes {
+		t.Fatal("return lost audio frame")
+	}
+}
+
+func TestEmbeddedSilentAudioTimeline(t *testing.T) {
+	parent := sysMusicOpen(t, Options{})
+	child, err := newGame(Options{FS: parent.opts.FS, NoSound: true, recordedAudio: true, Store: savefile.MemStore()}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if e := child.Close(); e != nil {
+			t.Error(e)
+		}
+	}()
+	if !child.audioSession().Active() || child.tr != nil {
+		t.Fatal("embedded silent replay lost music timing or created a second trace")
+	}
+}
+
+func BenchmarkPresentationContextScope(b *testing.B) {
+	words, err := lang.NewContext("en", nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	g := &Game{graphics: gfx.NewContext(), words: words}
+	restore := g.activatePresentation()
+	defer restore()
+	b.ReportAllocs()
+	for b.Loop() {
+		g.activatePresentation()()
+	}
+}
+
+func TestPhoneSpeechOwnership(t *testing.T) {
+	oldCan, oldSpeak, oldStop := streamCanSpeak, streamSpeak, streamStopSpeak
+	t.Cleanup(func() { streamCanSpeak, streamSpeak, streamStopSpeak = oldCan, oldSpeak, oldStop })
+	starts, stops := 0, 0
+	streamCanSpeak = func() bool { return true }
+	streamSpeak = func(string, string, float64, float64) func() bool { starts++; return func() bool { return false } }
+	streamStopSpeak = func() { stops++ }
+	parent := streamsGame(t, "0")
+	w := newStreamWatch(parent, parent.desk.shows[0], 100)
+	parent.push(w)
+	parent.desk.speak = true
+	w.caption, w.captionWho = "Please wait.", 0
+	w.readAloud(parent, 0, w.caption)
+	resume := parent.suspendPhoneSpeech()
+	if starts != 1 || stops != 1 || w.spoken != nil {
+		t.Fatal("parent speech did not suspend")
+	}
+	child := &Game{stack: []scene{&streamWatch{spoken: func() bool { return false }}}}
+	child.stopOwnedSpeech()
+	resume()
+	if starts != 2 || stops != 2 || w.spoken == nil {
+		t.Fatal("child speech did not stop before parent restart")
+	}
+	resume = parent.suspendPhoneSpeech()
+	parent.stack = parent.stack[:len(parent.stack)-1]
+	resume()
+	if starts != 2 {
+		t.Fatal("restarted a watch that no longer owns the screen")
+	}
+}
+
+func TestPhoneChildResetDuringInput(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+	if err := parent.startPhoneGame(parent.phone, "child"); err != nil {
+		t.Fatal(err)
+	}
+	child := parent.phone.child.game
+	script, err := parseScript("do []\nwait 20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script.do = func(string) { parent.closePhone() }
+	parent.in.script = script
+	if err := parent.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if parent.phone != nil || !child.closed {
+		t.Fatal("input reset retained child runtime")
+	}
+}
+
+func TestPhoneHostCloseDoesNotResumeChildResources(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+	if err := parent.startPhoneGame(parent.phone, "child"); err != nil {
+		t.Fatal(err)
+	}
+	child := parent.phone.child.game
+	resumed := false
+	parent.phone.child.resume = func() { resumed = true }
+	if err := parent.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if resumed || !child.closed {
+		t.Fatal("host shutdown resumed paused devices or retained child")
+	}
+}
+
+func TestPhoneChildScriptFailure(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+	if err := parent.startPhoneGame(parent.phone, "child"); err != nil {
+		t.Fatal(err)
+	}
+	script, err := parseScript("press ok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script.ready = func(string) bool { return false }
+	script.blockedPC, script.blocked = 0, 6000
+	parent.in.script = script
+	before := parent.phone.child.game.tick
+	if err := parent.Update(); err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("script failure lost: %v", err)
+	}
+	if parent.phone.child.game.tick != before {
+		t.Fatal("child advanced after fatal scripted input")
+	}
+}
+
+func TestPhoneChildAudioFailureDuringEntry(t *testing.T) {
+	for _, gate := range []string{"rotation", "held input"} {
+		t.Run(gate, func(t *testing.T) {
+			parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
+			parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+			parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0"}}}}
+			p := parent.phone
+			if err := parent.startPhoneGame(p, "child"); err != nil {
+				t.Fatal(err)
+			}
+			child := p.child.game
+			child.audioSession().InitRecord(failingTrace{err: errors.New("child audio failed")}, 60)
+			if gate == "held input" {
+				p.age, p.turned = phoneRise, phoneTurn
+				parent.in = input{pheld: true}
+			}
+			if err := parent.updatePhoneGame(p); err != nil {
+				t.Fatalf("child error escaped into host: %v", err)
+			}
+			if p.child != nil || !child.closed || parent.failure != nil || !strings.Contains(p.gameError, "child audio failed") {
+				t.Fatal("entry failure did not preserve host with visible child error")
+			}
+		})
 	}
 }

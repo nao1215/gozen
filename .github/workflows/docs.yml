@@ -165,7 +165,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Decide whether executable documentation can change
+        id: scope
+        run: ./scripts/ci_changes.sh
       - id: go
+        if: steps.scope.outputs.docs_runtime != 'false'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -174,6 +179,7 @@ jobs:
       # every job, saved by whichever job ends first (often a short cross-build), so the
       # builds of this job would not be in it. Saved from main per revision, restoring the latest matching dependency cache.
       - name: Restore the Go caches of this job
+        if: steps.scope.outputs.docs_runtime != 'false'
         id: go-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -183,15 +189,17 @@ jobs:
           key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
           restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
       # One step runs the sample game under xvfb-run (website/content/install.md).
-      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
+      - if: steps.scope.outputs.docs_runtime != 'false'
+        uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
           xvfb: true
       - name: Run the steps of README.md and the website
+        if: steps.scope.outputs.docs_runtime != 'false'
         run: make docs-steps
         env:
           CGO_ENABLED: "1"
       - name: Save the Go caches of this job
-        if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.scope.outputs.docs_runtime != 'false' && github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |

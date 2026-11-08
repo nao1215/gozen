@@ -130,8 +130,35 @@ type StatRates map[string]float64
 
 // ---- game.yaml
 
+// PhoneApps pins a catalog and declares the apps available to the phone host.
+// Loaders only validate declarations; installation and downloads are explicit.
+type PhoneApps struct {
+	CatalogPublicKey    string     `yaml:"catalog_public_key"`
+	CatalogSignatureURL string     `yaml:"catalog_signature_url"`
+	Catalog             string     `yaml:"catalog"`
+	CatalogURL          string     `yaml:"catalog_url"`
+	CatalogSHA256       string     `yaml:"catalog_sha256"`
+	Apps                []PhoneApp `yaml:"apps"`
+}
+
+// PhoneApp selects a catalog package for presentation and export. ID is local
+// to this host; Package identifies the registered game. When gates availability.
+type PhoneApp struct {
+	// BundledVersion pins the included ZIP when Version allows later updates.
+	BundledVersion string `yaml:"bundled_version"`
+	ID             string `yaml:"id"`
+	Package        string `yaml:"package"`
+	Version        string `yaml:"version"`
+	Install        string `yaml:"install"`
+	Path           string `yaml:"path"`
+	When           Expr   `yaml:"when"`
+}
+
 // Game is game.yaml: the game's title, screen and starting state.
 type Game struct {
+	// Phone declares the games offered by the phone store and game cues.
+	Phone *PhoneApps `yaml:"phone"`
+
 	// Planning supplies optional calendar, entity and activity definitions.
 	Planning *Planning `yaml:"planning"`
 

@@ -183,9 +183,9 @@ const voicesAhead = 5
 
 // loadVoice loads a stream line's recorded voice in the background: a file the page is
 // still fetching (the sounds come last, ADR 0051) would hold the frame until it came.
-func loadVoice(fsys fs.FS, file string) *voiceLoad {
+func (g *Game) loadVoice(fsys fs.FS, file string) *voiceLoad {
 	v := &voiceLoad{file: file, done: make(chan struct{})}
-	go v.read(fsys)
+	go v.read(fsys, g.audioSession())
 	return v
 }
 
@@ -240,14 +240,16 @@ func keepAwake(on bool) {
 
 // whenHidden calls f each time the page is hidden (another tab, a phone's browser sent to
 // the background): the game's frames stop then, and the page may be closed unseen.
-func whenHidden(f func()) {
+func whenHidden(f func()) func() {
 	doc := js.Global().Get("document")
-	doc.Call("addEventListener", "visibilitychange", js.FuncOf(func(js.Value, []js.Value) any {
+	listener := js.FuncOf(func(js.Value, []js.Value) any {
 		if doc.Get("visibilityState").String() == "hidden" {
 			f()
 		}
 		return nil
-	}))
+	})
+	doc.Call("addEventListener", "visibilitychange", listener)
+	return func() { doc.Call("removeEventListener", "visibilitychange", listener); listener.Release() }
 }
 
 // stopSpeaking stops reading aloud.

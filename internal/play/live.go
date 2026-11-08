@@ -237,11 +237,11 @@ func (g *Game) reloadAssets() {
 	g.closePuppets()
 	g.closeScenes()
 	if !g.opts.NoSound || g.opts.Audio != nil {
-		sound.LoadEffects(g.opts.FS)
-		sound.SetVary(g.db.Game.UI.SfxVary.Values())
-		sound.Relearn(g.opts.FS, songsOf(g.db))
+		g.audioSession().LoadEffects(g.opts.FS)
+		g.audioSession().SetVary(g.db.Game.UI.SfxVary.Values())
+		g.audioSession().Relearn(g.opts.FS, songsOf(g.db))
 	} else {
-		if _, err := sound.Load(g.opts.FS, sound.SfxDir); err != nil {
+		if _, err := g.audioSession().Load(g.opts.FS, sound.SfxDir); err != nil {
 			log.Printf("sfx durations: %v", err)
 		}
 	}
@@ -297,6 +297,13 @@ func (g *Game) reload() {
 	name, lines, answers, rnd := g.evName, g.evLines, g.evAnswers, g.evRand
 	g.glass.close()
 	g.db = db
+	if err := g.closePhonePackages(); err != nil {
+		g.failure = errors.Join(g.failure, err)
+	}
+	if g.phone != nil && g.phone.store != nil {
+		g.phone.store.close()
+		g.phone.store = nil
+	}
 	g.unlockNeedsBackup = db.Game.Gallery.MigrateUnlocks(g.unlocked) || g.unlockNeedsBackup
 	g.spUsed = nil
 	if err := g.useLanguage(); err != nil {

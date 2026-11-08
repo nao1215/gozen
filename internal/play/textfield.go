@@ -25,11 +25,16 @@ type textField struct {
 // input method's window.
 func (f *textField) start(g *Game, caret func() (x, y float64)) {
 	if g.memo == nil {
-		g.emit("text_input", nil)
+		g.markTextInput()
 	}
 	f.composer.OnNewSession = func() *textinput.SessionOptions {
 		x, y := caret()
-		return &textinput.SessionOptions{CaretBounds: image.Rect(int(x*g.ui), int(y*g.ui), int(x*g.ui)+2, int((y+sizeM*1.3)*g.ui)), TextBeforeCaret: f.text}
+		x0, y0, x1, y1 := x*g.ui, y*g.ui, x*g.ui+2, (y+sizeM*1.3)*g.ui
+		if g.inputCaret != nil {
+			x0, y0 = g.inputCaret(x, y)
+			x1, y1 = g.inputCaret(x+2/g.ui, y+sizeM*1.3)
+		}
+		return &textinput.SessionOptions{CaretBounds: image.Rect(int(x0), int(y0), int(x1), int(y1)), TextBeforeCaret: f.text}
 	}
 	f.composer.OnComposition = func(c *textinput.Composition) { f.comp = c.Text() }
 	f.composer.OnCommit = func(c *textinput.Commit) {
@@ -106,3 +111,12 @@ func (f *textField) draw(dst *ebiten.Image, x, y, room, size float64, c, caretCo
 
 // caretX is where the caret is, for the input method's window.
 func (f *textField) caretX(x, size float64) float64 { return x + gfx.TextWidth(f.text, size) }
+
+// markTextInput keeps the outer recorder aware of non-replayable text entry in a child.
+func (g *Game) markTextInput() {
+	if g.textInput != nil {
+		g.textInput()
+		return
+	}
+	g.emit("text_input", nil)
+}

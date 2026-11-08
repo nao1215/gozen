@@ -516,6 +516,9 @@ type MessageCue struct {
 // across, shows a post a screen swiped sideways; Browse makes it only looked
 // at, a tap liking nothing.
 type PhoneCue struct {
+	// Game selects a local phone app declaration for app game.
+	Game string `yaml:"game"`
+
 	// History shows all unlocked chat messages as a scrollable, read-only history.
 	// Replies are authored send buttons; the event keeps their result on selection.
 	History bool       `yaml:"history"`

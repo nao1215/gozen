@@ -719,7 +719,7 @@ func TestStreamsVoiceWaitsForTheLine(t *testing.T) {
 		t.Errorf("a line without its voice lasts until %v, not its timing %v", w.busy, want)
 	}
 	at = wait("Hello, everyone.")
-	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "Hello, everyone."))
+	pcm, err := g.audioSession().VoiceClip(fsys, g.db.Streams.Voice("ann", "Hello, everyone."))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -736,7 +736,7 @@ func tonePCM(t *testing.T) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pcm, err := sound.VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
+	pcm, err := sound.NewSession().VoiceClip(fstest.MapFS{"tone.ogg": {Data: tone}}, "tone.ogg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1085,7 +1085,7 @@ func TestStreamsVoiceReadyAtDeadline(t *testing.T) {
 	w.ahead[f] = v
 	w.say(g, streamSay{line: "Hello, everyone."})
 	wldFrames(t, g, int(firstVoiceWait.Seconds()*ebiten.DefaultTPS)-1)
-	v.read(fsys)
+	v.read(fsys, g.audioSession())
 	wldFrames(t, g, 1)
 	want := g.streamNow().Add(seconds(sound.ClipSeconds(v.pcm)))
 	if v.err != nil || w.voice != nil || !w.talk[0].Equal(want) || !w.busy.Equal(want.Add(voiceGap)) {
@@ -1202,7 +1202,7 @@ func TestStreamsTipLineVoiced(t *testing.T) {
 		wldFrames(t, g, 1)
 	}
 	at := g.streamNow()
-	pcm, err := sound.VoiceClip(fsys, g.db.Streams.Voice("ann", "For seeds"))
+	pcm, err := g.audioSession().VoiceClip(fsys, g.db.Streams.Voice("ann", "For seeds"))
 	if err != nil {
 		t.Fatal(err)
 	}

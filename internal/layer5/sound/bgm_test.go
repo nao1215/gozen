@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"maps"
 	"math"
@@ -62,7 +63,7 @@ func captureLog(t *testing.T) *syncBuf {
 func freshSession(t *testing.T) {
 	t.Helper()
 	end := func() {
-		if err := Close(); err != nil {
+		if err := testSession.Close(); err != nil {
 			t.Error(err)
 		}
 	}
@@ -78,11 +79,11 @@ var (
 // recordQuickly is InitRecord with the built-in effects made once for the whole test run
 // (making them takes a second or more): for tests that are about something else.
 func recordQuickly(w io.Writer, tps int) {
-	quickOnce.Do(func() { quickEffects = synthEffects() })
-	rec = &recorder{w: w, tps: tps}
-	mu.Lock()
-	maps.Copy(effects, quickEffects)
-	mu.Unlock()
+	quickOnce.Do(func() { quickEffects = testSession.synthEffects() })
+	testSession.rec = &recorder{w: w, tps: tps}
+	testSession.mu.Lock()
+	maps.Copy(testSession.effects, quickEffects)
+	testSession.mu.Unlock()
 }
 
 func waitFor(t *testing.T, what string, cond func() bool) {
@@ -468,23 +469,23 @@ func TestMoodFallbacks(t *testing.T) {
 
 func TestPackageControlsWithoutMusic(t *testing.T) {
 	freshSession(t)
-	if Active() || WantedSong() != "" || HasMood("x") {
+	if testSession.Active() || testSession.WantedSong() != "" || testSession.HasMood("x") {
 		t.Fatal("no music loaded but reported active")
 	}
-	if song, mod := Playing(); song != "" || mod != "" {
+	if song, mod := testSession.Playing(); song != "" || mod != "" {
 		t.Fatal("playing without music")
 	}
 	// None of these may panic without a loaded modular.
-	Request("x")
-	PlaySong("a", "x")
-	PlaySongFade("a", "x", 1)
-	StopFade(1)
-	Stop()
-	Jump("x")
-	JumpLast("x")
-	PlayOnce("a", "x")
-	Keep("a")
-	Relearn(nil, nil)
+	testSession.Request("x")
+	testSession.PlaySong("a", "x")
+	testSession.PlaySongFade("a", "x", 1)
+	testSession.StopFade(1)
+	testSession.Stop()
+	testSession.Jump("x")
+	testSession.JumpLast("x")
+	testSession.PlayOnce("a", "x")
+	testSession.Keep("a")
+	testSession.Relearn(nil, nil)
 }
 
 func TestLoadBGMControlsAndVolumes(t *testing.T) {
@@ -492,73 +493,73 @@ func TestLoadBGMControlsAndVolumes(t *testing.T) {
 	tone := readTone(t)
 	fsys := fstest.MapFS{"bgm/a.ogg": {Data: tone}, "bgm/b.ogg": {Data: tone}}
 	songs := []Song{{Name: "a", File: "bgm/a.ogg"}, {Name: "b", File: "bgm/b.ogg"}}
-	LoadBGM(fsys, songs, "a", nil, 0.5)
-	if !Active() || WantedSong() != "a" {
-		t.Fatalf("active %v wanted %q", Active(), WantedSong())
+	testSession.LoadBGM(fsys, songs, "a", nil, 0.5)
+	if !testSession.Active() || testSession.WantedSong() != "a" {
+		t.Fatalf("active %v wanted %q", testSession.Active(), testSession.WantedSong())
 	}
-	if bgmVolume() != 0.5 || math.Abs(seVolume()-0.7) > 1e-12 {
-		t.Fatalf("volumes %v %v", bgmVolume(), seVolume())
+	if testSession.bgmVolume() != 0.5 || math.Abs(testSession.seVolume()-0.7) > 1e-12 {
+		t.Fatalf("volumes %v %v", testSession.bgmVolume(), testSession.seVolume())
 	}
-	Request("calm")
-	if m := current(); m.want != "calm" {
+	testSession.Request("calm")
+	if m := testSession.current(); m.want != "calm" {
 		t.Fatalf("Request: %q", m.want)
 	}
-	Jump("calm")
-	if m := current(); !m.jump || m.last {
+	testSession.Jump("calm")
+	if m := testSession.current(); !m.jump || m.last {
 		t.Fatal("Jump")
 	}
-	JumpLast("calm")
-	if m := current(); !m.jump || !m.last {
+	testSession.JumpLast("calm")
+	if m := testSession.current(); !m.jump || !m.last {
 		t.Fatal("JumpLast")
 	}
-	PlayOnce("b", Neutral)
-	if WantedSong() != "b" || current().onceSong != "b" {
+	testSession.PlayOnce("b", Neutral)
+	if testSession.WantedSong() != "b" || testSession.current().onceSong != "b" {
 		t.Fatal("PlayOnce")
 	}
-	Stop()
-	if WantedSong() != "" {
+	testSession.Stop()
+	if testSession.WantedSong() != "" {
 		t.Fatal("Stop")
 	}
-	PlaySong("a", Neutral)
-	if HasMood("calm") {
+	testSession.PlaySong("a", Neutral)
+	if testSession.HasMood("calm") {
 		t.Fatal("a track has no moods")
 	}
-	waitFor(t, "song a", func() bool { return idle(current(), "a")() })
-	if song, _ := Playing(); song != "" && song != "a" {
+	waitFor(t, "song a", func() bool { return idle(testSession.current(), "a")() })
+	if song, _ := testSession.Playing(); song != "" && song != "a" {
 		t.Fatalf("playing %q", song)
 	}
-	SetVolumes(0.5, 0.25)
-	if bgmVolume() != 0.25 || math.Abs(seVolume()-0.175) > 1e-12 {
-		t.Fatalf("scaled volumes %v %v", bgmVolume(), seVolume())
+	testSession.SetVolumes(0.5, 0.25)
+	if testSession.bgmVolume() != 0.25 || math.Abs(testSession.seVolume()-0.175) > 1e-12 {
+		t.Fatalf("scaled volumes %v %v", testSession.bgmVolume(), testSession.seVolume())
 	}
-	if !ToggleMute() || bgmVolume() != 0 || seVolume() != 0 {
+	if !testSession.ToggleMute() || testSession.bgmVolume() != 0 || testSession.seVolume() != 0 {
 		t.Fatal("mute")
 	}
-	if ToggleMute() || bgmVolume() != 0.25 || math.Abs(seVolume()-0.175) > 1e-12 {
+	if testSession.ToggleMute() || testSession.bgmVolume() != 0.25 || math.Abs(testSession.seVolume()-0.175) > 1e-12 {
 		t.Fatal("unmute")
 	}
-	PlaySongFade("b", Neutral, 0.5)
-	if WantedSong() != "b" {
-		t.Fatalf("wanted %q", WantedSong())
+	testSession.PlaySongFade("b", Neutral, 0.5)
+	if testSession.WantedSong() != "b" {
+		t.Fatalf("wanted %q", testSession.WantedSong())
 	}
-	waitFor(t, "song b", func() bool { m := current(); return idle(m, "b")() })
-	StopFade(0.1)
-	if WantedSong() != "" {
+	waitFor(t, "song b", func() bool { m := testSession.current(); return idle(m, "b")() })
+	testSession.StopFade(0.1)
+	if testSession.WantedSong() != "" {
 		t.Fatal("StopFade keeps a wanted song")
 	}
-	PlaySong("a", Neutral)
-	waitFor(t, "song a", func() bool { m := current(); return idle(m, "a")() })
-	Keep("b")
+	testSession.PlaySong("a", Neutral)
+	waitFor(t, "song a", func() bool { m := testSession.current(); return idle(m, "a")() })
+	testSession.Keep("b")
 	// Relearn drops loaded songs that are neither playing nor wanted nor loading, then
 	// reloads the kept ones from the new files.
-	Relearn(fstest.MapFS{"bgm/a.ogg": {Data: tone}, "bgm/b.ogg": {Data: tone}}, songs)
-	waitFor(t, "kept song b again", func() bool { m := current(); return idle(m, "b")() })
-	Pump(60)
-	if err := Close(); err != nil {
+	testSession.Relearn(fstest.MapFS{"bgm/a.ogg": {Data: tone}, "bgm/b.ogg": {Data: tone}}, songs)
+	waitFor(t, "kept song b again", func() bool { m := testSession.current(); return idle(m, "b")() })
+	testSession.Pump(60)
+	if err := testSession.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if Active() || bgmVolume() != 0.7 {
-		t.Fatalf("Close leaves the session: active %v volume %v", Active(), bgmVolume())
+	if testSession.Active() || testSession.bgmVolume() != 0.7 {
+		t.Fatalf("Close leaves the session: active %v volume %v", testSession.Active(), testSession.bgmVolume())
 	}
 }
 
@@ -567,14 +568,14 @@ func TestPumpAdvancesMusicWithoutADevice(t *testing.T) {
 	m := NewModular("s", nil)
 	m.AddSong(Song{Name: "s", File: "s.ogg"}, map[string][]int16{Neutral: constPCM(100, 5000)})
 	m.PlaySong("s", Neutral)
-	mu.Lock()
-	bgm = m
-	mu.Unlock()
-	Pump(0) // a non-positive rate does nothing
+	testSession.mu.Lock()
+	testSession.bgm = m
+	testSession.mu.Unlock()
+	testSession.Pump(0) // a non-positive rate does nothing
 	if m.pos != 0 {
 		t.Fatal("Pump(0) advanced")
 	}
-	Pump(60)
+	testSession.Pump(60)
 	if m.pos != SampleRate/60 {
 		t.Fatalf("pos %d, want %d", m.pos, SampleRate/60)
 	}
@@ -583,25 +584,25 @@ func TestPumpAdvancesMusicWithoutADevice(t *testing.T) {
 func TestRecordingMixesMusicAndEffects(t *testing.T) {
 	freshSession(t)
 	var out bytes.Buffer
-	InitRecord(&out, 60)
+	testSession.InitRecord(&out, 60)
 	frame := SampleRate / 60
-	if err := Tick(); err != nil || out.Len() != frame*8 {
+	if err := testSession.Tick(); err != nil || out.Len() != frame*8 {
 		t.Fatalf("silent tick wrote %d bytes, %v", out.Len(), err)
 	}
 	if out.Bytes()[0] != 0 || slices.Max(out.Bytes()) != 0 {
 		t.Fatal("no music and no effect must record silence")
 	}
-	if EffectSeconds("cursor") < 0.04 || EffectSeconds("cursor") > 0.06 || EffectSeconds("nope") != 0 {
-		t.Fatalf("effect length %v", EffectSeconds("cursor"))
+	if testSession.EffectSeconds("cursor") < 0.04 || testSession.EffectSeconds("cursor") > 0.06 || testSession.EffectSeconds("nope") != 0 {
+		t.Fatalf("effect length %v", testSession.EffectSeconds("cursor"))
 	}
-	Play("cursor")
-	Play("not-a-sound")
-	Play("cursor")
-	if len(rec.voices) != 2 {
-		t.Fatalf("voices %d", len(rec.voices))
+	testSession.Play("cursor")
+	testSession.Play("not-a-sound")
+	testSession.Play("cursor")
+	if len(testSession.rec.voices) != 2 {
+		t.Fatalf("voices %d", len(testSession.rec.voices))
 	}
 	out.Reset()
-	if err := Tick(); err != nil {
+	if err := testSession.Tick(); err != nil {
 		t.Fatal(err)
 	}
 	loud := false
@@ -615,17 +616,17 @@ func TestRecordingMixesMusicAndEffects(t *testing.T) {
 	}
 	// The 0.05 s effect is over after about three ticks and its voices are dropped.
 	for range 4 {
-		if err := Tick(); err != nil {
+		if err := testSession.Tick(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if len(rec.voices) != 0 {
-		t.Fatalf("finished voices kept: %d", len(rec.voices))
+	if len(testSession.rec.voices) != 0 {
+		t.Fatalf("finished voices kept: %d", len(testSession.rec.voices))
 	}
-	ToggleMute()
-	Play("cursor")
+	testSession.ToggleMute()
+	testSession.Play("cursor")
 	out.Reset()
-	if err := Tick(); err != nil {
+	if err := testSession.Tick(); err != nil {
 		t.Fatal(err)
 	}
 	if slices.Max(out.Bytes()) != 0 {
@@ -638,11 +639,11 @@ func TestRecordingLoadsAllSongsAtOnce(t *testing.T) {
 	var out bytes.Buffer
 	recordQuickly(&out, 30)
 	fsys := fstest.MapFS{"bgm/a.ogg": {Data: readTone(t)}}
-	LoadBGM(fsys, []Song{{Name: "a", File: "bgm/a.ogg"}}, "a", nil, 1)
-	if got := current().Loaded(); !slices.Equal(got, []string{"a"}) {
+	testSession.LoadBGM(fsys, []Song{{Name: "a", File: "bgm/a.ogg"}}, "a", nil, 1)
+	if got := testSession.current().Loaded(); !slices.Equal(got, []string{"a"}) {
 		t.Fatalf("recording loads songs synchronously, got %v", got)
 	}
-	if err := Tick(); err != nil || out.Len() != SampleRate/30*8 {
+	if err := testSession.Tick(); err != nil || out.Len() != SampleRate/30*8 {
 		t.Fatalf("tick %d %v", out.Len(), err)
 	}
 }
@@ -655,10 +656,10 @@ func TestRecordingWriteErrorSticks(t *testing.T) {
 	freshSession(t)
 	want := errors.New("disk full")
 	recordQuickly(failWriter{want}, 60)
-	if err := Tick(); !errors.Is(err, want) {
+	if err := testSession.Tick(); !errors.Is(err, want) {
 		t.Fatal(err)
 	}
-	if err := Tick(); !errors.Is(err, want) {
+	if err := testSession.Tick(); !errors.Is(err, want) {
 		t.Fatal("a failed recording must keep failing")
 	}
 }
@@ -666,9 +667,96 @@ func TestRecordingWriteErrorSticks(t *testing.T) {
 func TestPlayVoiceWhileRecording(t *testing.T) {
 	freshSession(t)
 	recordQuickly(io.Discard, 60)
-	PlayVoice(make([]byte, 64), 1)
-	PlayVoice(nil, 1)
-	if len(rec.voices) != 1 {
-		t.Fatalf("voices %d", len(rec.voices))
+	testSession.PlayVoice(make([]byte, 64), 1)
+	testSession.PlayVoice(nil, 1)
+	if len(testSession.rec.voices) != 1 {
+		t.Fatalf("voices %d", len(testSession.rec.voices))
+	}
+}
+
+var testSession = NewSession()
+
+func TestSessionIsolation(t *testing.T) {
+	parent, child := NewSession(), NewSession()
+	t.Cleanup(func() {
+		if err := errors.Join(parent.Close(), child.Close()); err != nil {
+			t.Error(err)
+		}
+	})
+	var hostAudio, childAudio bytes.Buffer
+	parent.InitRecord(&hostAudio, 60)
+	child.InitRecord(&childAudio, 60)
+	parent.SetVolumes(0.2, 0.3)
+	child.SetVolumes(0.8, 0.9)
+	parent.SetVary(0, 0)
+	child.SetVary(0.5, 0.4)
+	parent.Play("decide")
+	if len(parent.rec.voices) == 0 || len(child.rec.voices) != 0 {
+		t.Fatal("effect crossed session boundary")
+	}
+	if err := child.Tick(); err != nil {
+		t.Fatal(err)
+	}
+	if hostAudio.Len() != 0 || childAudio.Len() == 0 {
+		t.Fatal("recorder crossed session boundary")
+	}
+	parent.effects["private"] = []byte{1, 2}
+	parent.voiceCache = []voiceClip{{path: "same.ogg", pcm: []byte{3}}}
+	if child.effects["private"] != nil || len(child.voiceCache) != 0 {
+		t.Fatal("asset cache crossed session boundary")
+	}
+	if err := child.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if parent.rec == nil || parent.bgmScale != 0.2 || parent.seScale != 0.3 || parent.varyPitch != 0 || len(parent.voiceCache) != 1 || parent.effects["private"] == nil {
+		t.Fatal("closing child changed parent resources")
+	}
+	if err := parent.Tick(); err != nil {
+		t.Fatal(err)
+	}
+	if hostAudio.Len() == 0 {
+		t.Fatal("parent recorder did not resume")
+	}
+}
+
+type heldAudioFS struct {
+	fs.FS
+	started chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (f *heldAudioFS) Open(name string) (fs.File, error) {
+	f.once.Do(func() { close(f.started) })
+	<-f.release
+	return f.FS.Open(name)
+}
+
+func TestSessionCloseJoinsBorrowedAudioReads(t *testing.T) {
+	gate := &heldAudioFS{FS: fstest.MapFS{"tone.ogg": {Data: readTone(t)}}, started: make(chan struct{}), release: make(chan struct{})}
+	var release sync.Once
+	t.Cleanup(func() { release.Do(func() { close(gate.release) }) })
+	session := NewSession()
+	session.LoadBGM(gate, []Song{{Name: "one", File: "tone.ogg"}}, "one", nil, 1)
+	select {
+	case <-gate.started:
+	case <-time.After(time.Second):
+		t.Fatal("audio loader did not start")
+	}
+	done := make(chan error, 1)
+	go func() { done <- session.Close() }()
+	select {
+	case err := <-done:
+		t.Fatalf("Close returned while borrowed FS read was active: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	release.Do(func() { close(gate.release) })
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Close did not join completed read")
 	}
 }

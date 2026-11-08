@@ -3,6 +3,8 @@ package repro
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,6 +68,24 @@ func TestReproMappingAndCut(t *testing.T) {
 	records := []reproRecord{{tick: 1, shot: "a/same.png"}, {tick: 2, shot: "b/same.png"}}
 	if _, err := reproTick("same.png", records, 2); err == nil {
 		t.Fatal("ambiguous basename accepted")
+	}
+}
+
+// Every target spelling must leave room for the exclusive --until boundary.
+func TestReproTargetBounds(t *testing.T) {
+	for _, tick := range []int{math.MaxInt - 1, math.MaxInt} {
+		path := traceFile(t, `{"t":"start","tick":0,"exact_version":3,"game_dir":"game","seed":7}`,
+			fmt.Sprintf(`{"t":"shot","tick":%d,"file":"shots/last.png"}`, tick))
+		for _, target := range []string{strconv.Itoa(tick), "last.png", "shots/last.png"} {
+			b, _, err := readRepro(path, target)
+			if tick == math.MaxInt {
+				if err == nil {
+					t.Fatalf("target %q accepted overflowing boundary: tick=%d until=%d", target, b.Tick, b.Until)
+				}
+			} else if err != nil || b.Tick != tick || b.Until != math.MaxInt {
+				t.Fatalf("target %q: %+v, %v", target, b, err)
+			}
+		}
 	}
 }
 

@@ -28,6 +28,7 @@ import (
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/layer2/gamepackage"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -2798,5 +2799,36 @@ func TestTraceInputOutcome(t *testing.T) {
 	lines = traceLines(t, b.Bytes(), "autoplay_wait")
 	if len(lines) != 2 || lines[0]["waiting"] != "choice" || lines[1]["waiting"] != "" {
 		t.Fatalf("wait transitions: %v", lines)
+	}
+}
+
+func TestPhoneGameReplayClockAndIdentity(t *testing.T) {
+	var recorded bytes.Buffer
+	clock := time.Date(2030, 1, 2, 3, 4, 5, 123456789, time.FixedZone("fixture", 9*3600))
+	inst := &gamepackage.Installed{Release: gamepackage.Release{ID: "test/game", Version: "1.0.0", SHA256: strings.Repeat("a", 64)}}
+	g := &Game{tick: 17, tr: newTracer(&recorded), opts: Options{Now: func() time.Time { return clock }}}
+	first, err := g.phoneGameClock(inst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var launch phoneLaunchClock
+	if err = json.Unmarshal(bytes.TrimSpace(recorded.Bytes()), &launch); err != nil {
+		t.Fatal(err)
+	}
+	if first.UnixMilli() != clock.UnixMilli() || launch.Offset != 9*3600 {
+		t.Fatal("launch clock/offset changed")
+	}
+	replayed := &Game{tick: 17, rep: &replay{phoneLaunches: map[int]phoneLaunchClock{17: launch}}}
+	second, err := replayed.phoneGameClock(inst)
+	if err != nil || !first.Equal(second) {
+		t.Fatalf("replay clock: %v %v", second, err)
+	}
+	inst.Release.SHA256 = strings.Repeat("b", 64)
+	if _, err = replayed.phoneGameClock(inst); err == nil {
+		t.Fatal("changed package accepted")
+	}
+	replayed.tick = 18
+	if _, err = replayed.phoneGameClock(inst); err == nil {
+		t.Fatal("unrecorded launch accepted")
 	}
 }

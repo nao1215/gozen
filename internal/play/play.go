@@ -43,6 +43,7 @@ type Options struct {
 	capture *captureStartup
 	// headless is a Simulate run: never drawn, so a script needs no screenshot directory.
 	headless         bool
+	recordedAudio    bool // embedded runs retain the outer trace's silent audio timeline
 	Development      bool
 	Report           io.Writer
 	CollectBuildInfo bool
@@ -239,6 +240,17 @@ type overlay interface{ overlay() bool }
 type modal interface{ modal() bool }
 
 type Game struct {
+	hiddenCleanup       func()
+	textInput           func()
+	inputCaret          func(float64, float64) (float64, float64)
+	restorePresentation func()
+	graphics            *gfx.Context
+	words               *lang.Context
+	audio               *sound.Session
+	embedded            bool
+
+	packages *phonePackages
+
 	// desk is the stream screens' state of the run (ADR 0048), nil until a game with streams plays.
 	desk    *streamDesk
 	context context.Context
@@ -477,39 +489,47 @@ type Game struct {
 	keptFeet   *liveFeet
 }
 
-func New(opts Options) (_ *Game, err error) {
+func New(opts Options) (*Game, error) {
+	g, err := newGame(opts, false)
+	if err == nil {
+		g.restorePresentation = g.activatePresentation()
+	}
+	return g, err
+}
+
+func newGame(opts Options, embedded bool) (_ *Game, err error) {
 	if opts.FS == nil {
 		return nil, errors.New("play: nil filesystem")
 	}
 	if math.IsNaN(opts.Window) || math.IsInf(opts.Window, 0) || opts.Window < 0 || opts.Window > 4 {
 		return nil, &ArgumentError{Err: errors.New("play: window scale must be between 0 and 4")}
 	}
-	if !activeGame.CompareAndSwap(false, true) {
+	if !embedded && !activeGame.CompareAndSwap(false, true) {
 		return nil, errors.New("play: another game is active; close it first")
 	}
 	defer func() {
-		if err != nil {
+		if err != nil && !embedded {
 			activeGame.Store(false)
 		}
 	}()
 
-	ReplayReport = ""
+	if !embedded {
+		ReplayReport = ""
+	}
+	initialWords, err := lang.NewContext("", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer initialWords.Activate()()
 	if opts.ReplayBattle < 0 || (opts.ReplayBattle > 0 && (opts.Replay == "" || opts.Until != 0)) {
 		return nil, &ArgumentError{Err: errors.New(lang.T("--replay-battle は --replay と正の戦闘番号を指定し、--until と併用しない"))}
 	}
-	db := opts.DB
-	if db == nil {
-		if err := data.UseWords(opts.FS); err != nil {
-			return nil, err
-		}
-		if db, err = data.Load(opts.FS); err != nil {
-			return nil, err
-		}
+	db, err := runtimeDB(opts)
+	if err != nil {
+		return nil, err
 	}
-	if db.Game.Screen.Width <= 0 || db.Game.Screen.Height <= 0 {
-		return nil, errors.New("play: screen dimensions must be positive")
-	}
-	if err := lang.Use(db.Game.Language, db.EngineWords(db.Game.Language)); err != nil {
+	words, err := lang.NewContext(db.Game.Language, db.EngineWords(db.Game.Language))
+	if err != nil {
 		return nil, err
 	}
 	var rep *replay
@@ -522,7 +542,8 @@ func New(opts Options) (_ *Game, err error) {
 		opts.Seed = newSeed()
 	}
 	runctx, cancel := context.WithCancel(context.Background())
-	g := &Game{context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now(), drawn: make(chan struct{})}
+	g := &Game{graphics: gfx.NewContext(), words: words, audio: sound.NewSession(), embedded: embedded, context: runctx, cancel: cancel, db: db, opts: opts, pics: newPictures(opts.FS), rep: rep, stageK: 1, started: time.Now(), drawn: make(chan struct{})}
+	defer g.activatePresentation()()
 	g.pics.undrawn = opts.headless
 	if meterAsked() {
 		g.meter.toggle()
@@ -549,6 +570,23 @@ func New(opts Options) (_ *Game, err error) {
 		}
 	}
 
+	if err := g.initializePresentation(); err != nil {
+		return nil, err
+	}
+	if err := g.initializeScript(); err != nil {
+		return nil, err
+	}
+	if err := g.initializeAudio(); err != nil {
+		return nil, err
+	}
+	if err := g.initializeEntry(); err != nil {
+		return nil, err
+	}
+	return g, nil
+}
+
+func (g *Game) initializePresentation() error {
+	opts, db, rep := g.opts, g.db, g.rep
 	g.ui = UIScale(&db.Game)
 	gfx.SetScale(g.ui)
 	g.in.ui = g.ui
@@ -563,36 +601,42 @@ func New(opts Options) (_ *Game, err error) {
 	}
 	g.loadTheme()
 	if err := LoadFonts(db, opts.FS); err != nil {
-		return nil, err
+		return err
 	}
 	f := db.Game.Fonts
 	var titleFont []byte
 	if f.Title != "" {
 		var err error
 		if titleFont, err = fs.ReadFile(opts.FS, "assets/"+f.Title); err != nil {
-			return nil, fmt.Errorf("title font: %w", err)
+			return fmt.Errorf("title font: %w", err)
 		}
 	}
 	var subFont []byte
 	if f.Subtitle != "" {
 		var err error
 		if subFont, err = fs.ReadFile(opts.FS, "assets/"+f.Subtitle); err != nil {
-			return nil, fmt.Errorf("subtitle font: %w", err)
+			return fmt.Errorf("subtitle font: %w", err)
 		}
 	}
 	if err := gfx.LoadTitleFont(titleFont, subFont); err != nil {
-		return nil, fmt.Errorf("title font: %w", err)
+		return fmt.Errorf("title font: %w", err)
 	}
+
+	return nil
+}
+
+func (g *Game) initializeScript() error {
+	opts := g.opts
 	if opts.Autopilot != nil {
 		g.auto = newAutopilot(*opts.Autopilot)
 	}
 	if opts.Script != "" || opts.headless {
 		if opts.ShotDir == "" && !opts.headless {
-			return nil, errors.New("play: scripted runs require a screenshot directory")
+			return errors.New("play: scripted runs require a screenshot directory")
 		}
 		s, err := parseScript(opts.Script)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		s.idle = func() bool {
 			// An authored menu awaits an explicit action, not another dialogue tap.
@@ -612,37 +656,7 @@ func New(opts Options) (_ *Game, err error) {
 		s.arrived = func() bool { a := g.walkArrived(); g.walkGoal = [3]int{}; return a }
 		s.battleAuto = func() { g.act("battle_auto", nil) }
 		s.inBattle = func() bool { return g.currentBattle() != nil }
-		s.battleLog = func(enabled bool) {
-			if !g.opts.Development || g.currentBattle() == nil {
-				g.failure = errors.New("script: battle-log needs an active development battle")
-				return
-			}
-			g.currentBattle().hideTacticLog = !enabled
-			g.emit("unsupported_script", traceLine{"operation": "battle-log"})
-		}
-		s.battleHP = func(team string, index, hp int) {
-			if !g.opts.Development {
-				g.failure = errors.New("script: battle-hp needs a development session")
-				return
-			}
-			b := g.currentBattle()
-			if b == nil {
-				g.failure = errors.New("script: battle-hp needs an active battle")
-				return
-			}
-			units := b.b.Foes
-			if team == "party" {
-				units = b.b.Party
-			}
-			if index >= len(units) || units[index] == nil || units[index].HP <= 0 || hp > units[index].MHP() {
-				g.failure = fmt.Errorf("script: battle-hp %s %d %d is out of range", team, index, hp)
-				return
-			}
-			u := units[index]
-			u.HP = hp
-			b.shownHP[u], b.hp[u] = hp, float64(hp)
-			g.emit("battle_setup", traceLine{"team": team, "index": index, "id": u.EID, "hp": hp, "mhp": u.MHP()})
-		}
+		g.bindBattleScript(s)
 		s.typeText = g.typeMemo
 		s.jump = func(name string, line int) { g.act("dev_jump", traceLine{"event": name, "line": line}) }
 		s.do = func(src string) { g.act("dev_do", traceLine{"do": src}) }
@@ -685,24 +699,30 @@ func New(opts Options) (_ *Game, err error) {
 		}
 		g.in.script = s
 	}
+
+	return nil
+}
+
+func (g *Game) initializeAudio() error {
+	opts, db := g.opts, g.db
 	if opts.Audio != nil {
-		sound.InitRecord(opts.Audio, 60)
+		g.audioSession().InitRecord(opts.Audio, 60)
 	} else if !opts.NoSound {
-		if err := sound.Init(); err != nil {
-			return nil, err
+		if err := g.audioSession().Init(); err != nil {
+			return err
 		}
 	}
 
 	if opts.Audio == nil && opts.NoSound {
-		if _, err := sound.Load(opts.FS, sound.SfxDir); err != nil {
+		if _, err := g.audioSession().Load(opts.FS, sound.SfxDir); err != nil {
 			log.Printf("sfx durations: %v", err)
 		}
 	}
-	silentBGM := opts.Audio == nil && opts.NoSound && opts.Trace != nil
+	silentBGM := opts.Audio == nil && opts.NoSound && (opts.Trace != nil || opts.recordedAudio)
 	if opts.Audio != nil || !opts.NoSound || silentBGM {
 		if !silentBGM {
-			sound.LoadEffects(opts.FS)
-			sound.SetVary(db.Game.UI.SfxVary.Values())
+			g.audioSession().LoadEffects(opts.FS)
+			g.audioSession().SetVary(db.Game.UI.SfxVary.Values())
 		}
 		songs := songsOf(db)
 		if len(songs) > 0 {
@@ -710,45 +730,38 @@ func New(opts Options) (_ *Game, err error) {
 			if first == "" {
 				first = songs[0].Name
 			}
-			sound.LoadBGM(opts.FS, songs, first, db.Music.OneShot, db.Music.Volume)
+			g.audioSession().LoadBGM(opts.FS, songs, first, db.Music.OneShot, db.Music.Volume)
 
 			b := db.Game.Battle.Music.Song
 			if b == "" {
 				b = "battle"
 			}
 			if _, ok := db.Music.Songs[b]; ok {
-				sound.Keep(b)
+				g.audioSession().Keep(b)
 			}
 
-			for _, l := range db.Locations {
-				keep := []data.MusicCue{l.BattleMusic}
-				if l.Dungeon != nil {
-					for _, lk := range l.Dungeon.Looks {
-						keep = append(keep, lk.BattleMusic)
-					}
-				}
-				for _, c := range keep {
-					if _, ok := db.Music.Songs[c.Song]; ok && c.Song != b {
-						sound.Keep(c.Song)
-					}
-				}
-			}
+			g.keepBattleMusic(b)
 		}
 	}
 
+	return nil
+}
+
+func (g *Game) initializeEntry() error {
+	opts, rep := g.opts, g.rep
 	g.loadConfig()
 	if rep != nil && rep.version == traceVersion {
 		g.cfg, g.read, g.unlocked = rep.setup.Config, rep.setup.Read, rep.setup.Unlocked
 		g.applyConfig()
 	}
 	if err := g.useLanguage(); err != nil {
-		return nil, err
+		return err
 	}
 	if opts.Fullscreen {
 		g.cfg.Fullscreen = true
 	}
 	if err := g.traceStart(); err != nil {
-		return nil, err
+		return err
 	}
 	g.stack = []scene{newTitle(g)}
 	if opts.State != nil { // From a Session: skip the title, and start from the opening event for a new playthrough or from the saved place when continuing
@@ -765,27 +778,12 @@ func New(opts Options) (_ *Game, err error) {
 	}
 	if rep != nil && rep.capture != nil {
 		if err := g.restoreBattleCapture(); err != nil {
-			return nil, err
+			return err
 		}
-		return g, nil
+		return nil
 	}
-	if opts.Location != "" || len(opts.Party) > 0 {
-		if err := g.testStart(); err != nil {
-			return nil, err
-		}
-		if t := opts.Battle; t != "" {
-			if g.db.Troops[t] == nil {
-				return nil, &ArgumentError{Err: fmt.Errorf("unknown troop %q", t)}
-			}
-			var snap []byte
-			if g.db.Game.Battle.Retry {
-				snap, err = g.st.Save()
-				if err != nil {
-					return nil, err
-				}
-			}
-			g.startBattle(t, func(int) {}).retry = snap
-		}
+	if err := g.initializeTrial(); err != nil {
+		return err
 	}
 	if opts.Review {
 		g.opts.GalleryAll = true
@@ -795,26 +793,26 @@ func New(opts Options) (_ *Game, err error) {
 		m := rep.setup.Memo
 		g.opts.AllowLegacySave = m.AllowLegacy
 		if err := g.startMemo(m.Path, m.Memo, m.Save); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if opts.FromMemo != "" {
 		if err := g.startFromMemo(opts.FromMemo); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if opts.Scene != "" || opts.Event != "" {
 		if err := g.startAt(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if _, title := g.stack[0].(*title); title && len(g.stack) == 1 && g.db.Game.NoMenus() {
 		g.opening()
 	}
 	if g.failure != nil {
-		return nil, g.failure
+		return g.failure
 	}
-	return g, nil
+	return nil
 }
 
 func (g *Game) screen() (float64, float64) {
@@ -845,6 +843,7 @@ func (g *Game) LayoutF(ow, oh float64) (float64, float64) {
 }
 
 func (g *Game) layout(ow, oh float64) (int, int) {
+	defer g.activatePresentation()()
 	w, h, dsf := ow, oh, 1.0
 	switch s := g.in.script; {
 	case s != nil:
@@ -940,6 +939,7 @@ func (g *Game) pauseForFocus(focused bool) bool {
 }
 
 func (g *Game) Update() error {
+	defer g.activatePresentation()()
 	if g.overlayActive() && g.panel.performance != nil && (g.tr == nil || g.tr.performance != g.panel.performance) {
 		defer g.panel.performance.updated(time.Now())
 	}
@@ -1023,30 +1023,50 @@ func (g *Game) Update() error {
 	g.tick++
 	defer func(tick int) {
 		// Memo and tag editors roll the tick back while they hold the game.
-		if g.tick == tick {
+		if g.tick == tick && (g.phone == nil || g.phone.child == nil) {
 			g.stepBattlePictures()
 		}
 	}(g.tick)
 	g.in.tick = g.tick
+	if g.phone != nil && g.phone.child != nil {
+		if g.desk != nil {
+			g.desk.tick0++
+		}
+		if err := g.applyTickInput(); err != nil {
+			return err
+		}
+		defer g.in.finishOffer()
+		if g.tr != nil {
+			defer g.traceInputOutcome(true)
+		}
+		// Closing a child clears its exit press so the host cannot reuse it.
+		// Replay still needs that original press to close the child at this tick.
+		raw := g.in
+		var err error
+		if g.phone != nil {
+			err = g.updatePhoneGame(g.phone)
+		}
+		g.traceInput(&raw)
+		g.traceTick()
+		return err
+	}
 	if g.noticesShown() {
 		g.notices.update(g.noticeVisible())
 	} else if g.noticesDropped() {
 		g.notices.list = nil
 	}
-	if err := sound.Tick(); err != nil {
+	if err := g.audioSession().Tick(); err != nil {
 		return err
 	}
-	if g.opts.NoSound && g.tr != nil {
+	if g.opts.NoSound && (g.tr != nil || g.opts.recordedAudio) {
 		tps := ebiten.TPS()
 		if g.rep != nil && g.rep.partial && g.opts.Video == nil && g.opts.Audio == nil {
 			tps = 60 * max(1, g.opts.Speed)
 		}
-		sound.Pump(tps)
+		g.audioSession().Pump(tps)
 	}
-	g.applyTickInput()
-	if s := g.in.script; s != nil && s.err != nil {
-		g.emit("script_error", traceLine{"error": s.err.Error()})
-		return s.err
+	if err := g.applyTickInput(); err != nil {
+		return err
 	}
 	defer g.in.finishOffer()
 	if g.rep != nil {
@@ -1113,11 +1133,11 @@ func (g *Game) Update() error {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
 	}
 	altEnter := inpututil.IsKeyJustPressed(ebiten.KeyEnter) && (ebiten.IsKeyPressed(ebiten.KeyAltLeft) || ebiten.IsKeyPressed(ebiten.KeyAltRight))
-	if inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter {
+	if !g.embedded && (inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter) {
 		g.toggleFullscreen()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
-		sound.ToggleMute()
+	if !g.embedded && inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		g.audioSession().ToggleMute()
 	}
 	if g.st != nil {
 		g.st.Frames++
@@ -1190,7 +1210,7 @@ func (g *Game) Update() error {
 // applyTickInput applies inputs and direct actions before any Update handler can
 // consume the tick. Scripts execute actions inside input.update; replay must run
 // its recorded actions in this same phase, including while an overlay is open.
-func (g *Game) applyTickInput() {
+func (g *Game) applyTickInput() error {
 	if g.fast != nil {
 		if g.fast.page {
 			g.seekReplayPage()
@@ -1203,6 +1223,11 @@ func (g *Game) applyTickInput() {
 	if g.rep != nil {
 		g.rep.doActs(g)
 	}
+	if s := g.in.script; s != nil && s.err != nil {
+		g.emit("script_error", traceLine{"error": s.err.Error()})
+		return s.err
+	}
+	return nil
 }
 
 // stepBattlePictures follows the same visible stack as Draw, including battles
@@ -1219,6 +1244,7 @@ func (g *Game) stepBattlePictures() {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	defer g.activatePresentation()()
 	if g.rep != nil && g.opts.Until > 0 && !g.untilShot && g.rep.skipDraw(g.tick) {
 		return
 	}
@@ -1506,7 +1532,7 @@ func (g *Game) replace(s scene) {
 
 func (g *Game) sfx(name string) {
 	if !g.live.quiet {
-		sound.Play(name)
+		g.audioSession().Play(name)
 	}
 }
 
@@ -1748,7 +1774,7 @@ func (g *Game) newPlace() scene {
 }
 
 func (g *Game) Music(c data.MusicCue) {
-	sound.PlaySong(c.Song, g.setMusic(c))
+	g.audioSession().PlaySong(c.Song, g.setMusic(c))
 }
 
 // setMusic makes a song the one asked for and returns its mood.
@@ -1765,7 +1791,7 @@ func (g *Game) setMusic(c data.MusicCue) string {
 
 func (g *Game) Mood(m string) {
 	g.moodOverride = m
-	sound.Request(m)
+	g.audioSession().Request(m)
 }
 
 func (g *Game) Image(c data.CG) {
@@ -2174,7 +2200,7 @@ func (g *Game) begin(r event.Request) {
 	case event.Wait:
 		g.waitT = int(r.Seconds * 60)
 		if r.Sound != "" {
-			g.waitT = soundTicks(r.Sound)
+			g.waitT = g.soundTicks(r.Sound)
 		}
 	case event.Notice:
 		g.notices.add(r.Text)
@@ -2273,7 +2299,7 @@ func (g *Game) playLocationMusic() {
 		mood = sound.Neutral
 	}
 	g.baseSong, g.baseMood = cue.Song, mood
-	sound.PlaySong(cue.Song, mood)
+	g.audioSession().PlaySong(cue.Song, mood)
 }
 
 func (g *Game) hasMood(m string) bool {
@@ -2281,7 +2307,7 @@ func (g *Game) hasMood(m string) bool {
 		_, has := s.Moods[m]
 		return has
 	}
-	return sound.HasMood(m)
+	return g.audioSession().HasMood(m)
 }
 
 func (g *Game) updateMusic() {
@@ -2324,17 +2350,17 @@ func (g *Game) updateMusic() {
 			}
 		}
 	}
-	if w := sound.WantedSong(); w != "" && song != w {
+	if w := g.audioSession().WantedSong(); w != "" && song != w {
 		g.lastMood = mood
-		sound.PlaySong(song, mood)
+		g.audioSession().PlaySong(song, mood)
 		return
 	}
 	if mood != g.lastMood {
 		g.lastMood = mood
 		if now {
-			sound.Jump(mood)
+			g.audioSession().Jump(mood)
 		} else {
-			sound.Request(mood)
+			g.audioSession().Request(mood)
 		}
 	}
 }
@@ -2520,6 +2546,13 @@ func (g *Game) Handle(e event.Effect) {
 
 // Close releases this run's resources. Call on the game thread after its loop stops.
 func (g *Game) Close() error {
+	defer func() {
+		if g.restorePresentation != nil {
+			g.restorePresentation()
+			g.restorePresentation = nil
+		}
+	}()
+	defer g.activatePresentation()()
 	g.releaseGuideVeil()
 	if g.closed {
 		return nil
@@ -2528,13 +2561,20 @@ func (g *Game) Close() error {
 		g.keepOpen()
 	}
 	g.closed = true
+	if g.hiddenCleanup != nil {
+		g.hiddenCleanup()
+		g.hiddenCleanup = nil
+	}
 	if g.cancel != nil {
 		g.cancel()
 	}
 	g.stopLive()
+	g.stopOwnedSpeech()
 	g.flushRead()
 	g.traceEnd()
-	err := errors.Join(g.failure, g.shots.wait(), sound.Close())
+	g.closePhone()
+	packageErr := g.closePhonePackages()
+	err := errors.Join(g.failure, packageErr, g.shots.wait(), g.audioSession().Close())
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
@@ -2542,7 +2582,6 @@ func (g *Game) Close() error {
 		g.recordView.Deallocate()
 		g.recordView = nil
 	}
-	g.closePhone()
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })
@@ -2551,7 +2590,140 @@ func (g *Game) Close() error {
 		g.pics.close()
 	}
 	g.glass.close()
-	gfx.Reset()
-	activeGame.Store(false)
+	if g.graphics != nil {
+		g.graphics.Close()
+	}
+	if !g.embedded {
+		activeGame.Store(false)
+	}
 	return err
+}
+
+// activatePresentation scopes game-thread drawing and translation resources.
+// Manually constructed test games may use the existing default presentation.
+var presentationOwner *Game
+
+func (g *Game) activatePresentation() func() {
+	if presentationOwner == g {
+		return func() {}
+	}
+	previous := presentationOwner
+	presentationOwner = g
+	var restoreGraphics, restoreWords func()
+	if g.graphics != nil {
+		restoreGraphics = g.graphics.Activate()
+	}
+	if g.words != nil {
+		restoreWords = g.words.Activate()
+	}
+	return func() {
+		presentationOwner = previous
+		if restoreWords != nil {
+			restoreWords()
+		}
+		if restoreGraphics != nil {
+			restoreGraphics()
+		}
+	}
+}
+
+func (g *Game) audioSession() *sound.Session {
+	if g.audio == nil {
+		g.audio = sound.NewSession()
+	}
+	return g.audio
+}
+
+func (g *Game) bindBattleScript(s *script) {
+	s.battleLog = func(enabled bool) {
+		if !g.opts.Development || g.currentBattle() == nil {
+			g.failure = errors.New("script: battle-log needs an active development battle")
+			return
+		}
+		g.currentBattle().hideTacticLog = !enabled
+		g.emit("unsupported_script", traceLine{"operation": "battle-log"})
+	}
+	s.battleHP = func(team string, index, hp int) {
+		if !g.opts.Development {
+			g.failure = errors.New("script: battle-hp needs a development session")
+			return
+		}
+		b := g.currentBattle()
+		if b == nil {
+			g.failure = errors.New("script: battle-hp needs an active battle")
+			return
+		}
+		units := b.b.Foes
+		if team == "party" {
+			units = b.b.Party
+		}
+		if index >= len(units) || units[index] == nil || units[index].HP <= 0 || hp > units[index].MHP() {
+			g.failure = fmt.Errorf("script: battle-hp %s %d %d is out of range", team, index, hp)
+			return
+		}
+		u := units[index]
+		u.HP = hp
+		b.shownHP[u], b.hp[u] = hp, float64(hp)
+		g.emit("battle_setup", traceLine{"team": team, "index": index, "id": u.EID, "hp": hp, "mhp": u.MHP()})
+	}
+}
+
+func runtimeDB(opts Options) (*data.DB, error) {
+	var err error
+	db := opts.DB
+	if db == nil {
+		if err := data.UseWords(opts.FS); err != nil {
+			return nil, err
+		}
+		if db, err = data.Load(opts.FS); err != nil {
+			return nil, err
+		}
+	}
+	if db.Game.Screen.Width <= 0 || db.Game.Screen.Height <= 0 {
+		return nil, errors.New("play: screen dimensions must be positive")
+	}
+
+	return db, nil
+}
+
+func (g *Game) keepBattleMusic(b string) {
+	db := g.db
+	for _, l := range db.Locations {
+		keep := []data.MusicCue{l.BattleMusic}
+		if l.Dungeon != nil {
+			for _, lk := range l.Dungeon.Looks {
+				keep = append(keep, lk.BattleMusic)
+			}
+		}
+		for _, c := range keep {
+			if _, ok := db.Music.Songs[c.Song]; ok && c.Song != b {
+				g.audioSession().Keep(c.Song)
+			}
+		}
+	}
+}
+
+func (g *Game) initializeTrial() error {
+	opts := g.opts
+	var err error
+	if opts.Location != "" || len(opts.Party) > 0 {
+		if err := g.testStart(); err != nil {
+			return err
+		}
+		if t := opts.Battle; t != "" {
+			if g.db.Troops[t] == nil {
+				return &ArgumentError{Err: fmt.Errorf("unknown troop %q", t)}
+			}
+			var snap []byte
+			if g.db.Game.Battle.Retry {
+				snap, err = g.st.Save()
+				if err != nil {
+					return err
+				}
+			}
+			g.startBattle(t, func(int) {}).retry = snap
+		}
+	}
+
+	return nil
 }

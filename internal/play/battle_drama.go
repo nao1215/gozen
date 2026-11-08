@@ -216,7 +216,7 @@ func (s *battleScene) bossWinMusic(g *Game) bool {
 	if mood == "" {
 		mood = sound.Neutral
 	}
-	sound.PlayOnce(cue.Song, mood)
+	g.audioSession().PlayOnce(cue.Song, mood)
 	g.baseSong, g.baseMood, g.lastMood = cue.Song, mood, mood
 	s.dr.winSong = cue.Song
 	g.emit("battle_music", traceLine{"win_song": cue.Song, "mood": mood})
@@ -256,7 +256,7 @@ func (g *Game) stepFanfare() {
 		g.fanfareSong, g.fanfareT = "", 0
 		return
 	}
-	if g.fanfareT > 0 && (!sound.Active() || sound.WantedSong() != "") {
+	if g.fanfareT > 0 && (!g.audioSession().Active() || g.audioSession().WantedSong() != "") {
 		g.fanfareT--
 		return
 	}

@@ -314,8 +314,14 @@ func (g *Game) closeMemo() {
 }
 
 func (g *Game) typeMemo(s string) {
+	if g.phone != nil && g.phone.child != nil {
+		child := g.phone.child.game
+		defer child.activatePresentation()()
+		child.typeMemo(s)
+		return
+	}
 	if g.memo == nil {
-		g.emit("text_input", nil)
+		g.markTextInput()
 	}
 	if g.memo != nil && g.memo.typed {
 		g.memo.text += s

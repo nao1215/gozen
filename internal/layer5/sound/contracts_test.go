@@ -39,14 +39,14 @@ type shortWriter struct{}
 
 func (shortWriter) Write(b []byte) (int, error) { return len(b) - 1, nil }
 func TestRecordingShortWriteAndReset(t *testing.T) {
-	InitRecord(shortWriter{}, 60)
-	if err := Tick(); !errors.Is(err, io.ErrShortWrite) {
+	testSession.InitRecord(shortWriter{}, 60)
+	if err := testSession.Tick(); !errors.Is(err, io.ErrShortWrite) {
 		t.Fatalf("short write: %v", err)
 	}
-	if err := Close(); err != nil {
+	if err := testSession.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := Tick(); err != nil {
+	if err := testSession.Tick(); err != nil {
 		t.Fatal("recorder retained failure")
 	}
 }

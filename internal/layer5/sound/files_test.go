@@ -36,7 +36,7 @@ func TestDecodeEffectWavAndOgg(t *testing.T) {
 func TestLoadEffectsFromGameFiles(t *testing.T) {
 	freshSession(t)
 	logs := captureLog(t)
-	if LoadEffects(nil) != 0 || LoadEffects(fstest.MapFS{}) != 0 {
+	if testSession.LoadEffects(nil) != 0 || testSession.LoadEffects(fstest.MapFS{}) != 0 {
 		t.Fatal("no files, no effects")
 	}
 	fsys := fstest.MapFS{
@@ -46,16 +46,16 @@ func TestLoadEffectsFromGameFiles(t *testing.T) {
 		"assets/sfx/notes.txt":  {Data: []byte("not a sound")},
 		"assets/sfx/sub/in.wav": {Data: testgame.Wav(0.1)},
 	}
-	if n := LoadEffects(fsys); n != 2 {
+	if n := testSession.LoadEffects(fsys); n != 2 {
 		t.Fatalf("loaded %d, want 2 (ping, Pong)", n)
 	}
-	if s := EffectSeconds("ping"); math.Abs(s-0.1) > 0.01 {
+	if s := testSession.EffectSeconds("ping"); math.Abs(s-0.1) > 0.01 {
 		t.Fatalf("ping lasts %v", s)
 	}
-	if EffectSeconds("Pong") == 0 {
+	if testSession.EffectSeconds("Pong") == 0 {
 		t.Fatal("upper-case extension skipped")
 	}
-	if EffectSeconds("bad") != 0 || EffectSeconds("notes") != 0 || EffectSeconds("in") != 0 {
+	if testSession.EffectSeconds("bad") != 0 || testSession.EffectSeconds("notes") != 0 || testSession.EffectSeconds("in") != 0 {
 		t.Fatal("broken, non-audio or nested files must not become effects")
 	}
 	if !strings.Contains(logs.String(), "sfx bad.wav") {
@@ -67,7 +67,7 @@ func TestLoadEffectsReadFailureIsSkipped(t *testing.T) {
 	freshSession(t)
 	logs := captureLog(t)
 	fsys := brokenReadFS{MapFS: fstest.MapFS{"assets/sfx/a.wav": {Data: testgame.Wav(0.05)}}}
-	if n := LoadEffects(fsys); n != 0 {
+	if n := testSession.LoadEffects(fsys); n != 0 {
 		t.Fatalf("loaded %d from unreadable files", n)
 	}
 	if !strings.Contains(logs.String(), "sfx a.wav") {
@@ -95,30 +95,30 @@ func TestEffectDurationsWithoutPlayback(t *testing.T) {
 		"assets/sfx/decide.wav": {Data: testgame.Wav(0.37)},
 		"assets/sfx/tone.ogg":   {Data: readTone(t)},
 	}
-	makeEffects(false)
-	LoadEffects(fsys)
+	testSession.makeEffects(false)
+	testSession.LoadEffects(fsys)
 	want := map[string]float64{}
-	for name, pcm := range effects {
+	for name, pcm := range testSession.effects {
 		want[name] = ClipSeconds(pcm)
 	}
-	if err := Close(); err != nil {
+	if err := testSession.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if n, err := Load(fsys, SfxDir); err != nil || n != 2 {
+	if n, err := testSession.Load(fsys, SfxDir); err != nil || n != 2 {
 		t.Fatalf("loaded %d durations", n)
 	}
 	for name, seconds := range want {
-		if got := EffectSeconds(name); got != seconds {
+		if got := testSession.EffectSeconds(name); got != seconds {
 			t.Errorf("%s: silent %v, decoded %v", name, got, seconds)
 		}
 	}
-	if len(effects) != 0 || len(effectPlayers) != 0 {
+	if len(testSession.effects) != 0 || len(testSession.effectPlayers) != 0 {
 		t.Fatal("silent load created PCM or players")
 	}
-	if err := Close(); err != nil {
+	if err := testSession.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if EffectSeconds("tone") != 0 || EffectSeconds("decide") == want["decide"] {
+	if testSession.EffectSeconds("tone") != 0 || testSession.EffectSeconds("decide") == want["decide"] {
 		t.Fatal("custom duration leaked across sessions")
 	}
 }
@@ -126,19 +126,19 @@ func TestEffectDurationsWithoutPlayback(t *testing.T) {
 func TestLoadDurationDirectory(t *testing.T) {
 	freshSession(t)
 	fsys := fstest.MapFS{"clips/tone.wav": {Data: testgame.Wav(0.25)}}
-	if n, err := Load(fsys, "clips"); err != nil || n != 1 {
+	if n, err := testSession.Load(fsys, "clips"); err != nil || n != 1 {
 		t.Fatalf("load clips: count=%d, error=%v", n, err)
 	}
-	if math.Abs(EffectSeconds("tone")-0.25) > 0.01 || len(effects) != 0 {
+	if math.Abs(testSession.EffectSeconds("tone")-0.25) > 0.01 || len(testSession.effects) != 0 {
 		t.Fatal("directory load changed duration or created PCM")
 	}
-	if _, err := Load(fsys, "../clips"); !errors.Is(err, fs.ErrInvalid) {
+	if _, err := testSession.Load(fsys, "../clips"); !errors.Is(err, fs.ErrInvalid) {
 		t.Fatalf("invalid directory: %v", err)
 	}
-	if n, err := Load(fsys, "clips/tone.wav"); err == nil || n != 0 {
+	if n, err := testSession.Load(fsys, "clips/tone.wav"); err == nil || n != 0 {
 		t.Fatalf("file used as directory: count=%d, error=%v", n, err)
 	}
-	if n, err := Load(fsys, "missing"); err != nil || n != 0 {
+	if n, err := testSession.Load(fsys, "missing"); err != nil || n != 0 {
 		t.Fatalf("optional directory: count=%d, error=%v", n, err)
 	}
 }
@@ -153,9 +153,9 @@ func TestReloadEffectsDropsRemovedFiles(t *testing.T) {
 			freshSession(t)
 			captureLog(t)
 			if !lengthsOnly {
-				makeEffects(false)
+				testSession.makeEffects(false)
 			}
-			builtin := EffectSeconds("decide")
+			builtin := testSession.EffectSeconds("decide")
 			for _, replacement := range []fs.FS{nil, fstest.MapFS{}, fstest.MapFS{
 				"assets/sfx/decide.wav": {Data: []byte("invalid")},
 			}} {
@@ -163,22 +163,22 @@ func TestReloadEffectsDropsRemovedFiles(t *testing.T) {
 					"assets/sfx/custom.wav": {Data: testgame.Wav(0.75)},
 					"assets/sfx/decide.wav": {Data: testgame.Wav(0.75)},
 				}
-				if n, err := loadEffects(fsys, SfxDir, lengthsOnly); err != nil || n != 2 {
+				if n, err := testSession.loadEffects(fsys, SfxDir, lengthsOnly); err != nil || n != 2 {
 					t.Fatalf("loaded %d effects", n)
 				}
-				if n, err := loadEffects(replacement, SfxDir, lengthsOnly); err != nil || n != 0 {
+				if n, err := testSession.loadEffects(replacement, SfxDir, lengthsOnly); err != nil || n != 0 {
 					t.Fatalf("loaded %d removed effects", n)
 				}
-				if EffectSeconds("custom") != 0 || EffectSeconds("decide") != builtin {
+				if testSession.EffectSeconds("custom") != 0 || testSession.EffectSeconds("decide") != builtin {
 					t.Fatal("removed custom duration survived reload")
 				}
-				if _, ok := effects["custom"]; ok {
+				if _, ok := testSession.effects["custom"]; ok {
 					t.Fatal("removed PCM survived reload")
 				}
-				if !lengthsOnly && ClipSeconds(effects["decide"]) != builtin {
+				if !lengthsOnly && ClipSeconds(testSession.effects["decide"]) != builtin {
 					t.Fatal("removed override did not restore built-in PCM")
 				}
-				if lengthsOnly && (len(effects) != 0 || len(effectPlayers) != 0) {
+				if lengthsOnly && (len(testSession.effects) != 0 || len(testSession.effectPlayers) != 0) {
 					t.Fatal("duration reload created PCM or players")
 				}
 			}

@@ -4,32 +4,23 @@ import (
 	"encoding/binary"
 	"math"
 	"math/rand/v2"
-	"sync"
 	"time"
 )
 
-var (
-	varyMu     sync.Mutex
-	varyPitch  = 0.03
-	varyVolume = 0.10
-	varyWindow = 400 * time.Millisecond
-	lastPlayed = map[string]time.Time{}
-)
-
-func SetVary(pitch, volume float64) {
-	varyMu.Lock()
-	defer varyMu.Unlock()
-	varyPitch, varyVolume = max(0, pitch), max(0, volume)
+func (session *Session) SetVary(pitch, volume float64) {
+	session.varyMu.Lock()
+	defer session.varyMu.Unlock()
+	session.varyPitch, session.varyVolume = max(0, pitch), max(0, volume)
 }
 
-func vary(name string, b []byte) ([]byte, float64) {
-	varyMu.Lock()
+func (session *Session) vary(name string, b []byte) ([]byte, float64) {
+	session.varyMu.Lock()
 	now := time.Now()
-	last, seen := lastPlayed[name]
-	lastPlayed[name] = now
-	pitch, volume := varyPitch, varyVolume
-	varyMu.Unlock()
-	if !seen || now.Sub(last) > varyWindow || (pitch == 0 && volume == 0) {
+	last, seen := session.lastPlayed[name]
+	session.lastPlayed[name] = now
+	pitch, volume := session.varyPitch, session.varyVolume
+	session.varyMu.Unlock()
+	if !seen || now.Sub(last) > session.varyWindow || (pitch == 0 && volume == 0) {
 		return b, 1
 	}
 	//nolint:gosec // Audio variation, not security-sensitive randomness.

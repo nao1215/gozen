@@ -15,29 +15,29 @@ func TestOutlinedTextIsCached(t *testing.T) {
 	useFont(t)
 	dst := ebiten.NewImage(200, 100)
 	DrawTextOutline(dst, "hello", 100, 10, 20, color.Black)
-	if len(textCache) != 1 {
-		t.Fatalf("%d cached texts", len(textCache))
+	if len(active.textCache) != 1 {
+		t.Fatalf("%d cached texts", len(active.textCache))
 	}
 	DrawTextOutline(dst, "hello", 50, 30, 20, color.Black)
 	DrawTextOutlineColor(dst, "hello", 50, 30, 20, color.Black, color.White, 0.5)
-	if len(textCache) != 1 {
+	if len(active.textCache) != 1 {
 		t.Fatal("same text and colors must share one image")
 	}
 	DrawTextOutlineColor(dst, "hello", 50, 30, 20, color.Black, color.NRGBA{255, 0, 0, 255}, 1)
-	if len(textCache) != 2 {
+	if len(active.textCache) != 2 {
 		t.Fatal("another outline color is another image")
 	}
 	DrawTextOutlineColor(dst, "", 1, 1, 20, color.Black, color.White, 1)
 	DrawTextOutlineColor(dst, "x", 1, 1, 0, color.Black, color.White, 1)
 	DrawTextOutlineColor(dst, "x", 1, 1, 20, color.Black, color.White, 0)
-	if len(textCache) != 2 {
+	if len(active.textCache) != 2 {
 		t.Fatal("nothing-to-draw calls must not build images")
 	}
 	for i := range cacheLimit + 5 {
 		outlinedText(strings.Repeat("a", 1+i%7)+string(rune('A'+i%26))+strings.Repeat("b", i/26), 12, color.NRGBA{A: 255}, color.NRGBA{})
 	}
-	if len(textCache) > cacheLimit+1 {
-		t.Fatalf("text cache grew to %d", len(textCache))
+	if len(active.textCache) > cacheLimit+1 {
+		t.Fatalf("text cache grew to %d", len(active.textCache))
 	}
 }
 
@@ -46,28 +46,28 @@ func TestShapeCacheAndLimits(t *testing.T) {
 	dst := ebiten.NewImage(200, 100)
 	FillRoundRect(dst, 5, 5, 50, 20, 4, color.White)
 	FillRoundRect(dst, 60, 40, 50, 20, 4, color.White)
-	if len(shapeCache) != 1 {
-		t.Fatalf("same shape drawn twice made %d images", len(shapeCache))
+	if len(active.shapeCache) != 1 {
+		t.Fatalf("same shape drawn twice made %d images", len(active.shapeCache))
 	}
 	StrokeRoundRect(dst, 5, 5, 50, 20, 4, 2, color.White)
-	if len(shapeCache) != 2 {
-		t.Fatalf("a stroke is another image, have %d", len(shapeCache))
+	if len(active.shapeCache) != 2 {
+		t.Fatalf("a stroke is another image, have %d", len(active.shapeCache))
 	}
 	FillRoundRect(dst, 0, 0, 0, 10, 2, color.White)
 	StrokeRoundRect(dst, 0, 0, 10, -1, 2, 1, color.White)
-	if len(shapeCache) != 2 {
+	if len(active.shapeCache) != 2 {
 		t.Fatal("empty shapes must draw nothing")
 	}
 	SetScale(2)
 	FillRoundRect(dst, 5, 5, 50, 20, 4, color.White)
-	if len(shapeCache) != 3 {
+	if len(active.shapeCache) != 3 {
 		t.Fatal("scale changes the rendered shape size, so the key")
 	}
 	for i := range cacheLimit + 5 {
 		FillRoundRect(dst, 0, 0, float32(10+i), 10, 2, color.White)
 	}
-	if len(shapeCache) > cacheLimit+1 {
-		t.Fatalf("shape cache grew to %d", len(shapeCache))
+	if len(active.shapeCache) > cacheLimit+1 {
+		t.Fatalf("shape cache grew to %d", len(active.shapeCache))
 	}
 }
 
@@ -124,12 +124,12 @@ func TestGlyphPageReuseAndRollover(t *testing.T) {
 	Reset()
 	a, b := ebiten.NewImage(20, 30), ebiten.NewImage(40, 50)
 	first := stableGlyph(a)
-	page := glyphPage
+	page := active.glyphPage
 	if stableGlyph(a) != first {
 		t.Fatal("repeated glyph was copied again")
 	}
 	second := stableGlyph(b)
-	if glyphPage != page || first.Bounds().Overlaps(second.Bounds()) {
+	if active.glyphPage != page || first.Bounds().Overlaps(second.Bounds()) {
 		t.Fatal("glyphs must share a page without overlapping")
 	}
 	if first.Bounds().Dx() != 20 || first.Bounds().Dy() != 30 {
@@ -138,11 +138,31 @@ func TestGlyphPageReuseAndRollover(t *testing.T) {
 	// A full page rolls over without retaining old source images.
 	large := ebiten.NewImage(1024, 1024)
 	stableGlyph(large)
-	if glyphPage == page || len(glyphCache) != 1 || glyphCache[a] != nil {
+	if active.glyphPage == page || len(active.glyphCache) != 1 || active.glyphCache[a] != nil {
 		t.Fatal("page rollover retained old glyphs")
 	}
 	Reset()
-	if glyphPage != nil || len(glyphCache) != 0 {
+	if active.glyphPage != nil || len(active.glyphCache) != 0 {
 		t.Fatal("reset retained glyph resources")
+	}
+}
+
+func TestContextIsolation(t *testing.T) {
+	parent, child := NewContext(), NewContext()
+	restore := parent.Activate()
+	defer restore()
+	defer parent.Close()
+	SetScale(2)
+	parent.glyphX = 17
+	childRestore := child.Activate()
+	SetScale(3)
+	child.glyphX = 4
+	childRestore()
+	if Scale() != 2 || active.glyphX != 17 {
+		t.Fatal("child changed parent's scale or glyph position")
+	}
+	child.Close()
+	if Scale() != 2 || active.glyphX != 17 {
+		t.Fatal("closing child reset parent")
 	}
 }

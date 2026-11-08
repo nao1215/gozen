@@ -1,0 +1,17 @@
+# The preparer replaces catalog_sha256 with the generated catalog's digest.
+phone:
+  catalog: apps/catalog.yaml
+  catalog_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  apps:
+    - id: counter
+      package: fixtures/counter
+      version: '>=1.0.0 <2.0.0'
+      bundled_version: 1.0.0
+      install: bundled
+      path: apps/counter.zip
+      when: true
+    - id: trail
+      package: fixtures/trail
+      version: 1.0.0
+      install: bundled
+      path: apps/trail.zip

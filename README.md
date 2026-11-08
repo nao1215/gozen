@@ -80,10 +80,12 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 #### Phone apps
 
-`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)). All from the office sample.
+`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)). All from the office sample. A home screen opens contacts, chats and feeds. Authors write the history and replies in YAML; flags reveal contacts, messages and posts. Players choose fixed replies without typing, and read-only apps need no reply handling. See [phones unlocked by flags](docs/examples/phone-flags.md).
 
-| Chat: a picture, times and a clip | Feed: scrolled, a clip post, likes |
+| Home → contacts → chat → home | Read history → send a reply → reveal new information |
 |:--|:--|
+| ![The phone home opens Contacts, Nora's chat opens from her contact, and Back returns through Contacts to home](docs/images/phone-navigation.gif) | ![Earlier chat messages scroll into view, a fixed reply sets a flag, and reopening reveals the sent message and a new feed post](docs/images/phone-history.gif) |
+| Chat: a picture, times and a clip | Feed: scrolled, a clip post, likes |
 | ![a team chat on a phone: messages arrive one by one with times and a read mark, a picture opens over the screen, then a clip sent in the chat turns the phone on its side and plays a recorded call](docs/images/phone-chat.gif) | ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](docs/images/phone-feed.gif) |
 | Video on its side: footage | Chat: a dance practice clip (a puppet) |
 | ![a video app: the phone turns on its side, nearly as wide as the screen, and plays footage of a battle from the Go Zen sample](docs/images/phone-video.gif) | ![Mia says in the chat that she is practicing the launch party dance and sends the clip; it plays on the phone on its side, her puppet breathing, swaying and jiggling](docs/images/phone-puppet.gif) |
@@ -97,6 +99,12 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](docs/images/phone-banner.gif) | ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](docs/images/phone-support.gif) |
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](docs/images/phone-contact.gif) |  |
+
+**Games inside the phone, implemented for the upcoming 0.23.0 release.** The phone opens standalone Gozen games and returns to the host when they close. Each game has its own app icon, state and saves. Authors choose bundled games or optional downloads from a pinned catalog; players choose when to install or update. These captures show two small neutral games running inside the office sample. See the [authoring recipe](docs/examples/phone-games.md) for package, browser and replay limits. The public catalog has not been published yet. To offer your own game, [submit it for review](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submission does not automatically approve or publish a game.
+
+| Counter in portrait | Trail in landscape |
+|:--|:--|
+| ![Counter collects four tokens inside the office phone](docs/images/phone-game-counter.jpg) | ![Trail reaches the hill marker inside a landscape phone](docs/images/phone-game-trail.jpg) |
 
 ### Management workspaces
 

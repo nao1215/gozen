@@ -98,7 +98,10 @@ func (g *Game) stepStreams() {
 			g.desk.speak = g.desk.voices
 		}
 		g.desk.kept = now
-		whenHidden(func() {
+		if g.hiddenCleanup != nil {
+			g.hiddenCleanup()
+		}
+		g.hiddenCleanup = whenHidden(func() {
 			if !g.updating.Load() {
 				g.keepOpen()
 			}
@@ -143,8 +146,8 @@ type voiceLoad struct {
 }
 
 // read loads the voice from the game's files and closes done.
-func (v *voiceLoad) read(fsys fs.FS) {
-	v.pcm, v.err = sound.VoiceClip(fsys, v.file)
+func (v *voiceLoad) read(fsys fs.FS, session *sound.Session) {
+	v.pcm, v.err = session.VoiceClip(fsys, v.file)
 	close(v.done)
 }
 

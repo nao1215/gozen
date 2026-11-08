@@ -1,6 +1,7 @@
 # Functions `make deadcode` (golang.org/x/tools/cmd/deadcode -test=false on Linux)
 # reports as unreachable but that are kept, one extended regular expression per
-# line, matched against its output. Keep it short: a function listed here is
+# line, matched against its output. Blank lines and comments are ignored.
+# Keep it short: a function listed here is
 # either built for another platform or a test-support API of the engine.
 # Test-support packages: the screenless engine and the test games.
 ^internal/session/

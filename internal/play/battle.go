@@ -224,7 +224,7 @@ func (g *Game) startBattle(troop string, done func(int)) *battleScene {
 		}
 		g.baseSong, g.baseMood = mc.Song, mood
 		g.lastMood = ""
-		sound.PlaySong(mc.Song, mood)
+		g.audioSession().PlaySong(mc.Song, mood)
 	}
 	for _, u := range b.Foes {
 		if u.Def.Boss {
@@ -1189,10 +1189,10 @@ func (s *battleScene) finish(g *Game) {
 	if b.Result == battle.Won && s.boss != "" && s.bossWinMusic(g) {
 		mood, fanfare = "", false
 	} else if mood != "" {
-		sound.JumpLast(mood)
+		g.audioSession().JumpLast(mood)
 		g.lastMood = mood
 	} else if fanfare {
-		sound.Stop()
+		g.audioSession().Stop()
 	}
 	g.emit("battle_music", traceLine{"mood": mood, "fanfare": fanfare})
 	switch b.Result {

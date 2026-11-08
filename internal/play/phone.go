@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -23,6 +24,14 @@ import (
 // changes no state itself: the event waits on a Tap until the player puts it
 // down and keeps what answer says (a button, a call, the posts liked).
 type phoneView struct {
+	appRows     map[int]string
+	homeResults []data.PhoneResult
+	selectedApp string
+	child       *phoneGameRuntime
+	gameOpened  bool
+	gameError   string
+	store       *phoneStore
+
 	cue data.PhoneCue
 	// age counts ticks since the phone came up; closing counts down the ticks
 	// left of putting it down (0 while it is up).
@@ -138,8 +147,21 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 // (-1 for neither: the last call declined), when the story keeps it; missed
 // tells the call rang out rather than was answered.
 func (p *phoneView) putDown(row, notice int, missed bool) {
+	if p.cue.App == "store" && row >= 0 && p.store != nil {
+		p.store.selection = row
+		p.store.selected = true
+		return
+	}
+	if id := p.appRows[row]; id != "" {
+		p.selectedApp = id
+		return
+	}
 	p.closing = phoneRise
-	for i, r := range p.cue.Results() {
+	results := p.cue.Results()
+	if p.appRows != nil {
+		results = p.homeResults
+	}
+	for i, r := range results {
 		if r.Row == row && r.Notice == notice && r.Missed == missed {
 			p.result = i
 		}
@@ -295,7 +317,7 @@ func (c *phoneClip) step(g *Game, loop bool) {
 // asks tells that the phone keeps a result the player gives (a page's button,
 // a call, a feed's likes): skipping and Ctrl stop at it as at a choice.
 func (p *phoneView) asks() bool {
-	return len(p.cue.Results()) > 0 || len(p.cue.Liking()) > 0
+	return p.cue.App == "game" || p.cue.App == "store" || len(p.cue.Results()) > 0 || len(p.cue.Liking()) > 0
 }
 
 func (p *phoneView) resting() bool { return p.turned >= phoneTurn }
@@ -382,6 +404,10 @@ func (g *Game) updatePhone() bool {
 		}
 	case p.watch != nil:
 		g.updatePhoneWatch(p)
+	case p.cue.App == "game":
+		g.openPhoneGame(p)
+	case p.cue.App == "store":
+		g.updatePhoneStore(p)
 	case p.cue.App == "chat":
 		g.updatePhoneChat(p)
 	case p.cue.App == "feed":
@@ -619,6 +645,10 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	gfx.FillRect(screen, 0, 0, float32(scw), float32(sch), phoneScreen, false)
 	textStart, controlStart := g.screenOffsets()
 	switch {
+	case p.child != nil || p.cue.App == "game":
+		g.drawPhoneGame(p, screen, scw, sch)
+	case p.cue.App == "store":
+		g.drawPhoneStore(p, screen, scw, sch)
 	case p.viewPic != "":
 		g.drawPhonePicture(p, screen, scw, sch)
 	case p.watch != nil && p.side:
@@ -636,7 +666,10 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	case p.watch != nil:
 		g.drawPhoneMedia(screen, p, "rising", p.watch, 0, 0, scw, sch, 0)
 	}
-	if !p.side {
+	if p.cue.App == "home" && p.child == nil {
+		drawPhoneGameError(screen, scw, sch, p.gameError)
+	}
+	if !p.side && p.child == nil && p.cue.App != "game" {
 		_, bar := g.pageAccent(p)
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
@@ -868,11 +901,24 @@ func (p *phoneView) icon(g *Game, path string, size float64) *ebiten.Image {
 	}
 	px := max(1, int(math.Ceil(size*gfx.Scale())))
 	key := path + "@" + strconv.Itoa(px)
+	if strings.HasPrefix(path, "package:") || strings.HasPrefix(path, "installed:") {
+		if release, err := g.phoneIconRelease(path); err == nil {
+			key += "@" + release.SHA256
+		}
+	}
 	if img, ok := p.icons[key]; ok {
 		p.imageUse[img] = true
 		return img
 	}
-	src := g.pics.get(path)
+	var src *ebiten.Image
+	if strings.HasPrefix(path, "package:") || strings.HasPrefix(path, "installed:") {
+		src = g.phonePackageIcon(path)
+		if src != nil {
+			defer src.Deallocate()
+		}
+	} else {
+		src = g.pics.get(path)
+	}
 	if src == nil {
 		return nil
 	}
@@ -913,6 +959,9 @@ func (p *phoneView) trimImages() {
 // load, a new game, closing the game), freeing what it holds.
 func (g *Game) closePhone() {
 	if g.phone != nil {
+		g.failure = errors.Join(g.failure, g.stopPhoneGame(g.phone))
+	}
+	if g.phone != nil {
 		g.phone.close()
 		g.phone = nil
 	}
@@ -920,6 +969,9 @@ func (g *Game) closePhone() {
 
 // close frees the phone's own images and puppets.
 func (p *phoneView) close() {
+	if p.store != nil {
+		p.store.close()
+	}
 	for _, img := range []*ebiten.Image{p.canvas, p.screen} {
 		if img != nil {
 			img.Deallocate()

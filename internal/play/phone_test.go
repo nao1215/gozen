@@ -2259,3 +2259,23 @@ func BenchmarkPhoneCachedExtent(b *testing.B) {
 		}
 	}
 }
+
+func TestPhoneGameAndStoreBlockHeldSkip(t *testing.T) {
+	for _, app := range []string{"game", "store"} {
+		t.Run(app, func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: app})
+			g.in.fast = true
+			if !g.phone.asks() {
+				t.Fatal("interactive app does not block skip")
+			}
+			if g.updatePhone() || g.phone.closing != 0 {
+				t.Fatal("held skip dismissed interactive app")
+			}
+			g.fast = &fastTo{lines: 2}
+			g.updatePhone()
+			if g.phone.closing == 0 {
+				t.Fatal("saved cursor reconstruction attempted to run app")
+			}
+		})
+	}
+}

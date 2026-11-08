@@ -10,21 +10,14 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-var (
-	regularSource *text.GoTextFaceSource
-	popSource     *text.GoTextFaceSource
-	titleSource   *text.GoTextFaceSource
-	subSource     *text.GoTextFaceSource
-)
-
 // LoadTitleFont sets the typefaces of the title and the subtitle (nil: the regular one,
 // and for the subtitle the title's).
 func LoadTitleFont(title, subtitle []byte) error {
-	titleSource, subSource = nil, nil
+	active.titleSource, active.subSource = nil, nil
 	for _, f := range []struct {
 		b   []byte
 		dst **text.GoTextFaceSource
-	}{{title, &titleSource}, {subtitle, &subSource}} {
+	}{{title, &active.titleSource}, {subtitle, &active.subSource}} {
 		if f.b == nil {
 			continue
 		}
@@ -39,14 +32,14 @@ func LoadTitleFont(title, subtitle []byte) error {
 
 // DrawTitleText draws the title (or with subtitle the subtitle) centered on x.
 func DrawTitleText(dst *ebiten.Image, s string, x, y, size, tracking float64, fill, edge color.Color, alpha float32, subtitle bool) {
-	src := titleSource
-	if subtitle && subSource != nil {
-		src = subSource
+	src := active.titleSource
+	if subtitle && active.subSource != nil {
+		src = active.subSource
 	}
 	if src == nil {
-		src = regularSource
+		src = active.regularSource
 	}
-	x, y, size = x*scale, y*scale, size*scale
+	x, y, size = x*active.scale, y*active.scale, size*active.scale
 	face := &text.GoTextFace{Source: src, Size: size}
 	runes := []rune(s)
 	widths := make([]float64, len(runes))
@@ -93,7 +86,7 @@ func LoadFonts(regular, pop []byte) error {
 		}
 	}
 	Reset()
-	regularSource, popSource = src, ps
+	active.regularSource, active.popSource = src, ps
 	return nil
 }
 
@@ -102,53 +95,47 @@ type faceKey struct {
 	pop  bool
 }
 
-var faceCache = map[faceKey]*text.GoTextFace{}
-
 // popOn is set inside Pop, and popFaces are its faces by size: the pop font, the regular
 // one for a glyph it lacks.
-var (
-	popOn    bool
-	popFaces = map[float64]*text.MultiFace{}
-)
 
 // Pop runs draw with its text drawn and measured in the pop font (fonts.pop) wherever it
 // has the glyph, a glyph it lacks in the regular font, for the decorations of a screen (a
 // title in a bar, a name on a plate); without a pop font it changes nothing. Outside Pop
 // only text all ASCII takes the pop font (Face). Use only on the game thread.
 func Pop(draw func()) {
-	popOn = true
-	defer func() { popOn = false }()
+	active.popOn = true
+	defer func() { active.popOn = false }()
 	draw()
 }
 
 // face is the face text s is drawn in at size: Face, or inside Pop the pop font over the
 // regular one.
 func face(size float64, s string) text.Face {
-	if !popOn || popSource == nil {
+	if !active.popOn || active.popSource == nil {
 		return Face(size, s)
 	}
-	f, ok := popFaces[size]
+	f, ok := active.popFaces[size]
 	if !ok {
 		var err error
-		if f, err = text.NewMultiFace(&text.GoTextFace{Source: popSource, Size: size}, &text.GoTextFace{Source: regularSource, Size: size}); err != nil {
+		if f, err = text.NewMultiFace(&text.GoTextFace{Source: active.popSource, Size: size}, &text.GoTextFace{Source: active.regularSource, Size: size}); err != nil {
 			return Face(size, s)
 		}
-		popFaces[size] = f
+		active.popFaces[size] = f
 	}
 	return f
 }
 
 func Face(size float64, s string) *text.GoTextFace {
-	pop := popSource != nil && isASCII(s)
+	pop := active.popSource != nil && isASCII(s)
 	k := faceKey{size, pop}
-	f, ok := faceCache[k]
+	f, ok := active.faceCache[k]
 	if !ok {
-		src := regularSource
+		src := active.regularSource
 		if pop {
-			src = popSource
+			src = active.popSource
 		}
 		f = &text.GoTextFace{Source: src, Size: size}
-		faceCache[k] = f
+		active.faceCache[k] = f
 	}
 	return f
 }
@@ -174,7 +161,7 @@ func baseSize(size float64) float64 {
 }
 
 func DrawText(dst *ebiten.Image, s string, x, y, size float64, clr color.Color) {
-	drawTextRaw(dst, s, x*scale, y*scale, size*scale, clr)
+	drawTextRaw(dst, s, x*active.scale, y*active.scale, size*active.scale, clr)
 }
 
 func drawTextRaw(dst *ebiten.Image, s string, x, y, size float64, clr color.Color) {
@@ -193,15 +180,13 @@ func drawTextRaw(dst *ebiten.Image, s string, x, y, size float64, clr color.Colo
 	drawGlyphText(dst, s, face(base, s), op)
 }
 
-var drawGlyphBuffer []text.LazyGlyph
-
 // drawGlyphText preserves text/v2 shaping and alignment, but samples a fixed
 // atlas. Moving glyphs within Ebitengine's shared atlas changes floating-point
 // texture coordinates and can round filtered edge pixels differently.
 func drawGlyphText(dst *ebiten.Image, s string, face text.Face, options *text.DrawOptions) {
-	drawGlyphBuffer = text.AppendLazyGlyphs(drawGlyphBuffer[:0], s, face, &options.LayoutOptions)
+	active.drawGlyphBuffer = text.AppendLazyGlyphs(active.drawGlyphBuffer[:0], s, face, &options.LayoutOptions)
 	bounds := dst.Bounds()
-	for _, glyph := range drawGlyphBuffer {
+	for _, glyph := range active.drawGlyphBuffer {
 		r := glyph.ImageBounds
 		if r.Empty() {
 			continue
@@ -228,8 +213,8 @@ func drawGlyphText(dst *ebiten.Image, s string, face text.Face, options *text.Dr
 		}
 		dst.DrawImage(img, &op)
 	}
-	clear(drawGlyphBuffer)
-	drawGlyphBuffer = drawGlyphBuffer[:0]
+	clear(active.drawGlyphBuffer)
+	active.drawGlyphBuffer = active.drawGlyphBuffer[:0]
 }
 
 func textMeasure(s string, size float64) (float64, float64) {
@@ -246,7 +231,7 @@ func DrawTextOutlineColor(dst *ebiten.Image, str string, x, y, size float64, fil
 	if size <= 0 || alpha <= 0 || str == "" {
 		return
 	}
-	x, y, size = x*scale, y*scale, size*scale
+	x, y, size = x*active.scale, y*active.scale, size*active.scale
 
 	base := baseSize(size)
 	t := outlinedText(str, base, toNRGBA(fill), toNRGBA(outline))
@@ -261,7 +246,7 @@ func DrawTextOutlineColor(dst *ebiten.Image, str string, x, y, size float64, fil
 }
 
 func TextWidth(s string, size float64) float64 {
-	return textWidthRaw(s, size*scale) / scale
+	return textWidthRaw(s, size*active.scale) / active.scale
 }
 
 func textWidthRaw(s string, size float64) float64 {
@@ -277,7 +262,7 @@ func DrawTextLeft(dst *ebiten.Image, s string, x, y, size float64, clr color.Col
 	if size <= 0 || s == "" {
 		return
 	}
-	x, y, size = x*scale, y*scale, size*scale
+	x, y, size = x*active.scale, y*active.scale, size*active.scale
 	base := baseSize(size)
 	k := size / base
 	op := &text.DrawOptions{}

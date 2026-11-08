@@ -18,20 +18,18 @@ type shapeKey struct {
 	clr             color.NRGBA
 }
 
-var shapeCache = map[shapeKey]*ebiten.Image{}
-
 const shapePad = 4
 
 func roundRectImage(w, h, r, stroke float32, clr color.Color) *ebiten.Image {
 	q := func(v float32) int { return int(math.Round(float64(v) * 4)) }
 	k := shapeKey{q(w), q(h), q(r), q(stroke), toNRGBA(clr)}
-	if img, ok := shapeCache[k]; ok {
+	if img, ok := active.shapeCache[k]; ok {
 		return img
 	}
-	if len(shapeCache) > cacheLimit {
-		for key, img := range shapeCache {
+	if len(active.shapeCache) > cacheLimit {
+		for key, img := range active.shapeCache {
 			img.Deallocate()
-			delete(shapeCache, key)
+			delete(active.shapeCache, key)
 		}
 	}
 	img := ebiten.NewImage(int(math.Ceil(float64(w)))+2*shapePad, int(math.Ceil(float64(h)))+2*shapePad)
@@ -43,7 +41,7 @@ func roundRectImage(w, h, r, stroke float32, clr color.Color) *ebiten.Image {
 	} else {
 		vector.FillPath(img, path, nil, op)
 	}
-	shapeCache[k] = img
+	active.shapeCache[k] = img
 	return img
 }
 
@@ -73,18 +71,16 @@ type textImage struct {
 	cx, cy float64
 }
 
-var textCache = map[textKey]textImage{}
-
 func outlinedText(s string, size float64, fill, outline color.NRGBA) textImage {
 	// ASCII already selects the pop face outside Pop; mixed text changes face.
-	k := textKey{s, size, fill, outline, popOn && popSource != nil && !isASCII(s)}
-	if t, ok := textCache[k]; ok {
+	k := textKey{s, size, fill, outline, active.popOn && active.popSource != nil && !isASCII(s)}
+	if t, ok := active.textCache[k]; ok {
 		return t
 	}
-	if len(textCache) > cacheLimit {
-		for key, t := range textCache {
+	if len(active.textCache) > cacheLimit {
+		for key, t := range active.textCache {
 			t.img.Deallocate()
-			delete(textCache, key)
+			delete(active.textCache, key)
 		}
 	}
 	// Labels can be substrings of a much larger dialogue source. Own only the
@@ -103,52 +99,47 @@ func outlinedText(s string, size float64, fill, outline color.NRGBA) textImage {
 	}
 	drawTextRaw(img, s, cx, cy, size, fill)
 	t := textImage{img: img, cx: cx, cy: cy}
-	textCache[k] = t
+	active.textCache[k] = t
 	return t
 }
 
 // Keep glyphs on one fixed texture so ordinary text still batches. One-pixel
 // gutters isolate linear filtering. The page and source references are bounded
 // and released together on rollover or font replacement.
-var (
-	glyphCache               = map[*ebiten.Image]*ebiten.Image{}
-	glyphPage                *ebiten.Image
-	glyphX, glyphY, glyphRow int
-)
 
 func resetGlyphs() {
-	if glyphPage != nil {
-		glyphPage.Deallocate()
-		glyphPage = nil
+	if active.glyphPage != nil {
+		active.glyphPage.Deallocate()
+		active.glyphPage = nil
 	}
-	clear(glyphCache)
-	glyphX, glyphY, glyphRow = 0, 0, 0
+	clear(active.glyphCache)
+	active.glyphX, active.glyphY, active.glyphRow = 0, 0, 0
 }
 
 func stableGlyph(src *ebiten.Image) *ebiten.Image {
-	if img := glyphCache[src]; img != nil {
+	if img := active.glyphCache[src]; img != nil {
 		return img
 	}
 	w, h := src.Bounds().Dx()+2, src.Bounds().Dy()+2
-	if glyphPage != nil && glyphX+w > glyphPage.Bounds().Dx() {
-		glyphX, glyphY, glyphRow = 0, glyphY+glyphRow, 0
+	if active.glyphPage != nil && active.glyphX+w > active.glyphPage.Bounds().Dx() {
+		active.glyphX, active.glyphY, active.glyphRow = 0, active.glyphY+active.glyphRow, 0
 	}
-	if glyphPage != nil && (len(glyphCache) >= cacheLimit || glyphY+h > glyphPage.Bounds().Dy() || w > glyphPage.Bounds().Dx()) {
+	if active.glyphPage != nil && (len(active.glyphCache) >= cacheLimit || active.glyphY+h > active.glyphPage.Bounds().Dy() || w > active.glyphPage.Bounds().Dx()) {
 		resetGlyphs()
 	}
-	if glyphPage == nil {
-		glyphPage = ebiten.NewImageWithOptions(image.Rect(0, 0, max(1024, w), max(1024, h)), &ebiten.NewImageOptions{Unmanaged: true})
+	if active.glyphPage == nil {
+		active.glyphPage = ebiten.NewImageWithOptions(image.Rect(0, 0, max(1024, w), max(1024, h)), &ebiten.NewImageOptions{Unmanaged: true})
 	}
-	r := image.Rect(glyphX+1, glyphY+1, glyphX+w-1, glyphY+h-1)
+	r := image.Rect(active.glyphX+1, active.glyphY+1, active.glyphX+w-1, active.glyphY+h-1)
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
-	glyphPage.DrawImage(src, op)
-	img, ok := glyphPage.SubImage(r).(*ebiten.Image)
+	active.glyphPage.DrawImage(src, op)
+	img, ok := active.glyphPage.SubImage(r).(*ebiten.Image)
 	if !ok {
 		return src
 	}
-	glyphCache[src] = img
-	glyphX += w
-	glyphRow = max(glyphRow, h)
+	active.glyphCache[src] = img
+	active.glyphX += w
+	active.glyphRow = max(active.glyphRow, h)
 	return img
 }

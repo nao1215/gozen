@@ -11719,6 +11719,19 @@
           },
           "x-type": "[Meter](#meter)[]"
         },
+        "phone": {
+          "$ref": "#/$defs/PhoneApps",
+          "description": "Pinned game catalog and phone app declarations. Games without this field do not offer a game store.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneApps](#phoneapps)"
+        },
         "planning": {
           "$ref": "#/$defs/Planning",
           "description": "Optional typed entities, calendar, activities and period ledgers.",
@@ -15308,12 +15321,206 @@
       },
       "type": "object"
     },
+    "PhoneApp": {
+      "additionalProperties": false,
+      "description": "One local app selecting a registered game and allowed release versions.",
+      "properties": {
+        "bundled_version": {
+          "description": "Exact version of the included ZIP, allowed by version. Required for bundled apps when version is a range; forbidden for optional apps.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "id": {
+          "description": "Unique lowercase local app ID, used by phone.game.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "install": {
+          "description": "bundled or optional. Optional packages download only after an explicit player action.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "package": {
+          "description": "Namespaced registry package ID, owner/name.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "path": {
+          "description": "Safe relative ZIP path for a bundled game. Not accepted for optional apps.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "version": {
+          "description": "Exact stable version or bounded range such as \u003e=1.0.0 \u003c2.0.0.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "Condition controlling this app's availability in the phone.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
+      "type": "object"
+    },
+    "PhoneApps": {
+      "additionalProperties": false,
+      "description": "Host declarations for games offered by the phone. Loading does not download packages.",
+      "properties": {
+        "apps": {
+          "description": "Games selected by the host author; registry additions do not add apps here.",
+          "items": {
+            "$ref": "#/$defs/PhoneApp"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneApp](#phoneapp)[]"
+        },
+        "catalog": {
+          "description": "Safe relative path to the pinned catalog snapshot.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "catalog_public_key": {
+          "description": "Pinned base64 Ed25519 public key (32 bytes). Signed refresh requires both catalog URLs and this key.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "catalog_sha256": {
+          "description": "Expected SHA-256 of the catalog snapshot, as 64 hexadecimal digits.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "catalog_signature_url": {
+          "description": "HTTPS URL of the detached signature for catalog_url. Required together with the public key and catalog URL.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "catalog_url": {
+          "description": "Optional HTTPS URL for explicit signed catalog refresh. Requires catalog_signature_url and catalog_public_key; catalog_sha256 still pins the local initial snapshot.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "PhoneCue": {
       "additionalProperties": false,
       "description": "A phone over the scene; the event waits until it is put down (a banner waits when var is set).",
       "properties": {
         "app": {
-          "description": "chat, feed, video, page, home, contacts, lock or banner; names the view the phone shows.",
+          "description": "chat, feed, video, page, home, contacts, lock, banner, game or store; names the view the phone shows.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15366,6 +15573,19 @@
         },
         "date": {
           "description": "Interpolated date under the lock screen's clock.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "game": {
+          "description": "Local phone app ID to launch. Required for app game; other apps do not accept it.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

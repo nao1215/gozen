@@ -26,7 +26,7 @@ func newTitle(g *Game) *title {
 		if mood == "" {
 			mood = sound.Neutral
 		}
-		sound.PlaySong(c.Song, mood)
+		g.audioSession().PlaySong(c.Song, mood)
 		g.baseSong, g.baseMood = c.Song, mood
 	}
 	return t

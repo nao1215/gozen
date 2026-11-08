@@ -41,7 +41,7 @@ func pageGame(t *testing.T, more string) (string, []byte) {
 func TestWebPageShareTags(t *testing.T) {
 	src, card := pageGame(t, "web:\n  url: https://example.org/camp/\n  description: 'A camp \"under\" the stars'\n  image: share/card.jpg\n")
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, webBundle(t), "devel", ""); err != nil {
+	if err := Web(t.Context(), src, out, webBundle(t), "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "index.html")) //nolint:gosec // Test-owned exported page.
@@ -80,7 +80,7 @@ func TestWebPageShareTags(t *testing.T) {
 func TestWebPageWithoutWeb(t *testing.T) {
 	src, _ := pageGame(t, "")
 	out := filepath.Join(t.TempDir(), "site")
-	if err := Web(src, out, webBundle(t), "devel", ""); err != nil {
+	if err := Web(t.Context(), src, out, webBundle(t), "devel", ""); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(out, "index.html")) //nolint:gosec // Test-owned exported page.

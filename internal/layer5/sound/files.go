@@ -20,8 +20,8 @@ const SfxDir = "assets/sfx"
 
 // LoadEffects replaces the game effects and durations for startup and live reload.
 // Removed overrides revert to built-in sounds; unreadable files are logged and skipped.
-func LoadEffects(fsys fs.FS) int {
-	n, err := loadEffects(fsys, SfxDir, false)
+func (session *Session) LoadEffects(fsys fs.FS) int {
+	n, err := session.loadEffects(fsys, SfxDir, false)
 	if err != nil {
 		log.Printf("sfx: %v", err)
 	}
@@ -34,25 +34,27 @@ func LoadEffects(fsys fs.FS) int {
 // no custom effects. Invalid directories return an error; unreadable individual
 // effects are logged and skipped, as in LoadEffects. Each call replaces custom
 // durations; Close clears them. Call only between sessions or on the game thread.
-func Load(fsys fs.FS, dir string) (int, error) { return loadEffects(fsys, dir, true) }
+func (session *Session) Load(fsys fs.FS, dir string) (int, error) {
+	return session.loadEffects(fsys, dir, true)
+}
 
-func loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (int, error) {
+func (session *Session) loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (int, error) {
 	if !fs.ValidPath(dir) {
 		return 0, fmt.Errorf("sfx directory %q: %w", dir, fs.ErrInvalid)
 	}
 
-	mu.Lock()
+	session.mu.Lock()
 	restoreBuiltins := false
-	for name := range effectDurations {
-		if _, ok := effects[name]; ok {
-			delete(effects, name)
+	for name := range session.effectDurations {
+		if _, ok := session.effects[name]; ok {
+			delete(session.effects, name)
 			restoreBuiltins = restoreBuiltins || builtinEffectSeconds[name] != 0
 		}
 	}
-	clear(effectDurations)
-	mu.Unlock()
+	clear(session.effectDurations)
+	session.mu.Unlock()
 	if restoreBuiltins && !lengthsOnly {
-		makeEffects(false)
+		session.makeEffects(false)
 	}
 
 	if fsys == nil {
@@ -92,13 +94,13 @@ func loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (int, error) {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
 		}
-		mu.Lock()
+		session.mu.Lock()
 		name := strings.TrimSuffix(e.Name(), path.Ext(e.Name()))
-		effectDurations[name] = seconds
+		session.effectDurations[name] = seconds
 		if !lengthsOnly {
-			effects[name] = pcm
+			session.effects[name] = pcm
 		}
-		mu.Unlock()
+		session.mu.Unlock()
 		n++
 	}
 	return n, nil

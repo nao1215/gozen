@@ -108,6 +108,9 @@ func readRepro(path, target string) (Bundle, []byte, error) {
 	if err != nil {
 		return b, nil, err
 	}
+	if tick == math.MaxInt {
+		return b, nil, errors.New("reproduction tick leaves no room for the replay boundary")
+	}
 	b.GameDir, b.Seed, b.Tick, b.Until = start.GameDir, start.Seed, tick, tick+1
 	b.InitialSaves, b.InitialMemo = start.Setup.Data, start.Setup.Memo
 	if err := json.Unmarshal(records[0].raw, &b.StartOptions); err != nil {
@@ -204,7 +207,7 @@ func cutReproRecords(records []reproRecord, tick int) ([]byte, error) {
 
 func reproTick(target string, records []reproRecord, last int) (int, error) {
 	if n, err := strconv.Atoi(target); err == nil {
-		if n < 0 || n > last || n == math.MaxInt {
+		if n < 0 || n > last {
 			return 0, errors.New("reproduction tick is outside the trace")
 		}
 		return n, nil
@@ -213,7 +216,7 @@ func reproTick(target string, records []reproRecord, last int) (int, error) {
 		if d, err := time.ParseDuration(target); err == nil {
 			// Round to the closest 60 Hz tick, avoiding floating point seed/tick loss.
 			n := int(math.Round(d.Seconds() * 60))
-			if d < 0 || n > last || n < 0 || n == math.MaxInt {
+			if d < 0 || n > last || n < 0 {
 				return 0, errors.New("reproduction time is outside the trace")
 			}
 			return n, nil

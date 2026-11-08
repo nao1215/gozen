@@ -75,6 +75,7 @@ events:
     - call: {event: phone_support}
     - call: {event: phone_contact}
     - call: {event: phone_archive}
+    - call: {event: phone_games}
   # The phone command (ADR 0057): a chat held upright, a photo feed and a video
   # turned on its side. Each waits until the phone is put down.
   phone_chat:
@@ -275,6 +276,17 @@ events:
           - {mine: true, text: 'Saved. Thanks for tonight.', time: '21:05', read: true}
       else:
       - say: {who: martin, text: Maybe later.}
+  # Bundled neutral games use the same standalone YAML player in the phone.
+  phone_games:
+    - say: Open the game library for a short break.
+    - set: {flag.games_unlocked: true}
+    - phone:
+        app: home
+        title: Game library
+        rows:
+        - {button: Store, event: phone_games_store}
+  phone_games_store:
+    - phone: {app: store, title: Game library}
   # Run with --event phone_archive. All history is authored; flags unlock entries.
   phone_archive:
     - say: Open the team phone to browse contacts, messages and updates.
@@ -305,6 +317,12 @@ events:
         history: true
         var: var.archive_reply
         messages:
+        - {day: Monday, from: Nora, text: The first booking test passed., time: '09:10'}
+        - {mine: true, text: Good. I will check the confirmation screen., time: '09:12'}
+        - {from: Nora, text: Try changing the date before confirming., time: '09:14'}
+        - {mine: true, text: The new date appears on the receipt., time: '09:20'}
+        - {day: Tuesday, from: Nora, text: I added the cancellation test., time: '10:00'}
+        - {mine: true, text: I will include it in our review., time: '10:05'}
         - {day: Yesterday, from: Nora, text: The review starts tomorrow.}
         - {when: flag.archive_contact, from: Nora, text: Please bring the test checklist., time: '09:00'}
         - {when: flag.archive_sent, mine: true, text: I will bring the checklist., time: '09:05'}
@@ -318,6 +336,7 @@ events:
         posts:
         - {who: Harbor team, text: The first prototype is ready., time: Last week}
         - {who: Nora, text: The test checklist is ready for review., time: Today, when: flag.archive_contact}
+        - {who: Harbor team, text: Checklist confirmed. We are ready for the review., time: Just now, when: flag.archive_sent}
 profiles:
   martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
   elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}

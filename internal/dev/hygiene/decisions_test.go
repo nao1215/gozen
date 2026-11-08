@@ -341,7 +341,7 @@ gauge generate give goods greet greeting grid group
 groups guard_rate guard_skill guest guest_backdrops guests hair hard
 haze head header header_face header_tint heading heal held
 hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
-hit hits hitstop hold host hp hp_triggers hurt
+hit hits hitstop  host hp hp_triggers hurt
 icon image_height images in indexed_names initial instant instead
 into intro item items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
@@ -357,10 +357,10 @@ mp music_pictures muted name_tag nav near new no_map
 no_menu no_standing node north note notice novel_window now
 npc observation observations observed ok on on_appear on_draw
 on_enter on_escape on_leave on_lose on_turn on_turn_end on_turn_end_allies on_user
-on_win once one_shot one_way only opacities opacity open_wall
+on_win one_shot one_way only opacities opacity open_wall
 optional options order_view origin_u origin_v others_title out outfit
 over over_size page pages pairs pan paper param
-params parent parents passives path patterns peek per_char
+params parent parents passives  patterns peek per_char
 per_hour per_soldier per_turn percent period persist phase phone_accent
 phone_background phone_muted phone_text picture_fit pictures pin_end_turn pitch place
 planned planned_label play policies policy pop portrait posts
@@ -660,6 +660,11 @@ func TestDeadcodeGate(t *testing.T) {
 		{name: "tool failure", status: 7, fail: true},
 		{name: "tool failure with exempt output", output: "exempt", allow: "^exempt$", status: 7, fail: true},
 		{name: "finding", output: "unreachable", allow: "^exempt$", fail: true},
+		{name: "blank allowlist", output: "unreachable", fail: true},
+		{name: "blank separator preserves finding", output: "unreachable", allow: "^exempt$\n\n", fail: true},
+		{name: "blank separator preserves exemption", output: "exempt", allow: "\n^exempt$\n\n"},
+		{name: "whitespace separator", output: "unreachable", allow: " \t\n^exempt$", fail: true},
+		{name: "comment is not a pattern", output: "exempt", allow: "# [ explanatory text\n^exempt$"},
 		{name: "exempt finding", output: "exempt", allow: "^exempt$"},
 		{name: "no findings", allow: "^exempt$"},
 		{name: "invalid filter", output: "exempt", allow: "[", fail: true},
@@ -689,6 +694,84 @@ func TestDeadcodeGate(t *testing.T) {
 			}
 			if tc.name == "finding" && !strings.Contains(out.String(), "unreachable") {
 				t.Fatalf("finding lost: %q", out.String())
+			}
+		})
+	}
+}
+
+// TestCIChangeScope exercises the real merge-diff classifier, including missing
+// history. Required checks may omit expensive steps only on an explicit false.
+func TestCIChangeScope(t *testing.T) {
+	for _, tool := range []string{"bash", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("CI scope requires %s: %v", tool, err)
+		}
+	}
+	script, err := filepath.Abs("../../../scripts/ci_changes.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, event string
+		files       []string
+		history     bool
+		code, docs  string
+	}{
+		{"release notes PR", "pull_request", []string{"CHANGELOG.md"}, true, "false", "false"},
+		{"mixed docs PR", "pull_request", []string{"CHANGELOG.md", "README.md"}, true, "false", "true"},
+		{"mixed code PR", "pull_request", []string{"CHANGELOG.md", "main.go"}, true, "true", "true"},
+		{"executable examples", "pull_request", []string{"docs/examples/game.yaml"}, true, "true", "true"},
+		{"unknown path", "pull_request", []string{"unknown"}, true, "true", "true"},
+		{"main push", "push", []string{"CHANGELOG.md"}, true, "true", "true"},
+		{"manual run", "workflow_dispatch", []string{"CHANGELOG.md"}, true, "true", "true"},
+		{"empty diff", "pull_request", nil, true, "true", "true"},
+		{"missing history", "pull_request", []string{"CHANGELOG.md"}, false, "true", "true"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			git := func(args ...string) {
+				t.Helper()
+				cmd := exec.CommandContext(t.Context(), "git", args...) //nolint:gosec // Fixed test commands in an isolated repository.
+				cmd.Dir = dir
+				cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				if err := cmd.Run(); err != nil {
+					t.Fatalf("git %v: %v; stdout=%s stderr=%s", args, err, &stdout, &stderr)
+				}
+			}
+			git("init", "-q")
+			if tc.history {
+				git("-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "base")
+			}
+			for _, name := range tc.files {
+				file := filepath.Join(dir, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(file, []byte("fixture\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			git("add", ".")
+			git("-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "change")
+			output := filepath.Join(t.TempDir(), "outputs")
+			cmd := exec.CommandContext(t.Context(), "bash", script, tc.event) //nolint:gosec // Repository script and fixed event fixtures.
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), "GITHUB_OUTPUT="+output)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("scope: %v; stdout=%s stderr=%s", err, &stdout, &stderr)
+			}
+			got, err := os.ReadFile(output) //nolint:gosec // Output inside the test temporary directory.
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"code=" + tc.code + "\n", "docs_runtime=" + tc.docs + "\n"} {
+				if !strings.Contains("\n"+string(got), "\n"+want) {
+					t.Fatalf("outputs %q missing %q", got, want)
+				}
 			}
 		})
 	}

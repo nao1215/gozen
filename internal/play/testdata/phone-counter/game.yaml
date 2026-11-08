@@ -1,0 +1,19 @@
+# Synthetic refresh host. The test key derives from a 32-byte zero seed.
+# Test fetchers serve these HTTPS addresses; no public service is contacted.
+schema_version: 11
+id: phone-refresh-counter
+title: Counter refresh test
+screen: {width: 360, height: 540}
+start: {location: camp, party: [scout]}
+phone:
+  catalog: catalog.yaml
+  catalog_sha256: 7546f4d1a19f1661933abda0fbd162f548ae9945fecc82c8abd4036127f837ee
+  catalog_url: https://example.com/counter/catalog.yaml
+  catalog_signature_url: https://example.com/counter/catalog.sig
+  catalog_public_key: O2onvM62pC1io6jQKm8Nc2UyFXcd4kOmOsBIoYtZ2ik=
+  apps:
+    - id: counter
+      package: fixtures/counter
+      version: '>=1.0.0 <2.0.0'
+      install: optional
+      when: true

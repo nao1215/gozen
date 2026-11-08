@@ -5,16 +5,19 @@ package play
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
 	"image/png"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -831,5 +834,167 @@ func TestGraphicsScreensCaptureIdenticalPixels(t *testing.T) {
 				t.Errorf("run %d job %s: %d pixels differ in %v", run, id, changed, region)
 			}
 		}
+	}
+}
+
+// TestGraphicsScreensPhoneChrome checks actual PNG pixels after independent child
+// title/gameplay draws, so visual inspection cannot mistake dark phone chrome for
+// a missing parent layer. The child must change while the host controls stay put.
+func TestGraphicsScreensPhoneChrome(t *testing.T) {
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, os.DirFS("../../e2e/atago/fixtures/game")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.CopyFS(filepath.Join(game, "apps"), os.DirFS("../../examples/office/game/apps")); err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := fs.ReadFile(os.DirFS(game), "apps/catalog.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := fmt.Sprintf(`schema_version: 11
+id: phone-chrome-test
+title: Phone chrome test
+screen: {width: 960, height: 540}
+start: {location: camp, party: [scout], event: phone_probe}
+phone:
+  catalog: apps/catalog.yaml
+  catalog_sha256: %x
+  apps:
+    - {id: counter, package: fixtures/counter, version: 1.0.0, install: bundled, path: apps/counter.zip}
+`, sha256.Sum256(catalog))
+	files := map[string]string{
+		"game.yaml":       config,
+		"data/phone.yaml": "events:\n  phone_probe:\n    do:\n      - say: Open the phone.\n      - phone: {app: game, game: counter, hold: portrait}\n      - say: Returned.\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(game, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	script := filepath.Join(root, "script.txt")
+	if err := os.WriteFile(script, []byte("gap 12\nwait 90\npress ok\nwait 100\npress ok\nwait 100\nshot child-title\npress ok\nwait 100\nshot child-play\npress ok\nwait 50\npress ok\nwait 30\npress menu\nwait 30\npress ok\nwait 30\npress ok\nwait 60\nhold shift+cancel 1\nwait 40\nshot host-return\nquit\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--script", script, "--shots", root, "--save-dir", filepath.Join(root, "saves"), "--seed", "7", "--trace", filepath.Join(root, "trace.jsonl")) //nolint:gosec // Fixed host and private fixture paths.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("game: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+
+	replayDir := filepath.Join(root, "replay")
+	replayCmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--replay", filepath.Join(root, "trace.jsonl"), "--trace", filepath.Join(root, "replay.jsonl"), "--save-dir", replayDir) //nolint:gosec // Built test host and isolated fixture paths.
+	stdout.Reset()
+	stderr.Reset()
+	replayCmd.Stdout, replayCmd.Stderr = &stdout, &stderr
+	if err := replayCmd.Run(); err != nil {
+		for _, name := range []string{"trace.jsonl", "replay.jsonl"} {
+			body, readErr := fs.ReadFile(os.DirFS(root), name)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			for _, kind := range []string{"say", "phone_game", "end", "input"} {
+				t.Logf("%s %s: %v", name, kind, traceLines(t, body, kind))
+			}
+		}
+		t.Fatalf("replay: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+	}
+	if !strings.Contains(stdout.String(), "replay fully matched:") || strings.Contains(stdout.String(), "diverged") {
+		t.Fatalf("missing exact replay success: %s", &stdout)
+	}
+	original, err := fs.ReadFile(os.DirFS(root), "trace.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := fs.ReadFile(os.DirFS(root), "replay.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ends, wantEnds := traceLines(t, replayed, "end"), traceLines(t, original, "end")
+	if len(ends) != 1 || len(wantEnds) != 1 || !reflect.DeepEqual(ends[0]["state"], wantEnds[0]["state"]) {
+		t.Fatalf("host final state differs: %v / %v", ends, wantEnds)
+	}
+	saves, err := fs.Glob(os.DirFS(filepath.Join(root, "saves")), "phone-save-*-save1.json")
+	if err != nil || len(saves) != 1 {
+		t.Fatalf("child save missing: %v %v", saves, err)
+	}
+	saved, err := fs.ReadFile(os.DirFS(filepath.Join(root, "saves")), saves[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var savedState struct {
+		State struct {
+			Gold int `json:"gold"`
+		} `json:"state"`
+	}
+	if err := json.Unmarshal(saved, &savedState); err != nil {
+		t.Fatal(err)
+	}
+	if savedState.State.Gold != 4 {
+		t.Fatalf("child gameplay did not save its result: %d", savedState.State.Gold)
+	}
+	// Full replay intentionally uses an in-memory store. Verify the actual child
+	// view through exact partial replay rather than expecting writes on disk.
+	target := 0
+	for _, shot := range traceLines(t, original, "shot") {
+		name, validName := shot["file"].(string)
+		tick, validTick := shot["tick"].(float64)
+		if !validName || !validTick {
+			t.Fatalf("invalid shot record: %v", shot)
+		}
+		if strings.HasSuffix(name, "child-play.png") {
+			target = int(tick) + 1
+		}
+	}
+	if target == 0 {
+		t.Fatal("missing child gameplay capture")
+	}
+	partial := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--mute", "--replay", filepath.Join(root, "trace.jsonl"), "--until", strconv.Itoa(target), "--shots", replayDir) //nolint:gosec // Built test host and isolated fixture paths.
+	stdout.Reset()
+	stderr.Reset()
+	partial.Stdout, partial.Stderr = &stdout, &stderr
+	if err := partial.Run(); err != nil {
+		t.Fatalf("partial replay: %v\n%s\n%s", err, &stdout, &stderr)
+	}
+	reproduced := shotImage(t, replayDir, fmt.Sprintf("until_%06d", target))
+	if !reflect.DeepEqual(shotImage(t, root, "child-play"), reproduced) {
+		t.Fatal("exact replay changed embedded gameplay pixels")
+	}
+	title, play := shotImage(t, root, "child-title"), shotImage(t, root, "child-play")
+	for name, rect := range map[string]image.Rectangle{
+		"back text":  image.Rect(430, 30, 550, 50),
+		"back arrow": image.Rect(375, 30, 400, 50),
+	} {
+		bright := 0
+		for y := rect.Min.Y; y < rect.Max.Y; y++ {
+			for x := rect.Min.X; x < rect.Max.X; x++ {
+				r, g, b, a := title.At(x, y).RGBA()
+				pr, pg, pb, pa := play.At(x, y).RGBA()
+				if r != pr || g != pg || b != pb || a != pa {
+					t.Fatalf("%s changed at %d,%d after child draw", name, x, y)
+				}
+				if r > 100*257 && g > 100*257 && b > 100*257 {
+					bright++
+				}
+			}
+		}
+		if bright < 20 {
+			t.Errorf("%s has only %d bright pixels; host control disappeared", name, bright)
+		}
+	}
+	changed := false
+	for y := 100; y < 480; y++ {
+		for x := 370; x < 590; x++ {
+			if title.At(x, y) != play.At(x, y) {
+				changed = true
+			}
+		}
+	}
+	if !changed {
+		t.Fatal("child title and gameplay are identical; transition was not exercised")
 	}
 }
