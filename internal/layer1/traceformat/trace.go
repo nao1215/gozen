@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 )
 
 // LineLimit bounds JSONL records for the player and command scanners. Writers
@@ -212,11 +211,6 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 	}
 	return nil
 }
-
-// Classifications returns an owned snapshot for the player's source audit:
-// true means accepted, false means explicitly refused; absent kinds are refused.
-// Mutating the returned map cannot change validation.
-func Classifications() map[string]bool { return maps.Clone(kinds) }
 
 // SupportsAction reports the actions understood by ordinary and exact replay.
 // The player uses it before dispatch; unknown actions are never accepted.

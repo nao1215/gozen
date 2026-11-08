@@ -887,6 +887,48 @@ func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 	}
 }
 
+// traceClassifications reads the protocol table for the source audit and loader
+// rejection cases without adding a runtime API used only by tests.
+func traceClassifications(t *testing.T) map[string]bool {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), "../layer1/traceformat/trace.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := map[string]bool{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		decl, ok := n.(*ast.ValueSpec)
+		if !ok || len(decl.Names) != 1 || decl.Names[0].Name != "kinds" || len(decl.Values) != 1 {
+			return true
+		}
+		literal, ok := decl.Values[0].(*ast.CompositeLit)
+		if !ok {
+			t.Fatal("trace kinds must remain an explicit map literal")
+		}
+		for _, entry := range literal.Elts {
+			pair, ok := entry.(*ast.KeyValueExpr)
+			if !ok {
+				t.Fatal("trace kind must have an explicit classification")
+			}
+			key, keyOK := pair.Key.(*ast.BasicLit)
+			value, valueOK := pair.Value.(*ast.Ident)
+			if !keyOK || key.Kind != token.STRING || !valueOK || (value.Name != "true" && value.Name != "false") {
+				t.Fatal("trace classifications must be literal strings and booleans")
+			}
+			name, err := strconv.Unquote(key.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			result[name] = value.Name == "true"
+		}
+		return false
+	})
+	if len(result) == 0 {
+		t.Fatal("missing trace classifications")
+	}
+	return result
+}
+
 func TestTraceRecordKindsHaveExactReplayClassification(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -923,7 +965,7 @@ func TestTraceRecordKindsHaveExactReplayClassification(t *testing.T) {
 			return true
 		})
 	}
-	classifications := traceformat.Classifications()
+	classifications := traceClassifications(t)
 	for kind := range seen {
 		if _, known := classifications[kind]; !known {
 			t.Errorf("record %q must be in exactly one replay classification", kind)
@@ -938,7 +980,7 @@ func TestTraceRecordKindsHaveExactReplayClassification(t *testing.T) {
 
 func TestReplayUntilRejectsUnlistedRecordsAtTarget(t *testing.T) {
 	refused := []string{"future_kind"}
-	for kind, accepted := range traceformat.Classifications() {
+	for kind, accepted := range traceClassifications(t) {
 		if !accepted {
 			refused = append(refused, kind)
 		}

@@ -78,16 +78,3 @@ func TestExactReplayRequiresSourceAuditRevision(t *testing.T) {
 		}
 	}
 }
-
-func TestClassificationsCannotChangeValidation(t *testing.T) {
-	kinds := traceformat.Classifications()
-	kinds["future_kind"] = true
-	delete(kinds, "input")
-	var validator traceformat.ExactReplay
-	if err := validator.Check("future_kind", 1, nil); err == nil {
-		t.Fatal("audit snapshot changed validation")
-	}
-	if err := validator.Check("input", 1, nil); err != nil {
-		t.Fatal(err)
-	}
-}
