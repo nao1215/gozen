@@ -220,6 +220,24 @@ jobs:
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
           xvfb: true
+      - name: Install recording tools on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install recording tools on macOS
+        if: runner.os == 'macOS'
+        run: |
+          if ! command -v ffmpeg || ! command -v ffprobe; then
+            brew install ffmpeg
+          fi
+      - name: Install recording tools on Windows
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+      - name: Verify recording tools
+        run: |
+          ffmpeg -version
+          ffprobe -version
       - name: Render on Linux with Xvfb
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics

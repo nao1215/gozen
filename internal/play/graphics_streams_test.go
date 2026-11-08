@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -352,7 +353,7 @@ func TestGraphicsRecordingResize(t *testing.T) {
 			if err := probe.Run(); err != nil {
 				t.Fatalf("probe: %v: %s", err, &stderr)
 			}
-			if stdout.String() != "1280,720\n" {
+			if strings.TrimSpace(stdout.String()) != "1280,720" {
 				t.Fatalf("record geometry: %q", stdout.String())
 			}
 		})
