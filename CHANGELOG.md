@@ -12,6 +12,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
+- Phone home grids and contact directories can open authored events and return to their parent. Flag conditions unlock messages, posts, rows and fixed replies; optional scrollable chat history reconstructs from saved flags without free-text input or a dynamic transcript.
+
 - Extend the `--dev` F8 Frames panel with a read-only state and screen-structure overlay, focused/disabled control rectangles, standing picture filenames, phone status, event-read variables and moving Update/Draw averages.
 
 - `gozen trace --metrics` streams play records into factual text-per-decision, longest read-only stretch, repeated-line, signal-spacing and stall observations, with text/JSON output, `--top` and `--stall-seconds`. Traces add accepted menu decisions, scripted input outcomes, autoplay wait transitions, dialogue event names and phone-call screen state.
@@ -25,6 +27,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen trace --repro TICK|TIME|PNG` prints a command to retake a recorded screen; `--format json` reports the reproduction bundle and `--out DIR` writes a cut trace, initial saves and a portable reproduction script. Traces preserve initial save bytes, slot times and memo starts, and `run --replay --until` reproduces recorded draw cadence without real-time pacing (older traces assume a draw every tick).
 
 ### Fixed
+
+- Screen observations exclude phone controls hidden behind app headers and reflect unavailable novel toolbar actions.
+
+- Chat picture taps now mark the picture viewed, so closing it and pressing OK advances instead of reopening it. Screen observations mark picture controls unavailable while typing dots are shown.
+- Captures without `--against` skip screen-structure collection, retaining asset tracking without the extra layout and JSON work.
 
 - Replay input cannot be overwritten by its trace output, including file aliases. Recording keeps a fixed canvas through window resizes, and phone frame rates and screenshot dimensions are bounded before indexing or allocation.
 - Save backups preserve unreadable existing files. Repeated screenshots to one path finish in order and replace the file atomically. Restoring phone answers rejects missing or invalid values, and line-zero checkpoints resume without consuming dialogue.

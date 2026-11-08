@@ -529,7 +529,9 @@ type Runner struct {
 	// driver that runs on without answering its Tap (headless, a session) puts
 	// the phone down unread, so the next choice's answer is not taken for it.
 	phoneWait bool
-	battle    *data.Command
+	// phoneReturn marks app navigation options that redisplay their owning phone.
+	phoneReturn []bool
+	battle      *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
 	battleBefore *rpg.BattleOutcome
@@ -634,7 +636,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes, r.phoneWait = nil, false
+	r.likes, r.phoneWait, r.phoneReturn = nil, false, nil
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -671,6 +673,12 @@ func (r *Runner) logf(err error) {
 
 // Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
 func (r *Runner) Answer(n int) {
+	if r.phoneWait && n >= 0 && n < len(r.phoneReturn) && r.phoneReturn[n] && len(r.stack) > 0 {
+		// Resume the current phone after its child event, without recursively
+		// entering the parent event or growing the stack on each app visit.
+		r.stack[len(r.stack)-1].pc--
+	}
+	r.phoneReturn = nil
 	r.phoneWait = false
 	switch {
 	case r.likes != nil:
@@ -874,7 +882,7 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // over).
 func (r *Runner) Next() Request {
 	if r.phoneWait {
-		r.phoneWait, r.likes, r.options, r.pick = false, nil, nil, nil
+		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn = false, nil, nil, nil, nil
 	}
 	if r.gameOver {
 		r.gameOver = false
@@ -1328,13 +1336,14 @@ func (r *Runner) run(c *data.Command) Request {
 	case "notice":
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
-		r.emit(PhoneEffect{r.fillPhone(*c.Phone, env)})
+		shown := r.fillPhone(*c.Phone, env)
+		r.emit(PhoneEffect{shown})
 		if c.Phone.App == "banner" && c.Phone.Var == "" {
 			break
 		}
 		if likes := c.Phone.Liking(); len(likes) > 0 {
 			r.asked, r.optionAt, r.pick, r.options = nil, nil, nil, nil
-			r.likes, r.phoneWait = c.Phone, true
+			r.likes, r.phoneWait = &shown, true
 			return Tap{Results: len(likes)}
 		}
 		results := c.Phone.Results()
@@ -1342,7 +1351,16 @@ func (r *Runner) run(c *data.Command) Request {
 			r.asked, r.optionAt, r.pick = nil, nil, nil
 			r.options = make([]data.ChoiceOption, len(results))
 			for i, res := range results {
+				if phoneResultHidden(shown, res) {
+					continue
+				}
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
+				if res.Event != "" {
+					if r.phoneReturn == nil {
+						r.phoneReturn = make([]bool, len(results))
+					}
+					r.phoneReturn[i] = true
+				}
 			}
 			r.phoneWait = true
 		}
@@ -1711,19 +1729,62 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 	}
 	for i := range p.Messages {
 		m := &p.Messages[i]
+		m.Hidden = r.phoneHidden(m.When, env)
+		if m.Hidden {
+			continue
+		}
 		m.From, m.Text, m.Video = fill(m.From), fill(m.Text), video(m.Video)
 		m.Time, m.Day = fill(m.Time), fill(m.Day)
 	}
 	p.Posts = append([]data.PhonePost(nil), p.Posts...)
 	for i := range p.Posts {
 		post := &p.Posts[i]
+		post.Hidden = r.phoneHidden(post.When, env)
+		if post.Hidden {
+			continue
+		}
 		post.Who, post.Text, post.Video, post.Time = fill(post.Who), fill(post.Text), video(post.Video), fill(post.Time)
 	}
 	p.Video = video(p.Video)
 	p.URL, p.Time, p.Date = fill(p.URL), fill(p.Time), fill(p.Date)
-	p.Rows = append([]data.PhoneRow(nil), p.Rows...)
-	for i := range p.Rows {
-		row := &p.Rows[i]
+	p.Rows = r.fillPhoneRows(p.Rows, env, fill)
+	p.Replies = r.fillPhoneRows(p.Replies, env, fill)
+	p.Notices = append([]data.PhoneNotice(nil), p.Notices...)
+	for i := range p.Notices {
+		n := &p.Notices[i]
+		n.App, n.Title, n.Text = fill(n.App), fill(n.Title), fill(n.Text)
+	}
+	return p
+}
+
+// Visibility is resolved once at opening; omitted conditions do no evaluation.
+func (r *Runner) phoneHidden(when data.Expr, env expr.Env) bool {
+	if !when.Set() {
+		return false
+	}
+	visible, err := when.Bool(env)
+	r.logf(err)
+	return err != nil || !visible
+}
+
+func phoneResultHidden(p data.PhoneCue, result data.PhoneResult) bool {
+	if result.Row >= 0 {
+		return p.Rows[result.Row].Hidden
+	}
+	if result.Row <= -10 {
+		return p.Replies[-result.Row-10].Hidden
+	}
+	return false
+}
+
+func (r *Runner) fillPhoneRows(rows []data.PhoneRow, env expr.Env, fill func(string) string) []data.PhoneRow {
+	rows = append([]data.PhoneRow(nil), rows...)
+	for i := range rows {
+		row := &rows[i]
+		row.Hidden = r.phoneHidden(row.When, env)
+		if row.Hidden {
+			continue
+		}
 		button := fill(row.Button)
 		if button == "" && row.Button != "" {
 			// A label that fills to nothing stays a button (its id, else as
@@ -1745,12 +1806,7 @@ func (r *Runner) fillPhone(p data.PhoneCue, env expr.Env) data.PhoneCue {
 			row.Item = &it
 		}
 	}
-	p.Notices = append([]data.PhoneNotice(nil), p.Notices...)
-	for i := range p.Notices {
-		n := &p.Notices[i]
-		n.App, n.Title, n.Text = fill(n.App), fill(n.Title), fill(n.Text)
-	}
-	return p
+	return rows
 }
 
 // show shows a picture (and remembers the last picture shown).

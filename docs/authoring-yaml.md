@@ -5,6 +5,8 @@ New games use schema 11. Keep the generated `id` stable: it identifies the
 player's saves. `data_version` is your own content revision, not the engine's
 schema version. Run `gozen check game` after editing.
 
+For a home screen, contacts, predefined replies and scrollable message history, see [phones unlocked by flags](examples/phone-flags.md).
+
 ## A small story without combat setup
 
 Write `game/game.yaml`:

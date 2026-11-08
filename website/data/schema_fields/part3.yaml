@@ -302,11 +302,13 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
+  history: "True displays authored chat messages as a scrollable history. Visibility is evaluated when opened; no dynamic transcript is stored."
+  replies: "Fixed chat reply buttons with optional id, set and when. Explicit selection sends one reply; Cancel never sends. Requires app chat and history: true."
   timeout: "Seconds after the entrance without a chosen outcome, for lock, page or banner. Requires var; zero disables it. Input wins ties; scrolling does not extend it."
   timeout_result: "Value stored in var when timeout expires; default expired. Requires a positive timeout."
   _: "A phone over the scene; the event waits until it is put down (a banner waits when var is set)."
   hold: "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter."
-  app: "chat, feed, video, page, lock or banner; names the one list the phone shows."
+  app: "chat, feed, video, page, home, contacts, lock or banner; names the view the phone shows."
   title: "Interpolated header of the app (a page's app bar)."
   url: "Interpolated address shown in a page's browser bar, instead of a title."
   color: "A page's app bar and buttons color, #rrggbb."
@@ -319,11 +321,13 @@ PhoneCue:
   messages: "The chat's messages, the first shown when the phone comes up and each press bringing the next."
   posts: "The feed's posts, stacked top to bottom and scrolled."
   video: "The video app's clip."
-  rows: "The page's rows, stacked top to bottom and scrolled."
+  rows: "Page rows, home app buttons with optional item icons, or contact items with optional action buttons."
   notices: "The lock screen's notices, arriving one by one, or the banners shown at the top of the screen."
 
 PhoneRow:
-  _: "One row of a page: exactly one of text, picture, pictures, item and button."
+  when: "Condition evaluated when opened; false hides this row or reply and prevents its assignments or event."
+  event: "Parameterless event opened by a home or contacts button. Returning from it redisplays the parent phone. Requires button."
+  _: "A page row, home app, contact or fixed chat reply. Home allows button plus item; contacts allows item plus button."
   text: "Interpolated paragraphs of the row, wrapped to the page's width."
   size: "large or small text (the default is between)."
   bold: "True draws the text bold."
@@ -359,6 +363,7 @@ PhoneNotice:
   event: "The parameterless event a click on the banner opens, after the event running."
 
 PhoneMessage:
+  when: "Condition evaluated when the phone opens; false hides this authored message."
   _: "One bubble of a chat: exactly one of text, picture and video, or only a day's separator."
   time: "Interpolated time shown small beside the bubble, such as 9:41."
   read: "True marks the owner's message as read."
@@ -371,6 +376,7 @@ PhoneMessage:
   video: "A clip sent in the chat; a press on it while it is the newest turns the phone on its side and plays it."
 
 PhonePost:
+  when: "Condition evaluated when the phone opens; false hides this authored post and prevents its like assignments."
   _: "One post of a feed: a picture, a video, or only text (a timeline's card)."
   who: "Interpolated name of who posted it."
   icon: "Path of the poster's round picture under assets/."

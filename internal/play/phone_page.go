@@ -30,6 +30,7 @@ const (
 // top, its height and the lines of its text or its caption.
 type pageRow struct {
 	top, h float64
+	x, w   float64
 	lines  []string
 }
 
@@ -56,9 +57,15 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 	if p.rows != nil && p.rowsW == w {
 		return p.rows
 	}
+	if p.cue.App == "home" {
+		return p.homeLayout(w)
+	}
 	out := make([]pageRow, len(p.cue.Rows))
 	y, iw := phonePageGap, w-phonePagePad*2
 	for i, r := range p.cue.Rows {
+		if r.Hidden {
+			continue
+		}
 		l := pageRow{top: y}
 		switch {
 		case r.Text != "":
@@ -90,7 +97,7 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 		out[i] = l
 		y += l.h + phonePageGap
 	}
-	p.rows, p.rowsW = out, w
+	p.rows, p.rowsW, p.rowsEnd = out, w, y
 	return out
 }
 
@@ -107,9 +114,7 @@ func (g *Game) pictureAspect(path string) float64 {
 func (g *Game) pageView(p *phoneView) (rows []pageRow, end float64) {
 	_, _, w, h := g.phoneScreenRect(p.side)
 	rows = p.pageLayout(g, w)
-	if n := len(rows); n > 0 {
-		end = math.Max(0, rows[n-1].top+rows[n-1].h+phonePageGap-(h-phoneFeedTop))
-	}
+	end = math.Max(0, p.rowsEnd-(h-phoneFeedTop))
 	return rows, end
 }
 
@@ -118,9 +123,11 @@ func (g *Game) updatePhonePage(p *phoneView) {
 	if g.pageKeys(p, rows, end) {
 		return
 	}
-	stops := make([]float64, len(rows))
-	for i, l := range rows {
-		stops[i] = l.top - phonePageGap
+	stops := make([]float64, 0, len(rows))
+	for _, l := range rows {
+		if l.h > 0 {
+			stops = append(stops, l.top-phonePageGap)
+		}
 	}
 	g.scrollPhone(p, stops, end, func(at image.Point) {
 		y, ok := g.phoneColumnAt(p, at)
@@ -139,7 +146,7 @@ func (g *Game) updatePhonePage(p *phoneView) {
 func pageButtons(rows []data.PhoneRow) []int {
 	var out []int
 	for i, r := range rows {
-		if r.Button != "" {
+		if r.Button != "" && !r.Hidden {
 			out = append(out, i)
 		}
 	}
@@ -235,8 +242,12 @@ func (g *Game) pageAccent(p *phoneView) (color.NRGBA, bool) {
 }
 
 func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
+	textStart, controlStart := g.screenOffsets()
 	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.PhoneBackground.Or(phoneBubble), false)
 	for i, l := range p.pageLayout(g, w) {
+		if l.h == 0 {
+			continue
+		}
 		y := phoneFeedTop + l.top - p.scroll
 		if y+l.h <= phoneFeedTop || y >= h {
 			continue
@@ -244,6 +255,7 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPageRow(dst, p, i, l, y, w)
 	}
 	// The bar goes over the rows that scroll up under it.
+	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
 	switch accent, ok := g.pageAccent(p); {
 	case p.cue.URL != "":
 		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), phoneBubble, false)
@@ -285,6 +297,12 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 	case len(r.Pictures) > 0:
 		g.drawPageGrid(dst, r, x, y, iw)
 	case r.Item != nil:
+		if r.Button != "" {
+			if p.keyed && p.focus == i {
+				gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(iw), float32(l.h), 10, 2, g.phoneAccent())
+			}
+			g.traceControl(r.Button, roundRect(x, y, iw, l.h), p.ready(), p.keyed && p.focus == i, "transition")
+		}
 		g.drawPageItem(dst, p, r.Item, x, y, iw)
 	case r.QR != "":
 		side := math.Min(iw, phonePageQR)
@@ -422,4 +440,89 @@ func (g *Game) pageInk(_ *phoneView) color.NRGBA {
 
 func (g *Game) pageMuted(_ *phoneView) color.NRGBA {
 	return g.db.Game.UI.PhoneMuted.Or(phoneMuted)
+}
+
+// homeLayout shares authored row identities with page outcomes while arranging
+// only unlocked apps into three columns. No navigation state is saved.
+func (p *phoneView) homeLayout(w float64) []pageRow {
+	out := make([]pageRow, len(p.cue.Rows))
+	cell := (w - phonePagePad*2) / 3
+	visible := 0
+	p.rowsEnd = 0
+	for i, row := range p.cue.Rows {
+		if row.Hidden {
+			continue
+		}
+		out[i] = pageRow{top: phonePageGap + float64(visible/3)*116, h: 104, x: phonePagePad + float64(visible%3)*cell, w: cell}
+		p.rowsEnd = out[i].top + out[i].h + phonePageGap
+		visible++
+	}
+	p.rows, p.rowsW = out, w
+	return out
+}
+
+func (g *Game) updatePhoneHome(p *phoneView) {
+	rows, end := g.pageView(p)
+	if g.pageKeys(p, rows, end) {
+		return
+	}
+	buttons := pageButtons(p.cue.Rows)
+	if len(buttons) > 0 && (g.in.pressedKey(btnDown) || g.in.pressedKey(btnUp)) {
+		step := 3
+		if g.in.pressedKey(btnUp) {
+			step = -3
+		}
+		at := slices.Index(buttons, p.focus)
+		if at < 0 {
+			at = 0
+		} else {
+			at = max(0, min(len(buttons)-1, at+step))
+		}
+		p.focus, p.keyed = buttons[at], true
+		p.aim = math.Max(0, math.Min(end, rows[p.focus].top-phonePageGap))
+	}
+	g.dragPhoneAlong(p, false, func(at image.Point) {
+		y, ok := g.phoneColumnAt(p, at)
+		sx, _, _, _ := g.phoneScreenRect(p.side)
+		x := float64(at.X) - sx
+		for i, row := range rows {
+			if ok && row.h > 0 && x >= row.x && x < row.x+row.w && y >= row.top && y < row.top+row.h {
+				p.putDown(i, -1, false)
+				return
+			}
+		}
+	})
+	if g.in.wheel != 0 {
+		p.aim, p.glide = -1, 0
+		p.scroll -= g.in.wheel * phoneFeedWheel
+	}
+	p.settle(end)
+}
+
+func (g *Game) drawPhoneHome(p *phoneView, dst *ebiten.Image, w, h float64) {
+	textStart, controlStart := g.screenOffsets()
+	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.PhoneBackground.Or(phoneBubble), false)
+	for i, row := range p.pageLayout(g, w) {
+		y := phoneFeedTop + row.top - p.scroll
+		if row.h == 0 || y+row.h <= phoneFeedTop || y >= h {
+			continue
+		}
+		entry := p.cue.Rows[i]
+		icon := ""
+		if entry.Item != nil {
+			icon = entry.Item.Icon
+		}
+		cx := row.x + row.w/2
+		if p.keyed && p.focus == i {
+			gfx.StrokeRoundRect(dst, float32(row.x+3), float32(y), float32(row.w-6), float32(row.h), 12, 2, g.phoneAccent())
+		}
+		g.drawPhoneIcon(dst, p, icon, entry.Button, cx-27, y+6, 54)
+		lines, size := gfx.FitLines(entry.Button, 14, row.w-8, 2)
+		for k, line := range lines {
+			g.screenText(dst, line, cx, y+66+float64(k)*gfx.LineHeight(size), size, g.pageInk(p))
+		}
+		g.traceControl(entry.Button, roundRect(row.x, y, row.w, row.h), p.ready(), p.keyed && p.focus == i, "transition")
+	}
+	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
+	g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 }

@@ -2,8 +2,11 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"math"
+	"slices"
+	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -75,10 +78,14 @@ func (g *Game) layChatBubble(p *phoneView, i int, maxW float64) chatBubble {
 }
 
 func (g *Game) updatePhoneChat(p *phoneView) {
+	if p.cue.History {
+		g.updatePhoneHistory(p)
+		return
+	}
 	if p.typing > 0 {
 		p.typing--
 		if p.typing == 0 {
-			p.shown++
+			p.shown = p.nextChat(p.shown) + 1
 			p.chatRead = 0
 		}
 		return
@@ -87,6 +94,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	if in := &g.in; in.clicked() {
 		for i, r := range p.pics {
 			if r.has(g, p, in.mouse.X, in.mouse.Y) {
+				p.seenPic[i] = true
 				p.viewPic = p.cue.Messages[i].Picture
 				return
 			}
@@ -104,15 +112,20 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	}
 	// The newest message is a picture or a video not yet seen: the press opens it.
 	last := p.shown - 1
-	if m := p.cue.Messages[last]; !g.autoRead && g.openNewest(p, last, m) {
-		return
-	}
-	if p.shown >= len(p.cue.Messages) {
+	if last < 0 {
 		p.closing = phoneRise
 		return
 	}
-	if next := p.cue.Messages[p.shown]; next.Mine || next.Text == "" && next.Picture == "" && next.Video == nil {
-		p.shown++
+	if m := p.cue.Messages[last]; !g.autoRead && g.openNewest(p, last, m) {
+		return
+	}
+	nextIndex := p.nextChat(p.shown)
+	if nextIndex >= len(p.cue.Messages) {
+		p.closing = phoneRise
+		return
+	}
+	if next := p.cue.Messages[nextIndex]; next.Mine || next.Text == "" && next.Picture == "" && next.Video == nil {
+		p.shown = nextIndex + 1
 		p.chatRead = 0
 		return
 	}
@@ -161,8 +174,14 @@ func (r picRect) has(g *Game, p *phoneView, mx, my int) bool {
 }
 
 func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
+	if p.cue.History {
+		g.drawPhoneHistory(p, dst, w, h)
+		return
+	}
 	// The header goes over the messages that scroll up under it.
+	textStart, controlStart := g.screenOffsets()
 	defer func() {
+		g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
 		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 		g.text(dst, "<", 18, 44, 22, g.phoneAccent())
 	}()
@@ -177,6 +196,9 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	first := min(p.shown, len(p.cue.Messages))
 	for i := first - 1; i >= 0 && y > top-200; i-- {
+		if p.cue.Messages[i].Hidden {
+			continue
+		}
 		b := g.chatBubble(p, i, maxW)
 		first = i
 		y -= b.h
@@ -238,7 +260,11 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 	case m.Picture != "":
 		p.pics[b.i] = picRect{x, y, b.bw, b.bh}
 		if g.controlFrame() != nil {
-			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready(), false, "transition")
+			reason := "transition"
+			if p.typing > 0 {
+				reason = "typing"
+			}
+			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready() && p.typing == 0, false, reason)
 		}
 		if img := g.pics.get(m.Picture); img != nil {
 			frame := p.frame(fmt.Sprintf("pic%d", b.i), b.bw, b.bh)
@@ -274,4 +300,191 @@ func (g *Game) drawPhonePicture(p *phoneView, dst *ebiten.Image, w, h float64) {
 	if img := g.pics.get(p.viewPic); img != nil {
 		drawContain(dst, img, 0, 30, w, h-60)
 	}
+}
+
+// nextChat returns an authored index, preserving stable identity while skipping
+// messages whose condition was false when the phone opened.
+func (p *phoneView) nextChat(from int) int {
+	for i := from; i < len(p.cue.Messages); i++ {
+		if !p.cue.Messages[i].Hidden {
+			return i
+		}
+	}
+	return len(p.cue.Messages)
+}
+
+// historyLayout computes positions only when an opted-in history opens or changes
+// width. Bubble text layouts are still retained only for messages on screen.
+func (g *Game) historyLayout(p *phoneView, w, h float64) float64 {
+	if p.historyRows == nil || p.historyW != w {
+		first := p.historyRows == nil
+		p.historyRows = make([]pageRow, len(p.cue.Messages))
+		p.replyRows = make([]pageRow, len(p.cue.Replies))
+		p.historyW = w
+		p.historyVisible = p.historyVisible[:0]
+		p.historyStops = p.historyStops[:0]
+		y := phonePageGap
+		for i, m := range p.cue.Messages {
+			if m.Hidden {
+				continue
+			}
+			b := g.layChatBubble(p, i, w*0.68)
+			p.historyRows[i] = pageRow{top: y, h: b.h}
+			p.historyVisible = append(p.historyVisible, i)
+			p.historyStops = append(p.historyStops, y-phonePageGap)
+			y += b.h + 12
+		}
+		for i, r := range p.cue.Replies {
+			if r.Hidden {
+				continue
+			}
+			lines := gfx.Wrap(r.Button, 16, w-phonePagePad*2-24)
+			height := float64(len(lines))*gfx.LineHeight(16) + 42
+			p.replyRows[i] = pageRow{top: y, h: height, lines: lines}
+			p.historyStops = append(p.historyStops, y-phonePageGap)
+			y += height + phonePageGap
+		}
+		p.historyHeight = y
+		if first {
+			p.scroll = math.Max(0, y-(h-phoneFeedTop))
+		}
+	}
+	return math.Max(0, p.historyHeight-(h-phoneFeedTop))
+}
+
+func (g *Game) updatePhoneHistory(p *phoneView) {
+	_, _, w, h := g.phoneScreenRect(p.side)
+	end := g.historyLayout(p, w, h)
+	if g.historyReplyKeys(p, end, h) {
+		return
+	}
+
+	g.scrollPhone(p, p.historyStops, end, func(at image.Point) {
+		y, on := g.phoneColumnAt(p, at)
+		if !on {
+			return
+		}
+		sx, _, _, _ := g.phoneScreenRect(p.side)
+		x := float64(at.X) - sx
+		for i, r := range p.replyRows {
+			if r.h > 0 && x >= phonePagePad && x < w-phonePagePad && y >= r.top && y < r.top+r.h {
+				p.putDown(-(i + 10), -1, false)
+				return
+			}
+		}
+		for i, r := range p.pics {
+			if !r.has(g, p, at.X, at.Y) {
+				continue
+			}
+			m := p.cue.Messages[i]
+			if m.Video != nil {
+				p.watch, p.watchMsg = p.clip(fmt.Sprintf("msg%d", i), m.Video), i
+				if p.watch.played >= p.watch.length() {
+					p.watch.played = 0
+				}
+				p.turn(true)
+			} else {
+				p.seenPic[i] = true
+				p.viewPic = m.Picture
+			}
+			return
+		}
+	})
+}
+
+// Reply focus is explicit: scrolling or advancing never sends an authored draft.
+func (g *Game) historyReplyKeys(p *phoneView, end, h float64) bool {
+	buttons := pageButtons(p.cue.Replies)
+	if len(buttons) == 0 {
+		return false
+	}
+	in := &g.in
+	var d int
+	switch {
+	case in.pressedKey(btnRight) || in.pressedKey(btnNext):
+		d = 1
+	case in.pressedKey(btnLeft):
+		d = -1
+	case in.inspect(in.pressed[btnOK]):
+		if p.focus >= 0 && p.keyed {
+			p.putDown(-(p.focus + 10), -1, false)
+			return in.query(true)
+		}
+		d = 1
+	default:
+		return false
+	}
+	at := slices.Index(buttons, p.focus)
+	if at < 0 {
+		if d > 0 {
+			at = 0
+		} else {
+			at = len(buttons) - 1
+		}
+	} else {
+		at = (at + d + len(buttons)) % len(buttons)
+	}
+	p.focus, p.keyed = buttons[at], true
+	r := p.replyRows[p.focus]
+	p.aim = math.Max(0, math.Min(end, r.top+r.h+phonePageGap-(h-phoneFeedTop)))
+	if r.top < p.scroll {
+		p.aim = math.Max(0, r.top-phonePageGap)
+	}
+	return true
+}
+
+func (g *Game) drawPhoneHistory(p *phoneView, dst *ebiten.Image, w, h float64) {
+	textStart, controlStart := g.screenOffsets()
+	end := g.historyLayout(p, w, h)
+	p.scroll = math.Max(0, math.Min(p.scroll, end))
+	clear(p.pics)
+	for i := range p.bubbles {
+		r := p.historyRows[i]
+		if r.top+r.h <= p.scroll || r.top >= p.scroll+h-phoneFeedTop {
+			delete(p.bubbles, i)
+		}
+	}
+	first := sort.Search(len(p.historyVisible), func(k int) bool { r := p.historyRows[p.historyVisible[k]]; return r.top+r.h > p.scroll })
+	for _, i := range p.historyVisible[first:] {
+		r := p.historyRows[i]
+		y := phoneFeedTop + r.top - p.scroll
+		if y >= h {
+			break
+		}
+		b := g.chatBubble(p, i, w*0.68)
+		g.drawChatBubble(dst, p, b, w, y)
+		if p.cue.Messages[i].Video != nil {
+			x := 64.0
+			m := p.cue.Messages[i]
+			if m.Mine {
+				x = w - b.bw - 16
+			}
+			if m.Day != "" {
+				y += phoneChatDay
+			}
+			if !m.Mine && m.From != "" {
+				y += 20
+			}
+			p.pics[i] = picRect{x, y, b.bw, b.bh}
+			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready(), false, "transition")
+		}
+	}
+	for i, r := range p.replyRows {
+		y := phoneFeedTop + r.top - p.scroll
+		if r.h == 0 || y+r.h <= phoneFeedTop || y >= h {
+			continue
+		}
+		x, iw := phonePagePad, w-phonePagePad*2
+		if p.keyed && p.focus == i {
+			gfx.StrokeRoundRect(dst, float32(x-3), float32(y-3), float32(iw+6), float32(r.h+6), 12, 2, g.pageInk(p))
+		}
+		gfx.FillRoundRect(dst, float32(x), float32(y), float32(iw), float32(r.h), 10, g.phoneAccent())
+		for k, line := range r.lines {
+			g.text(dst, line, x+12, y+10+float64(k)*gfx.LineHeight(16), 16, phoneOnVideo)
+		}
+		g.screenTextRight(dst, lang.T("送信"), x+iw-12, y+r.h-24, 13, phoneOnVideo)
+		g.traceControl(p.cue.Replies[i].Button, roundRect(x, y, iw, r.h), p.ready(), p.keyed && p.focus == i, "transition")
+	}
+	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
+	g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 }

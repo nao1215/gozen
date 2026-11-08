@@ -74,6 +74,7 @@ events:
     - call: {event: phone_banner}
     - call: {event: phone_support}
     - call: {event: phone_contact}
+    - call: {event: phone_archive}
   # The phone command (ADR 0057): a chat held upright, a photo feed and a video
   # turned on its side. Each waits until the phone is put down.
   phone_chat:
@@ -274,6 +275,49 @@ events:
           - {mine: true, text: 'Saved. Thanks for tonight.', time: '21:05', read: true}
       else:
       - say: {who: martin, text: Maybe later.}
+  # Run with --event phone_archive. All history is authored; flags unlock entries.
+  phone_archive:
+    - say: Open the team phone to browse contacts, messages and updates.
+    - set: {flag.archive_contact: true}
+    - call: phone_archive_home
+  phone_archive_home:
+    - phone:
+        app: home
+        title: Work phone
+        var: var.archive_app
+        rows:
+        - {button: Contacts, id: contacts, event: phone_archive_contacts, item: {icon: icons/nora.png, title: Contacts}}
+        - {button: Team chat, id: chat, event: phone_archive_chat, when: flag.archive_contact, item: {icon: apps/chat.png, title: Team chat}}
+        - {button: Updates, id: feed, event: phone_archive_feed, item: {icon: apps/timeline.png, title: Updates}}
+  phone_archive_contacts:
+    - phone:
+        app: contacts
+        title: Team contacts
+        var: var.archive_contact
+        rows:
+        - {item: {title: Reception, text: Main desk, value: '0100'}}
+        - {button: Nora, id: nora, event: phone_archive_chat, when: flag.archive_contact, item: {icon: icons/nora.png, title: Nora Quinn, text: Quality assurance, value: '0102'}}
+  phone_archive_chat:
+    - set: {flag.archive_read: true}
+    - phone:
+        app: chat
+        title: Nora Quinn
+        history: true
+        var: var.archive_reply
+        messages:
+        - {day: Yesterday, from: Nora, text: The review starts tomorrow.}
+        - {when: flag.archive_contact, from: Nora, text: Please bring the test checklist., time: '09:00'}
+        - {when: flag.archive_sent, mine: true, text: I will bring the checklist., time: '09:05'}
+        replies:
+        - {button: Send - I will bring the checklist., id: checklist, when: '!flag.archive_sent', set: {flag.archive_sent: true}}
+  phone_archive_feed:
+    - phone:
+        app: feed
+        title: Team updates
+        browse: true
+        posts:
+        - {who: Harbor team, text: The first prototype is ready., time: Last week}
+        - {who: Nora, text: The test checklist is ready for review., time: Today, when: flag.archive_contact}
 profiles:
   martin: {name: Martin Shaw, picture: martin/normal.png, affiliation: Harbor app team, text: Engineering manager. Keeps the plan honest., fields: [{label: Role, value: Manager}, {label: Since, value: '2024'}]}
   elena: {name: Elena Ruiz, picture: elena/normal.png, affiliation: Harbor app team, text: Owns the backlog and the client requests., fields: [{label: Role, value: Product owner}]}

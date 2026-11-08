@@ -63,10 +63,10 @@ type phoneView struct {
 	scroll, aim, glide, grab, moved float64
 	liked                           map[int]bool
 	layout                          []feedPost
-	layoutW, layoutH                float64
+	layoutW, layoutH, layoutEnd     float64
 	// rows are a page's rows laid out for a screen rowsW wide.
-	rows  []pageRow
-	rowsW float64
+	rows           []pageRow
+	rowsW, rowsEnd float64
 	// chatRead is how far the newest message, when it is taller than the
 	// screen, has been read down from its top.
 	chatRead float64
@@ -74,6 +74,11 @@ type phoneView struct {
 	// bubblesW wide (only the visible ones are kept).
 	bubbles  map[int]chatBubble
 	bubblesW float64
+	// History positions are prepared only for the opt-in scrollback view.
+	historyRows, replyRows  []pageRow
+	historyW, historyHeight float64
+	historyVisible          []int
+	historyStops            []float64
 	// clips are the clips the phone has played, by where they are (so a feed's
 	// post keeps its place when it comes back), each with its own puppet motion.
 	clips map[string]*phoneClip
@@ -114,7 +119,13 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 	}
 	switch cue.App {
 	case "chat":
-		p.shown = 1
+		p.shown = p.nextChat(0) + 1
+		if p.shown > len(cue.Messages) {
+			p.shown = 0
+		}
+		if cue.History || len(cue.Replies) > 0 {
+			p.shown = len(cue.Messages)
+		}
 	case "lock":
 		p.shown = min(1, len(cue.Notices))
 	case "video":
@@ -212,15 +223,24 @@ func phonePictures(cue data.PhoneCue) []string {
 		}
 	}
 	for _, m := range cue.Messages {
+		if m.Hidden {
+			continue
+		}
 		out = append(out, m.Icon, m.Picture)
 		video(m.Video)
 	}
 	for _, post := range cue.Posts {
+		if post.Hidden {
+			continue
+		}
 		out = append(out, post.Icon, post.Picture)
 		video(post.Video)
 	}
 	video(cue.Video)
 	for _, r := range cue.Rows {
+		if r.Hidden {
+			continue
+		}
 		out = append(append(out, r.Picture), r.Pictures...)
 		if r.Item != nil {
 			out = append(out, r.Item.Icon)
@@ -366,7 +386,9 @@ func (g *Game) updatePhone() bool {
 		g.updatePhoneChat(p)
 	case p.cue.App == "feed":
 		g.updatePhoneFeed(p)
-	case p.cue.App == "page":
+	case p.cue.App == "home":
+		g.updatePhoneHome(p)
+	case p.cue.App == "page" || p.cue.App == "contacts":
 		g.updatePhonePage(p)
 	case p.cue.App == "lock":
 		g.updatePhoneLock(p)
@@ -571,6 +593,8 @@ func (g *Game) phoneHint(p *phoneView) string {
 		return lang.T("Enter: 応答　Esc: 拒否")
 	case p.cue.App == "lock":
 		return lang.T("クリック: 次の通知　Esc: 閉じる")
+	case p.cue.App == "home" || p.cue.App == "contacts" || p.cue.App == "chat" && (p.cue.History || len(p.cue.Replies) > 0):
+		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
 	case p.cue.App == "page" && len(pageButtons(p.cue.Rows)) > 0:
 		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
 	case p.cue.App == "page":
@@ -603,7 +627,9 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneChat(p, screen, scw, sch)
 	case p.cue.App == "feed":
 		g.drawPhoneFeed(p, screen, scw, sch)
-	case p.cue.App == "page":
+	case p.cue.App == "home":
+		g.drawPhoneHome(p, screen, scw, sch)
+	case p.cue.App == "page" || p.cue.App == "contacts":
 		g.drawPhonePage(p, screen, scw, sch)
 	case p.cue.App == "lock":
 		g.drawPhoneLock(p, screen, scw, sch)
@@ -615,7 +641,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
 	}
 	if g.controlFrame() != nil {
-		g.clipScreenRecords(textStart, controlStart, scw, sch)
+		g.clipScreenRecords(textStart, controlStart, 0, scw, sch)
 		g.transformScreenRecords(textStart, controlStart, func(x, y float64) (float64, float64) { return x + bezel, y + bezel })
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))

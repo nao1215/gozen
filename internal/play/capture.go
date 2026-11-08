@@ -56,7 +56,7 @@ type CaptureResult struct {
 	Width, Height, Frames int
 	Seed                  uint64
 	Pictures              []string
-	// Screen contains stage-3 drawing facts for the last sampled frame, when requested.
+	// Screen contains drawing facts for the last sampled frame, when requested.
 	Screen json.RawMessage
 	Err    error
 }

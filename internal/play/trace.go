@@ -676,7 +676,7 @@ func (g *Game) traceFrameStart() {
 	}
 	g.tr.drawn, g.tr.missing, g.tr.lists = map[string]bool{}, map[string]bool{}, nil
 	g.tr.stand = &standFrame{}
-	if g.tr.enc != nil {
+	if g.tr.enc != nil && (g.opts.capture == nil || g.opts.capture.structure) {
 		g.tr.layout = &layoutFrame{}
 	}
 	g.pics.seen = func(path string, ok bool) {

@@ -1,6 +1,7 @@
 package gamedata
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -502,7 +503,7 @@ type MessageCue struct {
 }
 
 // PhoneCue is a phone shown over the scene (ADR 0057). Hold is portrait (the
-// default) or landscape; App is chat, feed, video, page or lock and names the
+// default) or landscape; App selects chat, feed, video, page, home, contacts or lock and names the
 // one list the phone shows: Messages, Posts, Video, Rows or Notices; banner
 // shows its Notices at the top of the screen, waiting for an outcome when Var
 // is set and otherwise letting the event continue. Title is
@@ -515,6 +516,10 @@ type MessageCue struct {
 // across, shows a post a screen swiped sideways; Browse makes it only looked
 // at, a tap liking nothing.
 type PhoneCue struct {
+	// History shows all unlocked chat messages as a scrollable, read-only history.
+	// Replies are authored send buttons; the event keeps their result on selection.
+	History bool       `yaml:"history"`
+	Replies []PhoneRow `yaml:"replies" json:",omitempty"`
 	// Timeout ends a lock, page or banner after these seconds without an outcome.
 	// TimeoutResult is stored in Var (default expired); zero disables the timer.
 	Timeout       float64        `yaml:"timeout"`
@@ -542,9 +547,16 @@ type PhoneCue struct {
 // Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, a
 // QR code of a text (a link, a contact) with its Caption, or
 // a Button that puts the phone down when pressed, setting Set and the phone's
-// Var to its ID. A row is one of them. A picture or a grid is Locked (blurred,
+// Var to its ID. Home and contacts may combine Item and Button; other rows
+// contain one content kind. A picture or a grid is Locked (blurred,
 // with a lock and its Label) while the condition holds when the phone comes up.
 type PhoneRow struct {
+	// Event opens a parameterless app event from home or contacts and returns to this phone.
+	Event string `yaml:"event"`
+	// When is checked by the event owner once when opening the phone.
+	When Expr `yaml:"when"`
+	// Hidden is the resolved visibility used by presentation, without removing saved result slots.
+	Hidden   bool        `yaml:"-" json:"-"`
 	Text     string      `yaml:"text"`
 	Size     string      `yaml:"size"`
 	Bold     bool        `yaml:"bold"`
@@ -595,7 +607,10 @@ type PhoneNotice struct {
 // -1) or a call with a ring that rang out (Notice, Missed). ID is what the
 // phone's Var receives and Set what it sets. Matching Row and Notice values
 // -2, -3 and -4 identify shared expiry, open and dismiss outcomes for play.
+// Row -(i+10) with Notice -1 identifies the authored reply at index i.
 type PhoneResult struct {
+	// Event is the authored app opened by the event owner after assignments.
+	Event       string
 	Row, Notice int
 	ID          string
 	Set         Assignments
@@ -603,7 +618,7 @@ type PhoneResult struct {
 }
 
 // Results are the phone's results in order, when it keeps any (it has a Var
-// or one of them sets something); nil otherwise.
+// or one of them sets something or opens an Event); nil otherwise.
 func (p PhoneCue) Results() []PhoneResult {
 	var out []PhoneResult
 	keeps := p.Var != ""
@@ -615,8 +630,8 @@ func (p PhoneCue) Results() []PhoneResult {
 		if id == "" {
 			id = r.Button
 		}
-		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set})
-		keeps = keeps || len(r.Set) > 0
+		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set, Event: r.Event})
+		keeps = keeps || len(r.Set) > 0 || r.Event != ""
 	}
 	calls := false
 	for i, n := range p.Notices {
@@ -636,7 +651,7 @@ func (p PhoneCue) Results() []PhoneResult {
 			keeps = keeps || len(n.Missed) > 0
 		}
 	}
-	if (p.App == "banner" || p.App == "page") && p.Var != "" || p.Timeout > 0 {
+	if (p.App == "banner" || p.App == "page" || p.App == "home" || p.App == "contacts") && p.Var != "" || p.Timeout > 0 {
 		if !calls {
 			if len(out) == 0 {
 				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
@@ -653,7 +668,7 @@ func (p PhoneCue) Results() []PhoneResult {
 	}
 	// Append a page's ordinary close after all existing outcomes, including
 	// timeout, so button and saved result indices remain unchanged.
-	if p.App == "page" && (p.Var != "" || p.Timeout > 0) {
+	if (p.App == "page" || p.App == "home" || p.App == "contacts") && (p.Var != "" || p.Timeout > 0) {
 		for _, r := range out {
 			if r.Row >= 0 {
 				out = append(out, PhoneResult{Row: -3, Notice: -3, ID: "open"})
@@ -672,13 +687,20 @@ func (p PhoneCue) Results() []PhoneResult {
 			}
 		}
 	}
+	for i, reply := range p.Replies {
+		out = append(out, PhoneResult{Row: -(i + 10), Notice: -1, ID: cmp.Or(reply.ID, reply.Button), Set: reply.Set})
+		keeps = keeps || len(reply.Set) > 0
+	}
+	if len(p.Replies) > 0 {
+		out = append(out, PhoneResult{Row: -4, Notice: -4, ID: "dismiss"})
+	}
 	if !keeps {
 		return nil
 	}
 	return out
 }
 
-// Do are the commands a result runs: its sets and the phone's Var.
+// Do are the commands a result runs: its sets, the phone's Var, then its app event.
 func (p PhoneCue) Do(r PhoneResult) []Command {
 	var out []Command
 	if len(r.Set) > 0 {
@@ -686,6 +708,9 @@ func (p PhoneCue) Do(r PhoneResult) []Command {
 	}
 	if p.Var != "" {
 		out = append(out, Command{SetV: Assignments{p.Var: MustExpr(strconv.Quote(r.ID))}})
+	}
+	if r.Event != "" {
+		out = append(out, Command{Call: EventCall{Event: r.Event}})
 	}
 	return out
 }
@@ -700,6 +725,10 @@ func (p PhoneCue) Do(r PhoneResult) []Command {
 // and Day puts a day's separator over the message (a message of only Day is
 // the separator alone). All are interpolated.
 type PhoneMessage struct {
+	// When is checked by the event owner once when opening the phone.
+	When Expr `yaml:"when"`
+	// Hidden is the resolved visibility used by presentation, without removing saved result slots.
+	Hidden  bool        `yaml:"-" json:"-"`
 	Time    string      `yaml:"time"`
 	Read    bool        `yaml:"read"`
 	Day     string      `yaml:"day"`
@@ -719,6 +748,10 @@ type PhoneMessage struct {
 // Reposts are counted next to its likes. Set is what the story keeps when the
 // phone is put down with the post liked, as a page button's set is.
 type PhonePost struct {
+	// When is checked by the event owner once when opening the phone.
+	When Expr `yaml:"when"`
+	// Hidden is the resolved visibility used by presentation, without removing saved result slots.
+	Hidden  bool        `yaml:"-" json:"-"`
 	Who     string      `yaml:"who"`
 	Icon    string      `yaml:"icon"`
 	Picture string      `yaml:"picture"`
@@ -762,7 +795,7 @@ func (p PhoneCue) Liked(answer int) []Command {
 	}
 	var out []Command
 	for k, i := range p.Liking() {
-		if answer&(1<<k) != 0 {
+		if answer&(1<<k) != 0 && !p.Posts[i].Hidden {
 			out = append(out, Command{SetV: p.Posts[i].Set})
 		}
 	}

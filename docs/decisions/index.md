@@ -1,8 +1,9 @@
 # Design decisions
 
-This directory records design decisions about Gozen's layout, public contract, dependencies, and checks. They are listed in number order. There are three statuses.
+This directory records design decisions about Gozen's layout, public contract, dependencies, and checks. They are listed in number order. There are four statuses.
 
 - Accepted: the decision as written is still in effect.
+- Proposed: a reviewable design that has not changed the current contract.
 - Partly changed: a later ADR changed part of the decision. The later ADR is listed in the "Changed or superseded by" column, and the changed parts are also noted at the top of the original ADR.
 - Superseded: a later ADR replaced the whole decision. Read the replacing ADR for the current decision.
 
@@ -69,6 +70,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0059](0059-call-framing-self-backdrop-and-toast-cards.md) | A call's view keeps the hair inside, a picture self view takes a backdrop (`call.self_backdrop`), and notices stand on nearly opaque cards under `ui.material` | Accepted and implemented | |
 | [0060](0060-general-phone-outcomes.md) | General phone timeout outcomes, keyboard operation and game-wide colors | Accepted | |
 | [0061](0061-dango-maintainer-tests.md) | Maintainer decision tests with dango | Implemented | Reproduction shares the typed author CLI bundle operation |
+| [0062](0062-bounded-phone-sessions.md) | Authored phone information unlocked by flags, history, replies, home and contacts | Accepted and implemented | Replaces the unimplemented persistent-session proposal |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

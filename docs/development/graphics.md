@@ -117,7 +117,7 @@ to its canvas and transformed into screen coordinates; rotating boxes use their
 axis-aligned enclosing rectangle. Empty collections are `null`. Disabled reasons
 use authored reason text where provided, otherwise factual codes such as
 `disabled`, `cost`, `inactive`, `modal`, `phone`, `transition`, `browse`,
-`no_event`, or `no_history`. Icon-only controls have an empty label. Hidden controls
+`typing`, `no_event`, or `no_history`. Icon-only controls have an empty label. Hidden controls
 are absent. The schema describes instrumented drawing operations, not pixel
 visibility: a later overlay may cover earlier text or figures. Moving puppets
 remain outside the standing-picture collector, as with layout records.

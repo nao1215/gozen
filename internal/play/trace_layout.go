@@ -439,13 +439,13 @@ func (g *Game) transformScreenRecords(textStart, controlStart int, transform fun
 	}
 }
 
-func (g *Game) clipScreenRecords(textStart, controlStart int, w, h float64) {
+func (g *Game) clipScreenRecords(textStart, controlStart int, top, w, h float64) {
 	f := g.controlFrame()
 	if f == nil {
 		return
 	}
 	clip := func(r [4]float64) [4]float64 {
-		x, y := max(0, r[0]), max(0, r[1])
+		x, y := max(0, r[0]), max(top, r[1])
 		return roundRect(x, y, max(0, min(w, r[0]+r[2])-x), max(0, min(h, r[1]+r[3])-y))
 	}
 	texts := f.texts[:textStart]

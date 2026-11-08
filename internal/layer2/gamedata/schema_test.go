@@ -91,6 +91,7 @@ var schemaDefaults = map[string]string{
 }
 
 var schemaReferences = map[string]string{
+	"PhoneRow.event":      "events (parameterless)",
 	"GalleryPage.picture": "assets/ の画像。その絵の上の台詞と問いを数える", "GalleryPage.answers": "選択肢の０始まりの答え[]",
 	"StoneSet.family": "表示名と独立した系列 ID。英数字で始まる英数字・_・-。同系列の全候補に同じ ID",
 	"GalleryScene.id": "回想の固定 ID。英数字で始まる英数字・_・-。回想内で一意", "GalleryScene.legacy_keys": "scene: で始まる旧開放キー[]。id が必須で別回想との共有不可",

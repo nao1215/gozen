@@ -1,6 +1,6 @@
 # Dango maintainer checks
 
-From the repository root, with its required Go toolchain installed:
+From the repository root, with its required Go toolchain, GNU Make, a POSIX shell (`sh`) and `grep` installed:
 
 ```sh
 go tool dango lint
@@ -8,9 +8,7 @@ go tool dango lint --list
 go tool dango lint --format json
 ```
 
-Dango is a development tool, not a gozen command or a release artifact. The
-local tool directive adds no external tool dependency. `make lint` invokes it,
-and CI invokes `make lint`. See [ADR 0061](../decisions/0061-dango-maintainer-tests.md).
+Dango is a development tool, not a gozen command or a release artifact. `go tool` builds the runner from this checkout. The dead-code gate test executes Make and a POSIX shell to check tool failures and allowlist filtering. Ordinary Go tests skip that regression if its tools are absent; dango rejects a skipped enforcing test. `make lint` runs dango, and CI runs `make lint`. See [ADR 0061](../decisions/0061-dango-maintainer-tests.md).
 
 The decision table is `internal/dev/hygiene/decisions.go`. Each entry supplies an
 ID, name, one-line reason, repair and enforcing package/test names. The runner
@@ -36,6 +34,9 @@ return 1. Changing representation changes neither tests nor verdicts.
 
 ## Mechanical coverage and limits
 
+Dango also checks generated schemas against the Go types and translation keys against their source messages and format arguments. It runs schema checks with `GOZEN_UPDATE_SCHEMA=0`, so lint never regenerates files even if that setting is enabled in the caller. The dead-code gate test injects tool and filter errors to check that lint fails instead of accepting empty output.
+
+
 - Content and location tests check the published vocabulary boundary and generic
   private location patterns. They cannot prove the provenance of arbitrary data.
 - Dependency tests inspect imports against the architecture policy. API checks
@@ -48,6 +49,8 @@ return 1. Changing representation changes neither tests nor verdicts.
 - The phone puppet clip test observes actual file reads while advancing headless
   playback. It runs without a window. Trace checks exercise extreme observation
   values and require no diagnostic or failure status for layout and state measurements.
+- Phone input tests cover picture taps followed by keyboard advancement, controls disabled during typing, input on timeout deadlines, shared close outcomes and replay of saved timed results. These tests do not compare pixels.
+- Flag-based phone tests cover hidden result indices, hidden media reads, fixed replies, navigation and save replay. They also check that ordinary idle chat updates allocate nothing. They do not test a physical touch device.
 - `TestDocImageInputs` and `TestImageManifest` retain the existing visual evidence
   checks. Pixel regeneration/comparison still requires `make docs-images-check`
   in a graphics environment; passing dango does not prove rendering.

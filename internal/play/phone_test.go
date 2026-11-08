@@ -789,6 +789,50 @@ func TestPhoneChatPicture(t *testing.T) {
 	g.drawPhone(dst)
 }
 
+// Pointer viewing and keyboard advancing share the same read state. Recorded
+// controls must reflect the receiver's refusal while typing dots are visible.
+func TestPhoneChatPictureInputState(t *testing.T) {
+	for _, typing := range []bool{false, true} {
+		t.Run(strconv.FormatBool(typing), func(t *testing.T) {
+			g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+				{Picture: "wide.png"}, {Mine: true, Text: "Thanks"},
+			}})
+			phoneTicks(g, phoneRise)
+			g.pics.imgs["wide.png"] = &picEntry{img: ebiten.NewImage(160, 90)}
+			p := g.phone
+			if typing {
+				p.typing = phoneTyping
+			}
+			g.tr = &tracer{layout: &layoutFrame{}}
+			dst := ebiten.NewImage(1280, 720)
+			defer dst.Deallocate()
+			g.drawPhone(dst)
+			controls := g.tr.layout.controls
+			if len(controls) != 1 || controls[0].Enabled == typing {
+				t.Errorf("picture controls while typing=%t: %+v", typing, controls)
+			}
+			r := p.pics[0]
+			sx, sy, _, _ := g.phoneScreenRect(false)
+			g.in = input{click: true, mouse: image.Pt(int(sx+r.x+r.w/2), int(sy+r.y+r.h/2))}
+			g.updatePhone()
+			if typing {
+				if p.viewPic != "" || p.seenPic[0] {
+					t.Fatal("typing accepted a picture tap")
+				}
+				return
+			}
+			if p.viewPic != "wide.png" {
+				t.Fatal("tap did not open the picture")
+			}
+			phonePress(g, btnCancel)
+			phonePress(g, btnOK)
+			if p.viewPic != "" || p.shown != 2 {
+				t.Fatal("advancing reopened a picture already viewed by tapping")
+			}
+		})
+	}
+}
+
 // TestPhoneInitial: an icon without a picture shows the name's first letter.
 func TestPhoneInitial(t *testing.T) {
 	for in, want := range map[string]string{"sam.travels": "S", "@lena_k": "L", "": "", "3am": "3"} {
@@ -1928,5 +1972,290 @@ func TestPhoneHeadlessClipDoesNotReadPuppetPixels(t *testing.T) {
 	c.step(g, true)
 	if c.played != 1 {
 		t.Fatal("clip did not loop", c.played)
+	}
+}
+
+func TestPhoneHiddenChatAndIdleCost(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{Hidden: true, Text: "Locked"}, {Text: "Visible"}, {Hidden: true, Text: "Locked"}, {Mine: true, Text: "Reply"}, {Hidden: true, Text: "Locked"},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	if p.shown != 2 {
+		t.Fatal("first visible authored index", p.shown)
+	}
+	if allocs := testing.AllocsPerRun(100, func() { g.in = input{}; g.updatePhone() }); allocs != 0 {
+		t.Fatalf("ordinary idle chat allocated %g times", allocs)
+	}
+	if p.historyRows != nil || p.replyRows != nil || p.historyVisible != nil || p.historyStops != nil {
+		t.Fatal("ordinary chat prepared history")
+	}
+	phonePress(g, btnOK)
+	if p.shown != 4 {
+		t.Fatal("advance lost authored index", p.shown)
+	}
+	phonePress(g, btnOK)
+	if p.closing == 0 {
+		t.Fatal("hidden trailing message blocked close")
+	}
+}
+
+func TestPhoneHistoryRepliesAndCache(t *testing.T) {
+	messages := make([]data.PhoneMessage, 100)
+	for i := range messages {
+		messages[i] = data.PhoneMessage{Text: fmt.Sprintf("Message %d", i), Hidden: i%3 == 0}
+	}
+	cue := data.PhoneCue{App: "chat", History: true, Var: "var.reply", Messages: messages, Replies: []data.PhoneRow{{Button: "Locked", Hidden: true, ID: "locked"}, {Button: "Send fixed reply", ID: "sent"}}}
+	g := phoneGame(t, cue)
+	p := g.phone
+	phoneTicks(g, phoneRise+1)
+	if p.scroll <= 0 || len(p.historyVisible) != 66 || p.historyRows[0].h != 0 {
+		t.Fatalf("history scroll=%g visible=%d", p.scroll, len(p.historyVisible))
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	if len(p.bubbles) == 0 || len(p.bubbles) > 12 {
+		t.Fatal("history retained offscreen bubbles", len(p.bubbles))
+	}
+	p.scroll, p.aim = 0, -1
+	g.drawPhone(dst)
+	if _, ok := p.bubbles[1]; !ok {
+		t.Fatal("old unlocked history is not drawable")
+	}
+	if len(p.bubbles) > 12 {
+		t.Fatal("old screen retained later bubble layouts", len(p.bubbles))
+	}
+	_, _, hw, hh := g.phoneScreenRect(false)
+	p.scroll = g.historyLayout(p, hw, hh)
+	rows := &p.historyRows[0]
+	if allocs := testing.AllocsPerRun(100, func() { _, _, w, h := g.phoneScreenRect(false); g.historyLayout(p, w, h) }); allocs != 0 {
+		t.Fatalf("cached layout allocated %g times", allocs)
+	}
+	before := p.scroll
+	g.in = input{}
+	g.in.wheel = 2
+	g.updatePhone()
+	if p.scroll >= before || &p.historyRows[0] != rows {
+		t.Fatal("scroll did not reuse history layout")
+	}
+	phonePress(g, btnOK)
+	if p.closing != 0 || p.focus != 1 {
+		t.Fatal("first OK must only focus the unlocked reply")
+	}
+	phonePress(g, btnOK)
+	if p.closing == 0 || cue.Results()[p.answer()].ID != "sent" {
+		t.Fatal("explicit reply did not retain authored result", p.answer())
+	}
+
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	g2 := phoneGame(t, cue)
+	phoneTicks(g2, phoneRise+1)
+	phonePress(g2, btnCancel)
+	if result := cue.Results()[g2.phone.answer()]; result.Row != -4 {
+		t.Fatal("cancel sent a reply", result)
+	}
+}
+
+func TestPhoneHomeContactsHiddenInput(t *testing.T) {
+	for _, app := range []string{"home", "contacts"} {
+		t.Run(app, func(t *testing.T) {
+			cue := data.PhoneCue{App: app, Var: "var.app", Rows: []data.PhoneRow{
+				{Button: "Locked", Item: &data.PhoneItem{Title: "Locked"}, Hidden: true, ID: "locked"},
+				{Button: "Open", Item: &data.PhoneItem{Title: "Contact"}, ID: "open"},
+			}}
+			g := phoneGame(t, cue)
+			p := g.phone
+			phoneTicks(g, phoneRise)
+			rows, _ := g.pageView(p)
+			if rows[0].h != 0 || rows[1].top != phonePageGap {
+				t.Fatal("hidden rows left a gap", rows)
+			}
+			phonePress(g, btnRight)
+			phonePress(g, btnOK)
+			if p.closing == 0 || cue.Results()[p.answer()].ID != "open" {
+				t.Fatal("keyboard selected hidden/original wrong index", p.answer())
+			}
+		})
+	}
+}
+
+func TestPhoneAllHiddenViews(t *testing.T) {
+	for _, cue := range []data.PhoneCue{
+		{App: "chat", Messages: []data.PhoneMessage{{Text: "Locked", Hidden: true}}},
+		{App: "chat", History: true, Messages: []data.PhoneMessage{{Text: "Locked", Hidden: true}}},
+		{App: "home", Rows: []data.PhoneRow{{Button: "Locked", Hidden: true}}},
+		{App: "contacts", Rows: []data.PhoneRow{{Item: &data.PhoneItem{Title: "Locked"}, Hidden: true}}},
+		{App: "feed", Posts: []data.PhonePost{{Text: "Locked", Hidden: true}}},
+	} {
+		t.Run(fmt.Sprintf("%s-history-%v", cue.App, cue.History), func(t *testing.T) {
+			g := phoneGame(t, cue)
+			phoneTicks(g, phoneRise+1)
+			phonePress(g, btnCancel)
+			if g.phone.closing == 0 {
+				t.Fatal("empty gated view cannot close")
+			}
+		})
+	}
+}
+
+func TestPhoneHomePointerOriginalRow(t *testing.T) {
+	cue := data.PhoneCue{App: "home", Var: "var.app", Rows: []data.PhoneRow{{Button: "Locked", Hidden: true}, {Button: "Mail", ID: "mail"}, {Button: "Contacts", ID: "contacts"}}}
+	g := phoneGame(t, cue)
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	rows, _ := g.pageView(p)
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	r := rows[2]
+	g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+r.x+r.w/2), int(sy+phoneFeedTop+r.top+r.h/2))}
+	g.updatePhone()
+	if p.closing == 0 || cue.Results()[p.answer()].ID != "contacts" {
+		t.Fatal("grid click lost original row", p.answer())
+	}
+}
+
+func TestPhoneHiddenFeedIdentityAndAssets(t *testing.T) {
+	cue := data.PhoneCue{App: "feed", Scroll: "across", Posts: []data.PhonePost{
+		{Text: "Locked", Hidden: true, Icon: "hidden", Set: data.Assignments{"var.a": data.MustExpr("true")}},
+		{Text: "Visible", Set: data.Assignments{"var.b": data.MustExpr("true")}},
+		{Text: "Locked", Hidden: true},
+		{Text: "Visible last"},
+	}}
+	g := phoneGame(t, cue)
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	posts, w, _, end := g.feedView(p)
+	if end != w || posts[0].h != 0 || posts[1].page != 0 || posts[3].page != 1 {
+		t.Fatal("hidden feed page gap", posts, end)
+	}
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+w/2), int(sy+phoneFeedTop+posts[1].pic+2))}
+	g.updatePhone()
+	if !p.liked[1] || p.answer() != 2 {
+		t.Fatal("visible like changed saved bit identity", p.liked, p.answer())
+	}
+	cue.Messages = []data.PhoneMessage{{Hidden: true, Picture: "hidden", Video: &data.PhoneVideo{Frames: []string{"hidden"}}}}
+	cue.Rows = []data.PhoneRow{{Hidden: true, Picture: "hidden", Item: &data.PhoneItem{Icon: "hidden"}}}
+	for _, path := range phonePictures(cue) {
+		if path == "hidden" {
+			t.Fatal("hidden assets were preloaded")
+		}
+	}
+}
+
+// Screen controls must describe only the body visible below the fixed header;
+// otherwise the advertised rectangle can have a center that input rejects.
+func TestPhoneScrolledControlsExcludeHeader(t *testing.T) {
+	for _, app := range []string{"home", "contacts", "page", "chat", "feed"} {
+		t.Run(app, func(t *testing.T) {
+			cue := data.PhoneCue{App: app, Var: "var.pick", Title: "Inbox"}
+			for range 30 {
+				switch app {
+				case "chat":
+					cue.History = true
+					cue.Replies = append(cue.Replies, data.PhoneRow{Button: "Reply"})
+				case "feed":
+					cue.Posts = append(cue.Posts, data.PhonePost{Text: "Post"})
+				default:
+					row := data.PhoneRow{Button: "Open"}
+					if app == "contacts" {
+						row.Item = &data.PhoneItem{Title: "Contact"}
+					}
+					cue.Rows = append(cue.Rows, row)
+				}
+			}
+			g := phoneGame(t, cue)
+			p := g.phone
+			phoneTicks(g, phoneRise+1)
+			_, sy, w, h := g.phoneScreenRect(false)
+			switch app {
+			case "chat":
+				g.historyLayout(p, w, h)
+				p.scroll = p.replyRows[0].top + p.replyRows[0].h - 10
+			case "feed":
+				posts, _, _, _ := g.feedView(p)
+				p.scroll = posts[0].pic + posts[0].picH + phoneFeedLikes - 10
+			default:
+				rows, _ := g.pageView(p)
+				p.scroll = rows[0].top + rows[0].h - 10
+			}
+			p.aim = -1
+			g.tr = &tracer{layout: &layoutFrame{}}
+			dst := ebiten.NewImage(1280, 720)
+			defer dst.Deallocate()
+			g.drawPhone(dst)
+			if len(g.tr.layout.controls) == 0 {
+				t.Fatal("no visible body controls")
+			}
+			for _, c := range g.tr.layout.controls {
+				if c.Rect[1] < sy+phoneFeedTop-0.2 {
+					t.Fatalf("header reported as enabled body: %+v, body starts %g", c, sy+phoneFeedTop)
+				}
+				point := image.Pt(int(c.Rect[0]+c.Rect[2]/2), int(c.Rect[1]+c.Rect[3]/2))
+				if _, ok := g.phoneColumnAt(p, point); !ok {
+					t.Fatalf("advertised control center rejected: %+v", c)
+				}
+			}
+			title := false
+			for _, text := range g.tr.layout.texts {
+				title = title || text.Text == cue.Title
+			}
+			if !title {
+				t.Fatal("clipping the body removed the visible header title")
+			}
+			c := g.tr.layout.controls[0]
+			point := image.Pt(int(c.Rect[0]+c.Rect[2]/2), int(c.Rect[1]+c.Rect[3]/2))
+			g.in = input{pdown: true, pup: true, click: true, mouse: point}
+			g.updatePhone()
+			if app == "feed" {
+				if !p.liked[0] {
+					t.Fatal("traced target did not like the visible post")
+				}
+			} else if p.closing == 0 {
+				t.Fatal("traced target did not activate the visible button")
+			}
+		})
+	}
+}
+
+// Cached extent lookup must not scan a large authored list again on every tick.
+func BenchmarkPhoneCachedExtent(b *testing.B) {
+	for _, app := range []string{"page", "feed"} {
+		for _, count := range []int{1, 10000} {
+			for _, hidden := range []bool{false, true} {
+				b.Run(fmt.Sprintf("%s/%d/hidden-tail-%t", app, count, hidden), func(b *testing.B) {
+					if err := gfx.LoadFonts(goregular.TTF, nil); err != nil {
+						b.Fatal(err)
+					}
+					defer gfx.Reset()
+					g := &Game{db: testgame.Load(b, nil)}
+					cue := data.PhoneCue{App: app}
+					for i := range count {
+						if app == "page" {
+							cue.Rows = append(cue.Rows, data.PhoneRow{Button: "Open", Hidden: hidden && i > 0})
+						} else {
+							cue.Posts = append(cue.Posts, data.PhonePost{Text: "Post", Hidden: hidden && i > 0})
+						}
+					}
+					p := newPhoneView(cue)
+					if app == "page" {
+						g.pageView(p)
+					} else {
+						g.feedView(p)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					for b.Loop() {
+						if app == "page" {
+							g.pageView(p)
+						} else {
+							g.feedView(p)
+						}
+					}
+				})
+			}
+		}
 	}
 }

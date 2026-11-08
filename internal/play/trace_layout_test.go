@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"io"
 	"math"
+	"strconv"
 	"testing"
 )
 
@@ -169,7 +170,7 @@ func TestScreenCanvasCoordinates(t *testing.T) {
 		texts:    []layoutText{{Text: "underlying", Rect: [4]float64{1, 2, 3, 4}}, {Text: "clipped", Rect: [4]float64{-10, 10, 30, 20}}, {Text: "outside", Rect: [4]float64{120, 0, 10, 10}}},
 		controls: []screenControl{{Label: "Continue", Rect: [4]float64{80, 80, 40, 40}}},
 	}}}
-	g.clipScreenRecords(1, 0, 100, 100)
+	g.clipScreenRecords(1, 0, 0, 100, 100)
 	g.transformScreenRecords(1, 0, func(x, y float64) (float64, float64) { return 200 - y, 300 + x })
 	f := g.tr.layout
 	if len(f.texts) != 2 || f.texts[0].Rect != ([4]float64{1, 2, 3, 4}) || f.texts[1].Rect != ([4]float64{170, 300, 20, 20}) || f.controls[0].Rect != ([4]float64{100, 380, 20, 20}) {
@@ -210,5 +211,21 @@ func TestCaptureRetainsScreenOnlyWhenRequested(t *testing.T) {
 		if string(g.opts.capture.screen) == first {
 			t.Fatal("changed draw retained old structure")
 		}
+	}
+}
+
+func TestCaptureStructureCollectionIsOptional(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
+			g := storyGame(t, Options{Location: "camp", Trace: io.Discard}, "schema_version: 4\n")
+			g.opts.capture = &captureStartup{structure: enabled}
+			g.traceFrameStart()
+			if (g.tr.layout != nil) != enabled {
+				t.Fatalf("structure=%t still collected layout=%t", enabled, g.tr.layout != nil)
+			}
+			if g.tr.drawn == nil || g.tr.stand == nil || g.pics.seen == nil {
+				t.Fatal("disabling structure disabled capture asset tracking")
+			}
+		})
 	}
 }

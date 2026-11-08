@@ -10,3 +10,41 @@ events:
   phone_page:
     - phone: {app: page, var: var.page, timeout: 1, timeout_result: unread, rows: [{text: Note}, {button: Read, id: read}]}
     - set: {var.finished: 1}
+  phone_flag_home:
+    - phone:
+        app: home
+        title: Studio phone
+        var: var.phone_app
+        rows:
+        - {button: Contacts, id: contacts, event: phone_flag_contacts, item: {title: Contacts, text: Studio directory}}
+        - {button: Chat, id: chat, event: phone_flag_chat, when: flag.contact_unlocked, item: {title: Chat, text: Messages from Guide}}
+        - {button: Feed, id: feed, event: phone_flag_feed, item: {title: Feed, text: Studio updates}}
+  phone_flag_contacts:
+    - phone:
+        app: contacts
+        title: Studio contacts
+        var: var.phone_contact
+        rows:
+        - {item: {title: Workshop, text: Front desk, value: '0100'}}
+        - {button: Guide, id: guide, event: phone_flag_chat, when: flag.contact_unlocked, item: {title: Guide, text: Studio guide, value: '0101'}}
+  phone_flag_chat:
+    - phone:
+        app: chat
+        title: Guide
+        history: true
+        var: var.phone_reply
+        messages:
+        - {day: Yesterday, from: Guide, text: Welcome to the studio.}
+        - {when: flag.contact_unlocked, from: Guide, text: Your workbench is ready.}
+        - {when: flag.reply_sent, mine: true, text: I will bring the tools.}
+        replies:
+        - {button: Ask about the exhibition, id: exhibition, when: flag.exhibition, set: {flag.exhibition_asked: true}}
+        - {button: Send - I will bring the tools., id: tools, when: 'flag.contact_unlocked and !flag.reply_sent', set: {flag.reply_sent: true}}
+  phone_flag_feed:
+    - phone:
+        app: feed
+        title: Studio updates
+        browse: true
+        posts:
+        - {who: Workshop, text: The studio opened last spring., time: Yesterday}
+        - {who: Guide, text: New workbenches are ready., time: Today, when: flag.contact_unlocked}

@@ -20,6 +20,14 @@ func TestPhoneChecks(t *testing.T) {
 		}
 	})
 	for _, tc := range []struct{ name, command, want string }{
+		{"history replies", `phone: {app: chat, history: true, messages: [{text: Hi, when: flag.met}], replies: [{button: Hello, when: '!flag.sent', set: {flag.sent: true}}]}`, ""},
+		{"reply needs history", `phone: {app: chat, messages: [{text: Hi}], replies: [{button: Hello}]}`, "replies need app chat with history: true"},
+		{"history only chat", `phone: {app: page, history: true, rows: [{text: Hi}]}`, "history is only for app chat"},
+		{"home navigation", `phone: {app: home, rows: [{button: Contacts, item: {title: Contacts, icon: x.png}, event: e, when: flag.met}]}`, ""},
+		{"contacts", `phone: {app: contacts, rows: [{item: {title: Ann}, when: flag.met}, {item: {title: Bob}, button: Chat, event: e}]}`, ""},
+		{"page cannot navigate", `phone: {app: page, rows: [{button: Chat, event: e}]}`, "event"},
+		{"unknown navigation", `phone: {app: home, rows: [{button: Chat, event: missing}]}`, "unknown event"},
+		{"hidden assets validated", `phone: {app: chat, messages: [{picture: missing.png, when: false}]}`, "no picture"},
 		{"timeout", `phone: {app: lock, var: var.timeout, timeout: 1, timeout_result: retry}`, ""},
 		{"waiting banner", `phone: {app: banner, var: var.notice, timeout: 4, notices: [{text: Hello}]}`, ""},
 		{"timeout no var", `phone: {app: lock, timeout: 1, timeout_result: retry}`, "needs var"},
@@ -35,7 +43,7 @@ func TestPhoneChecks(t *testing.T) {
 		{"feed", `phone: {app: feed, posts: [{who: ann, picture: x.png, likes: 3}, {video: {picture: x.png}}]}`, ""},
 		{"video", `phone: {app: video, hold: landscape, video: {picture: x.png, text: Clip}}`, ""},
 		{"puppet", `phone: {app: video, video: {puppet: p/rig.yaml}}`, ""},
-		{"unknown app", `phone: {app: mail, messages: [{text: Hi}]}`, `phone.app: app must be chat, feed, video, page, lock or banner, not "mail"`},
+		{"unknown app", `phone: {app: mail, messages: [{text: Hi}]}`, `phone.app: app must be chat, feed, video, page, lock, banner, home or contacts, not "mail"`},
 		{"unknown hold", `phone: {app: chat, hold: flat, messages: [{text: Hi}]}`, `phone.hold: hold must be portrait or landscape, not "flat"`},
 		{"no messages", `phone: {app: chat}`, `phone.messages: app chat needs messages`},
 		{"other list", `phone: {app: chat, messages: [{text: Hi}], posts: [{picture: x.png}]}`, `phone.posts: app chat does not show posts`},
