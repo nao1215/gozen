@@ -696,6 +696,28 @@ func TestTraceRecordsViewportChanges(t *testing.T) {
 }
 
 func TestReplayStartupViewport(t *testing.T) {
+	for _, tick := range []int{0, 1} {
+		t.Run(fmt.Sprintf("synthetic settled tick=%d", tick), func(t *testing.T) {
+			trace := fmt.Sprintf(`{"t":"start","tick":0,"version":2,"exact_version":3,"setup":{}}
+{"t":"viewport","tick":0,"width":640,"height":360,"scale":1}
+{"t":"viewport","tick":0,"width":1280,"height":720,"scale":1}
+{"t":"viewport","tick":%d,"width":1024,"height":576,"scale":1}
+{"t":"viewport","tick":2,"width":960,"height":540,"scale":1}
+`, tick)
+			path := filepath.Join(t.TempDir(), "trace.jsonl")
+			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			rep, err := loadReplay(path, &Options{Until: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := traceViewport{Width: 1024, Height: 576, Scale: 1}
+			if rep.startupViewport == nil || *rep.startupViewport != want {
+				t.Fatalf("startup viewport = %+v, want %+v", rep.startupViewport, want)
+			}
+		})
+	}
 	fsys := gameFiles(t)
 	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("schema_version: 11\nscreen: {width: 640, height: 360, native: true}\n")...)
 	for _, fullscreen := range []bool{false, true} {
@@ -707,7 +729,9 @@ func TestReplayStartupViewport(t *testing.T) {
 			}
 			g.in.script = nil
 			g.layout(640, 360)
-			g.layout(1280, 720) // Keep the final startup layout after settling.
+			g.layout(1280, 720)
+			g.tick = 1
+			g.layout(1024, 576) // The window manager settles after the first Update.
 			g.traceEnd()
 			if err := g.Close(); err != nil {
 				t.Fatal(err)
@@ -716,9 +740,9 @@ func TestReplayStartupViewport(t *testing.T) {
 			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			for _, size := range [][2]int{{1280, 720}, {1920, 1080}, {960, 540}} {
+			for _, size := range [][2]int{{1024, 576}, {1280, 720}, {960, 540}} {
 				t.Run(fmt.Sprint(size), func(t *testing.T) {
-					r, err := New(Options{FS: fsys, Replay: path, Until: 1, NoSound: true, headless: true, Store: savefile.MemStore()})
+					r, err := New(Options{FS: fsys, Replay: path, Until: 2, NoSound: true, headless: true, Store: savefile.MemStore()})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -728,18 +752,22 @@ func TestReplayStartupViewport(t *testing.T) {
 						}
 					})
 					r.in.script = nil
+					r.layout(1280, 720)
+					if err := r.Update(); err != nil || r.tick != 1 {
+						t.Fatalf("unsettled startup: tick=%d, err=%v", r.tick, err)
+					}
 					r.layout(float64(size[0]), float64(size[1]))
 					err = r.Update()
-					if size == [2]int{1280, 720} {
+					if size == [2]int{1024, 576} {
 						if err != nil || !r.untilShot {
 							t.Fatalf("matching viewport: capture=%t, err=%v", r.untilShot, err)
 						}
 					} else {
-						want := fmt.Sprintf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport 1280x720", size[0], size[1])
+						want := fmt.Sprintf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport 1024x576", size[0], size[1])
 						if err == nil || err.Error() != want {
 							t.Fatalf("mismatch error: %v, want %s", err, want)
 						}
-						if r.tick != 0 || r.untilShot || r.autoShot != "" {
+						if r.tick != 1 || r.untilShot || r.autoShot != "" {
 							t.Fatalf("mismatch advanced or scheduled capture: tick=%d, untilShot=%t, autoShot=%q", r.tick, r.untilShot, r.autoShot)
 						}
 					}
@@ -842,14 +870,16 @@ func TestExactReplayViewportChanges(t *testing.T) {
 		{name: "startup layout", current: startup},
 		{name: "startup device scale", current: retina},
 		{name: "startup native scale", current: nativeResize},
-		{name: "unchanged", tick: 1, current: initial},
-		{name: "device scale after start", tick: 1, current: retina, wantErr: true},
-		{name: "native scale after first tick", tick: 1, current: nativeResize, wantErr: true},
+		{name: "first tick layout", tick: 1, current: startup},
+		{name: "first tick device scale", tick: 1, current: retina},
+		{name: "unchanged", tick: 2, current: initial},
+		{name: "device scale after start", tick: 2, current: retina, wantErr: true},
+		{name: "native scale after first tick", tick: 2, current: nativeResize, wantErr: true},
 		{name: "native scale at later tick", tick: 60, current: nativeResize, wantErr: true},
-		{name: "fractional device scale", tick: 1, current: traceViewport{Width: 1920, Height: 1080, Scale: 1.5}, wantErr: true},
-		{name: "logical resize", tick: 1, current: startup, wantErr: true},
-		{name: "scale without matching pixels", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 2}, wantErr: true},
-		{name: "portrait layout", tick: 1, current: traceViewport{Width: 1280, Height: 720, Scale: 1, Tall: true}, wantErr: true},
+		{name: "fractional device scale", tick: 2, current: traceViewport{Width: 1920, Height: 1080, Scale: 1.5}, wantErr: true},
+		{name: "logical resize", tick: 2, current: startup, wantErr: true},
+		{name: "scale without matching pixels", tick: 2, current: traceViewport{Width: 1280, Height: 720, Scale: 2}, wantErr: true},
+		{name: "portrait layout", tick: 2, current: traceViewport{Width: 1280, Height: 720, Scale: 1, Tall: true}, wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var exact ExactReplay

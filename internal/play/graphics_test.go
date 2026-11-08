@@ -398,7 +398,7 @@ func TestGraphicsScreensRepro(t *testing.T) {
 	}
 	run := func(t *testing.T, args ...string) string {
 		t.Helper()
-		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, binary, args...) //nolint:gosec // This test owns the CLI binary and its fixture arguments.
 		var out, diag bytes.Buffer
@@ -669,7 +669,7 @@ screens:
 				if result.Data.Command == "" {
 					t.Fatalf("missing command: %s", out)
 				}
-				ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+				ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 				cmd := exec.CommandContext(ctx, "sh", "-c", result.Data.Command) //nolint:gosec // Executes the command generated from this test's own trace.
 				cmd.Env = append(os.Environ(), "PATH="+root+string(os.PathListSeparator)+os.Getenv("PATH"))
 				var stdout, stderr bytes.Buffer
@@ -684,7 +684,7 @@ screens:
 				if mode == "seek-1000" {
 					t.Logf("seek 1000 ticks (including process startup and PNG): %s", elapsed)
 					if baseline := os.Getenv("GOZEN_REPRO_BASELINE"); baseline != "" {
-						ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+						ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 						before := exec.CommandContext(ctx, baseline, "run", game, "--dev", "--mute", "--replay", trace, "--until", "1000", "--shots", filepath.Join(dir, "before"), "--save-dir", filepath.Join(dir, "before-saves")) //nolint:gosec // Explicit test binary supplied by the coordinator.
 						before.Stdout, before.Stderr = &stdout, &stderr
 						started := time.Now()

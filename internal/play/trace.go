@@ -903,7 +903,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				}
 			}
 		case "viewport":
-			if r.partial && tick == 0 {
+			if r.partial && tick <= 1 {
 				var viewport traceViewport
 				if err := json.Unmarshal(sc.Bytes(), &viewport); err != nil {
 					return nil, err
@@ -1720,9 +1720,9 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 		if err := json.Unmarshal(raw, &current); err != nil {
 			return err
 		}
-		// Startup layout can settle before Update advances the first game tick.
+		// Startup layout can settle around the first game tick.
 		// Later scale changes can change rendered dimensions even with the same logical layout.
-		if tick != 0 && v.viewport != nil && current != *v.viewport {
+		if tick > 1 && v.viewport != nil && current != *v.viewport {
 			return errors.New("cannot reproduce exactly: the recording changed the window size")
 		}
 		v.viewport = &current

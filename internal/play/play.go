@@ -966,7 +966,9 @@ func (g *Game) Update() error {
 		}
 	}
 
-	if g.tick == 0 && g.rep != nil && g.rep.startupViewport != nil {
+	// The initial Update can precede the window manager's settled layout.
+	// Compare at tick 1, after both runs have had their startup layout.
+	if g.tick == 1 && g.rep != nil && g.rep.startupViewport != nil {
 		w, h := g.pixels()
 		v := g.rep.startupViewport
 		if int(w) != v.Width || int(h) != v.Height {
