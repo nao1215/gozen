@@ -134,8 +134,76 @@ func TestPhoneSignedCatalogRestoresOfflineAndRejectsTampering(t *testing.T) {
 				t.Fatal(err)
 			}
 			app := cfg.Apps[0]
-			if _, err = restored.packages.catalog.Resolve(app.Package, app.Version, phoneEngineVersion()); err != nil {
-				t.Fatal(err)
+			selected, e := restored.packages.catalog.Resolve(app.Package, app.Version, phoneEngineVersion())
+			if e != nil {
+				t.Fatal(e)
+			}
+			selections, e := json.Marshal(map[string]gamepackage.Release{app.ID: selected})
+			if e != nil {
+				t.Fatal(e)
+			}
+			if e = st.Write("phone-apps.json", selections); e != nil {
+				t.Fatal(e)
+			}
+			for _, changed := range []bool{false, true} {
+				name := "newer pinned snapshot"
+				if changed {
+					name = "conflicting pinned snapshot"
+				}
+				t.Run(name, func(t *testing.T) {
+					// An author updates the trusted snapshot while players keep their signed cache.
+					pinned := snapshot.Catalog
+					pinned.Releases = append([]gamepackage.Release(nil), pinned.Releases...)
+					if changed {
+						pinned.Releases[0].Title += " changed"
+					} else {
+						added := pinned.Releases[0]
+						added.ID = "fixtures/another"
+						pinned.Releases = append(pinned.Releases, added)
+					}
+					body, e := json.Marshal(pinned)
+					if e != nil {
+						t.Fatal(e)
+					}
+					oldFile, oldHash := f["catalog.yaml"], cfg.CatalogSHA256
+					defer func() { f["catalog.yaml"], cfg.CatalogSHA256 = oldFile, oldHash }()
+					f["catalog.yaml"] = &fstest.MapFile{Data: body}
+					digest := sha256.Sum256(body)
+					cfg.CatalogSHA256 = hex.EncodeToString(digest[:])
+					cached, e := st.Read("phone-catalog.json")
+					if e != nil {
+						t.Fatal(e)
+					}
+					for range 2 {
+						restarted := makeGame()
+						e = restarted.preparePhonePackages()
+						if changed {
+							if e == nil {
+								t.Fatal("conflicting release metadata accepted")
+							}
+							continue
+						}
+						if e != nil {
+							t.Fatalf("newer trusted snapshot blocked by older signed cache: %v", e)
+						}
+						if len(restarted.packages.catalog.Releases) != len(pinned.Releases) {
+							t.Fatal("new trusted release lost")
+						}
+						if restarted.packages.selected[app.ID] != selected {
+							t.Fatal("installed selection lost")
+						}
+						if approved, lookupErr := restarted.packages.catalog.Resolve(app.Package, selected.Version, phoneEngineVersion()); lookupErr != nil || approved != selected {
+							t.Fatal("installed release no longer approved", lookupErr)
+						}
+						if e = restarted.acceptPhoneCatalog(snapshot); e == nil {
+							t.Fatal("network rollback to older signed snapshot accepted")
+						}
+					}
+					after, e := st.Read("phone-catalog.json")
+					if e != nil || !bytes.Equal(cached, after) {
+						t.Fatal("restoring a trusted snapshot rewrote its signed cache", e)
+					}
+				})
 			}
 			if err = g.acceptPhoneCatalog(gamepackage.SignedCatalog{Catalog: gamepackage.Catalog{Schema: 1}}); err == nil {
 				t.Fatal("catalog rollback accepted")
