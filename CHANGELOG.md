@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- Updating a host game to a newer pinned phone catalog no longer blocks its store when an older signed catalog is saved. Existing app selections are preserved; conflicting releases and network rollback are still rejected.
+
 ## v0.23.0 - 2026-11-08
 
 ### Added

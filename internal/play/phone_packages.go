@@ -110,10 +110,14 @@ func (g *Game) preparePhonePackages() error {
 		if e != nil {
 			return e
 		}
-		if e = gamepackage.ValidateUpdate(catalog, updated); e != nil {
+		if e = gamepackage.ValidateUpdate(catalog, updated); e == nil {
+			p.catalog = updated
+		} else if newer := gamepackage.ValidateUpdate(updated, catalog); newer != nil {
 			return e
 		}
-		p.catalog = updated
+		// A host update can pin a newer append-only snapshot than the saved
+		// signed catalog. Keep that trusted snapshot without rewriting a
+		// signature we cannot produce. Conflicting releases still fail closed.
 	} else if !errors.Is(e, fs.ErrNotExist) {
 		return e
 	}
