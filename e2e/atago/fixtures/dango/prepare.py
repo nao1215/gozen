@@ -5,6 +5,9 @@ import shutil
 import sys
 
 source, destination = map(Path, sys.argv[1:])
+# The full decision set inspects schemas, examples and image provenance, so keep
+# those inputs. The scenario uses -trimpath to reuse compiled packages despite
+# this different absolute root; hard links alone do not make Go cache keys equal.
 # Generated output and local configuration never belong in this fixture.
 excluded = {".git", ".cache", ".agents", ".codex", ".aws", "bin", "build", "dist",
             "node_modules", "public", "resources", "__pycache__", ".atago"}

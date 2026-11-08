@@ -52,9 +52,11 @@ Locally, check the configuration and artifacts as follows (go-licenses v2 and sy
 
 ```sh
 goreleaser check
-goreleaser release --snapshot --clean --skip=publish,sign
+GORELEASER_CURRENT_TAG="$(git describe --tags --match 'v[0-9]*' --abbrev=0)" goreleaser release --snapshot --clean --skip=publish,sign
 ./scripts/smoke_artifacts.sh dist
 ```
+
+Snapshot builds explicitly select an engine `v*` tag. The independently published `game-catalog` and `phone-*` tags are not engine versions; GoReleaser's exclusions match HEAD tags literally, so glob exclusions alone do not protect this case. The release smoke workflow uses the same engine-tag selection.
 
 The procedure: merge a pull request that turns Unreleased in the CHANGELOG into a version section, then put an annotated tag on the latest commit of main and push it. Confirm that all jobs of the Release workflow (smoke, release, provenance, verification) succeed and that the Homebrew cask was created.
 

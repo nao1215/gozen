@@ -733,7 +733,7 @@ func TestCIChangeScope(t *testing.T) {
 				t.Helper()
 				cmd := exec.CommandContext(t.Context(), "git", args...) //nolint:gosec // Fixed test commands in an isolated repository.
 				cmd.Dir = dir
-				cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
+				cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
 				if err := cmd.Run(); err != nil {
@@ -775,4 +775,70 @@ func TestCIChangeScope(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestSnapshotEngineTagSelection runs the workflow's real selection command with
+// engine and independent catalog tags both at HEAD and on nearer ancestors.
+func TestSnapshotEngineTagSelection(t *testing.T) {
+	for _, tool := range []string{"sh", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("snapshot workflow requires %s: %v", tool, err)
+		}
+	}
+	b, err := os.ReadFile("../../../.github/workflows/release-smoke.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow struct {
+		Jobs map[string]struct{ Steps []struct{ Name, Run string } }
+	}
+	if err := yaml.Unmarshal(b, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	var script string
+	for _, job := range workflow.Jobs {
+		for _, step := range job.Steps {
+			if step.Name == "Select engine snapshot tag" {
+				script = step.Run
+			}
+		}
+	}
+	if script == "" {
+		t.Fatal("snapshot engine selection missing")
+	}
+	dir := t.TempDir()
+	run := func(binary string, args ...string) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Fixed workflow command and isolated test repository.
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com", "GITHUB_ENV="+filepath.Join(dir, "selected.env"))
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s %v: %v stdout=%s stderr=%s", binary, args, err, &stdout, &stderr)
+		}
+	}
+	commit := func() { run("git", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "fixture") }
+	check := func(want string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, "selected.env"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		run("sh", "-e", "-c", script)
+		got, err := os.ReadFile(filepath.Join(dir, "selected.env")) //nolint:gosec // Test-owned workflow output.
+		if err != nil || strings.TrimSpace(string(got)) != "GORELEASER_CURRENT_TAG="+want {
+			t.Fatalf("selected %q, want %s: %v", got, want, err)
+		}
+	}
+	run("git", "init", "-q")
+	commit()
+	run("git", "tag", "v0.22.0")
+	commit()
+	run("git", "tag", "game-catalog")
+	run("git", "tag", "phone-counter-v1.0.0")
+	check("v0.22.0")
+	commit()
+	check("v0.22.0")
+	run("git", "tag", "v0.23.0")
+	check("v0.23.0")
 }

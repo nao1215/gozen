@@ -1,6 +1,6 @@
 # Phone games and extensible casual activities
 
-Phone hosting, approved packages and explicit installation are implemented for the upcoming 0.23.0 release. Runner gameplay and the casual activity model below remain proposals. Public catalog publication is tracked separately from the engine release.
+Phone hosting, approved packages and explicit installation are available in Gozen 0.23.0. Runner gameplay and the casual activity model below remain proposals. Public catalog publication is tracked separately from the engine release.
 
 ## Delivery order
 

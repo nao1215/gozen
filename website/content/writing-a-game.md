@@ -441,7 +441,7 @@ A line counts as read by its source: the speaker and the text as written, before
 
 ### A phone on the screen
 
-[Games inside the phone](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) are implemented for the upcoming 0.23.0 release, with separate child saves, bundled packages and optional installation. The other apps below display authored information and handle fixed choices. To propose a game for the catalog, use the [game registration form](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml); include a custom app icon and distribution licenses.
+[Games inside the phone](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) are available in Gozen 0.23.0, with separate child saves, bundled packages and optional installation. The other apps below display authored information and handle fixed choices. To propose a game for the catalog, use the [game registration form](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml); include a custom app icon and distribution licenses.
 
 `phone` shows a phone over the scene and waits until the player puts it down. It changes no state of its own, only what its buttons, calls and liked posts keep. Skip and Ctrl pass a phone that only shows, and stop at one that keeps a result (a button, a call, a liked post), as they stop at a choice. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
 

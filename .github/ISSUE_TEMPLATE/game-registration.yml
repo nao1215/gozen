@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Phone games are implemented for the upcoming 0.23.0 release. The public catalog has not been published yet. This form starts a review; submission does not automatically approve or publish a game. See the [authoring recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) and [release metadata contract](https://github.com/nao1215/gozen/blob/main/docs/registry/README.md).
+        Phone games are available in Gozen 0.23.0. The public catalog accepts reviewed game submissions. This form starts a review; submission does not automatically approve or publish a game. See the [authoring recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) and [release metadata contract](https://github.com/nao1215/gozen/blob/main/docs/registry/README.md).
         Submit only information and assets you have permission to share publicly.
   - type: input
     id: game-title

@@ -1,6 +1,6 @@
 # Games inside phone apps
 
-Phone games are implemented for the upcoming 0.23.0 release ([issue #159](https://github.com/nao1215/gozen/issues/159)). Desktop and browser tests cover opening games, returning to the host, independent saves and offline installed play. The public catalog has not been published yet; the examples use a local reviewed snapshot. See [ADR 0063](../decisions/0063-phone-game-packages.md) for runtime ownership and package trust.
+Gozen 0.23.0 can run standalone games inside the phone ([issue #159](https://github.com/nao1215/gozen/issues/159)). Desktop and browser tests cover opening games, returning to the host, independent saves and offline installed play. The public catalog includes Counter; the office examples use a local reviewed snapshot. See [ADR 0063](../decisions/0063-phone-game-packages.md) for runtime ownership and package trust.
 
 A child is a standalone Gozen game packaged as a ZIP. A host declares the games it offers, opens them from ordinary phone events and keeps running when the child closes. The child has its own assets, state and saves. It cannot open another child. Child scores do not change the host's story variables.
 

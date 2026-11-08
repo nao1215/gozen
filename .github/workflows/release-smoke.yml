@@ -87,6 +87,13 @@ jobs:
       - name: Install go-licenses
         run: go install github.com/google/go-licenses/v2@v2.0.1
 
+      # GoReleaser's HEAD-tag ignore list uses exact matches, unlike describe's
+      # glob exclusions. Select the engine tag explicitly for snapshot versions.
+      - name: Select engine snapshot tag
+        run: |
+          engine_tag=$(git describe --tags --match 'v[0-9]*' --abbrev=0)
+          echo "GORELEASER_CURRENT_TAG=$engine_tag" >> "$GITHUB_ENV"
+
       - name: Build artifacts (snapshot, no publish)
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
