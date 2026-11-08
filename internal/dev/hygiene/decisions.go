@@ -29,6 +29,7 @@ func Decisions() []Decision {
 		{"0047", "headless pictures", "Headless phone clips must advance without decoding picture pixels.", "Keep drawing resource preparation outside the headless Update path.", []Test{{"internal/play", "TestPhoneHeadlessClipDoesNotReadPuppetPixels"}, {"internal/play", "TestSimulatePicturesHaveTheirSize"}}},
 		{"0058", "record facts without judgments", "Layout, contrast and play measurements do not define game quality.", "Record facts without adding diagnostics or failure exits for their values.", []Test{{"cmd/gozen", "TestTraceFactsNeverFailCheck"}}},
 		{"yaml", "general-purpose YAML words", "New words need a schema, documentation, E2E coverage and two distinct examples.", "Document and exercise the YAML word; remove obsolete baseline exceptions rather than adding any.", []Test{{"internal/dev/hygiene", "TestYAMLWords"}}},
+		{"speed", "speed budget", "Runtime measurements stay factual while maintainer tests bound workload costs.", "Inspect the named section and restore its allocation, heap or time budget; run graphics budgets on a desktop.", []Test{{"internal/dev/perf", "TestSpeedBudget"}, {"internal/play", "TestTracePerformance"}}},
 		{"coverage", "decision coverage", "Every registered decision must have enforcing tests on the lint and CI path.", "Register existing unconditional tests and keep make lint invoking dango.", []Test{{"internal/dev/hygiene", "TestDecisionCoverage"}}},
 	}
 }

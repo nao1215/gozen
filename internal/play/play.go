@@ -670,6 +670,7 @@ func New(opts Options) (_ *Game, err error) {
 			g.emit("unsupported_script", traceLine{"operation": "guarantee-recruit"})
 		}
 		s.memoNote = func(kind, text string) { g.quickMemo(kind, text, memo.LLM) }
+		s.mark = g.traceMark
 		s.snapshot = func() { g.emit("snapshot", traceLine{"state": g.traceSummary()}) }
 		s.pick = func(in *input, text string) {
 			if err := g.scriptPick(in, text); err != nil {
@@ -1010,6 +1011,12 @@ func (g *Game) Update() error {
 		}
 		return nil
 	}
+	if g.opts.Trace != nil && !g.opts.headless && g.tr != nil && !g.tr.ended {
+		if g.tr.performance == nil {
+			g.tr.performance = newTracePerformance(g.tick)
+		}
+		defer g.tr.performance.updated(time.Now())
+	}
 	g.tick++
 	defer func(tick int) {
 		// Memo and tag editors roll the tick back while they hold the game.
@@ -1210,6 +1217,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 	g.traceDrawGap(g.tick - 1)
+	if g.tr != nil && g.tr.performance != nil && !g.tr.ended {
+		defer g.tr.performance.drawn(time.Now())
+	}
 	if g.waitsForDolls() {
 		g.pictureDeadline = time.Now().Add(10 * time.Second)
 		defer func() { g.pictureDeadline = time.Time{} }()

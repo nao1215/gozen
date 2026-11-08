@@ -87,6 +87,7 @@ var kinds = map[string]bool{
 	"screen_refused":      true,
 	"shot":                true,
 	"skip":                true,
+	"section":             true, // Performance observation only.
 	"snapshot":            true,
 	"sortie":              true,
 	"spot":                true,

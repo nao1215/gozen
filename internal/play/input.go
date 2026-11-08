@@ -433,6 +433,7 @@ type script struct {
 
 	// snapshot writes the whole game state to the trace (the snapshot command).
 	snapshot func()
+	mark     func(string)
 	// pick confirms the visible control whose label contains a text, and look
 	// writes what can be acted on now (the pick and look commands).
 	pick func(in *input, text string)
@@ -651,6 +652,10 @@ func parseScript(src string) (*script, error) {
 		case "look":
 			if len(f) != 1 {
 				return nil, fmt.Errorf("script line %d: look takes no arguments", line)
+			}
+		case "mark":
+			if len(f) != 2 {
+				return nil, fmt.Errorf("script line %d: mark NAME", line)
 			}
 		case "snapshot":
 			if len(f) != 1 {
@@ -1119,6 +1124,12 @@ func (s *script) step(in *input) {
 			s.pc++
 			s.wait = 2
 			return
+		case "mark":
+			if s.mark != nil {
+				s.mark(c.arg)
+			}
+			s.pc++
+			continue
 		case "snapshot":
 			if s.snapshot != nil {
 				s.snapshot()

@@ -18,15 +18,25 @@ event="${1:-${GITHUB_EVENT_NAME:-}}"
 out="${GITHUB_OUTPUT:-/dev/stdout}"
 
 emit() {
+  echo "perf=${perf}" >> "${out}"
   echo "code=$1" >> "${out}"
   echo "code changed: $1"
   exit 0
 }
 
+perf=true
 [ "${event}" = pull_request ] || emit true
 
 files="$(git diff --name-only HEAD^1 HEAD)" || emit true
 [ -n "${files}" ] || emit true
+
+perf=false
+while IFS= read -r f; do
+  case "${f}" in
+    *.md | docs/* | website/*) ;;
+    internal/play/* | internal/layer*/* | internal/headless/* | internal/battle/* | internal/rpg/* | internal/event/* | internal/world/* | internal/text/* | internal/expr/* | internal/react/* | internal/savefile/* | internal/clihelp/* | internal/cliio/* | e2e/atago/fixtures/game/assets/regular.ttf | internal/dev/perf/* | internal/dev/hygiene/* | cmd/gozen/* | cmd/gozen-player/* | bench/* | go.mod | go.sum | .github/workflows/ci.yml | .github/workflows/bench.yml | scripts/ci_changes.sh) perf=true ;;
+  esac
+done <<< "${files}"
 
 while IFS= read -r f; do
   case "${f}" in

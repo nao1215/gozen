@@ -411,3 +411,28 @@ scenarios:
       stderr:
         json:
         - {path: $.code, equals: GZN2101}
+
+- name: trace sections report numbers without verdicts
+  steps:
+  - fixture:
+      file: sections.jsonl
+      content: |
+        {"t":"section","tick":90,"name":"pictures","scope":"mark","frames":60,"ticks":60,"fps":60,"tps":60,"slow_frame_share":1,"heap_inuse_bytes":999999999,"allocations_per_frame":1234}
+  - run:
+      command: gozen trace sections.jsonl --only section
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: 'pictures (mark): 60 frames, 60 ticks, 60.00 FPS, 60.00 TPS, heap 999999999 bytes, slow 1.0000, allocations/frame 1234.00'
+  - run:
+      command: gozen trace sections.jsonl --only section --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        contains: '"allocations_per_frame":1234'
+  - run:
+      command: gozen trace sections.jsonl --check
+  - assert:
+      exit_code: 0
+      stderr:
+        equals: ''

@@ -60,6 +60,7 @@ Running the game with `--script`, `--trace`, `--replay` and `--record` is descri
 - In a development capture, `battle-hp enemy|party INDEX HP` sets a living battle unit's HP by zero-based troop or party index. HP must be from 1 through that unit's maximum. The trace records each setup as `battle_setup`; it does not count as a damage event.
 - `battle-log off` hides the appended tactic decision text and its on-screen button during a scripted development battle capture. `battle-log on` restores both; decision trace events remain available.
 - Recording needs a script, automatic play or a replay. A long replay and the integrated run with ffmpeg are not confirmed in the local T3 environment.
+- `mark NAME` starts a named performance section without consuming a tick. With `gozen run --trace`, the next mark or run end writes its frame and tick numbers; see [speed budgets](speed-budgets.md). Headless scripts accept marks without collecting frame performance.
 - `snapshot` writes `{"t":"snapshot","state":...}` with the state of `end`, without taking a tick.
 - `window W H` sets the window's inside to W×H device-independent pixels and waits 10 ticks, so a capture takes the stream screens' portrait or fitted landscape layout ([ADR 0050](../decisions/0050-stream-screens-fit-the-window.md)). Without a window (`gozen sim script`) it does nothing. In the native planning workshop, scripted captures use those dimensions: the 2560×1080 scenario must assert width 2560 for every view, just as the 1920×1080 and 3840×2160 scenarios assert their own widths. This checks the authored viewport.
 - `gozen sim script` (`play.Simulate`, [ADR 0046](../decisions/0047-headless-scripted-runs.md)) runs the same `Game` without `Draw` or the Ebitengine loop. A pending script shot pauses `Update` only while `rendering` is set, and the pause comes before the tick advances, so the ticks are those of `run`. Pictures are not decoded ahead, and `pictures.load` gives an empty image of the size in the file header (`picdecode.Size`). Interactive lines (`--script -`) are appended by `script.more` when the commands run out; `Simulate` writes `ready` and flushes before each read. `TestGraphicsSimulateMatchesRun` compares both paths line by line, without the drawing lines and `music`.
@@ -226,6 +227,7 @@ confirmation dialogs, title/save/system menus, authored lists and surface contro
 | `gap` | Script scheduling only; resulting input ticks are recorded. |
 | `shot` | Pixel output only; no game-state mutation. |
 | `snapshot` | Observation only (`snapshot`). |
+| `mark` | Performance observation only (`section`); no game-state mutation. |
 | `look` | Observation only (`look`). |
 | `quit` | Ends the recording; the trace end bounds ordinary replay. |
 

@@ -107,3 +107,69 @@ benchmarks:
     commands:
       gozen:
         command: ["${artifact}", sim, script, "${head_root}/../e2e/atago/fixtures/workboard", --start, workshop, --script, "${head_root}/workboard.txt"]
+
+  - name: speed huge-map
+    tags: [graphics, speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", huge-map]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "run", "${workdir}/fixtures/huge-map", "--dev", "--mute", "--seed", "1", "--start", "room", "--script", "${workdir}/fixtures/huge-map/input.txt", "--shots", "${workdir}/shots", "--save-dir", "${workdir}/saves"]
+
+  - name: speed pictures-4k
+    tags: [graphics, speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", pictures-4k]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "run", "${workdir}/fixtures/pictures-4k", "--dev", "--mute", "--seed", "1", "--start", "room", "--script", "${workdir}/fixtures/pictures-4k/input.txt", "--shots", "${workdir}/shots", "--save-dir", "${workdir}/saves", "--event", "workload"]
+
+  - name: speed standing-pictures
+    tags: [graphics, speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", standing-pictures]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "run", "${workdir}/fixtures/standing-pictures", "--dev", "--mute", "--seed", "1", "--start", "room", "--script", "${workdir}/fixtures/standing-pictures/input.txt", "--shots", "${workdir}/shots", "--save-dir", "${workdir}/saves", "--event", "workload"]
+
+  - name: speed phone-video
+    tags: [graphics, speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", phone-video]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "run", "${workdir}/fixtures/phone-video", "--dev", "--mute", "--seed", "1", "--start", "room", "--script", "${workdir}/fixtures/phone-video/input.txt", "--shots", "${workdir}/shots", "--save-dir", "${workdir}/saves", "--event", "workload"]
+
+  - name: speed long-conversation
+    tags: [graphics, speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", long-conversation]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "run", "${workdir}/fixtures/long-conversation", "--dev", "--mute", "--seed", "1", "--start", "room", "--script", "${workdir}/fixtures/long-conversation/input.txt", "--shots", "${workdir}/shots", "--save-dir", "${workdir}/saves", "--event", "workload"]
+
+  - name: speed large-sim
+    tags: [speed]
+    warmup: 1
+    runs: 5
+    setup:
+      - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", large-sim]
+        cwd: "${head_root}/.."
+    commands:
+      gozen:
+        command: ["${artifact}", "sim", "battle", "${workdir}/fixtures/large-sim", "--troop", "lesson", "-n", "5000", "--seed", "1"]

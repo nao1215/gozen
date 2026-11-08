@@ -36,6 +36,7 @@ import (
 )
 
 type tracer struct {
+	performance *tracePerformance
 	// inAct suppresses redundant panel mutation records already replayed by act.
 	inAct     bool
 	focusLost bool
@@ -1329,6 +1330,7 @@ func (g *Game) traceEnd() {
 	}
 	g.traceDrawGap(g.tick)
 	g.tr.ended = true
+	g.tracePerformanceEnd()
 	g.traceState(true)
 	if g.rep != nil {
 		g.rep.finish(g)

@@ -6,6 +6,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Maintenance
 
+- Add factual per-section trace measurements with script `mark NAME`, generated speed-budget workloads, maintainer allocation/heap/time checks, and parallel path-filtered graphics benchmarks.
+
 - Add the maintainer-only `go tool dango lint`, with decision metadata, executable policy checks, structured results and CI enforcement, plus a `repro` wrapper sharing trace bundle generation; no author command or release binary is added.
 
 ### Added

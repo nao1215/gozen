@@ -199,6 +199,11 @@ func (c *command) traceCmd() clihelp.Operation {
 				if sh := str(l["shot"]); sh != "" {
 					what += "  [" + sh + "]"
 				}
+			case "section":
+				what = fmt.Sprintf("%s (%s): %v frames, %v ticks, %.2f FPS, %.2f TPS, heap %.0f bytes", str(l["name"]), str(l["scope"]), l["frames"], l["ticks"], num(l["fps"]), num(l["tps"]), num(l["heap_inuse_bytes"]))
+				if _, ok := l["slow_frame_share"]; ok {
+					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", num(l["slow_frame_share"]), num(l["allocations_per_frame"]))
+				}
 			case "layout":
 				what = layoutText(l)
 			case "state":
