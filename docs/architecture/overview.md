@@ -35,4 +35,4 @@ flowchart TD
 
 The engine retains YAML features for battles, novels, campaigns, maps and stacked spaces. Package moves do not change schema or save versions. See [battle forms](battle-forms.md), [maps and painted scenes](scenes.md), and the [stacked-space demo](../examples/stacked-spaces.md). Narrative speakers need no combat class or party. YAML command aliases call events, author screens display conditional entries with optional event commands, and `respond` uses reaction books through the ordinary dialogue and save flow ([ADR 0043](../decisions/0043-narrative-authoring.md)). The standalone chat implementation remains internal; dialogue history has one owner. Markdown reports use `github.com/nao1215/markdown` in CLI adapters and the reference-page generator. Runtime diagnostics expose plain entries and terminal text, so browser players do not depend on a filesystem-oriented report library.
 
-[Phone games and casual activities](casual-activities.md) distinguishes implemented phone hosting and package installation from proposed YAML rules for short games.
+[Phone games](phone-games.md) describes phone hosting, the package registry and installation.

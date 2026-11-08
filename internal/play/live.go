@@ -350,7 +350,6 @@ func keepers(ss []scene) []scene {
 }
 
 func (g *Game) reloadState(now, save []byte, inEvent bool, name string, lines int, answers []int, rnd []byte) string {
-	games := g.events.GameResults()
 	uppers := keepers(g.stack[1:])
 	banner := g.bannerFloor
 	baseRng := g.st.Rand
@@ -409,7 +408,7 @@ func (g *Game) reloadState(now, save []byte, inEvent bool, name string, lines in
 		}
 		return true
 	}
-	if g.liveReplayTo(begin, lines, answers, games, nil) {
+	if g.liveReplayTo(begin, lines, answers, nil) {
 		msg = lang.T("読み直した（行が減ったので最後の行）")
 	}
 	return msg
@@ -417,7 +416,6 @@ func (g *Game) reloadState(now, save []byte, inEvent bool, name string, lines in
 
 func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 	lines, answers := g.evLines, g.evAnswers
-	games := g.events.GameResults()
 	autoRead := g.autoRead
 	uppers := keepers(g.stack[at+1:])
 	g.keepScenes(g.stack[:at])
@@ -456,7 +454,7 @@ func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 		begin()
 		return msg
 	}
-	if g.liveReplayTo(begin, lines, answers, games, alive) {
+	if g.liveReplayTo(begin, lines, answers, alive) {
 		msg = lang.T("読み直した（行が減ったので最後の行）")
 	}
 	if !alive() {
@@ -479,19 +477,19 @@ func (g *Game) dropReplay(r *sceneReplay, at int) {
 	g.clearCast()
 }
 
-func (g *Game) liveReplayTo(begin func() bool, lines int, answers []int, games []rpg.GameOutcome, alive func() bool) (short bool) {
+func (g *Game) liveReplayTo(begin func() bool, lines int, answers []int, alive func() bool) (short bool) {
 	if !begin() {
 		return false
 	}
 	name := g.evName
-	seen := g.liveCatchUp(&fastTo{lines: lines, answers: answers, games: games}, name, alive)
+	seen := g.liveCatchUp(&fastTo{lines: lines, answers: answers}, name, alive)
 	if g.evLines >= lines && g.talk.active && (alive == nil || alive()) {
 		return false
 	}
 	if seen <= 0 || seen >= lines || !begin() {
 		return false
 	}
-	g.liveCatchUp(&fastTo{lines: seen, answers: answers, games: games}, name, alive)
+	g.liveCatchUp(&fastTo{lines: seen, answers: answers}, name, alive)
 	return true
 }
 

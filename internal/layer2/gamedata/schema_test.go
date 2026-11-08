@@ -39,13 +39,8 @@ type fieldContract struct {
 
 // Types, numeric contracts and command tags are read from the implementation. Only context-dependent inheritance and references are supplemented.
 var schemaDefaults = map[string]string{
-	"RunnerDefinition.width": "9", "RunnerDefinition.view_rows": "16", "RunnerDefinition.player_row": "view_rows - 3",
-	"RunnerDefinition.start_x": "width / 2", "RunnerDefinition.radius": "0.15", "RunnerDefinition.speed": "3",
-	"RunnerDefinition.steer_speed": "7", "RunnerDefinition.steer_start": "steer_speed", "RunnerDefinition.boost_max": "1",
-	"RunnerDefinition.max_lives": "lives", "RunnerDefinition.max_stock": "stock", "RunnerDefinition.finish_rows": "view_rows",
-	"RunnerDefinition.ahead": "A row of empty cells",
-	"Streams.missing_voice":  "speech (empty also permits browser speech synthesis)",
-	"StreamAffection.steps":  "0, 30, 150, 600, 3000", "StreamAffection.comment": "1", "StreamAffection.reply": "2",
+	"Streams.missing_voice": "speech (empty also permits browser speech synthesis)",
+	"StreamAffection.steps": "0, 30, 150, 600, 3000", "StreamAffection.comment": "1", "StreamAffection.reply": "2",
 	"StreamAffection.answer": "5", "StreamAffection.tip_per": "100", "StreamAffection.stayed": "10",
 	"Streams.answer_chance": "0.6, 0.75, 0.9, 1, 1 (one for each step of the default steps)",
 	"StreamEcho.max_runes":  "24, with chance 0.35 when chance is left out too", "StreamEcho.chance": "0, or 0.35 when max_runes is left out too",
@@ -358,14 +353,6 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	}
 
 	key := owner.Name() + "." + name
-	if owner == reflect.TypeFor[RunnerDefinition]() || owner == reflect.TypeFor[RunnerStage]() || owner == reflect.TypeFor[RunnerTile]() || owner == reflect.TypeFor[RunnerVisuals]() || owner == reflect.TypeFor[RunnerReaction]() || key == "Game.runners" || key == "Command.run_game" || owner.Name() == "RunGameCommand" {
-		c.Version = "12"
-	}
-	if owner == reflect.TypeFor[RunnerDefinition]() {
-		if _, ok := schemaDefaults[key]; ok {
-			c.Zero = "Uses the default"
-		}
-	}
 	if owner == reflect.TypeFor[IDRef]() || owner == reflect.TypeFor[NovelWindow]() || key == "UIStyle.quick_menu" || key == "UIStyle.novel_window" || key == "UIStyle.choice_position" || key == "UIStyle.title" || owner == reflect.TypeFor[TitleMenu]() || key == "MaterialStyle.opacities" {
 		c.Version = "10"
 	}

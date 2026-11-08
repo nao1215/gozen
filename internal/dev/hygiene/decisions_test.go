@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/goccy/go-yaml"
 
@@ -305,97 +304,97 @@ func TestCommandExecution(t *testing.T) {
 const (
 	yamlBaselineLimit = 744
 	yamlBaseline      = `
-acceleration accent act action activation activity activity_attributes
-add add_state addresses admission advice affect affection
+acceleration accent accepts act action activation activity activity_attributes
+add add_state addresses admission advice affect affection affiliation
 after_win again all anim answer answer_chance answers any
 appear args armies army asides ask assignee at_point
 attack_skill attribute attributes auto auto_start auto_tactics auto_tempo auto_wait
 avoid away back back_weight backdrop backgrounds backlog bad
-badge balloon bar bare bars battle_ai_history battle_background
-battle_foe_names battle_fx battle_message battle_music beats_per_bar before below
-bestiary blink block_lines blocks body bold
-bonus bonus_item bonus_skill boss boss_win_music bottom bounce
-bpm breed breeding bridges brightness browse burnup
-buttons buy c camera_off
-camera_on can_escape cap_hours caption capture card_bubbles
+badge balloon band bar bare bars battle_ai_history battle_background
+battle_foe_names battle_fx battle_message battle_music beats_per_bar before behind below
+bestiary blink block_lines blocked blocks blur body bold
+bonus bonus_item bonus_skill border boss boss_win_music bottom bounce
+bounds bpm breed breeding bridges brightness browse burnup
+bust buttons buy c call_view camera camera_off
+camera_on can_escape cap_hours caption capture card card_bubbles carousel
 carry ceiling ceiling_texture cg_review cgs chance channels char
-charge checkpoint child children choice_position chrome clash
+charge checkpoint child children choice_position chrome clash clear
 col colors columns command comment compact complete condition
-consume controls cost count counter cover crit
-critical critical_rate critical_ratio crowd currency cursor cut
+consume control controls cost count counter cover crit
+critical critical_rate critical_ratio crowd currency cursor cut cutin
 cutin_box cutin_lines cx damage damage_rate darkness data data_version
-date date_format date_link deadline deal defeat defend
+date date_format date_link day deadline deal defeat defend
 defense dependency_ratio depth depth_bias desc description destination detail
-dim dir dive door drain
-draw_roads drops duo_chance duos each east
-echo edge effect effects element elements enabled
+dim dir dive done door dot drag drain
+draw_roads drop drops due duo_chance duos each east
+echo edge effect effects element elements else enabled
 end_turn end_turn_button endings endure enemy enter entity episodes
-equip equip_slots equip_stones escape evening event_label event_when
+equip equip_slots equip_stones escape evening event_label event_when every
 exclusive exp expr expression_depth expression_length extra face_at face_box
 face_expr face_rules face_shade face_shade_top face_shape families family far
 fatal field_notices fight fighters file_lines files filled filter_label
 finish first first_person fit flag flash flat floor
-floor_texture floors foe_scale foe_scale_when foes fonts
+floor_texture floors flows focus foe_scale foe_scale_when foes fonts
 footer for forecast_label fps frame free_move front_weight fronts
-full full_color fusions fx gallery game_over garrison
+full full_color fullscreen fusions fx gallery game_over garrison
 gauge generate give goods greet greeting grid group
 groups guard_rate guard_skill guest guest_backdrops guests hair hard
 haze head header header_face header_tint heading heal held
-hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight
-hit hits hitstop host hp hp_triggers hurt
-icon image_height in indexed_names instant instead
+hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
+hit hits hitstop  host hp hp_triggers hurt
+icon image_height images in indexed_names initial instant instead
 into intro item items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
-leave ledger ledgers left legacy_keys legend_rank level_scale
+leave ledger ledgers left legacy_keys legend_rank level_scale light
 likes lines live lobby locked logo look looks
 loop_start loops lore lose lost manual mark mark_labels
-marker markers marks mask match max
+marker markers marks mask match material materials max
 max_level max_party max_runes max_soldiers max_value max_zoom maximum maximum_key
-meet memo menus merge met meters might
+meet memo menus merge met meter meters might
 milestone min min_block_nodes min_level min_plus min_share minutes missed
 missing_voice monster_class monster_families mood mood_names moods morning motion
 mp music_pictures muted name_tag nav near new no_map
 no_menu no_standing node north note notice novel_window now
 npc observation observations observed ok on on_appear on_draw
 on_enter on_escape on_leave on_lose on_turn on_turn_end on_turn_end_allies on_user
-on_win one_shot one_way only opacities open_wall
+on_win one_shot one_way only opacities opacity open_wall
 optional options order_view origin_u origin_v others_title out outfit
 over over_size page pages pairs pan paper param
-params parent parents passives patterns per_char
+params parent parents passives  patterns peek per_char
 per_hour per_soldier per_turn percent period persist phase phone_accent
 phone_background phone_muted phone_text picture_fit pictures pin_end_turn pitch place
-planned_label play policies policy pop posts
-power preferred preset price primary primary_card primary_text
-profile prompt q qr question
-quiet r rank rare_rank reaction read
+planned planned_label play policies policy pop portrait posts
+power preferred preset price primary primary_card primary_text priority
+profile profile_book progress prompt q qr question quick_menu
+quiet r rank rare_rank reaction reactions read reason
 recoil recover recruit rect refraction region_borders region_numbers region_roads
 release remove remove_on_damage remove_state repetitions reply reposts
-requires reserve reset_actor reset_tree resist respond rest
+requires reserve reset_actor reset_tree resist respond rest restart
 restore_checkpoint restrict restrict_chance resume_to retain retry revive ring
 rise roamers rollback roofs rooms rope rounds row
 rule rules sacrifice safe safe_area sample sample_freshness sample_label
-scene_review scenes schedule screen_operations scroll search seed
+save scene_review scenes schedule screen_operations scroll search seed
 seed_xor seen selection_panel selector self self_backdrop self_label self_stage
-sell send sex sex_ratio sfx sfx_vary shake
-shape shop shops short side sight
+sell send sex sex_ratio sfx sfx_vary shadow shake
+shape share shop shops short side sight sign
 simple_tactics size skill skill_slots skip sky slide slot
 soldiers solid song songs sortie south sp sp_apply
 sp_decline sp_pitch sp_suggest speaking speech spent spin stage_drop
-stage_framing stage_puppets stage_scale staging stairs stand_ins star_bonus
+stage_framing stage_puppets stage_scale stages staging stairs stand_ins star_bonus
 start_sp stat state_resist states stats_by stay stayed step
 step_ticks still stone_apply stone_choose stone_decline stone_sets stone_suggest stone_wearer
-stones stop streak stream streams subject
-subtitle subtitle_size subtitle_tracking summon summon_max symbol tabs
-tactic tactic_actions tactic_conditions tactic_presets tactic_targets tactics tagline
+stones stop streak stream streams strict style subject
+subtitle subtitle_size subtitle_tracking summon summon_max surfaces symbol tabs
+tactic tactic_actions tactic_conditions tactic_presets tactic_targets tactics tag tagline
 take talk_on_enter talk_portrait tempo terms terrain text_expr text_key
-theme thickness things tile timeout timeout_result timing
+theme thickness things ticket tile timeout timeout_result timing
 tint tip_lines tip_per tips title_art title_background title_figures title_music
 title_text today token tone tones top total tracking
 transform transform_clear transform_hp travel_speed tree turn turn_speed turn_ticks
-unbounded underside unit units unknown unlock until
+unavailable unbounded underside unit units unknown unlock until
 until_taken unused_definitions url values variance vars verbs via
 video visible voice voice_fallback voices volume wait walk_speed
-walked wall wall_regions wallpaper_strength warning_key wash web
+walked wall wall_regions wallpaper wallpaper_strength warning_key wash web
 week_start weekdays weekdays_off weight west wheel_up win win_music
 window window_opacity with won written_in x y zoom
 `
@@ -458,11 +457,7 @@ func TestYAMLWords(t *testing.T) {
 		case strings.HasSuffix(name, ".md"):
 			docs += string(b)
 		case strings.HasSuffix(name, ".atago.yaml"):
-			referenced, err := e2eFixtureYAML(os.DirFS("../../.."), name, b)
-			if err != nil {
-				return err
-			}
-			specs += string(b) + "\n" + referenced
+			specs += string(b)
 		case strings.HasPrefix(name, "examples/") || strings.Contains(name, "/testdata/") || strings.Contains(name, "/fixtures/"):
 			fixtures[name] = string(b)
 		}
@@ -521,79 +516,6 @@ func TestYAMLWords(t *testing.T) {
 		if !keys[key] {
 			t.Errorf("%s: obsolete YAML baseline exception", key)
 		}
-	}
-}
-
-// e2eFixtureYAML follows only fixture steps actually declared by a scenario.
-// Source paths use the same spec-relative convention as atago, within the repo.
-func e2eFixtureYAML(fsys fs.FS, spec string, body []byte) (string, error) {
-	var document struct {
-		Scenarios []struct {
-			Steps []struct {
-				Fixture struct {
-					From string `yaml:"from"`
-				} `yaml:"fixture"`
-			} `yaml:"steps"`
-		} `yaml:"scenarios"`
-	}
-	if err := yaml.Unmarshal(body, &document); err != nil {
-		return "", fmt.Errorf("%s: %w", spec, err)
-	}
-	var out strings.Builder
-	seen := map[string]bool{}
-	for _, scenario := range document.Scenarios {
-		for _, step := range scenario.Steps {
-			from := step.Fixture.From
-			if ext := path.Ext(from); ext != ".yaml" && ext != ".yml" {
-				continue
-			}
-			name := path.Join(path.Dir(spec), from)
-			if path.IsAbs(from) || strings.Contains(from, "\\") || !fs.ValidPath(name) {
-				return "", fmt.Errorf("%s: YAML fixture path %q escapes the repository", spec, from)
-			}
-			if seen[name] {
-				continue
-			}
-			b, err := fs.ReadFile(fsys, name)
-			if err != nil {
-				return "", fmt.Errorf("%s: YAML fixture %s: %w", spec, from, err)
-			}
-			var value any
-			if err := yaml.Unmarshal(b, &value); err != nil {
-				return "", fmt.Errorf("%s: YAML fixture %s: %w", spec, from, err)
-			}
-			seen[name] = true
-			out.Write(b)
-			out.WriteByte('\n')
-		}
-	}
-	return out.String(), nil
-}
-
-func TestE2EFixtureYAML(t *testing.T) {
-	files := fstest.MapFS{
-		"e2e/fixtures/game.yaml":   {Data: []byte("runners: {}\n")},
-		"e2e/fixtures/broken.yml":  {Data: []byte("[\n")},
-		"e2e/fixtures/unused.yaml": {Data: []byte("unreferenced: true\n")},
-	}
-	for _, tc := range []struct {
-		name, from, want string
-		bad              bool
-	}{
-		{"relative", "../fixtures/game.yaml", "runners: {}\n\n", false},
-		{"missing YAML", "../fixtures/missing.yaml", "", true},
-		{"invalid YAML", "../fixtures/broken.yml", "", true},
-		{"non YAML", "../fixtures/absent.png", "", false},
-		{"outside repository", "../../../outside.yaml", "", true},
-		{"absolute", "/outside.yaml", "", true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			body := []byte("scenarios:\n- steps:\n  - fixture: {file: game.yaml, from: '" + tc.from + "'}\n  - fixture: {file: again.yaml, from: '" + tc.from + "'}\nmetadata: {fixture: {from: ../fixtures/unused.yaml}}\n")
-			got, err := e2eFixtureYAML(files, "e2e/suites/example.atago.yaml", body)
-			if (err != nil) != tc.bad || got != tc.want {
-				t.Fatalf("got %q, %v; want %q, error=%v", got, err, tc.want, tc.bad)
-			}
-		})
 	}
 }
 

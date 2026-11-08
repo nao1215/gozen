@@ -468,7 +468,6 @@ type Game struct {
 	evLines     int
 	screenTrace screenTranscript
 	evAnswers   []int
-	evGameHist  []int
 	// evOpened are the events a phone banner's click opened while the event
 	// ran, each with the line it was clicked at (a save and a roll back queue
 	// them again).
@@ -864,9 +863,6 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 	}
 	g.fitView(w, h, dsf)
 	w, h = g.pixels()
-	if ow > 0 && oh > 0 && g.ui > 0 {
-		g.in.runnerScale = math.Max(w/ow, h/oh) / g.ui
-	}
 	return int(w), int(h)
 }
 
@@ -926,10 +922,6 @@ func (g *Game) rng() *rand.Rand {
 }
 
 func (g *Game) pauseForFocus(focused bool) bool {
-	// Embedded games receive focus policy from their host, including replay.
-	if g.embedded {
-		return false
-	}
 	if focused && g.tr != nil {
 		g.tr.focusLost = false
 	}
@@ -941,17 +933,6 @@ func (g *Game) pauseForFocus(focused bool) bool {
 		g.emit("focus_pause", nil)
 	}
 	g.resetFreeMotion()
-	activeRunner := g.runnerActive()
-	if activeRunner == nil && g.phone != nil && g.phone.child != nil {
-		activeRunner = g.phone.child.game.runnerActive()
-	}
-	if s := activeRunner; s != nil {
-		s.blocked = true
-		s.paused = true
-		s.rules.Pause(true)
-		s.controls.reset()
-		return true
-	}
 	// The external memo editor intentionally completes while the game lacks
 	// focus. Keep collecting its result and expiring its completion toast.
 	return g.pauseUnfocused && g.memo == nil && g.memoToastT == 0
@@ -1237,7 +1218,6 @@ func (g *Game) applyTickInput() error {
 			g.fastStep()
 		}
 	} else {
-		g.captureRunnerInput()
 		g.in.update()
 	}
 	if g.rep != nil {
@@ -1989,12 +1969,6 @@ func (g *Game) busy() bool {
 }
 
 func (g *Game) waiting() (string, int) {
-	if s := g.runnerActive(); s != nil {
-		if s.ready || s.paused || s.view.Status != "running" {
-			return "choice", 0
-		}
-		return "runner", s.view.Ticks
-	}
 	if len(g.stack) > 0 {
 		if _, ok := g.stack[len(g.stack)-1].(*confirm); ok {
 			return "choice", 0
@@ -2211,15 +2185,12 @@ func (g *Game) begin(r event.Request) {
 	case event.Say, event.Choice:
 		g.evLines++
 		g.evHist = append(g.evHist, len(g.evAnswers))
-		g.evGameHist = append(g.evGameHist, len(g.events.GameResults()))
 	}
 	if isBoundary(r) {
 		g.boundary()
 	}
 	done := func() { g.req = nil }
 	switch r := r.(type) {
-	case event.RunGame:
-		g.beginRunner(r, done)
 	case event.Say:
 		g.beginRecruit(r.Recruit)
 		g.talk.open(g, r)

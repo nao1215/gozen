@@ -52,7 +52,6 @@ Dango also checks generated schemas against the Go types and translation keys ag
 - Phone input tests cover picture taps followed by keyboard advancement, controls disabled during typing, input on timeout deadlines, shared close outcomes and replay of saved timed results. These tests do not compare pixels.
 - Flag-based phone tests cover hidden result indices, hidden media reads, fixed replies, navigation and save replay. They also check that ordinary idle chat updates allocate nothing. They do not test a physical touch device.
 - Embedded-game checks cover parent resource ownership, child failure and shutdown, approved archive validation, transactional installation, offline signed catalogs, installed-game replay and browser export limits. Graphics and browser E2E remain separate runtime checks. Browser scenarios cover archives larger than localStorage permits, aborted IndexedDB updates, offline reopening and legacy cache reads when IndexedDB is unavailable.
-- Runner checks cover collision and retry rules, input cancellation, result identity, atomic assignments, save reconstruction and phone focus ownership. Graphics and browser tests separately exercise completion, reopening and save isolation. Physical touch and gamepad feel still require device checks.
 - Reproduction tests require tick and screenshot targets to leave room for the
   exclusive replay boundary, preserve draw cadence, and reject unsupported
   mutations. They validate generated bundles without launching a player.

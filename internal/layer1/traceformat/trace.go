@@ -32,7 +32,6 @@ type ExactReplay struct {
 // describe deterministic outcomes or presentation, not additional mutations.
 // repro is a seek boundary.
 var kinds = map[string]bool{
-	"runner":              true, // Deterministic casual attempt observation.
 	"decision":            true, // Observational choice list.
 	"input_result":        true, // Receiver acknowledgement.
 	"phone_game":          true, // Exact approved child identity and per-attempt clock.

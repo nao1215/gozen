@@ -36,9 +36,6 @@ type Affect struct {
 // Command is a single event command. The command tags are the only registry of verbs and their accompanying fields.
 // verb is a public verb, internal is Go-only, and any other value lists the verbs that allow the accompanying field.
 type Command struct {
-	// RunGame waits for a declared casual game and assigns its terminal result.
-	RunGame *RunGameCommand `yaml:"run_game" command:"verb"`
-
 	// Plan performs one deterministic planning operation.
 	Plan *PlanCommand `yaml:"plan" command:"verb"`
 

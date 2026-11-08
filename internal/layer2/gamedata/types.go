@@ -156,9 +156,6 @@ type PhoneApp struct {
 
 // Game is game.yaml: the game's title, screen and starting state.
 type Game struct {
-	// Runners supplies finite scrolling games consumed by run_game.
-	Runners map[string]*RunnerDefinition `yaml:"runners"`
-
 	// Phone declares the games offered by the phone store and game cues.
 	Phone *PhoneApps `yaml:"phone"`
 

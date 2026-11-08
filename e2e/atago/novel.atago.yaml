@@ -105,7 +105,7 @@ scenarios:
   - assert:
       exit_code: 1
       stderr:
-        contains: 'save format 99 is not supported (supported: 1 to 4)'
+        contains: 'save format 99 is not supported (supported: 1 to 3)'
   - run:
       command: gozen sim battle "${specdir}/fixtures/game" --troop lesson -n 2 --state v1.json
   - assert:
