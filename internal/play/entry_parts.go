@@ -296,7 +296,11 @@ func (s *authorScreen) drawCarousel(g *Game, dst *ebiten.Image, focused bool) {
 		e := s.entries[box.member]
 		refused := s.unavailable(g, box.member)
 		if g.controlFrame() != nil {
-			g.traceControl(s.entries[box.member].Label, roundRect(box.x, box.y, box.size, box.size), !refused, focused && box.member == s.ringCenter(), s.entries[box.member].Reason)
+			reason := e.Reason
+			if s.popup != nil {
+				reason = "modal"
+			}
+			g.traceControl(e.Label, roundRect(box.x, box.y, box.size, box.size), !refused && s.popup == nil, focused && s.popup == nil && box.member == s.ringCenter(), reason)
 		}
 		tint := g.th.window
 		if box.step == 0 && g.in.mouse.In(box.rect()) {
