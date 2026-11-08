@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"image"
 	"image/color"
@@ -200,5 +201,71 @@ func BenchmarkCapturePixelComparison(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		compareRGBA(old, next)
+	}
+}
+
+func TestCaptureGIFFrameBudget(t *testing.T) {
+	frame := image.NewPaletted(image.Rect(0, 0, 1, 1), color.Palette{color.Black, color.White})
+	for _, count := range []int{300, 301} {
+		g := &gif.GIF{Delay: make([]int, count)}
+		for range count {
+			g.Image = append(g.Image, frame)
+		}
+		var buf bytes.Buffer
+		if err := gif.EncodeAll(&buf, g); err != nil {
+			t.Fatal(err)
+		}
+		_, err := decodeShot(buf.Bytes())
+		if count == 300 && err != nil {
+			t.Fatal(err)
+		}
+		if count == 301 && (err == nil || !strings.Contains(err.Error(), "budget")) {
+			t.Fatalf("301 frames: %v", err)
+		}
+	}
+}
+
+func TestCaptureGIFBudgetBeforeExpansion(t *testing.T) {
+	// Container-only frames deliberately lack LZW pixels. The budget must be
+	// diagnosed before the pixel decoder reaches the invalid compressed content.
+	header := append([]byte("GIF89a"), make([]byte, 7)...)
+	binary.LittleEndian.PutUint16(header[6:8], 1280)
+	binary.LittleEndian.PutUint16(header[8:10], 720)
+	frame := make([]byte, 12)
+	frame[0], frame[10] = 0x2c, 2
+	binary.LittleEndian.PutUint16(frame[5:7], 1280)
+	binary.LittleEndian.PutUint16(frame[7:9], 720)
+	for _, count := range []int{72, 73} {
+		data := append(bytes.Clone(header), bytes.Repeat(frame, count)...)
+		data = append(data, 0x3b)
+		err := captureGIFBudget(data)
+		if count == 72 && err != nil {
+			t.Fatal(err)
+		}
+		if count == 73 {
+			if err == nil || !strings.Contains(err.Error(), "budget") {
+				t.Fatalf("pixel budget: %v", err)
+			}
+			if _, err := decodeShot(data); err == nil || !strings.Contains(err.Error(), "budget") {
+				t.Fatalf("decode before budget: %v", err)
+			}
+		}
+	}
+}
+
+func TestCaptureGIFBudgetTruncation(t *testing.T) {
+	frame := image.NewPaletted(image.Rect(0, 0, 2, 2), color.Palette{color.Black, color.White})
+	var buf bytes.Buffer
+	if err := gif.EncodeAll(&buf, &gif.GIF{Image: []*image.Paletted{frame, frame}, Delay: []int{10, 10}}); err != nil {
+		t.Fatal(err)
+	}
+	data := buf.Bytes()
+	if err := captureGIFBudget(data); err != nil {
+		t.Fatal(err)
+	}
+	for end := range len(data) {
+		if err := captureGIFBudget(data[:end]); err == nil {
+			t.Fatalf("accepted truncated container at %d", end)
+		}
 	}
 }

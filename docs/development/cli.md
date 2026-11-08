@@ -125,7 +125,9 @@ uses decoded premultiplied RGBA bytes. Size-only regions count as different.
 GIFs compare each full frame in order; counts and ratios span all frame pixels,
 while the box and `<id>.diff.png` highlight are their spatial union. Frame count,
 delay or loop changes also set `animation_changed`. No tolerance or quality
-threshold is applied. Capture-generated full-frame GIFs are supported.
+threshold is applied. Capture-generated full-frame GIFs are supported. Before
+decoding, comparison rejects GIFs exceeding 300 frames, 921600 pixels per frame
+or 64 Mi pixels in total, matching the capture generation budgets.
 
 When both shots have structure, `structure_diff` lists texts and controls added,
 removed or changed. Exact matches are paired first, then remaining entries at

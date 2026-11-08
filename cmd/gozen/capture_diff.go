@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"image/draw"
 	"image/gif"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -122,6 +124,9 @@ func decodeShot(b []byte) (captureImage, error) {
 		out.frames = append(out.frames, dst)
 	}
 	if bytes.HasPrefix(b, []byte("GIF")) {
+		if err := captureGIFBudget(b); err != nil {
+			return out, err
+		}
 		g, err := gif.DecodeAll(bytes.NewReader(b))
 		if err != nil {
 			return out, err
@@ -144,6 +149,97 @@ func decodeShot(b []byte) (captureImage, error) {
 		convert(src, src.Bounds())
 	}
 	return out, nil
+}
+
+// gifContainer walks bounded container fields without decoding image data.
+type gifContainer []byte
+
+func (s *gifContainer) take(n int) ([]byte, error) {
+	if n > len(*s) {
+		return nil, io.ErrUnexpectedEOF
+	}
+	b := (*s)[:n]
+	*s = (*s)[n:]
+	return b, nil
+}
+
+func (s *gifContainer) palette(flags byte) error {
+	if flags&0x80 == 0 {
+		return nil
+	}
+	_, err := s.take(3 * (2 << (flags & 7)))
+	return err
+}
+
+func (s *gifContainer) blocks() error {
+	for {
+		size, err := s.take(1)
+		if err != nil {
+			return err
+		}
+		if size[0] == 0 {
+			return nil
+		}
+		if _, err := s.take(int(size[0])); err != nil {
+			return err
+		}
+	}
+}
+
+// captureGIFBudget checks the container before DecodeAll allocates any frames.
+// Match capture generation's frame/pixel limits; decoded RGBA uses four bytes
+// per pixel. Compressed sub-blocks are skipped without expanding their contents.
+func captureGIFBudget(data []byte) error {
+	scan := gifContainer(data)
+	header, err := scan.take(13)
+	if err != nil {
+		return err
+	}
+	width, height := int(binary.LittleEndian.Uint16(header[6:8])), int(binary.LittleEndian.Uint16(header[8:10]))
+	if width == 0 || height == 0 || width > 1280 || height > 1280 || width > (1280*720)/height {
+		return errors.New("previous GIF exceeds capture pixel budget")
+	}
+	if err := scan.palette(header[10]); err != nil {
+		return err
+	}
+	frames := 0
+	for {
+		kind, err := scan.take(1)
+		if err != nil {
+			return err
+		}
+		switch kind[0] {
+		case 0x3b:
+			return nil
+		case 0x21:
+			if _, err := scan.take(1); err != nil {
+				return err
+			}
+		case 0x2c:
+			descriptor, err := scan.take(9)
+			if err != nil {
+				return err
+			}
+			frames++
+			if frames > 300 || frames > (64<<20)/(width*height) {
+				return errors.New("previous GIF exceeds capture frame or pixel budget")
+			}
+			if !bytes.Equal(descriptor[:4], []byte{0, 0, 0, 0}) || int(binary.LittleEndian.Uint16(descriptor[4:6])) != width || int(binary.LittleEndian.Uint16(descriptor[6:8])) != height {
+				return errors.New("previous GIF is not a full-frame capture")
+			}
+			if err := scan.palette(descriptor[8]); err != nil {
+				return err
+			}
+			if _, err := scan.take(1); err != nil {
+				return err
+			} // LZW minimum code size.
+		default:
+			return errors.New("invalid previous GIF block")
+		}
+		if err := scan.blocks(); err != nil {
+			return err
+		}
+	}
 }
 
 func compareShotImages(a, b captureImage) (ShotDiff, *image.RGBA) {
