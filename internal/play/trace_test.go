@@ -2710,6 +2710,15 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 	if firstInput < 0 {
 		t.Fatal("no input line to build on")
 	}
+	var inputFrame struct {
+		Tick int `json:"tick"`
+	}
+	if err := json.Unmarshal([]byte(lines[firstInput]), &inputFrame); err != nil {
+		t.Fatal(err)
+	}
+	atInput := func(record string) string {
+		return strings.Replace(record, `"tick":2`, `"tick":`+strconv.Itoa(inputFrame.Tick), 1)
+	}
 	cases := []struct {
 		name  string
 		trace []byte
@@ -2722,9 +2731,9 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		{"ticks go back", join(append(append([]string{}, lines[:firstInput]...), `{"t":"input","tick":5,"press":["ok"]}`, `{"t":"input","tick":3,"press":["ok"]}`)...), nil, "invalid order, end or tick"},
 		{"lines after the end", join(append(append([]string{}, lines...), `{"t":"input","tick":99999,"press":["ok"]}`)...), nil, "invalid order, end or tick"},
 		{"input at tick 0", join(append([]string{lines[0], `{"t":"input","tick":0,"press":["ok"]}`}, lines[1:]...)...), nil, "input must be at tick 1 or later"},
-		{"unknown button", join(append(append([]string{}, lines[:firstInput]...), `{"t":"input","tick":2,"press":["jump"]}`)...), nil, `unknown button "jump"`},
-		{"repeated input tick", join(append(append([]string{}, lines[:firstInput]...), `{"t":"input","tick":2,"press":["ok"]}`, `{"t":"input","tick":2,"press":["ok"]}`)...), nil, "repeats input tick 2"},
-		{"unknown action", join(append(append([]string{}, lines[:firstInput]...), `{"t":"act","tick":2,"name":"fly"}`)...), nil, `unknown direct action "fly"`},
+		{"unknown button", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"input","tick":2,"press":["jump"]}`))...), nil, `unknown button "jump"`},
+		{"repeated input tick", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"input","tick":2,"press":["ok"]}`), atInput(`{"t":"input","tick":2,"press":["ok"]}`))...), nil, "repeats input tick " + strconv.Itoa(inputFrame.Tick)},
+		{"unknown action", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"act","tick":2,"name":"fly"}`))...), nil, `unknown direct action "fly"`},
 		{"action at tick 0", join(append([]string{lines[0], `{"t":"act","tick":0,"name":"run"}`}, lines[1:]...)...), nil, "direct actions must be at tick 1 or later"},
 		{"cut off", join(lines[:len(lines)-1]...), nil, "no end (the record was cut off)"},
 		{"line count", join(append(append([]string{}, lines[:len(lines)-1]...), strings.Replace(lines[len(lines)-1], `"lines":`, `"lines":1`, 1))...), nil, "line count does not match its end"},
@@ -2739,8 +2748,8 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		{"location not a word", []byte(strings.Replace(tr, `"location":"camp"`, `"location":5`, 1)), nil, "invalid location"},
 		{"calm not a flag", []byte(strings.Replace(tr, `"calm":false`, `"calm":"yes"`, 1)), nil, "invalid calm"},
 		{"battle not a word", []byte(strings.Replace(tr, `"battle":""`, `"battle":5`, 1)), nil, "invalid battle"},
-		{"action without a name", join(append(append([]string{}, lines[:firstInput]...), `{"t":"act","tick":2,"name":5}`)...), nil, "action name must be a string"},
-		{"reload partway", wldJoinTrace(append(append(append([]string{}, lines[:firstInput]...), `{"t":"live_reload","tick":2,"ok":true}`), lines[firstInput:]...)), nil, "asset or data reload partway"},
+		{"action without a name", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"act","tick":2,"name":5}`))...), nil, "action name must be a string"},
+		{"reload partway", wldJoinTrace(append(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"live_reload","tick":2,"ok":true}`)), lines[firstInput:]...)), nil, "asset or data reload partway"},
 		{"end without state", join(append(append([]string{}, lines[:len(lines)-1]...), `{"t":"end","tick":186,"lines":`+strconv.Itoa(len(lines))+`}`)...), nil, "lacks its end state"},
 		{"seed zero", []byte(strings.Replace(tr, `"seed":7`, `"seed":0`, 1)), nil, "seed"},
 		{"other saves", []byte(strings.Replace(tr, `"saves":{}`, `"saves":{"a.json":"00"}`, 1)), nil, "save slots the replay needs do not match"},

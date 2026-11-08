@@ -24,8 +24,9 @@ import (
 // saveFormatVersion is the save format version of the JSON wrapper and the state. It is managed separately from the YAML spec version.
 // Version 2 adds the cursor and the random bytes of a save made in the middle of an event and the state's chose (ADR 0025);
 // version 3 adds typed root arguments and action fingerprints (ADR 0054).
-// A reader accepts versions 1 through 3.
-const saveFormatVersion = 3
+// Version 4 adds typed casual-game outcomes to event cursors (ADR 0064).
+// A reader accepts versions 1 through 4.
+const saveFormatVersion = 4
 
 // oldestSaveFormat is the oldest save format version read.
 const oldestSaveFormat = 1

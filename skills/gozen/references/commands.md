@@ -54,6 +54,7 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | `reset_tree` | Gives back the SP spent in the skill tree of an actor, an ID of actors, or of everyone with `all`. |
 | `respond` | Submit text to a speaker reaction book and display its reply. |
 | `restore_checkpoint` | If true, discards the current execution and restores the latest checkpoint, then runs its entry event; schema version 9. |
+| `run_game` | Run a declared scrolling course and map its recorded result to flag or variable targets. Needs schema 12; see the runner example. |
 | `save` | If true, opens the save screen. |
 | `say` | Shows a line of dialog. It can be plain text or a map with speaker, face, side and text. |
 | `sell` | Sells items to a shop, the same as the Sell screen: the shop, the item and the count. |

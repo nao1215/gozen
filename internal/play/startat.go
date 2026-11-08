@@ -39,6 +39,10 @@ func (g *Game) startAt() error {
 		}
 		g.enterAt = ""
 		g.events.Start(cmds)
+		// Without a seek target, interactive effects at the start remain playable.
+		if o.Line == 0 && o.Picture == "" {
+			return nil
+		}
 	}
 	g.fast = &fastTo{lines: max(1, o.Line), answers: o.Answers, picture: o.Picture}
 	return nil

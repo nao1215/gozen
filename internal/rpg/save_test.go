@@ -136,7 +136,7 @@ func TestSaveEnvelopeCompatibility(t *testing.T) {
 	if err := json.Unmarshal(b, &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if envelope.FormatVersion != 3 || envelope.GameID != db.Game.ID || envelope.DataVersion != 2 || len(envelope.State) == 0 {
+	if envelope.FormatVersion != 4 || envelope.GameID != db.Game.ID || envelope.DataVersion != 2 || len(envelope.State) == 0 {
 		t.Fatalf("識別項目 %s", b)
 	}
 	t.Run("新形式の往復と乱数", func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestSaveEnvelopeCompatibility(t *testing.T) {
 			}
 		})
 	}
-	for _, bad := range [][]byte{nil, []byte(`null`), []byte(`[]`), []byte(`{}`), b[:len(b)-1], append(bytes.Clone(b), []byte(` {}`)...), bytes.Replace(b, []byte(`"format_version": 3`), []byte(`"format_version": 3, "format_version": 3`), 1), bytes.Replace(b, []byte(`"gold": 100`), []byte(`"gold": 100, "gold": 200`), 1)} {
+	for _, bad := range [][]byte{nil, []byte(`null`), []byte(`[]`), []byte(`{}`), b[:len(b)-1], append(bytes.Clone(b), []byte(` {}`)...), bytes.Replace(b, []byte(`"format_version": 4`), []byte(`"format_version": 4, "format_version": 4`), 1), bytes.Replace(b, []byte(`"gold": 100`), []byte(`"gold": 100, "gold": 200`), 1)} {
 		if got, err := rpg.ParseWithConfig(db, bad, nil, rpg.Config{AllowLegacy: true}); err == nil || got != nil {
 			t.Errorf("破損を受け入れた %s", bad)
 		}

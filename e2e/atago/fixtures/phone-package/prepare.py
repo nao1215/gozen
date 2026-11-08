@@ -25,9 +25,19 @@ if mode != "packages-only":
 
 
 
+def chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+
+def noise_png():
+    """A valid reproducible image whose ZIP exceeds localStorage capacity."""
+    width, height = 1536, 2048
+    pixels = hashlib.shake_256(b"Gozen original storage fixture").digest(width * height * 3)
+    rows = b"".join(b"\x00" + pixels[y * width * 3:(y + 1) * width * 3] for y in range(height))
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(rows, level=0)) + chunk(b"IEND", b"")
+
+
 def png(red, green, blue):
-    def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
     rows = []
     for y in range(32):
         row = bytearray(b"\x00")
@@ -79,6 +89,12 @@ start: {{location: room, gold: 3}}
     files = {"game.yaml": game.encode(), "data/world.yaml": world.encode(),
              "assets/icon.png": icon,
              "LICENSE": (Path(__file__).resolve().parents[4] / "LICENSE").read_bytes()}
+    version = "1.0.0"
+    if mode in ("browser-large", "browser-large-update") and name == "trail":
+        files["assets/storage.png"] = noise_png()
+    if mode in ("browser-large-update", "browser-small-update") and name == "trail":
+        version = "1.1.0"
+        files["game.yaml"] = files["game.yaml"].replace(b"title: Trail", b"title: Trail updated")
     if mode == "traversal" and index == 0:
         files["../outside.txt"] = b"must not be published"
     buffer = io.BytesIO()
@@ -91,13 +107,13 @@ start: {{location: room, gold: 3}}
             archive.writestr(info, contents)
     package = buffer.getvalue()
     (destination / "apps" / (name + ".zip")).write_bytes(package)
-    release = dict(id="fixtures/" + name, version="1.0.0", title=name.title(), author="Gozen contributors",
+    release = dict(id="fixtures/" + name, version=version, title=name.title(), author="Gozen contributors",
                    description="Collect tokens." if index == 0 else "Choose a trail and collect its reward.",
                    icon="assets/icon.png", icon_data=base64.b64encode(icon).decode(), license="MIT",
                    orientation="portrait" if index == 0 else "landscape",
-                   url="https://example.com/fixtures/" + name + "-1.0.0.zip",
+                   url="https://example.com/fixtures/" + name + "-" + version + ".zip",
                    sha256=hashlib.sha256(package).hexdigest(), size=len(package),
-                   unpacked_size=sum(map(len, files.values())), engine=">=0.23.0 <0.24.0")
+                   unpacked_size=sum(map(len, files.values())), engine=">=0.23.0 <0.25.0")
     if mode != "packages-only":
         # This all-zero commit is synthetic and intercepted by browser E2E tests.
         release["browser_url"] = "https://raw.githubusercontent.com/nao1215/gozen/" + "0" * 40 + "/test-fixtures/" + name + ".zip"
@@ -113,6 +129,8 @@ if mode == "corrupt":
 template = Path(__file__).with_name("host.yaml").read_text()
 digest = "f" * 64 if mode == "catalog-digest" else hashlib.sha256(catalog).hexdigest()
 phone = template.replace("a" * 64, digest)
+if mode in ("browser-large-update", "browser-small-update"):
+    phone = phone.replace("      version: 1.0.0", "      version: '>=1.0.0 <2.0.0'")
 if mode == "packages-only":
     print(phone, end="")
     sys.exit(0)

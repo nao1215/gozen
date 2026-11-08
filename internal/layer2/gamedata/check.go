@@ -735,6 +735,7 @@ func (db *DB) Check() []error {
 	c.declarations()
 	c.planning()
 	c.phoneApps()
+	c.runners()
 	c.stateDeclarations()
 	c.campaign()
 	c.callLoops()
@@ -2074,6 +2075,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.text(w+".respond.from", cmd.Respond.From, names)
 		case "notice":
 			c.text(w+".notice", cmd.Notice, names)
+		case "run_game":
+			c.runGame(w+".run_game", cmd.RunGame, names)
 		case "phone":
 			c.phone(w+".phone", *cmd.Phone, names)
 		case "call_view":

@@ -40,6 +40,7 @@ provides the field contracts; these tables explain which section to open first.
 
 | Section | Purpose |
 | --- | --- |
+| `game.runners` | Define finite scrolling courses, controls, pickups, retries and appearance for `run_game` (schema 12). |
 | `game.phone` | Pin a catalog and declare bundled or optional games offered by phone apps. |
 | `game.asides` | Events inserted after the lines of certain speakers, such as a moment of thought or a picture in the character's mind. |
 | `game.battle` | The rules every battle shares. |

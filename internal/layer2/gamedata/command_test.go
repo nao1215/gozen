@@ -18,6 +18,7 @@ import (
 // Positive cases are not built from the registry; they pin down how each command can actually be
 // written.
 var commandExamples = map[string]string{
+	"run_game":           `run_game: {id: meadow, outputs: {score: var.score}}`,
 	"checkpoint":         `checkpoint: sub`,
 	"carry":              `carry: true`,
 	"restore_checkpoint": `restore_checkpoint: true`,
@@ -115,9 +116,9 @@ func TestCommandFieldMatrix(t *testing.T) {
 		}
 	}
 	for verb, src := range commandExamples {
-		if verb == "plan" || verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" || verb == "carry" {
+		if verb == "run_game" || verb == "plan" || verb == "capture" || verb == "respond" || verb == "reserve" || verb == "release" || verb == "breed" || verb == "carry" {
 			continue
-		} // covered with schema version 6 in monster_test.go; carry needs schema 10 and game.yaml carry (TestCarryCheck)
+		} // run_game is covered in runner_test.go with schema 12; covered with schema version 6 in monster_test.go; carry needs schema 10 and game.yaml carry (TestCarryCheck)
 		t.Run(verb, func(t *testing.T) {
 			check(t, src, verb, "")
 			for _, field := range fields {

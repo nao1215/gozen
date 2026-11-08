@@ -482,7 +482,7 @@ func (g *Game) traceInput(in *input) {
 			held = append(held, buttonNames[b])
 		}
 	}
-	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pdown && !in.pheld && !in.pup && !in.longPress && in.mouse == g.tr.mouse {
+	if press == nil && held == nil && !in.fast && !in.esc && !in.shift && !in.click && !in.rclick && !in.moved && in.wheel == 0 && in.digit == 0 && !in.pdown && !in.pheld && !in.pup && !in.longPress && in.mouse == g.tr.mouse && !in.runnerCapture {
 		return
 	}
 	g.tr.mouse = in.mouse
@@ -527,6 +527,13 @@ func (g *Game) traceInput(in *input) {
 	}
 	if in.wheel != 0 {
 		l["wheel"] = in.wheel
+	}
+	if in.runnerCapture {
+		scale := in.runnerScale
+		if scale <= 0 {
+			scale = 1
+		}
+		l["runner_input"] = runnerInputRecord{Scale: scale, Cancel: in.runnerCancel, Pointers: in.runnerPointers}
 	}
 	g.emit("input", l)
 }
@@ -1022,6 +1029,11 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			if _, exists := r.inputs[tick]; exists {
 				return nil, fmt.Errorf(lang.T("replay の入力ティック %d が重複"), tick)
 			}
+			if raw, ok := l["runner_input"]; ok {
+				if _, err := parseRunnerInput(raw); err != nil {
+					return nil, fmt.Errorf("replay tick %d: %w", tick, err)
+				}
+			}
 			r.inputs[tick] = l
 		case "pick":
 			index, ok := l["index"].(float64)
@@ -1194,6 +1206,8 @@ func (r *replay) prepare(g *Game) error {
 }
 
 func (r *replay) feed(in *input, tick int) {
+	in.runnerPointers = nil
+	in.runnerCapture, in.runnerCancel = false, false
 	in.pressed, in.held = [numButtons]bool{}, [numButtons]bool{}
 	in.fast, in.click, in.rclick, in.moved, in.wheel = false, false, false, false, 0
 	in.pdown, in.pheld, in.pup = false, false, false
@@ -1203,6 +1217,15 @@ func (r *replay) feed(in *input, tick int) {
 	l, ok := r.inputs[tick]
 	if !ok {
 		return
+	}
+	if raw, ok := l["runner_input"]; ok {
+		in.runnerCapture = true
+		data, err := parseRunnerInput(raw)
+		if err != nil {
+			in.runnerCancel = true
+		} else {
+			in.runnerPointers, in.runnerScale, in.runnerCancel = data.Pointers, data.Scale, data.Cancel
+		}
 	}
 	for _, n := range strs(l["press"]) {
 		if i := slices.Index(buttonNames[:], n); i >= 0 {

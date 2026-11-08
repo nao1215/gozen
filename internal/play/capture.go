@@ -194,7 +194,8 @@ func (b *captureBatch) begin() {
 		Script:  captureScript(j), ShotDir: b.cfg.Output, Trace: io.Discard,
 		Location: j.Start, Party: j.Party, Level: j.Level, Floor: j.Floor, Flags: j.Flags,
 		Battle: j.Battle, Calm: j.Calm, Scene: j.Scene, Event: j.Event, Picture: j.Picture,
-		Line: j.Line, Answers: j.Answers,
+		// Capture targets the first dialogue when the job omits a line.
+		Line: max(1, j.Line), Answers: j.Answers,
 	})
 	if err != nil {
 		b.result.Err = err

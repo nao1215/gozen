@@ -1,0 +1,34 @@
+locations:
+  lodge:
+    name: Route desk
+    background: background.png
+    actions:
+      - id: run
+        label: Run again
+        do: [{call: run}]
+      - id: help
+        label: Controls
+        do: [{call: help}]
+events:
+  opening:
+    - call: help
+    - call: run
+  help:
+    - say: "Collect tokens. Avoid blocks."
+    - say: "Left and Right steer. Up boosts."
+    - say: "Space spends one clear charge."
+    - say: "Drag to steer; drag up to boost."
+    - say: "Double-tap uses a charge."
+    - say: "Escape pauses. Finish the route!"
+  run:
+    - run_game:
+        id: trail
+        outputs: {score: var.score, lives: var.lives, stock: var.stock, stage: var.stage, completed: flag.completed, failed: flag.failed, cancelled: flag.cancelled}
+    - set: {var.best_score: "max(var.best_score, var.score)"}
+    - if: flag.completed
+      then: [{say: "Route complete. Score: {var.score}."}]
+      else:
+        - if: flag.cancelled
+          then: [{say: "Cancelled. Try again at the desk."}]
+          else: [{say: "Out of lives. Score: {var.score}."}]
+    - save: true

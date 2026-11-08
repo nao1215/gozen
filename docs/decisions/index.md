@@ -72,6 +72,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0061](0061-dango-maintainer-tests.md) | Maintainer decision tests with dango | Implemented | Reproduction shares the typed author CLI bundle operation |
 | [0062](0062-bounded-phone-sessions.md) | Authored phone information unlocked by flags, history, replies, home and contacts | Accepted and implemented | Replaces the unimplemented persistent-session proposal |
 | [0063](0063-phone-game-packages.md) | Gozen games inside phone apps | Accepted for implementation | One host loop, isolated child resources and approved packages |
+| [0064](0064-casual-game-runtime.md) | Deterministic casual games and recorded activity outcomes | Accepted | Schema 12 runner, recorded outcomes and save format 4; other rules remain planned |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 

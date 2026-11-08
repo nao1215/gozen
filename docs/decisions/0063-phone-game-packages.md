@@ -28,6 +28,12 @@ Each package is a ZIP with game.yaml at its root and selected YAML, assets and n
 
 Bundled means present in the host distribution. Optional means a player explicitly downloads it through the phone store. Authors independently choose a fixed version or bounded update range. Updates add immutable installations, never replace an active game, never silently alter saves, and retain previous releases. Catalog changes do not add unsolicited apps to a host. Browser storage support must be verified separately from desktop storage.
 
+## Browser archive storage
+
+Browser installs store verified ZIP bytes in IndexedDB, keyed by the host namespace and archive digest. Small selections and save files retain their existing localStorage format. A 64 MiB archive limit cannot be backed by localStorage: base64 expands the bytes, and even a much smaller valid package can exceed that storage quota. Binary archive storage fixes that mismatch without raising download or expansion limits.
+
+Commit the archive transaction before publishing the selected release. A failed or cancelled write leaves the earlier selection and saves intact. Missing, unavailable or corrupt storage is an installation error, not evidence that a package was installed. Previously cached base64 archives remain readable; there is no save migration command. Explicitly supplied stores retain their existing adapter behavior. Browser quotas and eviction still depend on the origin and browser; the package limit is an upper bound, not a promise of available space.
+
 ## Publication and checks
 
 A scheduled workflow detects registered upstream releases and opens metadata update PRs. Validation checks package bytes and compatibility; maintainer review approves publication. Merging registry changes publishes a catalog independently of engine releases. Announcement text must describe only shipped behavior and invite authors to submit games with their icons and distribution rights.
