@@ -740,6 +740,23 @@ scenarios:
               const counter = await phoneSaved(counterPrefix + 'save1.json');
               if (counter.state.gold !== 4) throw new Error('bundled child did not collect four tokens');
               await leavePhoneGame();
+              document.body.dataset.phoneBundled = JSON.stringify({counter: counter.state.gold});
+            } catch (error) { document.body.dataset.phoneBundled = JSON.stringify({error: String(error)}); }
+          })(); true
+      - wait_visible: 'body[data-phone-bundled]'
+      - screenshot: {path: phone-bundled.png, selector: canvas}
+      - eval: 'JSON.parse(document.body.dataset.phoneBundled)'
+  - assert:
+      value:
+        json:
+        - {path: $.counter, equals: 4}
+  # Each CDP step has its own deadline; browser state survives between phases.
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            try {
               await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
               // The first button plays Counter; the second installs optional Trail.
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(120);
@@ -751,7 +768,25 @@ scenarios:
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
               await key('Escape'); await testFrames(40);
               if (phoneFetches !== 3 || phoneSave('phone-apps.json')) throw new Error('cancelled download published an app');
+              document.body.dataset.phoneRejected = JSON.stringify({downloads: phoneFetches, published: phoneSave('phone-apps.json') !== null});
+            } catch (error) { document.body.dataset.phoneRejected = JSON.stringify({error: String(error)}); }
+          })(); true
+      - wait_visible: 'body[data-phone-rejected]'
+      - screenshot: {path: phone-rejected.png, selector: canvas}
+      - eval: 'JSON.parse(document.body.dataset.phoneRejected)'
+  - assert:
+      value:
+        json:
+        - {path: $.downloads, equals: 3}
+        - {path: $.published, equals: false}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            try {
               phoneFetchMode = 'success';
+              const counter = phoneSave(counterPrefix + 'save1.json');
               await phoneKeys('ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter');
               const apps = await phoneSaved('phone-apps.json');

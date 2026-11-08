@@ -180,6 +180,87 @@ func TestFileStoreAtomicConcurrentPublish(t *testing.T) {
 	}
 }
 
+func TestFileStoreConcurrentStreamingRetainsOpenReaders(t *testing.T) {
+	r, b := archiveFixture(t, nil)
+	store := FileStore{Root: t.TempDir()}
+	const workers = 8
+	ready := make(chan struct{}, workers)
+	start := make(chan struct{})
+	installer := Installer{Engine: "0.23.0", Store: store, Validate: validateFixture, Fetcher: gatedStreamFetch{b, ready, start}}
+	type result struct {
+		game *Installed
+		err  error
+	}
+	results := make(chan result, workers)
+	for range workers {
+		go func() { game, err := installer.Install(t.Context(), r); results <- result{game, err} }()
+	}
+	for range workers {
+		<-ready
+	}
+	close(start)
+	games := make([]*Installed, 0, workers)
+	for range workers {
+		got := <-results
+		if got.err != nil {
+			t.Error(got.err)
+			continue
+		}
+		games = append(games, got.game)
+		t.Cleanup(func() {
+			if err := got.game.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	if len(games) != workers {
+		t.FailNow()
+	}
+	// Hold a reader from each successful installation while publishing again.
+	for _, game := range games {
+		reader, err := game.FS.Open("game.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := reader.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		if err := store.Save(t.Context(), r.SHA256, b); err != nil {
+			t.Fatal(err)
+		}
+		if contents, err := io.ReadAll(reader); err != nil || len(contents) == 0 {
+			t.Fatalf("open reader changed: %q %v", contents, err)
+		}
+	}
+	entries, err := os.ReadDir(store.Root)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("published cache: %v %v", entries, err)
+	}
+}
+
+type gatedStreamFetch struct {
+	data  []byte
+	ready chan<- struct{}
+	start <-chan struct{}
+}
+
+func (f gatedStreamFetch) Fetch(context.Context, string, int64) ([]byte, error) {
+	return nil, errors.New("unexpected memory download")
+}
+
+func (f gatedStreamFetch) FetchTo(ctx context.Context, _ string, _ int64, dst io.Writer) error {
+	f.ready <- struct{}{}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-f.start:
+	}
+	_, err := dst.Write(f.data)
+	return err
+}
+
 func TestCatalogRefreshRequiresIndependentTrust(t *testing.T) {
 	r, _ := archiveFixture(t, nil)
 	b, e := yaml.Marshal(Catalog{Schema: 1, Releases: []Release{r}})
@@ -330,5 +411,65 @@ func TestBrowserInstallUsesReviewedMirrorWithoutChangingIdentity(t *testing.T) {
 	i.Store = FileStore{Root: t.TempDir()}
 	if _, e = i.Install(t.Context(), missing); e == nil || calls != 1 {
 		t.Fatal("browser downloaded without approved mirror")
+	}
+}
+
+func TestStreamingCleanupFailureClosesInstalledHandle(t *testing.T) {
+	r, b := archiveFixture(t, nil)
+	store := FileStore{Root: t.TempDir()}
+	calls := 0
+	var retained fs.FS
+	installer := Installer{Engine: "0.23.0", Store: store, Fetcher: streamFetch{b, "success"}, Validate: func(fsys fs.FS) error {
+		calls++
+		if calls != 2 {
+			return validateFixture(fsys)
+		}
+		retained = fsys
+		entries, err := os.ReadDir(store.Root)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if !strings.HasPrefix(entry.Name(), ".install-") {
+				continue
+			}
+			name := filepath.Join(store.Root, entry.Name())
+			if err := os.Remove(name); err != nil {
+				return err
+			}
+			if err := os.Mkdir(name, 0o700); err != nil {
+				return err
+			}
+			// A nonempty replacement forces deferred staging cleanup to fail.
+			return os.WriteFile(filepath.Join(name, "occupied"), []byte("fixture"), 0o600)
+		}
+		return errors.New("staging fixture missing")
+	}}
+	game, err := installer.Install(t.Context(), r)
+	if err == nil || game != nil || retained == nil {
+		t.Fatalf("cleanup result: game=%v err=%v retained=%v", game, err, retained != nil)
+	}
+	if _, err := fs.ReadFile(retained, "game.yaml"); err == nil {
+		t.Fatal("failed installation leaked its archive handle")
+	}
+}
+
+func TestFileStoreDeepCacheRoot(t *testing.T) {
+	root := t.TempDir()
+	for len(root) < 300 {
+		root = filepath.Join(root, "deep-cache-directory")
+	}
+	r, b := archiveFixture(t, nil)
+	store := FileStore{Root: root}
+	installer := Installer{Engine: "0.23.0", Store: store, Validate: validateFixture, Fetcher: streamFetch{b, "success"}}
+	game, err := installer.Install(t.Context(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := game.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := store.Snapshot(t.Context(), r.SHA256, int64(len(b))); err != nil || !bytes.Equal(got, b) {
+		t.Fatalf("deep snapshot: %v", err)
 	}
 }

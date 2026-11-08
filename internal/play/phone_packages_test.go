@@ -315,12 +315,12 @@ func TestPhoneIconMetadataRefreshAndIdleCost(t *testing.T) {
 }
 
 func TestPhoneEngineDevelopmentCompatibility(t *testing.T) {
-	for _, version := range []string{"devel", "(devel)", "v0.22.0+dirty", "v0.22.1-0.20261108010203-012345abcdef", "v0.0.0-20261108010203-012345abcdef+dirty"} {
+	for _, version := range []string{"devel", "(devel)", "v0.22.1-next", "0.23.0-next", "v0.22.0+dirty", "v0.22.1-0.20261108010203-012345abcdef", "v0.0.0-20261108010203-012345abcdef+dirty"} {
 		if got := phoneEngineTarget(version); got != phoneDevelopmentVersion {
 			t.Errorf("development %s: got %s", version, got)
 		}
 	}
-	for _, version := range []string{"0.22.0", "v0.23.0", "invalid+dirty", "v0.23.0-rc1", "v0.22.1-0.20269908010203-012345abcdef", "v01.2.3+dirty"} {
+	for _, version := range []string{"0.22.0", "v0.23.0", "invalid-next", "v01.2.3-next", "0.23.0-nightly", "invalid+dirty", "v0.23.0-rc1", "v0.22.1-0.20269908010203-012345abcdef", "v01.2.3+dirty"} {
 		if got := phoneEngineTarget(version); got != strings.TrimPrefix(version, "v") {
 			t.Errorf("release or invalid %s changed to %s", version, got)
 		}

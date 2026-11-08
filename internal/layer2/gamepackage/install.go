@@ -98,7 +98,7 @@ func (i Installer) Open(ctx context.Context, r Release) (*Installed, error) {
 		if e != nil {
 			return nil, e
 		}
-		game, e := OpenArchive(ctx, os.DirFS(filepath.Dir(name)), filepath.Base(name), r)
+		game, e := OpenArchive(ctx, cacheFS(filepath.Dir(name)), filepath.Base(name), r)
 		if e != nil {
 			return nil, e
 		}
@@ -171,7 +171,8 @@ func (i Installer) Install(ctx context.Context, r Release) (*Installed, error) {
 // FileStore is the desktop startup adapter. Root is an application-owned cache
 // directory, never a game-provided path. An empty root is invalid. Each digest
 // is immutable; publication uses an exclusive temporary file and same-directory
-// rename. Only bounded verified archives are accepted, independently of callers.
+// hard-link publication. Filesystems without hard-link support return an error;
+// existing cache files are never replaced. Only bounded verified archives are accepted.
 type FileStore struct{ Root string }
 
 func (s FileStore) name(sum string) (string, error) {
@@ -179,6 +180,17 @@ func (s FileStore) name(sum string) (string, error) {
 		return "", fs.ErrInvalid
 	}
 	return filepath.Join(s.Root, sum+".zip"), nil
+}
+
+// cacheFS gives retained cache readers platform sharing compatible with deleting
+// staging hard links after publication. It is used only under a caller-owned root.
+type cacheFS string
+
+func (root cacheFS) Open(name string) (fs.File, error) {
+	if !PortablePath(name) {
+		return nil, fs.ErrInvalid
+	}
+	return openCacheFile(filepath.Join(string(root), filepath.FromSlash(name)))
 }
 
 // Load returns a bounded copy of a cached ZIP and honors cancellation.
@@ -202,7 +214,7 @@ func (s FileStore) Snapshot(ctx context.Context, sum string, maxBytes int64) ([]
 	if e != nil {
 		return nil, e
 	}
-	f, e := os.Open(name) //nolint:gosec // Validated digest filename under caller-owned cache root.
+	f, e := openCacheFile(name)
 	if e != nil {
 		return nil, e
 	}
@@ -271,9 +283,9 @@ func (s FileStore) Save(ctx context.Context, sum string, b []byte) (err error) {
 	if e = ctx.Err(); e != nil {
 		return e
 	}
-	// Same-digest races can only publish identical verified bytes. Windows may
-	// reject replacing an existing file; an identical winner is still success.
-	if e = os.Rename(temp, name); e != nil {
+	// Publish without replacing another installer's immutable file or open handle.
+	// The deferred cleanup removes the staging link after successful publication.
+	if e = os.Link(temp, name); e != nil {
 		winner, loadErr := s.Load(ctx, sum)
 		if loadErr == nil && checksum(winner) == sum {
 			return nil
@@ -361,6 +373,10 @@ func (i Installer) installStream(ctx context.Context, store FileStore, fetcher S
 		if e := os.Remove(temp); e != nil && !errors.Is(e, fs.ErrNotExist) {
 			err = errors.Join(err, e)
 		}
+		if err != nil && game != nil {
+			err = errors.Join(err, game.Close())
+			game = nil
+		}
 	}()
 	dst := &limitedWriter{dst: f, left: r.Size}
 	if e = fetcher.FetchTo(ctx, r.URL, r.Size, dst); e != nil {
@@ -379,8 +395,9 @@ func (i Installer) installStream(ctx context.Context, store FileStore, fetcher S
 	if _, e = i.validate(ctx, game); e != nil {
 		return nil, e
 	}
-	// The validated FS points at the temporary file. Close before rename for
-	// Windows, then reopen the promoted immutable file for its installed lifetime.
+	// Close the validated staging file before publishing its immutable name.
+	// A hard link creates only an absent destination; concurrent installs never
+	// replace each other's open files. Unsupported filesystems fail explicitly.
 	e = f.Close()
 	closed = true
 	if e != nil {
@@ -389,7 +406,7 @@ func (i Installer) installStream(ctx context.Context, store FileStore, fetcher S
 	if e = ctx.Err(); e != nil {
 		return nil, e
 	}
-	if e = os.Rename(temp, name); e != nil {
+	if e = os.Link(temp, name); e != nil {
 		// A concurrent identical winner may already own the destination.
 		winner, openErr := i.Open(ctx, r)
 		if openErr == nil {

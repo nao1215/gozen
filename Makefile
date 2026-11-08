@@ -11,6 +11,7 @@ GOLANGCI_LINT_VERSION ?= v2.14.0
 GOLANGCI_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 ATAGO ?= atago
 GRAPHICS_JOBS ?= 4
+GRAPHICS_TIMEOUT ?= 20m
 ACTIONLINT ?= actionlint
 ZIZMOR ?= zizmor
 DEADCODE_VERSION ?= v0.52.0
@@ -120,8 +121,8 @@ campaign-graphics:
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
-	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout' -count=1
-	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) ./internal/layer5/puppet -run TestGraphics -count=1
+	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout' -count=1
+	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/layer5/puppet -run TestGraphics -count=1
 
 cli-build:
 	mkdir -p bin

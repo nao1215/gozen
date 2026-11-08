@@ -39,6 +39,12 @@ func phoneEngineTarget(version string) string {
 	if v == "devel" || v == "(devel)" {
 		return phoneDevelopmentVersion
 	}
+	// GoReleaser's local/CI snapshots use the reserved stable-base "-next" form.
+	if snapshot, ok := strings.CutSuffix(v, "-next"); ok {
+		if valid, err := gamepackage.Allows(snapshot, snapshot); err == nil && valid {
+			return phoneDevelopmentVersion
+		}
+	}
 	base := strings.TrimSuffix(v, "+dirty")
 	if valid, err := gamepackage.Allows(base, base); base != v && err == nil && valid {
 		return phoneDevelopmentVersion
