@@ -263,7 +263,7 @@ func TestCaptureGIFBudgetTruncation(t *testing.T) {
 	if err := captureGIFBudget(data); err != nil {
 		t.Fatal(err)
 	}
-	for end := range len(data) {
+	for end := range data {
 		if err := captureGIFBudget(data[:end]); err == nil {
 			t.Fatalf("accepted truncated container at %d", end)
 		}
