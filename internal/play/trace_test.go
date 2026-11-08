@@ -708,13 +708,18 @@ func TestReplayStartupViewport(t *testing.T) {
 			if err := os.WriteFile(path, []byte(trace), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			rep, err := loadReplay(path, &Options{Until: 2})
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := traceViewport{Width: 1024, Height: 576, Scale: 1}
-			if rep.startupViewport == nil || *rep.startupViewport != want {
-				t.Fatalf("startup viewport = %+v, want %+v", rep.startupViewport, want)
+			for _, until := range []int{1, 2} {
+				rep, err := loadReplay(path, &Options{Until: until})
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := traceViewport{Width: 1024, Height: 576, Scale: 1}
+				if tick >= until {
+					want.Width, want.Height = 1280, 720
+				}
+				if rep.startupViewport == nil || *rep.startupViewport != want {
+					t.Fatalf("until=%d: startup viewport = %+v, want %+v", until, rep.startupViewport, want)
+				}
 			}
 		})
 	}

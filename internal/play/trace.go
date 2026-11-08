@@ -903,7 +903,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				}
 			}
 		case "viewport":
-			if r.partial && tick <= 1 {
+			if r.partial && tick <= 1 && tick < o.Until {
 				var viewport traceViewport
 				if err := json.Unmarshal(sc.Bytes(), &viewport); err != nil {
 					return nil, err
