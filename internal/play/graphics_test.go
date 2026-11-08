@@ -841,6 +841,7 @@ func TestGraphicsScreensCaptureIdenticalPixels(t *testing.T) {
 // title/gameplay draws, so visual inspection cannot mistake dark phone chrome for
 // a missing parent layer. The child must change while the host controls stay put.
 func TestGraphicsScreensPhoneChrome(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	game := filepath.Join(root, "game")
 	if err := os.CopyFS(game, os.DirFS("../../e2e/atago/fixtures/game")); err != nil {
@@ -1002,8 +1003,10 @@ phone:
 // Render compact ordinary menus in the same authored dimensions used by phone
 // children, and inspect drawn text rather than accepting an image-size smoke.
 func TestGraphicsScreensCompactMenus(t *testing.T) {
+	t.Parallel()
 	for _, screen := range [][2]int{{360, 540}, {640, 360}} {
 		t.Run(fmt.Sprintf("%dx%d", screen[0], screen[1]), func(t *testing.T) {
+			t.Parallel()
 			root := t.TempDir()
 			game := filepath.Join(root, "game")
 			if err := os.MkdirAll(filepath.Join(game, "data"), 0o700); err != nil {
