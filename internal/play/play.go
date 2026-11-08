@@ -1017,15 +1017,7 @@ func (g *Game) Update() error {
 		}
 		sound.Pump(tps)
 	}
-	if g.fast != nil {
-		if g.fast.page {
-			g.seekReplayPage()
-		} else {
-			g.fastStep()
-		}
-	} else {
-		g.in.update()
-	}
+	g.applyTickInput()
 	if s := g.in.script; s != nil && s.err != nil {
 		g.emit("script_error", traceLine{"error": s.err.Error()})
 		return s.err
@@ -1087,9 +1079,6 @@ func (g *Game) Update() error {
 	}
 	if g.auto != nil && len(g.stack) > 0 {
 		g.auto.step(g)
-	}
-	if g.rep != nil {
-		g.rep.doActs(g)
 	}
 	if g.opts.CollectBuildInfo && os.Getenv("GOZEN_DEBUG") != "" && g.tick%30 == 0 && g.in.script != nil {
 		log.Printf("tick %d pc %d wait %d stack %d busy %v", g.tick, g.in.script.pc, g.in.script.wait, len(g.stack), g.busy())
@@ -1167,6 +1156,24 @@ func (g *Game) Update() error {
 		g.updateMusic()
 	}
 	return nil
+}
+
+// applyTickInput applies inputs and direct actions before any Update handler can
+// consume the tick. Scripts execute actions inside input.update; replay must run
+// its recorded actions in this same phase, including while an overlay is open.
+func (g *Game) applyTickInput() {
+	if g.fast != nil {
+		if g.fast.page {
+			g.seekReplayPage()
+		} else {
+			g.fastStep()
+		}
+	} else {
+		g.in.update()
+	}
+	if g.rep != nil {
+		g.rep.doActs(g)
+	}
 }
 
 // stepBattlePictures follows the same visible stack as Draw, including battles

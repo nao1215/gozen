@@ -555,6 +555,80 @@ func TestTraceReproScriptDirectActions(t *testing.T) {
 	}
 }
 
+func TestTraceReproActionsDuringChangedSaveNotice(t *testing.T) {
+	fsys := gameFiles(t)
+	store := savefile.MemStore()
+	initial := wldOpenWith(t, Options{FS: fsys, Store: store, Location: "camp"})
+	initial.st.Gold = 99
+	if err := initial.save(0); err != nil {
+		t.Fatal(err)
+	}
+	if err := initial.Close(); err != nil {
+		t.Fatal(err)
+	}
+	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("data_version: 2\n")...)
+	var trace bytes.Buffer
+	g := wldOpenWith(t, Options{
+		FS: fsys, Store: store, Trace: &trace,
+		Script: "wait 2\npress z\nwait 10\npress z\nwait 40\ndo set: {gold: 123}\nwait 5\ndo set: {gold: 456}\nwait 100\n",
+	})
+	type frame struct {
+		Gold   int
+		Notice bool
+		Frames int64
+	}
+	state := func(g *Game) frame {
+		f := frame{Notice: g.loadNotice != nil}
+		if g.st != nil {
+			f.Gold, f.Frames = g.st.Gold, g.st.Frames
+		}
+		return f
+	}
+	var frames []frame
+	for range 100 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		frames = append(frames, state(g))
+	}
+	if g.loadNotice == nil || g.loadNotice.list == nil || g.st.Gold != 456 {
+		t.Fatalf("script did not mutate with the notice open: %+v", state(g))
+	}
+	acts := traceLines(t, trace.Bytes(), "act")
+	if len(acts) != 2 {
+		t.Fatalf("recorded actions: %v", acts)
+	}
+	for _, act := range acts {
+		if f := frames[int(num(act["tick"]))-1]; !f.Notice || (f.Gold != 123 && f.Gold != 456) {
+			t.Fatalf("mutation did not run with the notice open: %+v", f)
+		}
+	}
+	g.traceEnd()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "notice.jsonl")
+	if err := os.WriteFile(path, trace.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadReplay(path, &Options{Until: 100}); err != nil {
+		t.Fatalf("exact reproduction refused: %v", err)
+	}
+	r := wldOpenWith(t, Options{FS: fsys, Store: savefile.MemStore(), Replay: path})
+	for tick, want := range frames {
+		if err := r.Update(); err != nil {
+			t.Fatalf("tick %d: %v", tick+1, err)
+		}
+		if got := state(r); got != want {
+			t.Fatalf("tick %d: replay %+v, recorded %+v", tick+1, got, want)
+		}
+	}
+	r.traceEnd()
+	if r.rep.diverge != "" || !r.rep.finished {
+		t.Fatalf("replay: %s", r.rep.report())
+	}
+}
+
 func TestTraceRejectsScriptMutations(t *testing.T) {
 	for _, script := range []string{"recruit mote 1", "guarantee-recruit mote", "battle-hp enemy 0 1", "battle-log off"} {
 		t.Run(script, func(t *testing.T) {
