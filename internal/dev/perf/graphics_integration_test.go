@@ -6,11 +6,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"image"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -150,6 +153,64 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 			if !found || !startup {
 				t.Fatalf("missing section: startup=%t, %s=%t", startup, name, found)
 			}
+			if name == "phone-video" {
+				verifyPhonePlayback(ctx, t, bin, dir, args)
+			}
 		})
+	}
+}
+
+// Check actual decoded frames separately so PNG capture does not change the budget.
+func verifyPhonePlayback(ctx context.Context, t *testing.T, bin, dir string, args []string) {
+	t.Helper()
+	path := filepath.Join(dir, "input.txt")
+	body, err := os.ReadFile(path) //nolint:gosec // Generated fixture under the test's temporary directory.
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := strings.Replace(string(body), "mark phone-video", "shot phone-before\nmark phone-video", 1)
+	script = strings.Replace(script, "quit", "shot phone-after\nquit", 1)
+	if err := os.WriteFile(path, []byte(script), 0o600); err != nil { //nolint:gosec // Rewrites only the generated temporary fixture script.
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(ctx, bin, args...) //nolint:gosec // Built CLI and generated fixture paths.
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) image.Image {
+		t.Helper()
+		file, err := os.Open(filepath.Join(dir, "shots", name+".png")) //nolint:gosec // Fixed image names under test-owned output.
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, decodeErr := png.Decode(file)
+		closeErr := file.Close()
+		if decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		if closeErr != nil {
+			t.Fatal(closeErr)
+		}
+		return img
+	}
+	before, after := read("phone-before"), read("phone-after")
+	if before.Bounds() != after.Bounds() {
+		t.Fatal("phone capture dimensions changed")
+	}
+	changed := 0
+	for y := before.Bounds().Min.Y; y < before.Bounds().Max.Y; y++ {
+		for x := before.Bounds().Min.X; x < before.Bounds().Max.X; x++ {
+			r, g, b, _ := before.At(x, y).RGBA()
+			r2, g2, b2, _ := after.At(x, y).RGBA()
+			// The generated frames have a changing red/green gradient and a
+			// constant blue channel. Phone chrome and text cannot satisfy this.
+			if b == 128*257 && b2 == b && r < 80*257 && g < 80*257 && (r != r2 || g != g2) {
+				changed++
+			}
+		}
+	}
+	if changed < 1000 {
+		t.Fatalf("video did not advance: only %d changing frame pixels", changed)
 	}
 }

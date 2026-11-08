@@ -105,7 +105,10 @@ troops: {lesson: {members: [mote]}}
 				return err
 			}
 		}
-		event += "      - phone: {app: video, hold: landscape, video: {frames: ['frame*.png'], fps: 12, seconds: 10}}\n"
+		event += "      - say: Ready.\n      - phone: {app: video, hold: landscape, video: {frames: ['frame*.png'], fps: 12, seconds: 10}}\n"
+		// Both interactive startup and older first-line seeking must reach the
+		// same playback work before the measured section starts.
+		script = "gap 1\nwait 30\npress ok\nwait 60\nmark phone-video\nwait 60\nquit\n"
 	case "long-conversation":
 		for i := range 200 {
 			event += fmt.Sprintf("      - say: 'Line %d: Next.'\n", i)
