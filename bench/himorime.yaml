@@ -111,7 +111,7 @@ benchmarks:
   - name: speed huge-map
     tags: [graphics, speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", huge-map]
         cwd: "${head_root}/.."
@@ -122,7 +122,7 @@ benchmarks:
   - name: speed pictures-4k
     tags: [graphics, speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", pictures-4k]
         cwd: "${head_root}/.."
@@ -133,7 +133,7 @@ benchmarks:
   - name: speed standing-pictures
     tags: [graphics, speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", standing-pictures]
         cwd: "${head_root}/.."
@@ -144,7 +144,7 @@ benchmarks:
   - name: speed phone-video
     tags: [graphics, speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", phone-video]
         cwd: "${head_root}/.."
@@ -155,7 +155,7 @@ benchmarks:
   - name: speed long-conversation
     tags: [graphics, speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", long-conversation]
         cwd: "${head_root}/.."
@@ -166,7 +166,7 @@ benchmarks:
   - name: speed large-sim
     tags: [speed]
     warmup: 1
-    runs: 5
+    runs: 10
     setup:
       - command: [go, run, -buildvcs=false, ./internal/dev/perf/cmd, "${workdir}/fixtures", large-sim]
         cwd: "${head_root}/.."
