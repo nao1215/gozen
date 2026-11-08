@@ -1,6 +1,7 @@
 package event_test
 
 import (
+	"io/fs"
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
@@ -365,5 +366,131 @@ func TestPhoneSharedOutcomes(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Hidden authored slots remain stable, reject forced answers, and are filled
+// only after reopening with their flag unlocked. No phone history is mutated.
+func TestPhoneFlagVisibilityAndResults(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone:
+          app: chat
+          history: true
+          var: var.reply
+          messages:
+            - {text: "Hidden {var.n}", when: flag.met}
+            - {text: "Visible {var.n}"}
+          replies:
+            - {button: Hidden, when: flag.met, set: {flag.bad: true}}
+            - {button: Hello, id: hello, set: {flag.sent: true}}
+      - say: done
+`})
+	for _, answer := range []int{0, 1} {
+		st := testgame.State(db, 1)
+		h := &phoneHost{}
+		r := event.New(db, st, h)
+		r.Log = func(err error) { t.Error(err) }
+		r.Start(db.Events["e"].Do)
+		if tap, ok := r.Next().(event.Tap); !ok || tap.Results != 3 {
+			t.Fatalf("reply slots: %+v", tap)
+		}
+		p := h.got[0].Phone
+		if len(p.Messages) != 2 || !p.Messages[0].Hidden || p.Messages[1].Hidden || p.Messages[0].Text != "Hidden {var.n}" || !p.Replies[0].Hidden {
+			t.Fatalf("visibility: %+v", p)
+		}
+		r.Answer(answer)
+		r.Next()
+		if st.Flags["bad"] {
+			t.Fatal("hidden reply applied")
+		}
+		if answer == 0 && st.Vars["reply"] != nil {
+			t.Fatal("hidden reply saved a result")
+		}
+		if answer == 1 && (st.Vars["reply"] != "hello" || !st.Flags["sent"]) {
+			t.Fatalf("visible reply shifted: %+v", st)
+		}
+		st.Flags["met"] = true
+		st.Vars["n"] = float64(7)
+		r.Start(db.Events["e"].Do)
+		r.Next()
+		if p := h.got[1].Phone; p.Messages[0].Hidden || p.Messages[0].Text != "Hidden 7" || p.Replies[0].Hidden {
+			t.Fatalf("reopen did not unlock: %+v", p)
+		}
+		original := db.Events["e"].Do[0].Phone
+		if original.Messages[0].Hidden || original.Messages[0].Text != "Hidden {var.n}" || original.Replies[0].Hidden {
+			t.Fatal("authored data mutated")
+		}
+	}
+}
+
+func TestPhoneHiddenRowsAndLikes(t *testing.T) {
+	for _, tc := range []struct {
+		app    string
+		fields string
+		answer int
+	}{
+		{"page", `rows: [{button: Hidden, when: false, set: {flag.bad: true}}, {button: Visible, set: {flag.good: true}}]`, 0},
+		{"page", `rows: [{button: Hidden, when: false, set: {flag.bad: true}}, {button: Visible, set: {flag.good: true}}]`, 1},
+		{"feed", `posts: [{text: Hidden, when: false, set: {flag.bad: true}}, {text: Visible, set: {flag.good: true}}]`, 3},
+	} {
+		db := testgame.Load(t, map[string]string{"data/z.yaml": "events: {e: {do: [{phone: {app: " + tc.app + ", " + tc.fields + "}}, {say: done}]}}"})
+		st := testgame.State(db, 1)
+		r := event.New(db, st, &phoneHost{})
+		r.Log = func(err error) { t.Error(err) }
+		r.Start(db.Events["e"].Do)
+		r.Next()
+		r.Answer(tc.answer)
+		r.Next()
+		if st.Flags["bad"] || st.Flags["good"] != (tc.answer != 0) {
+			t.Fatalf("%s answer %d: flags %+v", tc.app, tc.answer, st.Flags)
+		}
+	}
+}
+
+// phoneCountingFS measures runtime reads after author-time asset validation.
+type phoneCountingFS struct {
+	fs.FS
+	opens int
+}
+
+func (f *phoneCountingFS) Open(name string) (fs.File, error) { f.opens++; return f.FS.Open(name) }
+
+func TestPhoneHiddenVideoAvoidsAssetReads(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone:
+          app: chat
+          history: true
+          messages: [{when: flag.met, video: {frames: ['frames/*.png']}}]
+`, "assets/frames/1.png": "x"})
+	counted := &phoneCountingFS{FS: db.FS}
+	db.FS = counted
+	st := testgame.State(db, 1)
+	h := &phoneHost{}
+	r := event.New(db, st, h)
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	r.Next()
+	if counted.opens != 0 {
+		t.Fatalf("hidden video opened assets %d times", counted.opens)
+	}
+	if !h.got[0].Phone.Messages[0].Hidden {
+		t.Fatal("message visible before unlock")
+	}
+	r.Answer(-1)
+	r.Next()
+	st.Flags["met"] = true
+	r.Start(db.Events["e"].Do)
+	r.Next()
+	if counted.opens == 0 || h.got[1].Phone.Messages[0].Hidden {
+		t.Fatal("unlocked video did not resolve assets")
+	}
+	if frames := h.got[1].Phone.Messages[0].Video.Frames; len(frames) != 1 || frames[0] != "frames/1.png" {
+		t.Fatalf("frames: %v", frames)
 	}
 }

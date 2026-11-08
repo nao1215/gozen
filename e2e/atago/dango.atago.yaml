@@ -59,6 +59,7 @@ scenarios:
   - run:
       command: go tool dango lint --format json
       cwd: checkout
+      env: {GOZEN_UPDATE_SCHEMA: "1"}
   - assert:
       exit_code: 1
       stdout:
@@ -71,7 +72,10 @@ scenarios:
         - {path: '$.data.decisions[2].status', equals: fail}
         - {path: '$.data.decisions[4].status', equals: fail}
         - {path: '$.data.decisions[8].status', equals: pass}
+        - {path: '$.data.decisions[9].id', equals: yaml}
+        - {path: '$.data.decisions[9].status', equals: fail}
       stderr: {equals: ''}
+      file: {path: checkout/data/schema/types.schema.json, equals: "{}\n"}
 - name: reproduction writes artifacts without running the game
   steps:
   - fixture:

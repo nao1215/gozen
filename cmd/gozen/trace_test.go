@@ -256,3 +256,18 @@ func TestPlayTraceRejectsBrokenRecords(t *testing.T) {
 		t.Errorf("--check with a broken line: %q", stderr)
 	}
 }
+
+func TestTraceScreenFormats(t *testing.T) {
+	path := traceFile(t, `{"t":"screen","tick":4,"controls":[{"label":"Travel","rect":[1,2,30,40],"enabled":false,"reason":"cost","focused":true}],"texts":[{"text":"Welcome"}],"figures":[{"picture":"guide.png"}],"phone":"page"}`, `{"t":"say","tick":5,"text":"Later"}`)
+	for _, format := range []string{"text", "json", "jsonl"} {
+		out, _ := invoke(t, 0, "trace", path, "--only", "screen", "--format", format)
+		for _, want := range []string{"Travel", "cost", "Welcome", "guide.png", "page"} {
+			if !strings.Contains(out, want) {
+				t.Fatalf("%s missing %s: %s", format, want, out)
+			}
+		}
+		if strings.Contains(out, "Later") {
+			t.Fatalf("filter: %s", out)
+		}
+	}
+}

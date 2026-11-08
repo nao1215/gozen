@@ -543,7 +543,7 @@ events:
         - call: ring_again
 ```
 
-Phone colors are game-wide `ui` settings in `game.yaml`, independent of dungeon
+Phone colors are game-wide `ui.phone_*` settings in `game.yaml`, independent of dungeon
 asset themes. No per-page flag is needed. `phone_background` fills page bodies,
 `phone_text` and `phone_muted` color their text, and `phone_accent` colors owner
 chat bubbles, the chat back mark and page controls. An explicit page `color`

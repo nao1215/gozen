@@ -1,6 +1,9 @@
 package play
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 // A list's headings are passed over by the cursor, and a pinned last item keeps the last
 // row while the rest scroll above it.
@@ -51,5 +54,42 @@ func TestListHeadingsAndPinnedLastRow(t *testing.T) {
 	short.pin = true
 	if short.pinned() {
 		t.Error("a list that fits pins its last item")
+	}
+}
+
+func TestListDecisionTrace(t *testing.T) {
+	g, _ := wldTracedGame(t, "")
+	var b bytes.Buffer
+	g.tr = newTracer(&b)
+	l := newList([]listItem{{label: "Continue", disabled: true}}, 0, 0, 200, 1)
+	g.in = input{}
+	g.in.pressed[btnOK] = true
+	if l.updateChoice(g) {
+		t.Fatal("disabled choice accepted")
+	}
+	if len(traceLines(t, b.Bytes(), "decision")) != 0 {
+		t.Fatal("disabled choice recorded")
+	}
+	l.items[0].disabled = false
+	if !l.updateChoice(g) {
+		t.Fatal("choice not accepted")
+	}
+	lines := traceLines(t, b.Bytes(), "decision")
+	if len(lines) != 1 || lines[0]["kind"] != "menu" || lines[0]["label"] != "Continue" {
+		t.Fatalf("decision: %v", lines)
+	}
+	b.Reset()
+	g.talk.choice = l
+	l.updateChoice(g)
+	if len(traceLines(t, b.Bytes(), "decision")) != 0 {
+		t.Fatal("dialogue answer duplicated")
+	}
+	g.talk.choice = nil
+	g.in = input{}
+	g.in.pressed[btnCancel] = true
+	chose, cancel := l.update(g)
+	lines = traceLines(t, b.Bytes(), "decision")
+	if chose || !cancel || len(lines) != 1 || lines[0]["kind"] != "menu_cancel" {
+		t.Fatalf("cancel: %v", lines)
 	}
 }

@@ -22,6 +22,7 @@ type tracePerformance struct {
 	samples           [3]metrics.Sample
 	base, sectionBase uint64
 	marked            bool
+	durations         *frameDurations
 }
 
 func newTracePerformance(tick int) *tracePerformance {
@@ -48,6 +49,9 @@ func (p *tracePerformance) sample() uint64 {
 
 func (p *tracePerformance) updated(start time.Time) {
 	elapsed := time.Since(start)
+	if p.durations != nil {
+		p.durations.update.add(elapsed)
+	}
 	p.section.ticks++
 	p.whole.ticks++
 	p.section.pending += elapsed
@@ -59,6 +63,9 @@ func (p *tracePerformance) updated(start time.Time) {
 
 func (p *tracePerformance) drawn(start time.Time) {
 	elapsed := time.Since(start)
+	if p.durations != nil {
+		p.durations.draw.add(elapsed)
+	}
 	for _, s := range []*sectionMeter{&p.section, &p.whole} {
 		s.frames++
 		if s.pending+elapsed > time.Second/60 {
@@ -114,4 +121,28 @@ func (g *Game) tracePerformanceEnd() {
 		g.emitSection(p.section, "mark", allocations-p.sectionBase, now)
 	}
 	g.emitSection(p.whole, "run", allocations-p.base, now)
+}
+
+type frameDurations struct{ update, draw durationWindow }
+
+// durationWindow keeps the last 60 samples without allocations, shared by the
+// per-section collector and the development overlay. Update and Draw are independent.
+type durationWindow struct {
+	values      [60]time.Duration
+	sum, last   time.Duration
+	next, count int
+}
+
+func (w *durationWindow) add(d time.Duration) {
+	w.sum += d - w.values[w.next]
+	w.values[w.next], w.last = d, d
+	w.next = (w.next + 1) % len(w.values)
+	w.count = min(w.count+1, len(w.values))
+}
+
+func (w *durationWindow) average() time.Duration {
+	if w.count == 0 {
+		return 0
+	}
+	return w.sum / time.Duration(w.count)
 }

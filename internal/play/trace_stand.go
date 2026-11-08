@@ -37,7 +37,9 @@ func (g *Game) traceStandSpeaker(face string, standing bool, key string) {
 }
 
 func (g *Game) traceStandFigures(figs []stageFigure) {
-	if g.tr == nil || g.tr.stand == nil {
+	tracing := g.tr != nil && g.tr.stand != nil
+	overlay := g.panel != nil && g.panel.collecting
+	if !tracing && !overlay {
 		return
 	}
 	sw, _ := g.screen()
@@ -51,10 +53,16 @@ func (g *Game) traceStandFigures(figs []stageFigure) {
 		if x > 0.5 {
 			side = "right"
 		}
-		g.tr.stand.figures = append(g.tr.stand.figures, standFig{
+		fig := standFig{
 			ID: f.id, Face: f.face, Side: side,
 			X: math.Round(x*100) / 100, Alpha: math.Round(a*10) / 10, Speaking: f.dim == 0 && !f.leaving, Leaving: f.leaving,
-		})
+		}
+		if tracing {
+			g.tr.stand.figures = append(g.tr.stand.figures, fig)
+		}
+		if overlay {
+			g.panel.frame.cast = append(g.panel.frame.cast, fig)
+		}
 	}
 }
 

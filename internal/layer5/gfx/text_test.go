@@ -501,3 +501,21 @@ func TestShapesAtAScale(t *testing.T) {
 		t.Fatal("drawing changed the scale")
 	}
 }
+
+func TestTextDoesNotCacheOffscreenGlyphs(t *testing.T) {
+	useFont(t)
+	dst := ebiten.NewImage(200, 100)
+	DrawTextLeft(dst, "Camp", 300, 0, 22.5, color.White)
+	if len(glyphCache) != 0 {
+		t.Fatal("offscreen text populated the glyph atlas")
+	}
+	DrawTextLeft(dst, "Camp", 0, 0, 22.5, color.White)
+	if len(glyphCache) == 0 {
+		t.Fatal("visible text did not populate the glyph atlas")
+	}
+	n := len(glyphCache)
+	DrawTextLeft(dst, "Camp", 20, 30, 22.5, color.Black)
+	if len(glyphCache) != n {
+		t.Fatal("position or tint caused duplicate glyph copies")
+	}
+}

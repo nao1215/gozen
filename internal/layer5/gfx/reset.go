@@ -2,6 +2,7 @@ package gfx
 
 // Reset drops cached GPU resources between runs; use only on the game thread.
 func Reset() {
+	resetGlyphs()
 	for _, img := range shapeCache {
 		img.Deallocate()
 	}

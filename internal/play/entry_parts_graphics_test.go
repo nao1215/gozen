@@ -22,6 +22,21 @@ func TestEntryPartsDraw(t *testing.T) {
 		g.Draw(covScreen())
 		wldPlay(t, g, "press right\nwait 2\n", 20)
 	}
+
+	// A modal popup receives input before the carousel; its screen record must
+	// describe that blocking state even though the carousel remains drawn.
+	g.tr = &tracer{layout: &layoutFrame{}}
+	s.popup = &list{}
+	s.drawCarousel(g, covScreen(), true)
+	if len(g.tr.layout.controls) == 0 {
+		t.Fatal("missing carousel controls")
+	}
+	for _, c := range g.tr.layout.controls {
+		if c.Enabled || c.Focused || c.Reason != "modal" {
+			t.Fatalf("blocked carousel: %+v", c)
+		}
+	}
+	s.popup, g.tr = nil, nil
 	// The plate is not a focus stop and a click on it does nothing.
 	wldPlay(t, g, "click 100 200\nwait 8\n", 40)
 	if len(g.st.Vars) != 0 {

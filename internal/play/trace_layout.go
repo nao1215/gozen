@@ -1,7 +1,9 @@
 package play
 
 import (
+	"encoding/json"
 	"fmt"
+	"hash/maphash"
 	"image"
 	"image/color"
 	"math"
@@ -23,8 +25,112 @@ import (
 // layoutFrame gathers what one frame drew; the tracer turns it into a layout line once
 // it has stayed the same for layoutStable ticks.
 type layoutFrame struct {
-	figures []layoutFigure
-	texts   []layoutText
+	figures     []layoutFigure
+	texts       []layoutText
+	controls    []screenControl
+	backgrounds []string
+	phone       string
+	phoneCall   bool
+	speaker     string
+	cast        []standFig
+}
+
+// screenControl describes a drawn hit target; reason is factual and empty when enabled.
+type screenControl struct {
+	Label   string     `json:"label"`
+	Rect    [4]float64 `json:"rect"`
+	Enabled bool       `json:"enabled"`
+	Reason  string     `json:"reason,omitempty"`
+	Focused bool       `json:"focused"`
+}
+
+func (g *Game) traceControl(label string, r [4]float64, enabled, focused bool, reason string) {
+	f := g.controlFrame()
+	if f == nil {
+		return
+	}
+	if enabled {
+		reason = ""
+	} else if reason == "" {
+		reason = "disabled"
+	}
+	f.controls = append(f.controls, screenControl{label, r, enabled, reason, focused})
+}
+
+// digest hashes comparable drawing facts without formatting, allocation or pixel reads.
+// The seed is local to the recorder; only equality within a run matters.
+func (f *layoutFrame) digest(seed maphash.Seed) uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	add := func(v uint64) {
+		for range 8 {
+			_ = h.WriteByte(byte(v)) //nolint:errcheck // maphash.WriteByte always returns nil.
+			v >>= 8
+		}
+	}
+	add(uint64(len(f.figures)))
+	for _, v := range f.figures {
+		add(maphash.String(seed, v.Picture))
+		add(maphash.Comparable(seed, v.Rect))
+		add(maphash.Comparable(seed, v.Content))
+		add(maphash.Comparable(seed, v.Clip))
+		add(math.Float64bits(v.Alpha))
+		add(uint64(len(v.SourceCut)))
+		for _, edge := range v.SourceCut {
+			add(maphash.String(seed, edge))
+		}
+	}
+	add(uint64(len(f.texts)))
+	for _, v := range f.texts {
+		add(maphash.Comparable(seed, v))
+	}
+	add(uint64(len(f.controls)))
+	for _, v := range f.controls {
+		add(maphash.Comparable(seed, v))
+	}
+	add(uint64(len(f.backgrounds)))
+	for _, v := range f.backgrounds {
+		add(maphash.String(seed, v))
+	}
+	add(uint64(len(f.cast)))
+	for _, v := range f.cast {
+		add(maphash.Comparable(seed, v))
+	}
+	add(maphash.String(seed, f.phone))
+	add(maphash.Comparable(seed, f.phoneCall))
+	add(maphash.String(seed, f.speaker))
+	return h.Sum64()
+}
+
+func (tr *tracer) screenChanged(f *layoutFrame) bool {
+	if tr.screenSeed == (maphash.Seed{}) {
+		tr.screenSeed = maphash.MakeSeed()
+	}
+	digest := f.digest(tr.screenSeed)
+	if tr.screenSeen && digest == tr.screenDigest {
+		return false
+	}
+	tr.screenSeen, tr.screenDigest = true, digest
+	return true
+}
+
+func (g *Game) traceScreenEnd(f *layoutFrame) {
+	if !g.tr.screenChanged(f) {
+		return
+	}
+	record := traceLine{
+		"controls": f.controls, "texts": f.texts,
+		"figures": f.figures, "cast": f.cast, "backgrounds": f.backgrounds,
+		"phone": f.phone, "phone_call": f.phoneCall, "speaker": f.speaker,
+	}
+	if c := g.opts.capture; c != nil && c.structure {
+		var err error
+		c.screen, err = json.Marshal(record)
+		if err != nil {
+			g.tr.err = err
+		}
+	}
+	g.emit("screen", record)
 }
 
 // layoutFigure is one standing picture as drawn: rectangles in UI units of the screen.
@@ -154,6 +260,7 @@ func (g *Game) traceLayoutEnd(screen *ebiten.Image) {
 	if f == nil {
 		return
 	}
+	g.traceScreenEnd(f)
 	// A shaking, flashing or fading screen is not read: what is behind the texts
 	// would be the flash, not the screen.
 	if g.shake > 0 || g.flash > 0 || g.fadeT > 0 || g.freezeT > 0 {
@@ -283,4 +390,78 @@ func contrastRatio(a, b color.NRGBA) float64 {
 		la, lb = lb, la
 	}
 	return (la + 0.05) / (lb + 0.05)
+}
+
+// These text helpers also feed the existing layout collector for direct gfx callers.
+func (g *Game) screenText(dst *ebiten.Image, s string, x, y, size float64, c color.Color) {
+	gfx.DrawText(dst, s, x, y, size, c)
+	if g.tr != nil {
+		g.traceLeftText(s, x-gfx.TextWidth(s, size)/2, y, size, c)
+	}
+}
+
+func (g *Game) screenTextRight(dst *ebiten.Image, s string, x, y, size float64, c color.Color) {
+	gfx.DrawTextRight(dst, s, x, y, size, c)
+	if g.tr != nil {
+		g.traceLeftText(s, x-gfx.TextWidth(s, size), y, size, c)
+	}
+}
+
+func (g *Game) screenOffsets() (int, int) {
+	f := g.controlFrame()
+	if f == nil {
+		return 0, 0
+	}
+	return len(f.texts), len(f.controls)
+}
+
+// The phone draws on intermediate canvases. Convert their boxes into screen UI units.
+func (g *Game) transformScreenRecords(textStart, controlStart int, transform func(float64, float64) (float64, float64)) {
+	f := g.controlFrame()
+	if f == nil {
+		return
+	}
+	box := func(r [4]float64) [4]float64 {
+		x0, y0 := transform(r[0], r[1])
+		x1, y1 := x0, y0
+		for _, p := range [][2]float64{{r[0] + r[2], r[1]}, {r[0], r[1] + r[3]}, {r[0] + r[2], r[1] + r[3]}} {
+			x, y := transform(p[0], p[1])
+			x0, y0 = min(x0, x), min(y0, y)
+			x1, y1 = max(x1, x), max(y1, y)
+		}
+		return roundRect(x0, y0, x1-x0, y1-y0)
+	}
+	for i := textStart; i < len(f.texts); i++ {
+		f.texts[i].Rect = box(f.texts[i].Rect)
+	}
+	for i := controlStart; i < len(f.controls); i++ {
+		f.controls[i].Rect = box(f.controls[i].Rect)
+	}
+}
+
+func (g *Game) clipScreenRecords(textStart, controlStart int, top, w, h float64) {
+	f := g.controlFrame()
+	if f == nil {
+		return
+	}
+	clip := func(r [4]float64) [4]float64 {
+		x, y := max(0, r[0]), max(top, r[1])
+		return roundRect(x, y, max(0, min(w, r[0]+r[2])-x), max(0, min(h, r[1]+r[3])-y))
+	}
+	texts := f.texts[:textStart]
+	for _, t := range f.texts[textStart:] {
+		t.Rect = clip(t.Rect)
+		if t.Rect[2] > 0 && t.Rect[3] > 0 {
+			texts = append(texts, t)
+		}
+	}
+	f.texts = texts
+	controls := f.controls[:controlStart]
+	for _, c := range f.controls[controlStart:] {
+		c.Rect = clip(c.Rect)
+		if c.Rect[2] > 0 && c.Rect[3] > 0 {
+			controls = append(controls, c)
+		}
+	}
+	f.controls = controls
 }

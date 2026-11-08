@@ -118,8 +118,8 @@ func (g *Game) drawPhoneLock(p *phoneView, dst *ebiten.Image, w, h float64) {
 		return
 	}
 	clock := p.clock(g)
-	gfx.DrawText(dst, p.cue.Date, w/2, 62, 17, phoneOnVideo)
-	gfx.DrawText(dst, clock, w/2, 84, 72, phoneOnVideo)
+	g.screenText(dst, p.cue.Date, w/2, 62, 17, phoneOnVideo)
+	g.screenText(dst, clock, w/2, 84, 72, phoneOnVideo)
 	y := 200.0
 	for i := p.shown - 1; i >= 0 && y < h; i-- {
 		in := 1.0
@@ -140,12 +140,12 @@ func (g *Game) drawLockNotice(p *phoneView, dst *ebiten.Image, i int, x, y, w, a
 	gfx.FillRoundRect(dst, float32(x), float32(y), float32(w), float32(ch), 18, alphaColor(phoneCard, alpha))
 	ink, muted := alphaColor(phoneInk, alpha), alphaColor(phoneMuted, alpha)
 	g.drawPhoneIcon(dst, p, n.Icon, n.App, x+12, y+11, 24)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(n.App, 12, w-120), x+44, y+14, 12, muted)
-	gfx.DrawTextRight(dst, lang.T("今"), x+w-14, y+14, 12, muted)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14, y+36, 15, ink)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14.6, y+36, 15, ink)
+	g.text(dst, gfx.Ellipsis(n.App, 12, w-120), x+44, y+14, 12, muted)
+	g.screenTextRight(dst, lang.T("今"), x+w-14, y+14, 12, muted)
+	g.text(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14, y+36, 15, ink)
+	g.text(dst, gfx.Ellipsis(n.Title, 15, w-28), x+14.6, y+36, 15, ink)
 	for k, line := range lines {
-		gfx.DrawTextLeft(dst, line, x+14, y+56+float64(k)*gfx.LineHeight(size), size, ink)
+		g.text(dst, line, x+14, y+56+float64(k)*gfx.LineHeight(size), size, ink)
 	}
 	return ch
 }
@@ -154,17 +154,17 @@ func (g *Game) drawLockNotice(p *phoneView, dst *ebiten.Image, i int, x, y, w, a
 // caller's icon ringing, their name and text, and the two round buttons.
 func (g *Game) drawPhoneCall(p *phoneView, dst *ebiten.Image, w, h float64) {
 	n := p.cue.Notices[p.shown-1]
-	gfx.DrawText(dst, n.App, w/2, 80, 15, alphaColor(phoneOnVideo, 0.75))
+	g.screenText(dst, n.App, w/2, 80, 15, alphaColor(phoneOnVideo, 0.75))
 	cy := 190.0
 	for k := range 2 {
 		t := math.Mod(float64(p.since)/50+float64(k)*0.5, 1)
 		gfx.StrokeCircle(dst, float32(w/2), float32(cy), float32(56+t*40), 2, alphaColor(phoneOnVideo, 0.5*(1-t)), true)
 	}
 	g.drawPhoneIcon(dst, p, n.Icon, n.Title, w/2-56, cy-56, 112)
-	gfx.DrawText(dst, gfx.Ellipsis(n.Title, 26, w-32), w/2, cy+80, 26, phoneOnVideo)
+	g.screenText(dst, gfx.Ellipsis(n.Title, 26, w-32), w/2, cy+80, 26, phoneOnVideo)
 	lines, size := gfx.FitLines(n.Text, 15, w-48, 2)
 	for k, line := range lines {
-		gfx.DrawText(dst, line, w/2, cy+124+float64(k)*gfx.LineHeight(size), size, alphaColor(phoneOnVideo, 0.75))
+		g.screenText(dst, line, w/2, cy+124+float64(k)*gfx.LineHeight(size), size, alphaColor(phoneOnVideo, 0.75))
 	}
 	ax, dx, by := callButtonsAt(w, h)
 	for _, b := range []struct {
@@ -172,8 +172,11 @@ func (g *Game) drawPhoneCall(p *phoneView, dst *ebiten.Image, w, h float64) {
 		fill  color.NRGBA
 		label string
 	}{{ax, phoneAnswer, lang.T("応答")}, {dx, phoneDecline, lang.T("拒否")}} {
+		if g.controlFrame() != nil {
+			g.traceControl(b.label, roundRect(b.x-34, by-34, 68, 68), p.ready(), false, "transition")
+		}
 		gfx.FillCircle(dst, float32(b.x), float32(by), 34, b.fill, true)
 		gfx.FillRoundRect(dst, float32(b.x-15), float32(by-5), 30, 10, 5, phoneOnVideo)
-		gfx.DrawText(dst, b.label, b.x, by+44, 14, phoneOnVideo)
+		g.screenText(dst, b.label, b.x, by+44, 14, phoneOnVideo)
 	}
 }

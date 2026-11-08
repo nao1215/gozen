@@ -28,11 +28,14 @@ func (c *command) traceCmd() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen trace")
 	repro := fl.String("repro", "", "print a command to retake this `TICK`, time (12.5s), or screenshot path")
 	out := fl.String("out", "", "with --repro, write a cut trace and reproduction script to a new `DIR`")
-	only := fl.StringArray("only", nil, "print only this record `KIND`; repeat for multiple kinds")
+	only := fl.StringArray("only", nil, "print only this record `KIND` (screen: drawn text and controls); repeat for multiple kinds")
 	c.reporting(fl)
 	from := fl.Float64("from", 0, "start at this `SECOND`")
 	to := fl.Float64("to", 0, "stop at this `SECOND`; 0 is the end")
 	input := fl.Bool("input", false, "also print the player's input")
+	metrics := fl.Bool("metrics", false, "report play measurements as facts, never verdicts")
+	top := fl.Int("top", 10, "with --metrics, show up to this many repeated text lines")
+	stall := fl.Float64("stall-seconds", 5, "with --metrics, report unchanged observations lasting at least these SECONDS")
 	check := fl.Bool("check", false, "list the faults of the standing pictures and the music instead, and exit 1 if there are any")
 	musicLate := fl.Float64("music-late", 0.5, "with --check, a song heard more than these `SECONDS` after it was asked for is late")
 	return clihelp.Operation{Flags: fl, Run: func(_ context.Context) (err error) {
@@ -47,7 +50,7 @@ func (c *command) traceCmd() clihelp.Operation {
 			if *repro == "" || inputPath == "-" {
 				return cliio.Invalid(diag.BadValue, "--repro needs a target and a trace file path")
 			}
-			for _, flag := range []string{"check", "only", "from", "to", "input", "music-late"} {
+			for _, flag := range []string{"metrics", "top", "stall-seconds", "check", "only", "from", "to", "input", "music-late"} {
 				if fl.Changed(flag) {
 					return cliio.Invalid(diag.OptionConflict, "--repro cannot be combined with --%s", flag)
 				}
@@ -59,6 +62,19 @@ func (c *command) traceCmd() clihelp.Operation {
 		}
 		if *check && (fl.Changed("only") || fl.Changed("from") || fl.Changed("to") || fl.Changed("input")) {
 			return cliio.Invalid(diag.OptionConflict, "--check cannot be combined with trace display filters")
+		}
+		if !*metrics && (fl.Changed("top") || fl.Changed("stall-seconds")) {
+			return cliio.Invalid(diag.OptionConflict, "--top and --stall-seconds require --metrics")
+		}
+		if *metrics {
+			for _, flag := range []string{"check", "only", "from", "to", "input", "music-late"} {
+				if fl.Changed(flag) {
+					return cliio.Invalid(diag.OptionConflict, "--metrics cannot be combined with --%s", flag)
+				}
+			}
+			if *top < 1 || *stall <= 0 || math.IsNaN(*stall) || math.IsInf(*stall, 0) {
+				return cliio.Invalid(diag.BadValue, "metrics need --top > 0 and finite --stall-seconds > 0")
+			}
 		}
 		inputStream := io.NopCloser(os.Stdin)
 		if inputPath != "-" {
@@ -73,6 +89,13 @@ func (c *command) traceCmd() clihelp.Operation {
 				err = errors.Join(err, closeErr)
 			}
 		}()
+		if *metrics {
+			report, err := measureTrace(inputStream, *top, *stall)
+			if err != nil {
+				return err
+			}
+			return c.printTraceMetrics(report)
+		}
 		if *check {
 			report, err := checkTrace(inputStream, *musicLate)
 			if err != nil {
@@ -204,6 +227,8 @@ func (c *command) traceCmd() clihelp.Operation {
 				if _, ok := l["slow_frame_share"]; ok {
 					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", num(l["slow_frame_share"]), num(l["allocations_per_frame"]))
 				}
+			case "screen":
+				what = screenText(l)
 			case "layout":
 				what = layoutText(l)
 			case "state":
@@ -428,4 +453,13 @@ func layoutText(l map[string]any) string {
 		what += fmt.Sprintf("  lowest contrast %.2f %q", low, lowText)
 	}
 	return what
+}
+
+// screenText preserves all screen facts in a readable indented block.
+func screenText(l map[string]any) string {
+	b, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }

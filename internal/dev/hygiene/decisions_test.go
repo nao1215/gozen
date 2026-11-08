@@ -11,7 +11,9 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -313,7 +315,7 @@ battle_foe_names battle_fx battle_message battle_music beats_per_bar before behi
 bestiary blink block_lines blocked blocks blur body bold
 bonus bonus_item bonus_skill border boss boss_win_music bottom bounce
 bounds bpm breed breeding bridges brightness browse burnup
-bust button buttons buy c call_view camera camera_off
+bust buttons buy c call_view camera camera_off
 camera_on can_escape cap_hours caption capture card card_bubbles carousel
 carry ceiling ceiling_texture cg_review cgs chance channels char
 charge checkpoint child children choice_position chrome clash clear
@@ -366,7 +368,7 @@ power preferred preset price primary primary_card primary_text priority
 profile profile_book progress prompt q qr question quick_menu
 quiet r rank rare_rank reaction reactions read reason
 recoil recover recruit rect refraction region_borders region_numbers region_roads
-release remove remove_on_damage remove_state repetitions replies reply reposts
+release remove remove_on_damage remove_state repetitions reply reposts
 requires reserve reset_actor reset_tree resist respond rest restart
 restore_checkpoint restrict restrict_chance resume_to retain retry revive ring
 rise roamers rollback roofs rooms rope rounds row
@@ -633,6 +635,60 @@ func TestCommandExecutionGuard(t *testing.T) {
 			got := commandExecutionViolations(parsed(t, tc.name, []byte(tc.source)), "cmd/gozen/trace_repro.go")
 			if (len(got) > 0) != tc.bad {
 				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}
+
+// TestDeadcodeGate rejects tool/filter failures while allowing only explicitly
+// exempted findings. Diagnostics must remain on stderr, outside the filter.
+func TestDeadcodeGate(t *testing.T) {
+	for _, tool := range []string{"make", "sh", "grep"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("deadcode gate requires make, a POSIX shell and grep: %s unavailable: %v", tool, err)
+		}
+	}
+	makefile, err := filepath.Abs("../../../Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, output, allow string
+		status              int
+		missing, fail       bool
+	}{
+		{name: "tool failure", status: 7, fail: true},
+		{name: "tool failure with exempt output", output: "exempt", allow: "^exempt$", status: 7, fail: true},
+		{name: "finding", output: "unreachable", allow: "^exempt$", fail: true},
+		{name: "exempt finding", output: "exempt", allow: "^exempt$"},
+		{name: "no findings", allow: "^exempt$"},
+		{name: "invalid filter", output: "exempt", allow: "[", fail: true},
+		{name: "missing filter", output: "exempt", missing: true, fail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			script := fmt.Sprintf("printf 'diagnostic on stderr\\n' >&2\nprintf '%%s\\n' '%s'\nexit %d\n", tc.output, tc.status)
+			if err := os.WriteFile(filepath.Join(dir, "tool.sh"), []byte(script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if !tc.missing {
+				if err := os.WriteFile(filepath.Join(dir, ".deadcode-allow"), []byte(tc.allow+"\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cmd := exec.CommandContext(t.Context(), "make", "--no-print-directory", "-s", "-f", makefile, "deadcode", "DEADCODE=sh ./tool.sh", "SHELL=sh") //nolint:gosec // Fixed repository recipe and isolated fixture; no external command input.
+			cmd.Dir = dir
+			var out, diagnostics bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &out, &diagnostics
+			err := cmd.Run()
+			if (err != nil) != tc.fail {
+				t.Fatalf("make error %v, want failure %v; stdout=%q stderr=%q", err, tc.fail, out.String(), diagnostics.String())
+			}
+			if !strings.Contains(diagnostics.String(), "diagnostic on stderr") || strings.Contains(out.String(), "diagnostic on stderr") {
+				t.Fatalf("diagnostic channel: stdout=%q stderr=%q", out.String(), diagnostics.String())
+			}
+			if tc.name == "finding" && !strings.Contains(out.String(), "unreachable") {
+				t.Fatalf("finding lost: %q", out.String())
 			}
 		})
 	}

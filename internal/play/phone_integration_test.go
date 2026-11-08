@@ -282,3 +282,109 @@ func TestPhoneBannerRecordingReplay(t *testing.T) {
 		t.Fatalf("replay dispatched %d times", len(opens))
 	}
 }
+
+// A home delegates to authored events and returns without recursive home calls.
+// Saved flags rebuild static history; replay must not duplicate a sent reply.
+func TestPhoneFlagNavigationSaveReplay(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "camp"}, "schema_version: 11\nui: {message: novel}\n", `
+events:
+  flag_phone:
+    - set: {flag.contact: true, var.sent_count: 0}
+    - phone:
+        app: home
+        title: Home
+        rows:
+          - {button: Hidden, when: flag.secret, event: contact_list}
+          - {button: Contacts, event: contact_list}
+    - say: Saved
+    - say: End
+  contact_list:
+    - phone:
+        app: contacts
+        title: Contacts
+        rows:
+          - {item: {title: Hidden}, button: Hidden, when: flag.secret, event: thread}
+          - {item: {title: Sam, value: '0100'}, button: Message, when: flag.contact, event: thread}
+  thread:
+    - phone:
+        app: chat
+        title: Sam
+        history: true
+        messages:
+          - {from: Sam, text: Welcome, when: flag.contact}
+          - {mine: true, text: Thanks, when: flag.sent}
+        replies:
+          - {button: Thanks, id: thanks, when: '!flag.sent', set: {flag.sent: true, var.sent_count: 'var.sent_count + 1'}}
+`)
+	waitPhone := func(title string) {
+		t.Helper()
+		for range 180 {
+			g.in = input{}
+			g.pump()
+			if g.phone != nil && g.phone.cue.Title == title && g.phone.ready() {
+				return
+			}
+		}
+		t.Fatalf("phone %q not reached; line=%q error=%v", title, at(g), g.failure)
+	}
+	g.enterAt = ""
+	g.events.Start(g.db.Events["flag_phone"].Do)
+	waitPhone("Home")
+	for range 70 {
+		g.phone.putDown(1, -1, false)
+		waitPhone("Contacts")
+		if !g.phone.cue.Rows[0].Hidden || g.phone.cue.Rows[1].Hidden {
+			t.Fatal("contact unlock condition lost")
+		}
+		g.phone.putDown(-4, -4, false)
+		waitPhone("Home")
+		frames, _ := g.events.Frames()
+		if len(frames) > 4 {
+			t.Fatalf("home visits grew event stack: %d", len(frames))
+		}
+	}
+	g.phone.putDown(1, -1, false)
+	waitPhone("Contacts")
+	g.phone.putDown(1, -1, false)
+	waitPhone("Sam")
+	if !g.phone.cue.Messages[1].Hidden {
+		t.Fatal("unsent message was visible")
+	}
+	g.phone.putDown(-4, -4, false)
+	waitPhone("Contacts")
+	if g.st.Flags["sent"] || g.st.Vars["sent_count"] != float64(0) {
+		t.Fatal("closing without sending changed flags")
+	}
+	g.phone.putDown(1, -1, false)
+	waitPhone("Sam")
+	g.phone.putDown(-10, -1, false)
+	waitPhone("Contacts")
+	g.phone.putDown(1, -1, false)
+	waitPhone("Sam")
+	if g.phone.cue.Messages[1].Hidden || !g.phone.cue.Replies[0].Hidden {
+		t.Fatal("sent flag did not rebuild authored history and hide reply")
+	}
+	g.phone.putDown(-4, -4, false)
+	waitPhone("Contacts")
+	g.phone.putDown(-4, -4, false)
+	waitPhone("Home")
+	g.phone.putDown(-4, -4, false)
+	for range 90 {
+		g.in = input{}
+		g.pump()
+	}
+	if at(g) != "Saved" {
+		t.Fatalf("closing home did not resume story: %q", at(g))
+	}
+	if err := g.save(0); err != nil {
+		t.Fatal(err)
+	}
+	st, err := g.load(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadSavedGame(st)
+	if g.failure != nil || g.phone != nil || at(g) != "Saved" || !g.st.Flags["sent"] || g.st.Vars["sent_count"] != float64(1) {
+		t.Fatalf("saved phone results: phone=%v line=%q flags=%v vars=%v error=%v", g.phone != nil, at(g), g.st.Flags, g.st.Vars, g.failure)
+	}
+}

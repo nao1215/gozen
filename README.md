@@ -167,6 +167,20 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 ## Playtesting
 
+![Play, script or autoplay to a trace; reproduce a screen, inspect its structure, read play metrics or section frames. Capture and compare with the previous capture.](docs/images/playtesting-flow.svg)
+
+Record a play with `gozen run game --dev --trace run.jsonl`; add `--script input.txt --shots shots` or `--autoplay 60` to drive it automatically. Gozen reports what happened; the author decides what to change.
+
+| Inspect | Example |
+|:--|:--|
+| Reproduce a screen from a recorded tick | `gozen trace run.jsonl --repro 120 --out repro` |
+| Read the screen's text, cast and controls | `gozen trace run.jsonl --only screen` |
+| Read text per decision, repetition and waiting spans | `gozen trace run.jsonl --metrics` |
+| Read frame counts and timings between script `mark` commands | `gozen trace run.jsonl --only section --format jsonl` |
+| Compare the same capture jobs with the previous output | `gozen capture game --config captures.yaml --out current --against previous` |
+
+[Runnable examples, output and limits](https://nao1215.github.io/gozen/edit-play-loop/#playtesting) include the script and capture configuration. Reproduction refuses traces it cannot reproduce exactly; its bundle needs the unchanged game assets.
+
 Start the game with `--dev` and these keys work while you play.
 
 | F5: edit the YAML, the line changes in place | F9: a note with the screen and the state |
@@ -176,8 +190,8 @@ Start the game with `--dev` and these keys work while you play.
 | ![win rates by troop](docs/images/go-zen-balance.jpg) | ![flag.thanked_hedda and chose.toast in the development panel](docs/images/novel-panel.jpg) |
 | F8 Flags: what each event sets and reads | F8 Scenes: jump to an event |
 | ![the flags each event sets and reads](docs/images/novel-flags.jpg) | ![the Scenes tab jumps to the late night](docs/images/playtest-jump.gif) |
-| F8 Command: run a line of YAML | F8 Frames: ticks, frames, the slowest Update and Draw |
-| ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the frame meter over the tavern](docs/images/playtest-frames.jpg) |
+| F8 Command: run a line of YAML | F8 Frames: scene state, control boxes, Update and Draw |
+| ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the Frames overlay over the tavern](docs/images/playtest-frames.jpg) |
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg) |
 

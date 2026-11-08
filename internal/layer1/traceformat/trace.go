@@ -32,6 +32,9 @@ type ExactReplay struct {
 // describe deterministic outcomes or presentation, not additional mutations.
 // repro is a seek boundary.
 var kinds = map[string]bool{
+	"decision":            true, // Observational choice list.
+	"input_result":        true, // Receiver acknowledgement.
+	"autoplay_wait":       true, // Observational waiting state.
 	"draw_skip":           true, // Recorded presentation cadence.
 	"act":                 true,
 	"activate":            true,
@@ -79,6 +82,7 @@ var kinds = map[string]bool{
 	"save_write":          true,
 	"say":                 true,
 	"scene":               true,
+	"screen":              true, // Drawing observation only.
 	"screen_action":       true,
 	"screen_carry":        true,
 	"screen_drop":         true,

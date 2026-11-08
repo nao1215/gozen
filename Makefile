@@ -52,7 +52,9 @@ lint: arch boundary tidy workflows deadcode complexity
 # unused sees one package at a time, so code kept alive only by its own tests
 # passes it. .deadcode-allow lists the kept ones (other platforms, test support).
 deadcode:
-	@out=$$($(DEADCODE) -test=false ./... | grep -v -E -f .deadcode-allow || true); \
+	@out=$$($(DEADCODE) -test=false ./...) || exit $$?; \
+	out=$$(printf '%s\n' "$$out" | grep -v -E -f .deadcode-allow); filter_status=$$?; \
+	if [ "$$filter_status" -gt 1 ]; then exit "$$filter_status"; fi; \
 	if [ -n "$$out" ]; then echo "$$out"; echo "unreachable functions: remove them, or list a kept one in .deadcode-allow"; exit 1; fi
 
 # Cognitive complexity and length of the functions added or changed since BASE.

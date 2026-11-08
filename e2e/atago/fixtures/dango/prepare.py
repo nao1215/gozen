@@ -32,3 +32,8 @@ probe.mkdir()
     'var cfg scriptConfig\n'
     '_ = c.parse(scriptFlags(&cfg), []string{"--seed", "1"}, pages["sim script"])\n'
     '}\n')
+
+# Replace the hard link before corrupting generated data in the isolated copy.
+schema = destination / "data/schema/types.schema.json"
+schema.unlink()
+schema.write_bytes(b"{}\n")

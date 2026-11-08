@@ -92,3 +92,20 @@ func BenchmarkTracePerformance(b *testing.B) {
 		p.drawn(time.Now())
 	}
 }
+
+func TestDurationWindow(t *testing.T) {
+	var w durationWindow
+	if w.average() != 0 {
+		t.Fatal("empty average")
+	}
+	for range 60 {
+		w.add(time.Millisecond)
+	}
+	w.add(61 * time.Millisecond)
+	if w.average() != 2*time.Millisecond || w.last != 61*time.Millisecond {
+		t.Fatalf("rolling window: %+v", w)
+	}
+	if n := testing.AllocsPerRun(100, func() { w.add(time.Millisecond); _ = w.average() }); n != 0 {
+		t.Fatalf("allocations: %g", n)
+	}
+}

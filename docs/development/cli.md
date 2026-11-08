@@ -109,3 +109,40 @@ argument order, a leading-dash directory, format framing, structured diagnostics
 creation, validation and overwrite refusal. `internal/diag/usage_test.go` checks
 both textual assertions and JSON `$.code` matchers against each code's exit value.
 The registry and existing code meanings are unchanged.
+
+## Capture comparison
+
+`gozen capture GAME --config captures.yaml --out current --against previous`
+compares jobs by ID with `previous/shots.json`. The output directory must be new.
+Without `--against`, no images are decoded for comparison and no screen structure
+is serialized. With it, each successful shot retains the last sampled stage-3
+`screen` structure; an older capture without this field still supports pixels.
+
+`shots.json` remains an array. Comparison rows add `changed`, `change`
+(`unchanged`, `changed`, `new`, `removed`), `diff_pixels`, `diff_ratio`, and
+`diff_bbox` (`[x,y,width,height]`, or null for no changed pixels). Pixel equality
+uses decoded premultiplied RGBA bytes. Size-only regions count as different.
+GIFs compare each full frame in order; counts and ratios span all frame pixels,
+while the box and `<id>.diff.png` highlight are their spatial union. Frame count,
+delay or loop changes also set `animation_changed`. No tolerance or quality
+threshold is applied. Capture-generated full-frame GIFs are supported. Before
+decoding, comparison rejects GIFs exceeding 300 frames, 921600 pixels per frame
+or 64 Mi pixels in total, matching the capture generation budgets.
+
+When both shots have structure, `structure_diff` lists texts and controls added,
+removed or changed. Exact matches are paired first, then remaining entries at
+the same rectangle are paired as changes. This is a geometric correspondence,
+not a persistent UI identity. GIF structure describes its last sampled frame.
+A first comparison against an older output establishes structure for the next run.
+
+New and removed jobs are changed rows. Removed jobs have `status: "removed"`
+and do not count as failed or successful captures. `--only` compares the selected
+set, so omitted previous jobs appear removed. Previously removed rows are ignored
+on the next comparison. Missing or invalid previous manifests/images are I/O or
+processing failures, not image differences.
+
+The HTML shows changed rows first, with copied previous images, current images
+and pink highlights; unchanged rows are collapsed. Copies keep the report portable.
+Text stdout prints counts; JSON/JSONL summaries add `comparison` with `changed`
+(including new/removed), `unchanged`, `new`, and `removed`. Capture failures retain
+their existing exit behavior; any number of differences alone still exits zero.

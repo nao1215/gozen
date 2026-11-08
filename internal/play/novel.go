@@ -95,6 +95,54 @@ func (g *Game) novelButtonRects() []image.Rectangle {
 	return out
 }
 
+// novelButtonReason is shared by input and screen records so a drawn control
+// never claims an action that its receiver refuses. Empty means usable.
+func (g *Game) novelButtonReason(b button) string {
+	switch b { //nolint:exhaustive // Only novel toolbar actions have readiness conditions.
+	case btnBack:
+		if !g.canRollBack() {
+			return "no_history"
+		}
+	case btnLog:
+		if len(g.backlog) == 0 {
+			return "no_history"
+		}
+	case btnSkip:
+		if !g.talk.active {
+			return "inactive"
+		}
+		if !g.canToggleSkip() {
+			return "choice"
+		}
+	case btnSceneSkip:
+		if !g.sceneSkippable() {
+			return "unavailable"
+		}
+	case btnSave, btnLoad:
+		if !g.talk.active {
+			return "inactive"
+		}
+		if g.replaying {
+			return "replay"
+		}
+	case btnHide:
+		if !g.novel() {
+			return "inactive"
+		}
+		if g.talk.choice != nil {
+			return "choice"
+		}
+	case btnBook:
+		if !g.profilesInMenus() {
+			return "unavailable"
+		}
+		if g.replaying {
+			return "replay"
+		}
+	}
+	return ""
+}
+
 func (g *Game) novelInput() bool {
 	t := &g.talk
 	if t.hidden {
@@ -124,23 +172,23 @@ func (g *Game) novelInput() bool {
 		}
 	}
 	switch {
-	case len(g.backlog) > 0 && g.in.query(press[btnLog]):
+	case g.novelButtonReason(btnLog) == "" && g.in.query(press[btnLog]):
 		g.logView = &backlogView{}
 		g.logView.top = g.logLastTop()
 		return true
 	case g.in.query(press[btnAuto]):
 		g.autoRead = !g.autoRead
 		return true
-	case t.active && g.canToggleSkip() && g.in.query(press[btnSkip]):
+	case g.novelButtonReason(btnSkip) == "" && g.in.query(press[btnSkip]):
 		g.toggleSkip()
 		return true
-	case g.sceneSkippable() && g.in.query(press[btnSceneSkip]):
+	case g.novelButtonReason(btnSceneSkip) == "" && g.in.query(press[btnSceneSkip]):
 		g.sceneSkip()
 		return true
-	case g.canRollBack() && g.in.query(press[btnBack]):
+	case g.novelButtonReason(btnBack) == "" && g.in.query(press[btnBack]):
 		g.rollBack()
 		return true
-	case t.active && !g.replaying && g.in.query(press[btnSave]):
+	case g.novelButtonReason(btnSave) == "" && g.in.query(press[btnSave]):
 		m := newSaveMenu(g, true, func() {})
 		if why := g.saveBlocked(); why != "" {
 			g.sfx("buzzer")
@@ -148,18 +196,18 @@ func (g *Game) novelInput() bool {
 		}
 		g.push(m)
 		return true
-	case t.active && !g.replaying && g.in.query(press[btnLoad]):
+	case g.novelButtonReason(btnLoad) == "" && g.in.query(press[btnLoad]):
 		m := newSaveMenu(g, false, func() {})
 		m.inPlay = true
 		g.push(m)
 		return true
-	case g.novel() && t.choice == nil && (g.in.query(press[btnHide]) || g.in.esc || g.in.rightClicked()):
+	case g.novelButtonReason(btnHide) == "" && (g.in.query(press[btnHide]) || g.in.esc || g.in.rightClicked()):
 		t.hidden = true
 		return true
 	case g.in.query(press[btnConfig]):
 		g.push(newConfigScreen(g))
 		return true
-	case g.profilesInMenus() && !g.replaying && g.in.query(press[btnBook]):
+	case g.novelButtonReason(btnBook) == "" && g.in.query(press[btnBook]):
 		// the band's button (F6 itself is taken in Update)
 		g.push(newProfiles(g, nil))
 		return true
@@ -305,8 +353,12 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 		if buttons[i].b == btnBack && !g.canRollBack() {
 			c = g.th.disabled
 		}
+		if g.controlFrame() != nil {
+			reason := g.novelButtonReason(buttons[i].b)
+			g.traceControl(lang.T(buttons[i].label), roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), reason == "", false, reason)
+		}
 		// The label is centered on its hit rectangle (gfx.DrawText centers on x).
-		gfx.DrawText(dst, lang.T(buttons[i].label), float64(r.Min.X)+float64(r.Dx())/2, float64(r.Min.Y)+2, sizeS, c)
+		g.screenText(dst, lang.T(buttons[i].label), float64(r.Min.X)+float64(r.Dx())/2, float64(r.Min.Y)+2, sizeS, c)
 	}
 	if t.choice != nil {
 		g.drawNovelChoice(dst, t.choice)

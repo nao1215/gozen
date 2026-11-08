@@ -227,3 +227,116 @@ scenarios:
       file:
         path: banner-dismiss.jsonl
         contains: ['"notice":"dismiss"', '"finished":1']
+
+- name: authored phone history validates without free input or new save state
+  steps:
+  - fixture:
+      file: authored-phone/game.yaml
+      content: |
+        schema_version: 11
+        id: authored-phone
+        title: Authored phone
+        start: {location: studio, event: conversation}
+  - fixture:
+      file: authored-phone/data/story.yaml
+      content: |
+        locations:
+          studio: {name: Studio}
+        events:
+          conversation:
+            - phone:
+                app: chat
+                history: true
+                messages:
+                  - {from: Guide, text: Welcome.}
+                  - {when: flag.sent, mine: true, text: Thanks.}
+                replies:
+                  - {button: Send thanks, id: thanks, when: '!flag.sent', set: {flag.sent: true}}
+  - run:
+      command: gozen check authored-phone
+  - assert:
+      exit_code: 0
+
+- name: authored replies require send and preserve indices after a hidden reply
+  steps:
+  - fixture:
+      file: authored-reply.txt
+      content: |
+        wait 20
+        do set: {flag.contact_unlocked: true}
+        do call: phone_flag_chat
+        wait 25
+        press cancel
+        wait 25
+        snapshot
+        do call: phone_flag_chat
+        wait 25
+        press right
+        press ok
+        wait 25
+        snapshot
+        do call: phone_flag_chat
+        wait 25
+        press cancel
+        wait 25
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/input-readiness" --start studio --script authored-reply.txt --save-dir authored-reply-saves --trace authored-reply.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      file:
+        path: authored-reply.jsonl
+        contains: ['"phone_reply":"dismiss"', '"phone_reply":"tools"', '"reply_sent":true']
+  - assert:
+      file:
+        path: authored-reply.jsonl
+        not_contains: ['"exhibition_asked":true']
+
+- name: home contacts and history return without recursive home calls
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: authored-home.txt
+      content: |
+        wait 20
+        do set: {flag.contact_unlocked: true}
+        do call: phone_flag_home
+        wait 25
+        press right
+        press ok
+        wait 45
+        press right
+        press ok
+        wait 45
+        shot history
+        press cancel
+        wait 45
+        shot contacts
+        press cancel
+        wait 45
+        shot home
+        press cancel
+        wait 25
+        do set: {flag.returned_to_story: true}
+        snapshot
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/input-readiness" --start studio --dev --mute --window 1 --script authored-home.txt --shots authored-home-shots --save-dir authored-home-saves --trace authored-home.jsonl
+      timeout: 45s
+  - assert:
+      exit_code: 0
+      file:
+        path: authored-home.jsonl
+        contains: ['"phone":"home"', '"phone":"contacts"', '"phone":"chat"', '"returned_to_story":true']
+  - assert:
+      file:
+        path: authored-home.jsonl
+        not_contains: ['"reply_sent":true', '"exhibition_asked":true']
+  - assert:
+      image: {path: authored-home-shots/history.png, format: png}
+  - assert:
+      image: {path: authored-home-shots/contacts.png, format: png}
+  - assert:
+      image: {path: authored-home-shots/home.png, format: png}

@@ -96,7 +96,8 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.perf != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Ten samples of both revisions, including the 200-line conversation.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

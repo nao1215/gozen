@@ -102,7 +102,7 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 	shotEvery := fl.Int("shot-every", 0, "with --autoplay, take a screenshot in --shots every these `SECONDS`")
 	autoFloors := fl.Int("auto-floors", 0, "with --autoplay, go back to town after these `FLOORS` of a dive (default: 3)")
 	speed := fl.Int("speed", 1, "with --autoplay, run this many `TIMES` faster (for balancing; use --mute)")
-	trace := fl.String("trace", "", "write what happens as JSON Lines to this `FILE` (see docs/development/graphics.md)")
+	trace := fl.String("trace", "", "write events and changed screen structure as JSON Lines to this `FILE` (see docs/development/graphics.md)")
 	replay := fl.String("replay", "", "play this trace `FILE` again and check that the game goes the same way")
 	replayBattle := fl.Int("replay-battle", 0, "with --replay, replay battle `N` (from 1) from just before it begins to its result and compare")
 	memos := fl.String("memos", "", "write the test player's notes (F9) to this `DIR` as <dir>/<date>/<number>.png and .json")

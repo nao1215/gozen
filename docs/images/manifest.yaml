@@ -805,7 +805,7 @@ images:
     frames:
       - {shots: "pj*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
-  # The meter's numbers change from run to run; they are a small part of the picture.
+  # Frame timing values in the development overlay change from run to run.
   playtest-frames.jpg:
     run: playtest-panel
     shot: s-frames
@@ -833,6 +833,9 @@ images:
 # Pictures that are not captures. They are drawn once from vector sources and
 # committed as they are; `make docs-images` does not remake them.
 static:
+  playtesting-flow.svg:
+    source: original flow diagram of the Gozen playtesting commands
+    license: MIT
   breeding.jpg:
     source: the author's original breeding illustration (`vampire_breed.jpg`)
     license: no copyright claimed (CC0 1.0)

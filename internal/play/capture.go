@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image/gif"
@@ -41,6 +42,8 @@ type CaptureJob struct {
 // Timeout is a positive cooperative per-job limit. CheckAsset checks each asset
 // in every sampled frame; nil accepts assets that render without load failures.
 type CaptureConfig struct {
+	// Structure retains the last sampled screen for CLI comparisons; false adds no serialization.
+	Structure  bool
 	Output     string
 	Timeout    time.Duration
 	CheckAsset func(string) error
@@ -53,7 +56,9 @@ type CaptureResult struct {
 	Width, Height, Frames int
 	Seed                  uint64
 	Pictures              []string
-	Err                   error
+	// Screen contains drawing facts for the last sampled frame, when requested.
+	Screen json.RawMessage
+	Err    error
 }
 
 // Capture runs a batch in one graphics loop on the main thread. Every job loads
@@ -185,7 +190,7 @@ func (b *captureBatch) begin() {
 	b.prepare = len(prep.cmds)
 	g, err := New(Options{
 		FS: b.fsys, Seed: j.Seed, NoSound: true, Development: true,
-		capture: &captureStartup{setup: j.Setup},
+		capture: &captureStartup{setup: j.Setup, structure: b.cfg.Structure},
 		Script:  captureScript(j), ShotDir: b.cfg.Output, Trace: io.Discard,
 		Location: j.Start, Party: j.Party, Level: j.Level, Floor: j.Floor, Flags: j.Flags,
 		Battle: j.Battle, Calm: j.Calm, Scene: j.Scene, Event: j.Event, Picture: j.Picture,
@@ -281,14 +286,17 @@ func (b *captureBatch) updateTick() error {
 }
 
 func (b *captureBatch) Draw(screen *ebiten.Image) {
-	if b.game == nil {
+	// The display can call Draw zero or many times between updates. Render only
+	// sampled ticks, so preparation and completed jobs cannot warm GPU caches or
+	// mutate draw-owned state according to the display's timing.
+	if b.game == nil || !b.due || b.finished {
 		return
 	}
 	b.game.Draw(screen)
-	if !b.due || b.finished {
-		return
-	}
 	b.due = false
+	if b.cfg.Structure {
+		b.result.Screen = b.game.opts.capture.screen
+	}
 	for _, p := range sortedKeys(b.game.tr.drawn) {
 		b.pictures[p] = true
 		if b.game.tr.missing[p] {
@@ -321,7 +329,11 @@ func (b *captureBatch) Draw(screen *ebiten.Image) {
 
 func (b *captureBatch) Layout(int, int) (int, int) { return b.width, b.height }
 
-type captureStartup struct{ setup, seek string }
+type captureStartup struct {
+	setup, seek string
+	structure   bool
+	screen      json.RawMessage
+}
 
 func (g *Game) captureSetup(defaults []data.Command) error {
 	src := g.opts.capture.setup

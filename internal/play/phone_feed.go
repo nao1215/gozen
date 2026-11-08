@@ -37,6 +37,7 @@ type feedPost struct {
 	lines                   []string
 	// text tells a post of text only: its lines fill the picture's place.
 	text bool
+	page int // visible page ordinal; authored indices remain unchanged
 }
 
 // feedLayout lays the posts out top to bottom on a screen w wide and view
@@ -54,7 +55,12 @@ func (p *phoneView) feedLayout(g *Game, w, view float64) []feedPost {
 	across := p.across()
 	out := make([]feedPost, len(p.cue.Posts))
 	y := 0.0
+	p.layoutEnd = 0
+	page := 0
 	for i, post := range p.cue.Posts {
+		if post.Hidden {
+			continue
+		}
 		if post.Picture == "" && post.Video == nil {
 			lines, size := gfx.FitLines(post.Text, 16, w-28, 8)
 			textH := float64(len(lines)) * gfx.LineHeight(size)
@@ -74,6 +80,13 @@ func (p *phoneView) feedLayout(g *Game, w, view float64) []feedPost {
 			h := phoneFeedHead + picH + under
 			out[i] = feedPost{top: y, pic: y + phoneFeedHead, picH: picH, h: h, size: size, lines: lines}
 		}
+		out[i].page = page
+		if across {
+			p.layoutEnd = float64(page) * w
+		} else {
+			p.layoutEnd = math.Max(0, out[i].top+out[i].h-view)
+		}
+		page++
 		if !across {
 			y += out[i].h + phoneFeedGap
 		}
@@ -117,19 +130,17 @@ func (g *Game) feedView(p *phoneView) (posts []feedPost, w, view, end float64) {
 	_, _, w, h := g.phoneScreenRect(p.side)
 	view = h - phoneFeedTop
 	posts = p.feedLayout(g, w, view)
-	switch n := len(posts); {
-	case n > 0 && p.across():
-		end = float64(n-1) * w
-	case n > 0:
-		end = math.Max(0, posts[n-1].top+posts[n-1].h-view)
-	}
+	end = p.layoutEnd
 	return posts, w, view, end
 }
 
 // feedShown tells that post i's picture is on the screen.
 func (p *phoneView) feedShown(i int, l feedPost, w, view float64) bool {
+	if p.cue.Posts[i].Hidden {
+		return false
+	}
 	if p.across() {
-		return math.Abs(float64(i)*w-p.scroll) < w
+		return math.Abs(float64(l.page)*w-p.scroll) < w
 	}
 	return l.pic+l.picH > p.scroll && l.pic < p.scroll+view
 }
@@ -153,12 +164,16 @@ func (g *Game) updatePhoneFeed(p *phoneView) {
 			p.liked[i] = !p.liked[i]
 		}
 	}
-	stops := make([]float64, len(posts))
-	for i, l := range posts {
-		stops[i] = l.top
-		if p.across() {
-			stops[i] = float64(i) * w
+	stops := make([]float64, 0, len(posts))
+	for _, l := range posts {
+		if l.h == 0 {
+			continue
 		}
+		stop := l.top
+		if p.across() {
+			stop = float64(l.page) * w
+		}
+		stops = append(stops, stop)
 	}
 	if p.across() {
 		g.swipePhone(p, stops, w, end, like)
@@ -320,18 +335,17 @@ func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int
 	if !ok {
 		return -1
 	}
-	from, to := 0, len(posts)
+	page := -1
 	if p.across() {
 		sx, _, w, _ := g.phoneScreenRect(p.side)
 		y -= p.scroll
-		from = int(math.Floor((p.scroll + float64(at.X) - sx) / w))
-		if from < 0 || from >= len(posts) {
-			return -1
-		}
-		to = from + 1
+		page = int(math.Floor((p.scroll + float64(at.X) - sx) / w))
 	}
-	for i := from; i < to; i++ {
-		if l := posts[i]; y >= l.pic && y < l.pic+l.picH+phoneFeedLikes {
+	for i, l := range posts {
+		if l.h == 0 || p.across() && l.page != page {
+			continue
+		}
+		if y >= l.pic && y < l.pic+l.picH+phoneFeedLikes {
 			return i
 		}
 	}
@@ -339,10 +353,14 @@ func (g *Game) feedPictureAt(p *phoneView, posts []feedPost, at image.Point) int
 }
 
 func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
+	textStart, controlStart := g.screenOffsets()
 	for i, l := range p.feedLayout(g, w, h-phoneFeedTop) {
+		if l.h == 0 {
+			continue
+		}
 		x, y := 0.0, phoneFeedTop+l.top-p.scroll
 		if p.across() {
-			x, y = float64(i)*w-p.scroll, phoneFeedTop
+			x, y = float64(l.page)*w-p.scroll, phoneFeedTop
 			if x <= -w || x >= w {
 				continue
 			}
@@ -354,9 +372,16 @@ func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhonePost(dst, p, i, l, x, y, w)
 	}
 	if p.across() {
-		drawFeedDots(dst, len(p.cue.Posts), p.scroll/w, w, h-phoneFeedDots/2)
+		visible := 0
+		for _, post := range p.cue.Posts {
+			if !post.Hidden {
+				visible++
+			}
+		}
+		drawFeedDots(dst, visible, p.scroll/w, w, h-phoneFeedDots/2)
 	}
 	// The header goes over the posts that scroll up under it.
+	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
 	g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 }
 
@@ -381,13 +406,20 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	post := p.cue.Posts[i]
 	gfx.FillRect(dst, float32(x), float32(y), float32(w), float32(l.h), phoneBubble, false)
 	g.drawPhoneIcon(dst, p, post.Icon, post.Who, x+12, y+10, 38)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), x+60, y+18, 16, phoneInk)
-	gfx.DrawTextRight(dst, post.Time, x+w-14, y+20, 13, phoneMuted)
+	g.text(dst, gfx.Ellipsis(post.Who, 16, w-80-gfx.TextWidth(post.Time, 13)), x+60, y+18, 16, phoneInk)
+	g.screenTextRight(dst, post.Time, x+w-14, y+20, 13, phoneMuted)
 	py := y + phoneFeedHead
+	if g.controlFrame() != nil {
+		reason := "transition"
+		if p.cue.Browse {
+			reason = "browse"
+		}
+		g.traceControl("", roundRect(x, py, w, l.picH+phoneFeedLikes), p.ready() && !p.cue.Browse, false, reason)
+	}
 	switch {
 	case l.text:
 		for k, line := range l.lines {
-			gfx.DrawTextLeft(dst, line, x+14, py+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
+			g.text(dst, line, x+14, py+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
 		}
 	case post.Video != nil:
 		key := fmt.Sprintf("post%d", i)
@@ -414,11 +446,11 @@ func (g *Game) drawPhonePost(dst *ebiten.Image, p *phoneView, i int, l feedPost,
 	if post.Reposts > 0 {
 		counts += "　" + fmt.Sprintf(lang.T("リポスト %s 件"), strconv.Itoa(post.Reposts))
 	}
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(counts, 16, w-60), x+48, ly, 16, phoneInk)
+	g.text(dst, gfx.Ellipsis(counts, 16, w-60), x+48, ly, 16, phoneInk)
 	if l.text {
 		return
 	}
 	for k, line := range l.lines {
-		gfx.DrawTextLeft(dst, line, x+14, ly+30+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
+		g.text(dst, line, x+14, ly+30+float64(k)*gfx.LineHeight(l.size), l.size, phoneInk)
 	}
 }

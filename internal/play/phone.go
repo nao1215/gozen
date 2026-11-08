@@ -63,10 +63,10 @@ type phoneView struct {
 	scroll, aim, glide, grab, moved float64
 	liked                           map[int]bool
 	layout                          []feedPost
-	layoutW, layoutH                float64
+	layoutW, layoutH, layoutEnd     float64
 	// rows are a page's rows laid out for a screen rowsW wide.
-	rows  []pageRow
-	rowsW float64
+	rows           []pageRow
+	rowsW, rowsEnd float64
 	// chatRead is how far the newest message, when it is taller than the
 	// screen, has been read down from its top.
 	chatRead float64
@@ -74,6 +74,11 @@ type phoneView struct {
 	// bubblesW wide (only the visible ones are kept).
 	bubbles  map[int]chatBubble
 	bubblesW float64
+	// History positions are prepared only for the opt-in scrollback view.
+	historyRows, replyRows  []pageRow
+	historyW, historyHeight float64
+	historyVisible          []int
+	historyStops            []float64
 	// clips are the clips the phone has played, by where they are (so a feed's
 	// post keeps its place when it comes back), each with its own puppet motion.
 	clips map[string]*phoneClip
@@ -114,7 +119,13 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 	}
 	switch cue.App {
 	case "chat":
-		p.shown = 1
+		p.shown = p.nextChat(0) + 1
+		if p.shown > len(cue.Messages) {
+			p.shown = 0
+		}
+		if cue.History || len(cue.Replies) > 0 {
+			p.shown = len(cue.Messages)
+		}
 	case "lock":
 		p.shown = min(1, len(cue.Notices))
 	case "video":
@@ -212,15 +223,24 @@ func phonePictures(cue data.PhoneCue) []string {
 		}
 	}
 	for _, m := range cue.Messages {
+		if m.Hidden {
+			continue
+		}
 		out = append(out, m.Icon, m.Picture)
 		video(m.Video)
 	}
 	for _, post := range cue.Posts {
+		if post.Hidden {
+			continue
+		}
 		out = append(out, post.Icon, post.Picture)
 		video(post.Video)
 	}
 	video(cue.Video)
 	for _, r := range cue.Rows {
+		if r.Hidden {
+			continue
+		}
 		out = append(append(out, r.Picture), r.Pictures...)
 		if r.Item != nil {
 			out = append(out, r.Item.Icon)
@@ -366,7 +386,9 @@ func (g *Game) updatePhone() bool {
 		g.updatePhoneChat(p)
 	case p.cue.App == "feed":
 		g.updatePhoneFeed(p)
-	case p.cue.App == "page":
+	case p.cue.App == "home":
+		g.updatePhoneHome(p)
+	case p.cue.App == "page" || p.cue.App == "contacts":
 		g.updatePhonePage(p)
 	case p.cue.App == "lock":
 		g.updatePhoneLock(p)
@@ -477,6 +499,12 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	if p == nil {
 		return
 	}
+	if f := g.controlFrame(); f != nil {
+		for i := range f.controls {
+			c := &f.controls[i]
+			c.Enabled, c.Focused, c.Reason = false, false, "phone"
+		}
+	}
 	if p.cue.App == "banner" {
 		age := min(p.age, bannerSlide+bannerStay)
 		if p.closing > 0 {
@@ -499,6 +527,7 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	pw, ph := int(math.Ceil(w*k)), int(math.Ceil(h*k))
 	p.canvas = sized(p.canvas, pw, ph)
 	p.canvas.Clear()
+	textStart, controlStart := g.screenOffsets()
 	g.drawPhoneBody(p, p.canvas, w, h)
 
 	// A turn starts from the other way up, a quarter back, at the size the
@@ -521,9 +550,15 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	op.GeoM.Translate(sw/2*k, (sh/2+(1-rise)*sh*0.9)*k)
 	op.ColorScale.ScaleAlpha(float32(math.Min(1, rise*1.5)))
 	dst.DrawImage(p.canvas, op)
+	if g.controlFrame() != nil {
+		g.transformScreenRecords(textStart, controlStart, func(x, y float64) (float64, float64) {
+			x, y = op.GeoM.Apply(x*k, y*k)
+			return x / k, y / k
+		})
+	}
 
 	if p.ready() {
-		gfx.DrawText(dst, g.phoneHint(p), sw/2, sh-24, 14, alphaColor(phoneOnVideo, 0.8))
+		g.screenText(dst, g.phoneHint(p), sw/2, sh-24, 14, alphaColor(phoneOnVideo, 0.8))
 	}
 }
 
@@ -558,6 +593,8 @@ func (g *Game) phoneHint(p *phoneView) string {
 		return lang.T("Enter: 応答　Esc: 拒否")
 	case p.cue.App == "lock":
 		return lang.T("クリック: 次の通知　Esc: 閉じる")
+	case p.cue.App == "home" || p.cue.App == "contacts" || p.cue.App == "chat" && (p.cue.History || len(p.cue.Replies) > 0):
+		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
 	case p.cue.App == "page" && len(pageButtons(p.cue.Rows)) > 0:
 		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
 	case p.cue.App == "page":
@@ -580,6 +617,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	screen := p.screen
 	screen.Clear()
 	gfx.FillRect(screen, 0, 0, float32(scw), float32(sch), phoneScreen, false)
+	textStart, controlStart := g.screenOffsets()
 	switch {
 	case p.viewPic != "":
 		g.drawPhonePicture(p, screen, scw, sch)
@@ -589,7 +627,9 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneChat(p, screen, scw, sch)
 	case p.cue.App == "feed":
 		g.drawPhoneFeed(p, screen, scw, sch)
-	case p.cue.App == "page":
+	case p.cue.App == "home":
+		g.drawPhoneHome(p, screen, scw, sch)
+	case p.cue.App == "page" || p.cue.App == "contacts":
 		g.drawPhonePage(p, screen, scw, sch)
 	case p.cue.App == "lock":
 		g.drawPhoneLock(p, screen, scw, sch)
@@ -599,6 +639,10 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	if !p.side {
 		_, bar := g.pageAccent(p)
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
+	}
+	if g.controlFrame() != nil {
+		g.clipScreenRecords(textStart, controlStart, 0, scw, sch)
+		g.transformScreenRecords(textStart, controlStart, func(x, y float64) (float64, float64) { return x + bezel, y + bezel })
 	}
 	gfx.RoundedMask(screen, float32((r-bezel)*k))
 	op := &ebiten.DrawImageOptions{}
@@ -619,7 +663,7 @@ func (g *Game) drawPhoneStatus(dst *ebiten.Image, w float64, clock string, dark 
 	if dark {
 		ink = phoneOnVideo
 	}
-	gfx.DrawTextLeft(dst, clock, 22, 9, 15, ink)
+	g.text(dst, clock, 22, 9, 15, ink)
 	x := w - 24
 	gfx.StrokeRoundRect(dst, float32(x-22), 12, 24, 12, 3, 1.3, ink)
 	gfx.FillRect(dst, float32(x-20), 14, 17, 8, ink, false)
@@ -644,7 +688,7 @@ func (g *Game) phoneClock() string {
 
 func (g *Game) drawPhoneHeader(dst *ebiten.Image, w float64, title string, top float64) {
 	gfx.FillRect(dst, 0, 0, float32(w), float32(top+50), phoneBubble, false)
-	gfx.DrawText(dst, gfx.Ellipsis(title, 19, w-90), w/2, top+12, 19, phoneInk)
+	g.screenText(dst, gfx.Ellipsis(title, 19, w-90), w/2, top+12, 19, phoneInk)
 	gfx.FillRect(dst, 0, float32(top+50), float32(w), 1, phoneLine, false)
 }
 
@@ -675,6 +719,9 @@ func likeCount(n int) string {
 // paused) and the seek bar.
 func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	c := p.watch
+	if g.controlFrame() != nil {
+		g.traceControl("", roundRect(0, 0, w, h), p.ready(), false, "transition")
+	}
 	gfx.FillRect(dst, 0, 0, float32(w), float32(h), color.Black, false)
 	g.drawPhoneMedia(dst, p, p.watchKey()+".full", c, 0, 0, w, h, 0)
 	length := c.length()
@@ -684,7 +731,7 @@ func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	if alpha > 0 {
 		gfx.FillRect(dst, 0, 0, float32(w), 60, alphaColor(color.NRGBA{0, 0, 0, 0xaa}, alpha), false)
-		gfx.DrawTextLeft(dst, gfx.Ellipsis(c.v.Text, 19, w-48), 26, 18, 19, alphaColor(phoneOnVideo, alpha))
+		g.text(dst, gfx.Ellipsis(c.v.Text, 19, w-48), 26, 18, 19, alphaColor(phoneOnVideo, alpha))
 	}
 	if c.paused {
 		gfx.FillCircle(dst, float32(w/2), float32(h/2), 38, color.NRGBA{0, 0, 0, 0x88}, true)
@@ -695,7 +742,7 @@ func (g *Game) drawPhoneWatch(p *phoneView, dst *ebiten.Image, w, h float64) {
 	gfx.FillRect(dst, 130, float32(h-24), float32(bar), 5, color.NRGBA{0xff, 0xff, 0xff, 0x55}, false)
 	gfx.FillRect(dst, 130, float32(h-24), float32(bar*done), 5, phoneHeart, false)
 	gfx.FillCircle(dst, float32(130+bar*done), float32(h-21.5), 8, phoneHeart, true)
-	gfx.DrawTextLeft(dst, clipTime(c.played)+" / "+clipTime(length), 18, h-34, 14, phoneOnVideo)
+	g.text(dst, clipTime(c.played)+" / "+clipTime(length), 18, h-34, 14, phoneOnVideo)
 }
 
 // drawPhoneMedia draws a clip in x, y, w, h: its footage's frame over its
@@ -801,7 +848,7 @@ func (g *Game) drawPhoneIcon(dst *ebiten.Image, p *phoneView, path, name string,
 	c.A = 0xff
 	gfx.FillCircle(dst, float32(x+size/2), float32(y+size/2), float32(size/2), c, true)
 	ts := size * 0.48
-	gfx.DrawText(dst, letter, x+size/2, y+size/2-gfx.LineHeight(ts)/2, ts, phoneOnVideo)
+	g.screenText(dst, letter, x+size/2, y+size/2-gfx.LineHeight(ts)/2, ts, phoneOnVideo)
 }
 
 // nameInitial is the first letter or digit of a name, upper-cased ("" for none).

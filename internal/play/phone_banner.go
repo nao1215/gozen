@@ -81,16 +81,24 @@ func (g *Game) drawBanners(dst *ebiten.Image) {
 func (g *Game) drawBanner(dst *ebiten.Image, b phoneBanner) {
 	sw, _ := g.screen()
 	x, y := (sw-bannerW)/2, b.top()
+	if g.controlFrame() != nil {
+		enabled := b.n.Event != ""
+		reason := "no_event"
+		if g.phone != nil && g.phone.cue.App == "banner" {
+			enabled, reason = g.phone.ready(), "transition"
+		}
+		g.traceControl(b.n.Title, roundRect(x, y, bannerW, bannerH), enabled, false, reason)
+	}
 	gfx.FillRoundRect(dst, float32(x), float32(y+3), bannerW, bannerH, 20, phoneVeil)
 	gfx.FillRoundRect(dst, float32(x), float32(y), bannerW, bannerH, 20, phoneCard)
 	if b.n.Icon != "" {
 		g.drawPicture(dst, data.Picture{File: b.n.Icon}, x+14, y+14, 22, 22, 1)
 	}
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.App, 13, bannerW-140), x+44, y+16, 13, phoneMuted)
-	gfx.DrawTextRight(dst, lang.T("今"), x+bannerW-16, y+16, 13, phoneMuted)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16, y+38, 15, phoneInk)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16.6, y+38, 15, phoneInk)
-	gfx.DrawTextLeft(dst, gfx.Ellipsis(b.n.Text, 14, bannerW-32), x+16, y+60, 14, phoneInk)
+	g.text(dst, gfx.Ellipsis(b.n.App, 13, bannerW-140), x+44, y+16, 13, phoneMuted)
+	g.screenTextRight(dst, lang.T("今"), x+bannerW-16, y+16, 13, phoneMuted)
+	g.text(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16, y+38, 15, phoneInk)
+	g.text(dst, gfx.Ellipsis(b.n.Title, 15, bannerW-32), x+16.6, y+38, 15, phoneInk)
+	g.text(dst, gfx.Ellipsis(b.n.Text, 14, bannerW-32), x+16, y+60, 14, phoneInk)
 }
 
 // bannerOpen is an event a banner's click opened while an event ran, and the

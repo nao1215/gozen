@@ -15313,7 +15313,7 @@
       "description": "A phone over the scene; the event waits until it is put down (a banner waits when var is set).",
       "properties": {
         "app": {
-          "description": "chat, feed, video, page, lock or banner; names the one list the phone shows.",
+          "description": "chat, feed, video, page, home, contacts, lock or banner; names the view the phone shows.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -15376,6 +15376,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "history": {
+          "description": "True displays authored chat messages as a scrollable history. Visibility is evaluated when opened; no dynamic transcript is stored.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "hold": {
           "description": "portrait (the default) or landscape: on its side, the phone comes up upright and turns a quarter.",
@@ -15447,8 +15460,27 @@
           },
           "x-type": "[PhonePost](#phonepost)[]"
         },
+        "replies": {
+          "description": "Fixed chat reply buttons with optional id, set and when. Explicit selection sends one reply; Cancel never sends. Requires app chat and history: true.",
+          "items": {
+            "$ref": "#/$defs/PhoneRow"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[PhoneRow](#phonerow)[]"
+        },
         "rows": {
-          "description": "The page's rows, stacked top to bottom and scrolled.",
+          "description": "Page rows, home app buttons with optional item icons, or contact items with optional action buttons.",
           "items": {
             "$ref": "#/$defs/PhoneRow"
           },
@@ -15752,6 +15784,24 @@
             "version": "0, 1, 2"
           },
           "x-type": "[PhoneVideo](#phonevideo)"
+        },
+        "when": {
+          "description": "Condition evaluated when the phone opens; false hides this authored message.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
         }
       },
       "type": "object"
@@ -16115,6 +16165,24 @@
           },
           "x-type": "[PhoneVideo](#phonevideo)"
         },
+        "when": {
+          "description": "Condition evaluated when the phone opens; false hides this authored post and prevents its like assignments.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
         "who": {
           "description": "Interpolated name of who posted it.",
           "type": "string",
@@ -16133,7 +16201,7 @@
     },
     "PhoneRow": {
       "additionalProperties": false,
-      "description": "One row of a page: exactly one of text, picture, pictures, item and button.",
+      "description": "A page row, home app, contact or fixed chat reply. Home allows button plus item; contacts allows item plus button.",
       "properties": {
         "bold": {
           "description": "True draws the text bold.",
@@ -16186,6 +16254,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "event": {
+          "description": "Parameterless event opened by a home or contacts button. Returning from it redisplays the parent phone. Requires button.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "events (parameterless)",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "id": {
           "description": "What the phone's var receives for the button (its label when empty).",
@@ -16365,6 +16446,24 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "when": {
+          "description": "Condition evaluated when opened; false hides this row or reply and prevents its assignments or event.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
         }
       },
       "type": "object"

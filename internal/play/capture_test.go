@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"image"
@@ -267,6 +268,68 @@ func TestCaptureBatchFinishPublication(t *testing.T) {
 			}
 			if len(decoded.Image) != 2 || decoded.Config.Width != 4 || decoded.Config.Height != 3 {
 				t.Fatalf("published wrong GIF: %+v", decoded.Config)
+			}
+		})
+	}
+}
+
+func TestCaptureDrawOnlySamples(t *testing.T) {
+	for _, state := range []struct {
+		name                    string
+		due, finished, sampling bool
+	}{
+		{name: "preparation"},
+		{name: "between GIF samples", sampling: true},
+		{name: "completed", due: true, finished: true},
+	} {
+		t.Run(state.name, func(t *testing.T) {
+			// An unsampled callback must not enter Game.Draw at all. The empty
+			// game deliberately has no scene or image resources to render.
+			b := &captureBatch{game: &Game{}, due: state.due, finished: state.finished, sampling: state.sampling}
+			b.Draw(nil)
+			if b.game.rendering || b.due != state.due || b.finished != state.finished {
+				t.Fatal("unsampled draw changed the capture state")
+			}
+		})
+	}
+}
+
+// Preparation and sampled structure must not depend on how often the display draws.
+func TestCaptureStructureIndependentOfDrawCadence(t *testing.T) {
+	for _, job := range []CaptureJob{
+		{ID: "same", Start: "camp", WaitTicks: 2},
+		{ID: "edited", Event: "finish", Line: 1, WaitTicks: 2},
+	} {
+		t.Run(job.ID, func(t *testing.T) {
+			var baseline []byte
+			for _, draws := range []int{0, 1, 3} {
+				b := &captureBatch{ctx: context.Background(), fsys: os.DirFS("../../e2e/atago/fixtures/game"), cfg: CaptureConfig{Output: t.TempDir(), Timeout: time.Minute, Structure: true}, jobs: []CaptureJob{job}}
+				b.begin()
+				if b.game == nil {
+					t.Fatalf("begin: %+v", b.results)
+				}
+				g := b.game
+				for n := 0; !b.due && n < 1000; n++ {
+					for range draws {
+						g.Draw(covScreen())
+					}
+					if err := b.Update(); err != nil {
+						t.Fatal(err)
+					}
+				}
+				g.Draw(covScreen())
+				screen := g.opts.capture.screen
+				if !b.due || len(screen) == 0 {
+					t.Fatal("sample not reached")
+				}
+				if baseline == nil {
+					baseline = bytes.Clone(screen)
+				} else if !bytes.Equal(baseline, screen) {
+					t.Errorf("draws=%d tick=%d: old=%s new=%s", draws, g.tick, baseline, screen)
+				}
+				if err := g.Close(); err != nil {
+					t.Fatal(err)
+				}
 			}
 		})
 	}

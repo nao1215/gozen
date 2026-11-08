@@ -101,3 +101,61 @@ func TestBacklogOpensOnOversizedLastEntry(t *testing.T) {
 		t.Fatalf("backlog starts at %d of %d entries, want the last entry", g.logView.top, len(g.backlog))
 	}
 }
+
+func TestNovelToolbarTraceReadiness(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		button         button
+		choice, replay bool
+	}{
+		{name: "choice skip", button: btnSkip, choice: true},
+		{name: "choice hide", button: btnHide, choice: true},
+		{name: "empty log", button: btnLog},
+		{name: "replay save", button: btnSave, replay: true},
+		{name: "replay load", button: btnLoad, replay: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := wldNovel(t, "ev_auto")
+			g.backlog = nil
+			g.replaying = tc.replay
+			if tc.choice {
+				g.talk.choice = newList([]listItem{{label: "Wait"}}, 100, 100, 300, 1)
+			}
+			g.tr = &tracer{layout: &layoutFrame{}}
+			g.talk.drawNovel(g, btlImage())
+			var label string
+			for _, b := range g.novelButtons() {
+				if b.b == tc.button {
+					label = lang.T(b.label)
+				}
+			}
+			found := false
+			for _, c := range g.tr.layout.controls {
+				if c.Label != label {
+					continue
+				}
+				found = true
+				if c.Enabled || c.Reason == "" {
+					t.Errorf("inactive toolbar target advertised as usable: %+v", c)
+				}
+			}
+			if !found {
+				t.Fatal("toolbar target missing")
+			}
+			g.in = input{}
+			g.in.pressed[tc.button] = true
+			if g.novelInput() {
+				t.Fatal("disabled toolbar action unexpectedly acted")
+			}
+			g.talk.choice, g.replaying = nil, false
+			g.remember(logLine{text: "Earlier dialogue"})
+			g.tr.layout = &layoutFrame{}
+			g.talk.drawNovel(g, btlImage())
+			for _, c := range g.tr.layout.controls {
+				if c.Label == label && (!c.Enabled || c.Reason != "") {
+					t.Fatalf("available target remained disabled: %+v", c)
+				}
+			}
+		})
+	}
+}

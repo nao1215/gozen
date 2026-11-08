@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"image"
 	"io"
 	"io/fs"
@@ -36,6 +37,7 @@ import (
 )
 
 type tracer struct {
+	autoWaiting string
 	performance *tracePerformance
 	// inAct suppresses redundant panel mutation records already replayed by act.
 	inAct     bool
@@ -70,6 +72,9 @@ type tracer struct {
 	layoutN       int
 	layoutAt      int
 	layoutLast    string
+	screenSeed    maphash.Seed
+	screenSeen    bool
+	screenDigest  uint64
 
 	pending   string
 	pendingN  int
@@ -597,7 +602,11 @@ func (g *Game) traceRequest(r event.Request) { g.traceRequestIn(r, false) }
 func (g *Game) traceBattleRequest(r event.Request) { g.traceRequestIn(r, true) }
 
 func (g *Game) traceRequestIn(r event.Request, inBattle bool) {
+	if g.tr == nil {
+		return
+	}
 	mark := func(l traceLine) traceLine {
+		l["event"] = g.evName
 		if inBattle {
 			l["in_battle"] = true
 		}
@@ -667,7 +676,9 @@ func (g *Game) traceFrameStart() {
 	}
 	g.tr.drawn, g.tr.missing, g.tr.lists = map[string]bool{}, map[string]bool{}, nil
 	g.tr.stand = &standFrame{}
-	g.tr.layout = &layoutFrame{}
+	if g.tr.enc != nil && (g.opts.capture == nil || g.opts.capture.structure) {
+		g.tr.layout = &layoutFrame{}
+	}
 	g.pics.seen = func(path string, ok bool) {
 		g.tr.drawn[path] = true
 		if !ok {
@@ -681,6 +692,20 @@ func (g *Game) traceFrameEnd(screen *ebiten.Image) {
 		return
 	}
 	g.pics.seen = nil
+	if g.tr.layout != nil {
+		if g.tr.stand != nil {
+			g.tr.layout.cast = g.tr.stand.figures
+			g.tr.layout.speaker = g.tr.stand.speaker
+		}
+		if g.phone != nil {
+			g.tr.layout.phone = g.phone.cue.App
+			g.tr.layout.phoneCall = g.phone.calling()
+		}
+		if g.talk.active && !g.talk.hidden {
+			g.tr.layout.speaker = g.talk.say.Name
+		}
+	}
+
 	g.traceStandEnd()
 	g.traceLayoutEnd(screen)
 
@@ -1524,4 +1549,19 @@ func (g *Game) traceShotPath(name string) string {
 		return path
 	}
 	return abs
+}
+
+// traceInputOutcome runs before finishOffer clears the receiver's acknowledgement.
+// It is installed only while tracing, so ordinary updates do no additional work.
+func (g *Game) traceInputOutcome(phone bool) {
+	if o := g.in.offer; o != nil && o.offered {
+		g.emit("input_result", traceLine{"accepted": o.accepted, "command": o.command.verb, "phone": phone, "event": g.evName})
+	}
+	if g.auto != nil {
+		what, _ := g.waiting()
+		if what != g.tr.autoWaiting {
+			g.tr.autoWaiting = what
+			g.emit("autoplay_wait", traceLine{"waiting": what, "event": g.evName})
+		}
+	}
 }

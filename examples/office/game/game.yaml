@@ -4,6 +4,10 @@ title: Harbor app team
 language: en
 screen: {width: 1280, height: 720, native: true}
 start: {location: office, event: opening}
+state:
+  names:
+    # Opening the conversation explicitly marks it read for author queries.
+    flag.archive_read: {type: bool, initial: false}
 planning:
   calendar: {start: '2030-03-04', end: '2030-03-15', phases: [morning], weekdays_off: [0, 6]}
   attributes:

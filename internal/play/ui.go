@@ -91,6 +91,7 @@ type listItem struct {
 	label    string
 	right    string
 	disabled bool
+	reason   string
 	color    color.Color
 	id       string
 	// heading is a row naming the group of the rows under it: drawn small, never chosen.
@@ -170,6 +171,9 @@ func (l *list) step(d int) {
 func (l *list) update(g *Game) (chose, cancel bool) {
 	if g.in.cancel() {
 		g.sfx("cancel")
+		if g.tr != nil && l != g.talk.choice {
+			g.emit("decision", traceLine{"kind": "menu_cancel", "event": g.evName})
+		}
 		return false, true
 	}
 	return l.updateChoice(g), false
@@ -209,6 +213,9 @@ func (l *list) updateChoice(g *Game) bool {
 			return false
 		}
 		g.sfx("decide")
+		if g.tr != nil && l != g.talk.choice {
+			g.emit("decision", traceLine{"kind": "menu", "index": l.sel, "label": l.items[l.sel].label, "event": g.evName})
+		}
 		return true
 	}
 	return false
@@ -255,6 +262,13 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			lx := float32(float64(r.Min.X) + 22 + gfx.TextWidth(it.label, hs) + 12)
 			gfx.FillRect(dst, lx, float32(hy+hs*0.7), float32(r.Max.X-22)-lx, 1.5, withAlpha(g.th.border, 0xa0), false)
 			continue
+		}
+		if g.controlFrame() != nil {
+			reason := it.reason
+			if !active {
+				reason = "inactive"
+			}
+			g.traceControl(it.label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), active && !it.disabled, active && i == l.sel, reason)
 		}
 		if l.pinned() && i == len(l.items)-1 {
 			gfx.FillRect(dst, float32(r.Min.X+16), float32(r.Min.Y-1), float32(l.w-32), 2, withAlpha(g.th.border, 0xc0), false)

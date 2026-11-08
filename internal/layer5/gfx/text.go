@@ -66,7 +66,7 @@ func DrawTitleText(dst *ebiten.Image, s string, x, y, size, tracking float64, fi
 			op.ColorScale.ScaleWithColor(c)
 			op.ColorScale.ScaleAlpha(a)
 			op.Filter = ebiten.FilterLinear
-			text.Draw(dst, string(r), face, op)
+			drawGlyphText(dst, string(r), face, op)
 			cx += widths[i] + gap
 		}
 	}
@@ -190,7 +190,46 @@ func drawTextRaw(dst *ebiten.Image, s string, x, y, size float64, clr color.Colo
 	op.LineSpacing = base * 1.4
 	op.PrimaryAlign = text.AlignCenter
 	op.Filter = ebiten.FilterLinear
-	text.Draw(dst, s, face(base, s), op)
+	drawGlyphText(dst, s, face(base, s), op)
+}
+
+var drawGlyphBuffer []text.LazyGlyph
+
+// drawGlyphText preserves text/v2 shaping and alignment, but samples a fixed
+// atlas. Moving glyphs within Ebitengine's shared atlas changes floating-point
+// texture coordinates and can round filtered edge pixels differently.
+func drawGlyphText(dst *ebiten.Image, s string, face text.Face, options *text.DrawOptions) {
+	drawGlyphBuffer = text.AppendLazyGlyphs(drawGlyphBuffer[:0], s, face, &options.LayoutOptions)
+	bounds := dst.Bounds()
+	for _, glyph := range drawGlyphBuffer {
+		r := glyph.ImageBounds
+		if r.Empty() {
+			continue
+		}
+		// These callers only translate and positively scale. Avoid realizing
+		// glyphs outside the destination, including long scrolling text.
+		x0, y0 := options.GeoM.Apply(float64(r.Min.X), float64(r.Min.Y))
+		x1, y1 := options.GeoM.Apply(float64(r.Max.X), float64(r.Max.Y))
+		if x1 <= float64(bounds.Min.X) || y1 <= float64(bounds.Min.Y) || x0 >= float64(bounds.Max.X) || y0 >= float64(bounds.Max.Y) {
+			continue
+		}
+		src := glyph.Image()
+		if src == nil {
+			continue
+		}
+		img := stableGlyph(src)
+		op := options.DrawImageOptions
+		op.GeoM.Reset()
+		op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
+		op.GeoM.Concat(options.GeoM)
+		if glyph.Colored() {
+			op.ColorScale.Reset()
+			op.ColorScale.ScaleAlpha(options.ColorScale.A())
+		}
+		dst.DrawImage(img, &op)
+	}
+	clear(drawGlyphBuffer)
+	drawGlyphBuffer = drawGlyphBuffer[:0]
 }
 
 func textMeasure(s string, size float64) (float64, float64) {
@@ -248,7 +287,7 @@ func DrawTextLeft(dst *ebiten.Image, s string, x, y, size float64, clr color.Col
 	op.LineSpacing = base * 1.4
 	op.PrimaryAlign = text.AlignStart
 	op.Filter = ebiten.FilterLinear
-	text.Draw(dst, s, face(base, s), op)
+	drawGlyphText(dst, s, face(base, s), op)
 }
 
 func DrawTextRight(dst *ebiten.Image, s string, x, y, size float64, clr color.Color) {

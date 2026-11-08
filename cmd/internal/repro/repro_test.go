@@ -16,7 +16,9 @@ func reproFixture(t *testing.T) string {
 	return traceFile(t,
 		`{"t":"start","tick":0,"exact_version":3,"version":2,"game_dir":"fixture game","seed":18446744073709551615,"event":"intro","flags":["ready"],"setup":{"saves":{},"save_data":{}}}`,
 		`{"t":"input","tick":1,"press":["ok"]}`,
+		`{"t":"screen","tick":2,"texts":[{"text":"Welcome"}]}`,
 		`{"t":"shot","tick":60,"file":"shots/first.png"}`,
+		`{"t":"screen","tick":80,"texts":[{"text":"Next"}]}`,
 		`{"t":"view","tick":90,"shot":"shots/view.png"}`,
 		`{"t":"input","tick":91,"press":["cancel"]}`,
 		`{"t":"end","tick":120,"lines":6,"state":null}`)
@@ -32,6 +34,15 @@ func TestReproMappingAndCut(t *testing.T) {
 			b, cut, err := readRepro(path, tt.target)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if tt.tick == 0 && b.Screen != nil {
+				t.Fatal("future screen")
+			}
+			if tt.tick == 60 && !strings.Contains(string(b.Screen), "Welcome") {
+				t.Fatal(string(b.Screen))
+			}
+			if tt.tick == 90 && !strings.Contains(string(b.Screen), "Next") {
+				t.Fatal(string(b.Screen))
 			}
 			if b.Tick != tt.tick || b.Until != tt.tick+1 || b.Seed != ^uint64(0) {
 				t.Fatalf("bundle %+v", b)

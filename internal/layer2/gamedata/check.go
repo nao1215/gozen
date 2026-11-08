@@ -172,14 +172,14 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	default:
 		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
-	apps := []string{"chat", "feed", "video", "page", "lock", "banner"}
+	apps := []string{"chat", "feed", "video", "page", "lock", "banner", "home", "contacts"}
 	lists := map[string]bool{
 		"chat": len(p.Messages) > 0, "feed": len(p.Posts) > 0, "video": p.Video != nil,
-		"page": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0,
+		"page": len(p.Rows) > 0, "home": len(p.Rows) > 0, "contacts": len(p.Rows) > 0, "lock": len(p.Notices) > 0, "banner": len(p.Notices) > 0,
 	}
-	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "lock": "notices", "banner": "notices"}
+	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "home": "rows", "contacts": "rows", "lock": "notices", "banner": "notices"}
 	if _, ok := lists[p.App]; !ok {
-		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner のいずれかを指定してください（指定値 %q）"), p.App)
+		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner・home・contacts のいずれかを指定してください（指定値 %q）"), p.App)
 		return
 	}
 	for _, app := range apps {
@@ -197,11 +197,18 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	c.text(where+".title", p.Title, names)
 	c.phoneTimed(where, p)
 	c.phoneFeed(where, p)
+	if p.History && p.App != "chat" {
+		c.errorf(diag.Shape, where+".history", "history is only for app chat")
+	}
+	if len(p.Replies) > 0 && (p.App != "chat" || !p.History) {
+		c.errorf(diag.Shape, where+".replies", "replies need app chat with history: true")
+	}
 	for i, m := range p.Messages {
 		at := fmt.Sprintf("%s.messages[%d]", where, i)
 		if n := btoi(m.Text != "") + btoi(m.Picture != "") + btoi(m.Video != nil); n > 1 || n == 0 && m.Day == "" {
 			c.errorf(diag.Shape, at, "%s", lang.T("メッセージには text・picture・video のいずれか１つ、または day だけを指定してください"))
 		}
+		c.expr(at+".when", m.When, names)
 		c.text(at+".time", m.Time, names)
 		c.text(at+".day", m.Day, names)
 		c.phoneVideo(at+".video", m.Video, names)
@@ -218,6 +225,7 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 		if post.Replies < 0 || post.Reposts < 0 {
 			c.errorf(diag.Shape, at, "replies and reposts must not be negative")
 		}
+		c.expr(at+".when", post.When, names)
 		c.phoneVideo(at+".video", post.Video, names)
 		if post.Likes < 0 {
 			c.errorf(diag.Shape, at+".likes", "%s", lang.T("likes は０以上を指定してください"))
@@ -310,7 +318,7 @@ func (c *checker) phoneLikes(where string, p PhoneCue) {
 
 // hasPhoneResult tells that the phone has something to keep: a page's button or a lock screen's call.
 func hasPhoneResult(p PhoneCue) bool {
-	if p.Timeout > 0 || p.App == "banner" {
+	if p.Timeout > 0 || p.App == "banner" || len(p.Replies) > 0 {
 		return true
 	}
 	for _, r := range p.Rows {
@@ -341,11 +349,16 @@ func (c *checker) phonePage(where string, p PhoneCue, names []string) {
 		c.errorf(diag.Shape, where+".color", "color must be #rrggbb, not %q", p.Color)
 	}
 	c.text(where+".url", p.URL, names)
-	for i, r := range p.Rows {
-		at := fmt.Sprintf("%s.rows[%d]", where, i)
-		if n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != "") + btoi(r.QR != ""); n != 1 {
-			c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them)")
-		}
+	c.phoneRows(where+".rows", p.App, p.Rows, names)
+	c.phoneRows(where+".replies", "reply", p.Replies, names)
+}
+
+// phoneRows validates page content and the bounded home, contact and reply shapes.
+func (c *checker) phoneRows(where, app string, rows []PhoneRow, names []string) {
+	for i, r := range rows {
+		at := fmt.Sprintf("%s[%d]", where, i)
+		c.expr(at+".when", r.When, names)
+		c.phoneRowShape(at, app, r)
 		if r.QR != "" {
 			if _, err := qr.Encode(r.QR, qr.M); err != nil {
 				c.errorf(diag.Shape, at+".qr", "the qr text is too long for a QR code (%d bytes)", len(r.QR))
@@ -385,6 +398,33 @@ func (c *checker) phonePage(where string, p PhoneCue, names []string) {
 				c.text(at+".item", s, names)
 			}
 		}
+	}
+}
+
+// phoneRowShape checks which content and navigation actions an app supports.
+func (c *checker) phoneRowShape(at, app string, r PhoneRow) {
+	if r.Event != "" {
+		if (app != "home" && app != "contacts") || r.Button == "" {
+			c.errorf(diag.Shape, at+".event", "event needs a home or contacts button")
+		}
+		_, exists := c.db.Events[r.Event]
+		c.ref(at+".event", "event", r.Event, exists)
+	}
+	n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != "") + btoi(r.QR != "")
+	if (app == "home" || app == "contacts") && r.Item != nil && r.Button != "" {
+		n-- // A contact/home item may also be an actionable button.
+	}
+	if n != 1 {
+		c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them)")
+	}
+	if app == "home" && r.Button == "" {
+		c.errorf(diag.Shape, at, "a home row needs a button")
+	}
+	if app == "contacts" && r.Item == nil {
+		c.errorf(diag.Shape, at, "a contacts row needs an item")
+	}
+	if app == "reply" && (r.Button == "" || n != 1) {
+		c.errorf(diag.Shape, at, "a reply needs only a button, with optional id, set and when")
 	}
 }
 

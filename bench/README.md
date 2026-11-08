@@ -60,11 +60,13 @@ a phone video with 24 generated 1280x720 frames, a 200-line conversation,
 and 5,000 battles. Setup generates neutral pictures and copies the existing
 licensed test font; no large assets are committed. Both revisions use the
 head fixture generator. Fixture changes reset the CI comparison baseline.
+Each speed case uses ten measured runs, meeting the comparison engine's minimum
+sample count; a measurement-only run does not validate that comparison contract.
 
 ```sh
 # No display: the original CLI comparisons plus the large simulation.
 himorime run --skip-tag graphics bench
-# Linux: graphical whole-process comparisons (one warmup, five runs each).
+# Linux: graphical whole-process comparisons (one warmup, ten runs each).
 xvfb-run --auto-servernum --error-file=/dev/stderr himorime run --tag graphics bench
 # One scenario, comparing revisions with the same fixture:
 xvfb-run --auto-servernum --error-file=/dev/stderr himorime compare --against main --filter '^speed phone-video$' bench

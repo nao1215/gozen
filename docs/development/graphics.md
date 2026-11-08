@@ -92,6 +92,46 @@ Paths to review logs and source maps are not recorded.
 | `--trace`, `--trace-shots`, `--shots`, `--record`, `--until` | Output destinations and stopping controls; recorded inputs/state are restored through the requested tick. Output files themselves are not replay state. |
 | `--help` | Prints help without starting a trace. |
 
+### Structured screen records
+
+`gozen run --trace FILE` extends the layout collector with a `screen` record
+on the first draw and each changed draw. A seeded digest of the drawing facts
+suppresses unchanged frames; tracing off does no collection or hashing.
+`gozen trace FILE --only screen` prints the full structure as an indented text
+block. `--format json` and `--format jsonl` preserve all fields.
+
+Each record has `t: "screen"`, `tick`, and these fields:
+
+| Field | Facts |
+| --- | --- |
+| `controls` | Draw-order list of `label`, `rect`, `enabled`, `focused`, and `reason` when disabled |
+| `texts` | Text and boxes from the existing layout collector: `text`, `rect`, `size`, `color` |
+| `figures` | Existing layout figure schema: `picture`, `rect`, `content`, `clip`, `source_cut`, `alpha` |
+| `cast` | Standing identities and slots: `id`, `face`, `side`, `x`, `alpha`, optional `speaking` and `leaving` |
+| `backgrounds` | Full-screen picture paths in draw order, including overlapping backgrounds during transitions |
+| `speaker` | Message speaker name, or the recorded standing speaker identity |
+| `phone` | Open phone app name, or an empty string |
+
+Rectangles use `[x, y, width, height]` in screen UI units. Phone boxes are clipped
+to its canvas and transformed into screen coordinates; rotating boxes use their
+axis-aligned enclosing rectangle. Empty collections are `null`. Disabled reasons
+use authored reason text where provided, otherwise factual codes such as
+`disabled`, `cost`, `inactive`, `modal`, `phone`, `transition`, `browse`,
+`typing`, `no_event`, or `no_history`. Icon-only controls have an empty label. Hidden controls
+are absent. The schema describes instrumented drawing operations, not pixel
+visibility: a later overlay may cover earlier text or figures. Moving puppets
+remain outside the standing-picture collector, as with layout records.
+
+The existing `layout` records still wait ten stable ticks and measure contrast.
+`screen` records do not read pixels or make judgments; `trace --check` does not
+fail on their values. Headless simulations do not draw or emit either kind.
+The `screen` member of reproduction JSON is the latest record at or before the
+target; its own `tick` identifies when that structure was drawn. Old traces omit it.
+
+Measure the digest with `go test ./internal/play -run '^$' -bench
+'BenchmarkScreen(Digest|ChangedRecord)' -benchmem`. The graphics fixture is
+`TestGraphicsTraceLayout`, already included in `make graphics`.
+
 ### Reproduce a trace screen
 
 ```sh
@@ -338,6 +378,51 @@ with the same bounded PNG tolerance. Offscreen layout defaults to device scale 1
 only `StartRendering` installs the monitor query, and layout tests can inject a
 scale without initializing GLFW.
 
+## F8 development overlay
+
+Under `gozen run --dev`, F8 opens the existing development panel on State.
+Press Left once to select Frames; F8 closes it. Scripts use `press panel`,
+then `press left`. The State/Flags/Scenes/Command bodies still pause play;
+Frames lets the game continue and leaves ordinary input with the game.
+There is no additional development key and release players cannot enable it.
+
+Frames overlays the tick, event ID and dialogue line number, location, seed,
+standing identities/slots and picture filenames, and the open phone's app,
+age, closing countdown, result index and call status. A result of -1 means
+no result selected yet. The first six flags/variables read by the current
+event are listed in name order using the existing state-use index, including
+reads in branches and text; conditions are never evaluated for observation.
+An absent indexed read is reported explicitly, with up to six flags/variables
+observed changing since Frames opened as a fallback (not a history of changes
+while the panel was closed). The line number counts dialogue
+lines, as in the existing trace, rather than YAML source lines.
+
+Controls use the same rectangles as stage-3 `screen` records: green means
+pressable, orange means not pressable (with its recorded reason), and yellow
+marks focus. Labels repeat those facts so color alone is not required.
+Phone controls retain their clipping and screen-coordinate transforms.
+The top information band can cover underlying controls; the overlay does not
+participate in hit testing or add screen-record controls.
+
+Update and Draw times are CPU milliseconds, with separate moving averages of
+the latest 60 calls from the per-section frame collector. They are not GPU
+execution times. Closing Frames discards its collector and buffers; no overlay
+collection, formatting, timing or allocation runs while it is closed. The
+browser `?fps` meter is unchanged. Presentation and timing records can differ,
+but the overlay does not change saved state or consume gameplay randomness.
+
+`TestGraphicsNovelOverlay` (included in `make graphics`) compares overlay
+pixels, gameplay records with and without Frames, and replayed state. Run:
+
+```sh
+xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./internal/play -run '^TestGraphicsNovelOverlay$' -count=1
+```
+
+The existing `playtest-panel` documentation job captures `s-frames`; regenerate
+`playtest-frames.jpg` with `make docs-images` to show the expanded overlay.
+
+![F8 Frames development overlay](../images/playtest-frames.jpg)
+
 ## Balance display
 
 The F7 balance panel is described for users on the site: [F7 balance panel](https://nao1215.github.io/gozen/edit-play-loop/#f7-balance-panel). It shows the same numbers as `gozen sim battle`, with the same function and the same random seed (battle i uses `PCG(1, i)`), so a note's `.save` can be checked in a terminal with `gozen sim battle … --state … --hp`.
@@ -349,3 +434,68 @@ The picture `docs/images/go-zen-balance.jpg` is remade by `make docs-images` ([R
 The `balance` scene of `make graphics` takes the same display and checks that the color of the win-rate bar appears at the top right.
 
 The input command `wait-graphs` takes no arguments and requires an open development balance panel. It waits for all measurements rather than a fixed frame count, and a closed panel or measurement error fails the run. While this command waits, measurement uses a 12 ms budget per update instead of the normal interactive 3 ms budget; the trials, seeds and results remain the same. The capture runner's process timeout bounds this wait.
+
+### Play metrics from traces
+
+`gozen trace run.jsonl --metrics` reports facts, never verdicts. Use
+`--format json` for the usual result envelope, or `--format jsonl` for one
+summary. Standard input (`-`) is supported. Metrics consume the entire trace;
+display filters, `--check` and `--repro` cannot be combined with them.
+`--top N` (default 10, positive) limits repeated lines; `--stall-seconds S`
+(default 5, finite and positive) selects the minimum observation duration.
+Neither repetition nor a long interval changes exit status.
+
+- Text per decision counts nonempty logical lines from `say.text` and Unicode
+  code points excluding line separators. CRLF is treated as LF. Speaker names,
+  choice labels and screen text are excluded: successive typewriter frames must
+  not multiply the dialogue count. This measures offered text, not proof that
+  the player read it.
+- A decision boundary is an `answer`, an accepted menu `decision`, or an
+  accepted scripted `input_result` while the phone was open. Same-tick records
+  count once. A later phone result following recorded phone actions does not
+  add another decision. A phone result without those records remains a boundary
+  (it can include a timeout; the report calls it `phone_result`).
+  Older traces cannot supply unrecorded menu decisions or intermediate phone actions.
+- Each span gives its start/end tick and last recorded event, characters and
+  lines. The first span begins at the first record; the final unfinished span
+  ends at the last record and is reported separately. The longest read-only
+  stretch is the longest time between these boundaries, including the final
+  span; character count breaks ties, then the first occurrence wins. Unknown
+  events are omitted. Simulation seconds are ticks divided by 60, not wall time.
+- Identical lines are counted exactly, across speakers and events, without
+  whitespace normalization. Repeated lines are sorted by descending count and
+  then text; at most their first three occurrence ticks are retained.
+- Climax spacing lists observed battle scene entries, battle cut-ins, audible
+  song/module changes, stand CG changes, screen background changes and
+  `screen.phone_call` entries. Initial song/CG/background values establish
+  baselines. Coincident signals share a moment; subsequent moments give the
+  interval from the previous one. Picture size or emotional intensity is not
+  inferred. The report lists its signals explicitly.
+- Stalls report unchanged state snapshots, unchanged screen structures and
+  inputs without subsequent observable progress. Repeated equal state records
+  do not reset the timer. Explicit `input_result.accepted: false` spans and
+  `autoplay_wait` spans are reported separately when present. A paused screen
+  or an input without a recorded effect is not necessarily a fault or rejected
+  input. Screen records attached to observations are the last available at
+  their start, or null; there is no screen reconstruction for older traces.
+  Screen/state progress can differ, so their intervals can overlap.
+- Existing `section` records are retained with their original names, tick
+  boundaries and frame counts. They are not used to invent per-tick frame
+  numbers or wall-clock durations.
+
+The reader scans JSONL once with the existing 16 MiB record limit and rejects
+decreasing ticks. It retains output rows, the latest relevant observations and
+one counter per distinct dialogue line, rather than every input or screen frame.
+Memory therefore grows with distinct text and report rows, not only with the
+selected top N. A malformed record or failed read still fails the command.
+
+Recording adds `decision` only for accepted non-dialogue list selections and cancellations;
+dialogue uses the existing `answer`. Scripted input outcomes are recorded before
+the receiver acknowledgement is cleared, and autoplay waiting records occur
+only when the waiting reason changes. `input_result.phone` is a boolean saying
+whether the phone was open when input was offered; `screen.phone` remains the
+app name or an empty string. Readers must select `t` before decoding fields
+specific to a record kind. `say` carries its event name and
+`screen.phone_call` distinguishes incoming lock-screen calls from ordinary phone
+screens. These collectors run only with tracing; metric aggregation is entirely
+in the CLI reader.

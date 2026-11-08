@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -36,9 +37,18 @@ func TestGraphicsNovelHeadFraming(t *testing.T) {
 			if err := os.CopyFS(game, gameFiles(t)); err != nil {
 				t.Fatal(err)
 			}
+			gameRoot, err := os.OpenRoot(game)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := gameRoot.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			write := func(path string, b []byte) {
 				t.Helper()
-				if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+				if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -143,12 +153,21 @@ func TestGraphicsNovelStagePuppets(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path string, b []byte) {
 		t.Helper()
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(game, path)), 0o700); err != nil {
+		if err := gameRoot.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -491,9 +510,18 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path string, b []byte) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(game, path), b, 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -509,16 +537,34 @@ func TestGraphicsTraceLayout(t *testing.T) {
 	paint("hair", 10) // hair 40 pixels above the head box, inside the picture
 	paint("drawn", 0) // the picture itself starts cut at its top
 	// Both heads are framed at the screen's top edge: the hair of the first goes above it.
-	write("game.yaml", []byte(fmt.Sprintf("schema_version: 8\nid: layout\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n  stage_framing:\n    hair.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n    drawn.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n", testgame.Game)))
+	write("game.yaml", []byte(fmt.Sprintf("schema_version: 11\nid: layout\n%s\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui:\n  message: novel\n  stage_framing:\n    hair.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n    drawn.png: {head: [0.5, 0.0833, 0.1], height: 0.1}\n", testgame.Game)))
+	gameYAML, err := gameRoot.ReadFile("game.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write("game.yaml", append(gameYAML, []byte(`planning:
+  calendar: {start: '2030-01-01', end: '2030-01-02', phases: [morning]}
+screens:
+  routes:
+    title: Routes
+    kind: workspace
+    view: {fullscreen: true}
+    entries:
+      - {label: Mountain trail, style: button, bounds: [40, 160, 300, 50], unavailable: 'true', reason: The gate is closed., do: [{set: {flag.trail: true}}]}
+      - {label: Riverside, style: button, bounds: [40, 230, 300, 50], do: [{set: {flag.river: true}}]}
+`)...))
 	write("data/layout.yaml", []byte(`events:
   layout:
     do:
       - stand: {who: Left, face: hair.png, at: 0.25}
       - stand: {who: Right, face: drawn.png, at: 0.75}
       - say: {who: Left, face: hair.png, text: "Measure this line."}
+      - phone: {app: page, title: Journal, rows: [{text: A quiet morning.}, {button: Continue}]}
+      - open: routes
+
 `))
 	script := filepath.Join(root, "layout.txt")
-	if err := os.WriteFile(script, []byte("wait 60\nquit\n"), 0o600); err != nil {
+	if err := os.WriteFile(script, []byte("wait 60\npress ok\nwait 60\npress cancel\nwait 60\nquit\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	trace := filepath.Join(root, "layout.jsonl")
@@ -551,11 +597,52 @@ func TestGraphicsTraceLayout(t *testing.T) {
 		Texts   []text   `json:"texts"`
 	}
 	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
-		if strings.Contains(line, `"t":"layout"`) {
+		if strings.Contains(line, `"t":"layout"`) && strings.Contains(line, "Measure this line") {
 			if err := json.Unmarshal([]byte(line), &last); err != nil {
 				t.Fatal(err)
 			}
 		}
+	}
+	var disabled, phone, standing bool
+	for line := range strings.SplitSeq(strings.TrimSpace(string(b)), "\n") {
+		// Payload fields belong to their record kind: input_result.phone is a
+		// boolean, whereas screen.phone names the open app.
+		var header struct {
+			Kind string `json:"t"`
+		}
+		if err := json.Unmarshal([]byte(line), &header); err != nil {
+			t.Fatal(err)
+		}
+		if header.Kind != "screen" {
+			continue
+		}
+		var record struct {
+			Phone    string          `json:"phone"`
+			Controls []screenControl `json:"controls"`
+			Texts    []layoutText    `json:"texts"`
+			Figures  []layoutFigure  `json:"figures"`
+		}
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range record.Controls {
+			if c.Label == "Mountain trail" && !c.Enabled && c.Reason == "The gate is closed." && c.Rect[2] > 0 {
+				disabled = true
+			}
+		}
+		for _, text := range record.Texts {
+			if record.Phone == "page" && text.Text == "A quiet morning." {
+				phone = true
+			}
+		}
+		for _, f := range record.Figures {
+			if f.Picture == "hair.png" {
+				standing = true
+			}
+		}
+	}
+	if !disabled || !phone || !standing {
+		t.Fatalf("screen facts: disabled=%v phone=%v standing=%v\n%s", disabled, phone, standing, b)
 	}
 	got := map[string]figure{}
 	for _, f := range last.Figures {
@@ -609,9 +696,18 @@ func TestGraphicsNovelPhonePalette(t *testing.T) {
 	if err := os.CopyFS(game, gameFiles(t)); err != nil {
 		t.Fatal(err)
 	}
+	gameRoot, err := os.OpenRoot(game)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := gameRoot.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	write := func(path, content string) {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(game, path), []byte(content), 0o600); err != nil {
+		if err := gameRoot.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -661,5 +757,112 @@ func TestGraphicsNovelPhonePalette(t *testing.T) {
 				t.Fatalf("only %d pixels of expected phone color %v", count, tc.rgb)
 			}
 		})
+	}
+}
+
+// TestGraphicsNovelOverlay compares gameplay records at the same ticks, observes
+// pixels in the overlay band, closes F8, then replays the observed run.
+func TestGraphicsNovelOverlay(t *testing.T) {
+	root := t.TempDir()
+	game := filepath.Join(root, "game")
+	if err := os.CopyFS(game, os.DirFS("testdata/novel")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(game, "assets"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(game, "assets", "regular.ttf"), goregular.TTF, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeNovelFigure(t, game)
+	if err := os.WriteFile(filepath.Join(game, "data", "overlay.yaml"), []byte(`events:
+  overlay:
+    do:
+      - stand: {who: Guide, face: fig.png, at: left}
+      - say: {who: Guide, text: "A quiet trail."}
+      - set: {var.roll: 'rand(1000000)'}
+      - say: "The gate opens."
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(name, script, replay string) []byte {
+		t.Helper()
+		dir := filepath.Join(root, name)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		args := []string{"--dir", game, "--dev", "--mute", "--seed", "7", "--start", "room", "--event", "overlay", "--save-dir", filepath.Join(dir, "saves"), "--shots", dir, "--trace", filepath.Join(dir, "trace.jsonl")}
+		if replay != "" {
+			args = append(args, "--replay", replay)
+		} else {
+			path := filepath.Join(dir, "script.txt")
+			if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			args = append(args, "--script", path)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, hostBin, args...) //nolint:gosec // Built test host and isolated fixture paths.
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s: %v\n%s\n%s", name, err, &stdout, &stderr)
+		}
+		b, err := os.ReadFile(filepath.Join(dir, "trace.jsonl")) //nolint:gosec // Isolated test output.
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	prefix := "wait 40\npress panel\nwait 3\n"
+	tail := "wait 40\nshot visible\npress ok\nwait 40\nsnapshot\n"
+	off := run("off", prefix+"press cancel\n"+tail+"quit\n", "")
+	on := run("on", prefix+"press left\n"+tail+"press panel\nwait 3\nshot closed\nquit\n", "")
+	for _, kind := range []string{"say", "snapshot"} {
+		a, b := traceLines(t, off, kind), traceLines(t, on, kind)
+		if len(a) == 0 || !reflect.DeepEqual(a, b) {
+			t.Fatalf("%s differs with overlay: %v / %v", kind, a, b)
+		}
+	}
+	if !bytes.Contains(on, []byte(`"roll":`)) {
+		t.Fatal("fixture did not consume gameplay randomness")
+	}
+	replay := run("replay", "", filepath.Join(root, "on", "trace.jsonl"))
+	for _, kind := range []string{"say", "end"} {
+		a, b := traceLines(t, on, kind), traceLines(t, replay, kind)
+		for _, lines := range [][]traceLine{a, b} {
+			for _, l := range lines {
+				delete(l, "lines")
+				delete(l, "replay")
+			}
+		}
+		if len(a) == 0 || !reflect.DeepEqual(a, b) {
+			t.Fatalf("replay %s differs: %v / %v", kind, a, b)
+		}
+	}
+	a, b := shotImage(t, filepath.Join(root, "off"), "visible"), shotImage(t, filepath.Join(root, "on"), "visible")
+	changed := 0
+	for y := 8; y < 60; y++ {
+		for x := 8; x < 300; x++ {
+			if a.At(x, y) != b.At(x, y) {
+				changed++
+			}
+		}
+	}
+	if changed < 100 {
+		t.Fatalf("overlay band changed only %d pixels", changed)
+	}
+	c := shotImage(t, filepath.Join(root, "on"), "closed")
+	changed = 0
+	for y := 8; y < 60; y++ {
+		for x := 8; x < 300; x++ {
+			if b.At(x, y) != c.At(x, y) {
+				changed++
+			}
+		}
+	}
+	if changed < 100 {
+		t.Fatal("F8 did not remove overlay band")
 	}
 }
