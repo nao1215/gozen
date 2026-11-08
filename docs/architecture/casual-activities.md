@@ -18,7 +18,7 @@ Authors can submit games through the [registration form](https://github.com/nao1
 
 ## Initial casual-game scope
 
-The initial scope is one existing runner port and two original casual games. The phone host is implemented; the gameplay capabilities below are proposed and must pass the acceptance checks before being advertised. There is no separate catching game or charge-jump game in this scope.
+Prioritize one existing runner port and two original casual games. These are priorities, not a limit on the number of samples. The phone host is implemented; the gameplay capabilities below are proposed and must pass the acceptance checks before being advertised. A catching game or charge-jump game may follow when it can reuse the implemented capabilities and demonstrate a distinct authoring use without requiring a large dedicated subsystem.
 
 | Game | Player decisions | Primary controls | What it verifies |
 | --- | --- | --- | --- |
@@ -55,7 +55,7 @@ Device adapters produce named actions on simulation ticks. Keyboard and mouse op
 
 A start/retry press cannot also become the next round's first action. A captured aiming or board gesture cannot activate a UI button when released. Cancellation, release outside the active viewport and focus loss clear held input without firing or committing. Loss of focus pauses an active attempt. For a board gesture, restore the pre-drag board on cancellation. Keep the phone host's exit control outside child capture.
 
-The two original samples must be completable with one pointer. Do not impose that restriction on the reference runner if it has different established controls. Multi-touch, gamepad bindings and actual touch feel need explicit runtime verification; keyboard success alone proves none of them. Dedicated directional-swipe and hold-duration charge mechanics are deferred unless one of the three games actually needs them.
+The two original samples must be completable with one pointer. Do not impose that restriction on the reference runner if it has different established controls. Multi-touch, gamepad bindings and actual touch feel need explicit runtime verification; keyboard success alone proves none of them. Dedicated directional-swipe and hold-duration charge mechanics need a playable consumer before becoming supported capabilities; an additional sample may provide that evidence.
 
 ## Ricochet rules
 
@@ -98,4 +98,4 @@ Games that do not use these capabilities allocate no attempt state and run no ac
 3. Build the tile-route sample with the separate board rules. Prove data-only changes to board dimensions, matching and refill/scoring choices.
 4. For every supported game, verify starting, cancelling, losing focus, retrying, completing, restoring progression and returning from the phone. Test deterministic replay, failed I/O and resource limits, then desktop and browser exports and real touch operation. Add schema documentation and dango coverage for observable contracts.
 
-Do not add a fourth full sample during this work. New genres, arbitrary physics, arbitrary code and additional gesture families remain later proposals. The implementation is ready to advertise only when each promised capability has a playable example and the corresponding runtime evidence.
+Evaluate additional samples by completion cost, reuse and the distinct authoring capability they verify, rather than by a fixed count. Defer additions that require a large dedicated subsystem. Arbitrary physics and arbitrary code remain outside this proposal. The implementation is ready to advertise only when each promised capability has a playable example and the corresponding runtime evidence.
