@@ -46,7 +46,7 @@ gozen check my-game
 gozen run my-game
 ```
 
-Choose `novel` or `campaign` for another template. Edit `game.yaml` and `data/world.yaml` in a text editor; no programming language is needed. YAML editing and terminal commands are the current interface, not a visual editor.
+Choose `novel` or `campaign` for another template. Follow [your first game](https://nao1215.github.io/gozen/getting-started/) to edit and play it.
 
 Play the larger samples in your browser: https://nao1215.github.io/gozen/play/
 
@@ -68,7 +68,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 ### Novel games
 
-`ui.message: novel` makes a visual novel. All from [After the Pass](examples/novel), the novel sample, at 1920x1080.
+From [After the Pass](examples/novel). See the [visual novel recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene).
 
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
@@ -80,7 +80,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 #### Phone apps
 
-`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)). All from the office sample. A home screen opens contacts, chats and feeds. Authors write the history and replies in YAML; flags reveal contacts, messages and posts. Players choose fixed replies without typing, and read-only apps need no reply handling. See [phones unlocked by flags](docs/examples/phone-flags.md).
+A phone home screen opens contacts, chats, feeds and games. Messages and fixed replies unlock as the story progresses. See [phone authoring](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen).
 
 | Home → contacts → chat → home | Read history → send a reply → reveal new information |
 |:--|:--|
@@ -100,7 +100,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](docs/images/phone-contact.gif) |  |
 
-**Games inside the phone (Gozen 0.23.0).** The phone opens standalone Gozen games and returns to the host when they close. Each game has its own app icon, state and saves. Authors choose bundled games or optional downloads from a pinned catalog; players choose when to install or update. These captures show two small neutral games running inside the office sample. See the [authoring recipe](docs/examples/phone-games.md) for package, browser and replay limits. The public catalog includes Counter, a small example game. To offer your own game, [submit it for review](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submission does not automatically approve or publish a game.
+**Games inside the phone.** Play another Gozen game, then return to the host. Bundle apps or let players download them from the store. [How it works](https://nao1215.github.io/gozen/writing-a-game/#games-inside-the-phone). Have a game to share? [Submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml).
 
 | Counter in portrait | Trail in landscape |
 |:--|:--|
@@ -108,7 +108,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 
 ### Management workspaces
 
-Workspace, call, calendar and timeline screens with a day `flow` (schema 10) make a management game. From the office sample ([examples/office](examples/office)); the YAML is in [workspace recipes](https://nao1215.github.io/gozen/workspaces/).
+Run a team through workspaces, calls, calendars and timelines. From [Harbor app team](examples/office); see the [management game recipes](https://nao1215.github.io/gozen/workspaces/).
 
 | Standup: busts, meters, dots, signs, burnup | People: press for a peek |
 |:--|:--|
@@ -126,18 +126,15 @@ Workspace, call, calendar and timeline screens with a day `flow` (schema 10) mak
 
 ### Campaigns
 
-`regions`, `factions` and `campaign` (schema version 5) make a war of regions over turns. A campaign can share a game with dungeons and towns: generals are the same actors, and `move` goes between them. From [Five Banners](examples/campaign), the campaign sample.
+Lead armies and compete for regions in [Five Banners](examples/campaign). See the [campaign recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign).
 
 | The war map | A clash of armies |
 |:--|:--|
 | ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](docs/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](docs/images/campaign-clash.jpg) |
-| A region's `area` and a point's `at` lay the regions on one picture of the land. | `clash.armies` gives each army kind its soldiers; each unit is a crowd that shrinks as it loses troops. |
-
-`gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns, the regions each side held turn by turn, and the orders given.
 
 ### Monster collection
 
-Monsters ask to join after a battle, wait at the ranch, and two raised monsters, one male and one female, are bred into a new one at Yorn's altar, in the manner of Dragon Quest Monsters (schema version 6). The monster book (`ui.bestiary: true`) opens a page as the party meets each monster and shows how to breed it, two generations up.
+Recruit, raise and breed monsters, with a bestiary and family trees. See the [monster collection recipes](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
@@ -145,21 +142,9 @@ Monsters ask to join after a battle, wait at the ranch, and two raised monsters,
 | The monster book | The family tree, two generations up |
 | ![the Succubus page of the monster book with its picture, lore and record](docs/images/go-zen-bestiary.jpg) | ![Ghoul and Night Bat make the Vampire, Incense Bloom and Pale Sylph make the Whisper Imp, and the two make the Succubus](docs/images/go-zen-lineage.jpg) |
 
-<!-- verify: parse the short enemy example lists the fields used by the monster book -->
-```yaml
-enemies:
-  succubus:
-    name: Succubus
-    image: enemies/succubus.png
-    lore: "A night-dwelling spirit of the old ruins, known for swift magic."
-    stats: {mhp: 420, mmp: 20, atk: 56, def: 24, mat: 45, mdf: 23, agi: 24, luk: 5}
-```
-
-`gozen check game` finds breeding rules that can never work, and `gozen sim breed game` lists every monster reachable from the ones that can be caught, with the shortest recipe. See [Collect, raise and breed monsters](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
-
 ### Battles
 
-Enemies can change form at an HP threshold, combine with allies, change pictures as HP falls, and move with a puppet portrait. Go Zen shows the Tollkeeper's second form, Drip Slimes gathering into King Slime, and a moving Succubus face with a soft sway region (schema version 7).
+Enemies can transform, merge, change appearance when hurt and react with animated portraits.
 
 | Transform | Merge |
 |:--|:--|
@@ -177,19 +162,7 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 ![Play, script or autoplay to a trace; reproduce a screen, inspect its structure, read play metrics or section frames. Capture and compare with the previous capture.](docs/images/playtesting-flow.svg)
 
-Record a play with `gozen run game --dev --trace run.jsonl`; add `--script input.txt --shots shots` or `--autoplay 60` to drive it automatically. Gozen reports what happened; the author decides what to change.
-
-| Inspect | Example |
-|:--|:--|
-| Reproduce a screen from a recorded tick | `gozen trace run.jsonl --repro 120 --out repro` |
-| Read the screen's text, cast and controls | `gozen trace run.jsonl --only screen` |
-| Read text per decision, repetition and waiting spans | `gozen trace run.jsonl --metrics` |
-| Read frame counts and timings between script `mark` commands | `gozen trace run.jsonl --only section --format jsonl` |
-| Compare the same capture jobs with the previous output | `gozen capture game --config captures.yaml --out current --against previous` |
-
-[Runnable examples, output and limits](https://nao1215.github.io/gozen/edit-play-loop/#playtesting) include the script and capture configuration. Reproduction refuses traces it cannot reproduce exactly; its bundle needs the unchanged game assets.
-
-Start the game with `--dev` and these keys work while you play.
+Reload edits while playing, inspect state, record a playthrough and reproduce a screen. See the [edit–play loop](https://nao1215.github.io/gozen/edit-play-loop/) for controls, scripts and trace tools.
 
 | F5: edit the YAML, the line changes in place | F9: a note with the screen and the state |
 |:--|:--|
@@ -203,103 +176,30 @@ Start the game with `--dev` and these keys work while you play.
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg) |
 
-Outside the window, `gozen check game` reports a broken reference, a wrong expression, a missing picture or a line too long for its window with its file and line, such as `data/world.yaml:26:5: locations.grotto.encounters: unknown troop "lessn" [GZN1101]`. `gozen sim battle` fights a battle many times and prints the win rate (the numbers F7 shows), and `gozen sim dive` plays a whole dungeon dive. A note written with F9 can be opened again with `gozen run game --dev --from-memo` on its `.json`, at the same line. The window, a headless session and the command line follow the same rules.
-
-All the tools: [the edit–play loop](https://nao1215.github.io/gozen/edit-play-loop/).
-
 ## Install
 
-Go 1.26.10 or later:
-
-```sh
-go install github.com/nao1215/gozen/cmd/gozen@latest
-```
-
-With a C compiler, `CGO_ENABLED=1` adds the ONNX inference of `gozen mosaic`.
-
-With Homebrew:
+Download a binary from [Releases](https://github.com/nao1215/gozen/releases), or install with Homebrew:
 
 <!-- verify: skip installs from the Homebrew tap, outside the repository -->
 ```sh
 brew install --cask nao1215/tap/gozen
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) has archives for Linux, macOS and Windows (amd64, arm64) and `.deb`, `.rpm` and `.apk` packages. They have no ONNX inference.
+With Go 1.26.10 or later:
 
-The window needs the platform graphics libraries: [OS setup](https://nao1215.github.io/gozen/install/#what-the-window-needs).
-
-In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
-
-<!-- verify: skip runs in GitHub Actions -->
-```yaml
-- uses: actions/checkout@v6
-- uses: nao1215/setup-gozen@1c378fc446f62ecb29a7bcd40aea6dff8565d698 # v0.1.1
-- run: gozen check game
-- run: gozen sim battle game --troop boss --format json  # boss: a troop id of your game
-```
-
-`version` also takes `latest` or a release such as `v0.2.0`, and `go-mod-path` points at a `go.mod` below the root. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the same version from `go.mod`.
-
-## Recipes
-
-Tested YAML recipes are in the [cookbook](https://nao1215.github.io/gozen/cookbook/).
-
-With a coding agent, install the [gozen skill](skills/gozen/SKILL.md). It holds the schema links and one rule: run `gozen check` until it passes.
-
-- Claude Code: copy `skills/gozen` to `~/.claude/skills/gozen`.
-- Codex: copy `skills/gozen` to `~/.codex/skills/gozen`.
-
-<!-- verify: run fixture=cave -->
 ```sh
-gozen check game                                       # references, expressions, pictures, text layout
-gozen sim battle game --troop cave_boss --level 8              # win rate at level 8
-gozen sim dive game --location cave --floors 5 --boss 5:cave_boss # levels and wins per floor
+go install github.com/nao1215/gozen/cmd/gozen@latest
 ```
 
-`gozen book game > book.md` writes the whole game as one Markdown file.
+See [installation](https://nao1215.github.io/gozen/install/) for platform requirements and GitHub Actions setup.
 
-Run the directory directly with `gozen run game`, or enable author tools with `gozen run game --dev`. No Go source is needed.
+## Documentation
 
-Test tools:
-
-<!-- verify: skip opens a game window and waits for input -->
-```sh
-gozen run game --dev --memos notes                   # F9 note, F7 win rates, F5 reload
-gozen run game --dev --start cave --level 8 --battle cave_boss  # jump to a fight
-gozen run game --dev --autoplay 60 --speed 8 --trace run.jsonl  # autoplay and record
-gozen trace run.jsonl                                # read the record
-gozen notes notes --out notes-html                   # notes as one HTML page
-```
-
-## gozen
-
-| Command | What it does |
-|:--|:--|
-| `new` | create a playable RPG, novel or campaign from a template |
-| `check` | definitions, references, expressions, pictures, text layout (`--only structure` or `--only layout`) |
-| `sim battle`, `sim dive`, `sim floors`, `sim design` | win rate; a dungeon dive; generated floors; scripted players |
-| `run`, `trace`, `notes`, `capture` | run a game directory; read a trace; notes as HTML; screenshots of a list |
-| `book` | the whole game as Markdown, JSON or JSONL |
-| `export` | playable desktop directories; static browser games, using prebuilt runtimes |
-| `release`, `trial` | approved pictures only; a demo |
-| `prompt`, `mosaic`, `models fetch`, `faces`, `puppet` | image prompts; pixelation; models; balloon faces; moving portraits |
-| `theme add`, `theme list` | copy a dungeon theme (walls, floor, ceiling, door) into a game; list the themes |
-| `version`, `help` | the version; a command's help, or a diagnostic code |
-
-`gozen help <command>` shows options and examples. `gozen help GZN1101` explains a code. [atago](https://github.com/nao1215/atago) tests every command end to end.
-
-## Features
-
-- YAML definitions with expressions, events and versioned saves
-- Turn-based battles with a party, auto battle and enemy tactics
-- Skill trees, shops, a field menu and a picture gallery
-- First-person grid dungeons, fixed or generated, with themes (`theme: cave`, `gozen theme add`)
-- Moving portraits from one picture ([portrait YAML](https://nao1215.github.io/gozen/cookbook/#give-a-character-faces-and-a-moving-portrait))
-- Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, marches shown as clashes of armies (or decided by numbers or a battle), the other factions' rules, and `gozen sim campaign` ([recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign))
-- Management games: workspace cards, drag and drop, tickets, messages, video calls with screen sharing, calendars, timelines and first-visit guides ([recipes](https://nao1215.github.io/gozen/workspaces/))
-- Visual novels: roll back, skip what was read, save in a scene, choices read as `chose`, staging with `stand` ([recipes](https://nao1215.github.io/gozen/cookbook/#let-the-player-roll-back-and-save-in-a-scene))
-- Inspectable demo builds: `gozen trial` selects content using `trial.yaml`, reports unresolved conditions, and rejects explicitly forbidden definitions or assets before writing ([recipe](https://nao1215.github.io/gozen/cookbook/#check-the-contents-of-a-trial))
-- Engine words in English and Japanese (`language` in game.yaml), and the game's text in two languages (`lang/`)
+- [Your first game](https://nao1215.github.io/gozen/getting-started/)
+- [Authoring guide](https://nao1215.github.io/gozen/writing-a-game/) and [YAML recipes](https://nao1215.github.io/gozen/cookbook/)
+- [Playtesting](https://nao1215.github.io/gozen/edit-play-loop/) and [command reference](https://nao1215.github.io/gozen/commands/)
+- [Export for desktop and browser](https://nao1215.github.io/gozen/commands/#export)
+- [Working with coding agents](https://nao1215.github.io/gozen/ai-agents/)
 
 ## Made with Gozen
 
@@ -309,7 +209,6 @@ gozen notes notes --out notes-html                   # notes as one HTML page
 
 ## Limitations
 
-- The supported interfaces are CLI commands, YAML definitions and saves. Go implementation packages are internal.
 - Gameplay tests cover Linux, Windows and macOS. Browser E2E targets Chrome.
 - There is no graphical editor.
 
