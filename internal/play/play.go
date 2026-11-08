@@ -968,7 +968,8 @@ func (g *Game) Update() error {
 
 	// The initial Update can precede the window manager's settled layout.
 	// Compare at tick 1, after both runs have had their startup layout.
-	if g.tick == 1 && g.rep != nil && g.rep.startupViewport != nil {
+	// A tick-0 capture stops before advancing, so validate its layout now.
+	if (g.tick == 1 || (g.tick == 0 && g.opts.Until == 1)) && g.rep != nil && g.rep.startupViewport != nil {
 		w, h := g.pixels()
 		v := g.rep.startupViewport
 		if int(w) != v.Width || int(h) != v.Height {

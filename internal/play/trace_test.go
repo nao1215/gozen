@@ -720,56 +720,62 @@ func TestReplayStartupViewport(t *testing.T) {
 	}
 	fsys := gameFiles(t)
 	fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("schema_version: 11\nscreen: {width: 640, height: 360, native: true}\n")...)
-	for _, fullscreen := range []bool{false, true} {
-		t.Run(fmt.Sprintf("fullscreen=%t", fullscreen), func(t *testing.T) {
-			var buf bytes.Buffer
-			g, err := New(Options{FS: fsys, Trace: &buf, Seed: 7, Fullscreen: fullscreen, NoSound: true, Store: savefile.MemStore()})
-			if err != nil {
-				t.Fatal(err)
-			}
-			g.in.script = nil
-			g.layout(640, 360)
-			g.layout(1280, 720)
-			g.tick = 1
-			g.layout(1024, 576) // The window manager settles after the first Update.
-			g.traceEnd()
-			if err := g.Close(); err != nil {
-				t.Fatal(err)
-			}
-			path := filepath.Join(t.TempDir(), "trace.jsonl")
-			if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			for _, size := range [][2]int{{1024, 576}, {1280, 720}, {960, 540}} {
-				t.Run(fmt.Sprint(size), func(t *testing.T) {
-					r, err := New(Options{FS: fsys, Replay: path, Until: 2, NoSound: true, headless: true, Store: savefile.MemStore()})
+	for _, until := range []int{1, 2} {
+		t.Run(fmt.Sprintf("until=%d", until), func(t *testing.T) {
+			for _, fullscreen := range []bool{false, true} {
+				t.Run(fmt.Sprintf("fullscreen=%t", fullscreen), func(t *testing.T) {
+					var buf bytes.Buffer
+					g, err := New(Options{FS: fsys, Trace: &buf, Seed: 7, Fullscreen: fullscreen, NoSound: true, Store: savefile.MemStore()})
 					if err != nil {
 						t.Fatal(err)
 					}
-					t.Cleanup(func() {
-						if closeErr := r.Close(); closeErr != nil && !errors.Is(closeErr, r.failure) {
-							t.Error(closeErr)
-						}
-					})
-					r.in.script = nil
-					r.layout(1280, 720)
-					if err := r.Update(); err != nil || r.tick != 1 {
-						t.Fatalf("unsettled startup: tick=%d, err=%v", r.tick, err)
+					g.in.script = nil
+					g.layout(640, 360)
+					g.layout(1280, 720)
+					g.tick = until - 1
+					g.layout(1024, 576) // The window manager settles by the target tick.
+					g.traceEnd()
+					if err := g.Close(); err != nil {
+						t.Fatal(err)
 					}
-					r.layout(float64(size[0]), float64(size[1]))
-					err = r.Update()
-					if size == [2]int{1024, 576} {
-						if err != nil || !r.untilShot {
-							t.Fatalf("matching viewport: capture=%t, err=%v", r.untilShot, err)
-						}
-					} else {
-						want := fmt.Sprintf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport 1024x576", size[0], size[1])
-						if err == nil || err.Error() != want {
-							t.Fatalf("mismatch error: %v, want %s", err, want)
-						}
-						if r.tick != 1 || r.untilShot || r.autoShot != "" {
-							t.Fatalf("mismatch advanced or scheduled capture: tick=%d, untilShot=%t, autoShot=%q", r.tick, r.untilShot, r.autoShot)
-						}
+					path := filepath.Join(t.TempDir(), "trace.jsonl")
+					if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					for _, size := range [][2]int{{1024, 576}, {1280, 720}, {960, 540}} {
+						t.Run(fmt.Sprint(size), func(t *testing.T) {
+							r, err := New(Options{FS: fsys, Replay: path, Until: until, NoSound: true, headless: true, Store: savefile.MemStore()})
+							if err != nil {
+								t.Fatal(err)
+							}
+							t.Cleanup(func() {
+								if closeErr := r.Close(); closeErr != nil && !errors.Is(closeErr, r.failure) {
+									t.Error(closeErr)
+								}
+							})
+							r.in.script = nil
+							if until > 1 {
+								r.layout(1280, 720)
+								if err := r.Update(); err != nil || r.tick != 1 {
+									t.Fatalf("unsettled startup: tick=%d, err=%v", r.tick, err)
+								}
+							}
+							r.layout(float64(size[0]), float64(size[1]))
+							err = r.Update()
+							if size == [2]int{1024, 576} {
+								if err != nil || !r.untilShot || r.tick != until-1 {
+									t.Fatalf("matching viewport: capture=%t, err=%v", r.untilShot, err)
+								}
+							} else {
+								want := fmt.Sprintf("cannot reproduce exactly: replay startup viewport %dx%d differs from recorded startup viewport 1024x576", size[0], size[1])
+								if err == nil || err.Error() != want {
+									t.Fatalf("mismatch error: %v, want %s", err, want)
+								}
+								if r.tick != until-1 || r.untilShot || r.autoShot != "" {
+									t.Fatalf("mismatch advanced or scheduled capture: tick=%d, untilShot=%t, autoShot=%q", r.tick, r.untilShot, r.autoShot)
+								}
+							}
+						})
 					}
 				})
 			}

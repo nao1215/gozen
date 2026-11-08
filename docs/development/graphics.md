@@ -132,8 +132,9 @@ the recorded location. No game assets are copied. Without `--out`, the command
 uses the original trace and writes to `<trace>.repro-<tick>/`.
 
 The `viewport` records describe render width, height, UI scale and portrait layout
-at the initial layout and each change. Layout changes at tick 0 establish the
-startup viewport. Reproduction rejects every later viewport change, including a
+at the initial layout and each change. Layout changes at ticks 0 and 1 establish
+the startup viewport while the window manager settles. Reproduction rejects
+viewport changes from tick 2 onward, including a
 change of render size or UI scale that keeps the logical size, and script `window`
 actions through the target tick with "cannot reproduce exactly: the recording
 changed the window size" (exit 1).
