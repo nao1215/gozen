@@ -16,12 +16,12 @@ import (
 // diagnoseCheck collects structured errors and warnings for the selected scope.
 // Layout checks load the game but do not run structural authoring checks or read
 // their complexity configuration, just like the text-only layout command.
-func diagnoseCheck(dir, only string) gamedata.Diagnostics {
+func diagnoseCheck(dir, only string) (gamedata.Diagnostics, error) {
 	var db *gamedata.DB
 	var diags gamedata.Diagnostics
 	fsys, err := gameFS(dir)
 	if err != nil {
-		diags = gamedata.Diagnose(err, "error")
+		return nil, err
 	} else if only == "layout" {
 		err = gamedata.UseWords(fsys)
 		if err == nil {
@@ -64,11 +64,14 @@ func diagnoseCheck(dir, only string) gamedata.Diagnostics {
 	if diags == nil {
 		diags = gamedata.Diagnostics{}
 	}
-	return diags
+	return diags, nil
 }
 
 func (c *command) checkJSON(dir, only string) error {
-	diags := diagnoseCheck(dir, only)
+	diags, err := diagnoseCheck(dir, only)
+	if err != nil {
+		return err
+	}
 	return c.reportCheck(diags, false)
 }
 

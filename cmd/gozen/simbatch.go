@@ -84,7 +84,7 @@ func (c *command) simBatch() clihelp.Operation {
 			if len(line) == 0 {
 				continue
 			}
-			res := runCase(line, games)
+			res := runCase(ctx, line, games)
 			// One write a result: a program streaming cases reads it before sending the next.
 			status := "ok"
 			if res.Exit != 0 {
@@ -114,13 +114,8 @@ func (c *command) simBatch() clihelp.Operation {
 	}}
 }
 
-// batchRun is runWith; set in init, since the command tree holds gozen sim batch.
-var batchRun func(args []string, out, stderr io.Writer, games *gameCache) int
-
-func init() { batchRun = runWith }
-
 // runCase runs one case as gozen sim script would, with the definitions from games.
-func runCase(line []byte, games *gameCache) batchResult {
+func runCase(ctx context.Context, line []byte, games *gameCache) batchResult {
 	var bc batchCase
 	dec := json.NewDecoder(bytes.NewReader(line))
 	dec.DisallowUnknownFields()
@@ -144,7 +139,19 @@ func runCase(line []byte, games *gameCache) batchResult {
 	prev := log.Writer()
 	log.SetOutput(stderr)
 	defer log.SetOutput(prev)
-	exit := batchRun(append([]string{"sim", "script"}, bc.Args...), &stdout, stderr, games)
+	c := &command{out: &cliio.Output{Writer: &stdout}, stderr: &cliio.Output{Writer: stderr}, path: "sim script", games: games}
+	var cfg scriptConfig
+	flags := scriptFlags(&cfg)
+	err := c.parse(flags, bc.Args, pages["sim script"])
+	if err == nil {
+		if flags.NArg() != 1 {
+			err = cliio.Invalid(diag.Operands, "expected one game directory")
+		} else {
+			cfg.dir = flags.Arg(0)
+			err = c.executeScript(ctx, cfg)
+		}
+	}
+	exit := c.finish(err)
 	return batchResult{ID: bc.ID, Exit: exit, Stdout: stdout.String(), Stderr: stderr.String()}
 }
 

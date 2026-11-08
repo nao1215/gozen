@@ -235,7 +235,7 @@ func phonePictures(cue data.PhoneCue) []string {
 // prepare makes the clip's puppet, the same for its thumbnail and its
 // playback, taking back the motion it had when it was released offscreen.
 func (c *phoneClip) prepare(g *Game) {
-	if c.v.Puppet == "" || c.body != nil {
+	if g.opts.headless || c.v.Puppet == "" || c.body != nil {
 		return
 	}
 	if rig := g.rig(c.v.Puppet); rig != nil {

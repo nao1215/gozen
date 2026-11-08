@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -176,43 +177,32 @@ func traceOf(args []string) string {
 // to the standard error; in a batch they are part of that case's stderr, and the log
 // goes back where it was after the case.
 func TestSimBatchKeepsWhatTheGameLogsInTheCase(t *testing.T) {
-	saved := batchRun
-	t.Cleanup(func() { batchRun = saved })
-	batchRun = func(_ []string, _, stderr io.Writer, _ *gameCache) int {
-		log.Print("period already closed")
-		if _, err := fmt.Fprintln(stderr, "after"); err != nil {
-			t.Error(err)
-		}
-		return 0
+	dir := fixture(t)
+	script := filepath.Join(t.TempDir(), "log.txt")
+	write(t, script, "wait 10\ndo gold: \"'word'\"\nwait 10\nquit\n")
+	record, err := json.Marshal(batchCase{ID: "log", Args: []string{dir, "--script", script, "--start", "camp"}})
+	if err != nil {
+		t.Fatal(err)
 	}
 	before := log.Writer()
-	r := runCase([]byte(`{"id":"x","args":["game"]}`), nil)
-	if !strings.HasSuffix(r.Stderr, "period already closed\nafter\n") {
-		t.Errorf("stderr %q", r.Stderr)
+	got := runCase(context.Background(), record, nil)
+	if !strings.Contains(got.Stderr, "number") {
+		t.Fatal(got)
 	}
 	if log.Writer() != before {
-		t.Error("the log was not given back")
+		t.Fatal("log writer was not restored")
 	}
 }
 
 func TestRunCaseRejectsTrailingJSON(t *testing.T) {
-	previous := batchRun
-	t.Cleanup(func() { batchRun = previous })
-	called := false
-	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int {
-		called = true
-		return 0
-	}
 	for _, suffix := range []string{`{}`, `null`, `garbage`, `42`} {
-		called = false
-		got := runCase([]byte(`{"id":"bad","args":[]} `+suffix), nil)
-		if got.Exit != 2 || called || got.ID != "bad" {
-			t.Errorf("suffix %q: result %+v, called %v", suffix, got, called)
+		got := runCase(context.Background(), []byte(`{"id":"bad","args":["--help"]} `+suffix), nil)
+		if got.Exit != 2 || got.Stdout != "" || got.ID != "bad" {
+			t.Fatal(got)
 		}
 	}
-	called = false
-	if got := runCase([]byte("{\"id\":\"ok\",\"args\":[]} \t\r"), nil); got.Exit != 0 || !called {
-		t.Fatalf("trailing whitespace rejected: %+v", got)
+	if got := runCase(context.Background(), []byte("{\"id\":\"ok\",\"args\":[\"--help\"]} \t\r"), nil); got.Exit != 0 {
+		t.Fatal(got)
 	}
 }
 
@@ -246,22 +236,15 @@ func BenchmarkCheckGame(b *testing.B) {
 }
 
 func TestRunCaseRejectsInlineStandardStreams(t *testing.T) {
-	previous := batchRun
-	t.Cleanup(func() { batchRun = previous })
-	called := false
-	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int { called = true; return 0 }
 	for _, arg := range []string{"--script=-", "--trace=-"} {
-		t.Run(arg, func(t *testing.T) {
-			called = false
-			record, err := json.Marshal(batchCase{ID: "inline", Args: []string{"game", arg}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			result := runCase(record, nil)
-			if result.Exit != 2 || called {
-				t.Fatalf("standard stream case executed: %+v, called=%v", result, called)
-			}
-		})
+		record, err := json.Marshal(batchCase{ID: "inline", Args: []string{"game", arg}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := runCase(context.Background(), record, nil)
+		if result.Exit != 2 || result.Stdout != "" {
+			t.Fatal(result)
+		}
 	}
 }
 
@@ -304,5 +287,15 @@ func TestSimBatchCompletion(t *testing.T) {
 				t.Fatalf("failed write exit: %d", got)
 			}
 		})
+	}
+}
+
+func TestRunCaseDoesNotDispatchCommands(t *testing.T) {
+	saved := tree["sim script"]
+	delete(tree, "sim script")
+	t.Cleanup(func() { tree["sim script"] = saved })
+	got := runCase(context.Background(), []byte(`{"id":"help","args":["--help"]}`), nil)
+	if got.Exit != 0 || !strings.Contains(got.Stdout, "[Usage]") {
+		t.Fatalf("case depends on command dispatch: %+v", got)
 	}
 }

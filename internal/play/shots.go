@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,13 +27,16 @@ type shotWriter struct {
 	// pool keeps the pixel buffers of written shots for the next ones (8 MB each at 1920x1080).
 	pool sync.Pool
 
-	mu  sync.Mutex
-	err error
+	mu      sync.Mutex
+	err     error
+	pending map[string]chan struct{}
 }
 
 type shotJob struct {
-	path string
-	img  *image.NRGBA
+	path     string
+	img      *image.NRGBA
+	previous <-chan struct{}
+	finished chan struct{}
 }
 
 // shotEncoder trades a little size for speed: BestSpeed is about five times faster than
@@ -61,12 +65,30 @@ func (w *shotWriter) write(path string, img *image.NRGBA) {
 		w.done(writeShot(path, img))
 		return
 	}
-	w.jobs <- shotJob{path: path, img: img}
+	path = filepath.Clean(path)
+	w.mu.Lock()
+	if w.pending == nil {
+		w.pending = make(map[string]chan struct{})
+	}
+	previous := w.pending[path]
+	finished := make(chan struct{})
+	w.pending[path] = finished
+	w.mu.Unlock()
+	w.jobs <- shotJob{path: path, img: img, previous: previous, finished: finished}
 }
 
 func (w *shotWriter) work() {
 	for j := range w.jobs {
+		if j.previous != nil {
+			<-j.previous
+		}
 		err := writeShot(j.path, j.img)
+		w.mu.Lock()
+		if w.pending[j.path] == j.finished {
+			delete(w.pending, j.path)
+		}
+		close(j.finished)
+		w.mu.Unlock()
 		w.pool.Put(j.img)
 		w.done(err)
 	}
@@ -80,15 +102,24 @@ func (w *shotWriter) done(err error) {
 	}
 }
 
-func writeShot(path string, img *image.NRGBA) error {
+func writeShot(path string, img *image.NRGBA) (err error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	f, err := os.Create(path) //nolint:gosec // The output directory is explicit and the basename is validated by the caller.
+	f, err := os.CreateTemp(filepath.Dir(path), ".shot-*.png")
 	if err != nil {
 		return err
 	}
-	return errors.Join(shotEncoder.Encode(f, img), f.Close())
+	tmp := f.Name()
+	defer func() {
+		if removeErr := os.Remove(tmp); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+			err = errors.Join(err, removeErr)
+		}
+	}()
+	if err := errors.Join(shotEncoder.Encode(f, img), f.Close()); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // failed returns the errors of the shots written since it was last asked, once.

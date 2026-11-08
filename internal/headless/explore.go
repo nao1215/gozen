@@ -195,7 +195,11 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 		i := len(p.Answers)
 		a := 0
 		if i < len(prefix) {
-			a = min(prefix[i], n-1)
+			a = prefix[i]
+			if a < 0 || a >= n {
+				p.Errs = append(p.Errs, fmt.Errorf("explore: answer %d outside [0,%d) at branch %d (%s)", a, n, i+1, key))
+				return -1
+			}
 		} else if !expanded[key] {
 			expanded[key] = true
 			for alt := 1; alt < n; alt++ {
@@ -243,12 +247,18 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 					n = opt.Choose(st, q)
 				}
 				if n >= 0 {
-					n = min(q.Answers()-1, n)
+					if n >= q.Answers() {
+						p.Errs = append(p.Errs, fmt.Errorf("explore: request %d: answer %d outside [0,%d) for choice %q, options %q", steps, n, q.Answers(), q.Prompt, q.Options))
+						return p, branches
+					}
 					p.Taken = append(p.Taken, "> "+answerText(q, n))
 				} else {
 					// A muted choice's staying quiet is one more branch.
 					key := "choice:" + place(r.Asking()) + q.Prompt + "\x00" + strings.Join(q.Options, "\x00")
 					n = decide(key, q.Answers(), func(a int) string { return "> " + answerText(q, a) })
+				}
+				if n < 0 {
+					return p, branches
 				}
 				p.Lines = append(p.Lines, "> "+answerText(q, n))
 				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Text: answerText(q, n)})
@@ -279,6 +289,9 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 						return p, branches
 					}
 					a := decide("battle:"+place(r.Asking())+q.Troop, len(outs), func(a int) string { return "battle " + q.Troop + " " + resultName(outs[a]) })
+					if a < 0 {
+						return p, branches
+					}
 					res = outs[a]
 					if res == event.BattleLost && q.CanLose {
 						// The event that catches a defeat continues with only the members who fought at HP 1, same as the screen.

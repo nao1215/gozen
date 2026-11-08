@@ -181,6 +181,10 @@ func (s *Session) resume(c rpg.Cursor) error {
 	if len(c.Inputs) > 0 && c.Line == 0 {
 		return s.resumeScreens(c.Inputs)
 	}
+	if !c.Arrival && c.Line == 0 {
+		// A checkpoint cursor starts its event without consuming any requests.
+		return nil
+	}
 	onEffect := s.cfg.OnEffect
 	s.cfg.OnEffect = nil
 	defer func() { s.cfg.OnEffect = onEffect }()
