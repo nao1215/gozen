@@ -630,6 +630,7 @@ func (r *Runner) Asking() *data.Command {
 
 // Stop drops everything left.
 func (r *Runner) Stop() {
+	r.pages = nil
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
@@ -1800,8 +1801,19 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
 		case Tap:
-			if q.Results > 0 && answer < len(answers) {
-				r.Answer(answers[answer])
+			if q.Results > 0 {
+				if answer >= len(answers) {
+					return nil, fmt.Errorf("load: missing phone answer before line %d", seen+1)
+				}
+				n := answers[answer]
+				valid := n == -1 || n >= 0 && n < q.Results
+				if r.likes != nil {
+					valid = n == -1 || n >= 0 && uint64(n) < uint64(1)<<uint(q.Results)
+				}
+				if !valid {
+					return nil, fmt.Errorf("load: invalid phone answer %d before line %d", n, seen+1)
+				}
+				r.Answer(n)
 				answer++
 			}
 			continue

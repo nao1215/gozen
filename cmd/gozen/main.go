@@ -160,11 +160,8 @@ func (c *command) parse(fs *pflag.FlagSet, args []string, page clihelp.Page) err
 	return nil
 }
 
-func run(args []string, out, stderr io.Writer) int { return runWith(args, out, stderr, nil) }
-
-// runWith is run with the definitions that gozen sim batch keeps between its runs.
-func runWith(args []string, out, stderr io.Writer, games *gameCache) int {
-	c := &command{out: &cliio.Output{Writer: out}, stderr: &cliio.Output{Writer: stderr}, registry: tree, games: games}
+func run(args []string, out, stderr io.Writer) int {
+	c := &command{out: &cliio.Output{Writer: out}, stderr: &cliio.Output{Writer: stderr}, registry: tree}
 	// Walk the tree to a leaf or a group.
 	n := tree[""]
 	for n.subs != nil && len(args) > 0 && !strings.HasPrefix(args[0], "-") {

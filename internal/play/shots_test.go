@@ -161,7 +161,10 @@ func TestCloseFinishesScreenshots(t *testing.T) {
 func TestLetterboxShotPreservesPixelsAndOuterSize(t *testing.T) {
 	c := color.NRGBA{20, 40, 60, 255}
 	src := sysSolid(1920, 1080, c)
-	dst := letterboxShot(src, 2560, 1080)
+	dst, err := letterboxShot(src, 2560, 1080)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if dst.Bounds() != image.Rect(0, 0, 2560, 1080) {
 		t.Fatal(dst.Bounds())
 	}
@@ -175,7 +178,77 @@ func TestLetterboxShotPreservesPixelsAndOuterSize(t *testing.T) {
 			t.Fatal("content", p)
 		}
 	}
-	if letterboxShot(src, 1920, 1080) != src {
+	if got, err := letterboxShot(src, 1920, 1080); err != nil || got != src {
 		t.Fatal("unnecessary copy")
+	}
+}
+
+func TestLetterboxShotRejectsOverflow(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unsafe allocation panicked: %v", r)
+		}
+	}()
+	src := sysSolid(1, 1, color.NRGBA{A: 255})
+	if _, err := letterboxShot(src, int(^uint(0)>>1), int(^uint(0)>>1)); err == nil {
+		t.Fatal("accepted overflow dimensions")
+	}
+}
+
+func TestShotReplacementIsAtomic(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "shot.png")
+	alias := filepath.Join(filepath.Dir(path), "previous.png")
+	old := sysSolid(2, 2, color.NRGBA{R: 7, A: 255})
+	if err := writeShot(path, old); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(path, alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeShot(path, sysSolid(2, 2, color.NRGBA{R: 99, A: 255})); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(alias) //nolint:gosec // Reads the test-owned previous screenshot.
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	img, err := png.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _, _, _ := img.At(0, 0).RGBA()
+	if r>>8 != 7 {
+		t.Fatal("replacement modified the previous file")
+	}
+}
+
+func TestShotWriterSamePathKeepsNewest(t *testing.T) {
+	var w shotWriter
+	path := filepath.Join(t.TempDir(), "shot.png")
+	w.write(path, sysSolid(2048, 2048, color.NRGBA{R: 7, A: 255}))
+	w.write(path, sysSolid(1, 1, color.NRGBA{R: 99, A: 255}))
+	if err := w.wait(); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(path) //nolint:gosec // Reads the test-owned screenshot.
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	img, err := png.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if img.Bounds() != image.Rect(0, 0, 1, 1) {
+		t.Fatal("older shot replaced newer shot")
 	}
 }

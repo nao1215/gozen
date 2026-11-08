@@ -55,3 +55,44 @@ func TestUnnamedSaveDirectory(t *testing.T) {
 		t.Fatal("empty game ID accepted")
 	}
 }
+
+func TestWriteStorePreserving(t *testing.T) {
+	for _, kind := range []string{"memory", "directory"} {
+		t.Run(kind, func(t *testing.T) {
+			st := MemStore()
+			if kind == "directory" {
+				st = DirStore(t.TempDir())
+			}
+			if backup, err := WriteStorePreserving(st, "slot.save", []byte("old")); err != nil || backup != "" {
+				t.Fatalf("new save: %q, %v", backup, err)
+			}
+			for range 2 {
+				if err := st.Write("slot.save", []byte("old")); err != nil {
+					t.Fatal(err)
+				}
+				backup, err := WriteStorePreserving(st, "slot.save", []byte("new"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := st.Read(backup)
+				if err != nil || string(got) != "old" {
+					t.Fatalf("backup: %q, %v", got, err)
+				}
+			}
+			backup := fmt.Sprintf("slot.save.before-%x.bak", sha256.Sum256([]byte("old")))
+			if err := st.Write("slot.save", []byte("old")); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.Write(backup, []byte("different")); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := WriteStorePreserving(st, "slot.save", []byte("new")); err == nil {
+				t.Fatal("accepted conflicting backup")
+			}
+			got, err := st.Read("slot.save")
+			if err != nil || string(got) != "old" {
+				t.Fatalf("original changed: %q, %v", got, err)
+			}
+		})
+	}
+}

@@ -1,12 +1,16 @@
 package play
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/fs"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nao1215/gozen/internal/savefile"
 )
 
 // memKV is a browser's key/value storage in memory; full refuses each set after the first
@@ -79,5 +83,38 @@ func TestKVStoreWritesOnce(t *testing.T) {
 	}
 	if _, err := s.Read("slot2"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("a removed save reads %v", err)
+	}
+}
+
+type unreadableBackupStore struct {
+	Store
+	backup string
+}
+
+func (s unreadableBackupStore) Read(name string) ([]byte, error) {
+	if name == s.backup {
+		return nil, fs.ErrPermission
+	}
+	return s.Store.Read(name)
+}
+
+func TestWritePreservingUnreadableBackup(t *testing.T) {
+	st := savefile.MemStore()
+	old := []byte("original save")
+	backup := fmt.Sprintf("slot.save.before-%x.bak", sha256.Sum256(old))
+	for name, b := range map[string][]byte{"slot.save": old, backup: []byte("existing backup")} {
+		if err := st.Write(name, b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g := &Game{store: unreadableBackupStore{st, backup}}
+	if _, err := g.writePreserving("slot.save", []byte("replacement")); !errors.Is(err, fs.ErrPermission) {
+		t.Errorf("want permission failure, got %v", err)
+	}
+	for name, want := range map[string]string{"slot.save": string(old), backup: "existing backup"} {
+		got, err := st.Read(name)
+		if err != nil || string(got) != want {
+			t.Errorf("%s changed: %q, %v", name, got, err)
+		}
 	}
 }

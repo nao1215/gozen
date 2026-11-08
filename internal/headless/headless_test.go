@@ -279,3 +279,305 @@ func TestResetActorMatchesTheSession(t *testing.T) {
 		t.Errorf("level %d exp %d hp %d, want the start of level 1", scout.Level, scout.Exp, scout.HP)
 	}
 }
+
+func TestDriverRejectsUnsupportedRequests(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, tc := range []struct {
+		name    string
+		command data.Command
+	}{
+		{"open", data.Command{Open: data.ScreenCall{Screen: "status"}}},
+		{"checkpoint", data.Command{Checkpoint: "main"}},
+		{"save", data.Command{Save: true}},
+		{"phone", data.Command{Phone: &data.PhoneCue{App: "page", Var: "var.result", Rows: []data.PhoneRow{{Button: "Open"}}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := testgame.State(db, 7)
+			d := headless.New(db, st)
+			err := d.Run(t.Context(), []data.Command{tc.command, {SetV: data.Assignments{"flag.after": data.MustExpr("true")}}})
+			if err == nil || !strings.Contains(strings.ToLower(err.Error()), tc.name) {
+				t.Fatalf("unsupported request succeeded: %v", err)
+			}
+			if st.Flags["after"] {
+				t.Fatal("ran beyond unsupported request")
+			}
+		})
+	}
+	d := headless.New(db, testgame.State(db, 7))
+	if err := d.Run(t.Context(), []data.Command{{Phone: &data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{{Text: "Hello"}}}}, {Say: &data.Say{Text: "After"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Transcript) != 1 || d.Transcript[0] != "After" {
+		t.Fatal(d.Transcript)
+	}
+}
+
+func TestDriverRejectsExplicitInvalidAnswers(t *testing.T) {
+	db := testgame.Load(t, nil)
+	cmds := []data.Command{{Prompt: "Pick a route", Choice: []data.ChoiceOption{
+		{Label: "North", Do: []data.Command{{SetV: data.Assignments{"var.route": data.MustExpr("1")}}}},
+		{Label: "South", Do: []data.Command{{SetV: data.Assignments{"var.route": data.MustExpr("2")}}}},
+	}}}
+	for _, n := range []int{-1, 2, 99} {
+		for _, policy := range []bool{false, true} {
+			st := testgame.State(db, 7)
+			d := headless.New(db, st)
+			if policy {
+				d.Choose = func(*rpg.State, event.Choice) int { return n }
+			} else {
+				d.Answers = []int{n}
+			}
+			err := d.Run(t.Context(), cmds)
+			if err == nil || !strings.Contains(err.Error(), "Pick a route") || !strings.Contains(err.Error(), "North") || !strings.Contains(err.Error(), "request") {
+				t.Fatalf("invalid answer %d: %v", n, err)
+			}
+			if st.Vars["route"] != nil {
+				t.Fatal("ran a substituted branch", st.Vars)
+			}
+		}
+	}
+	d := headless.New(db, testgame.State(db, 7))
+	if err := d.Run(t.Context(), cmds); err != nil || d.St.Vars["route"] != float64(1) {
+		t.Fatalf("default answer: %v", err)
+	}
+}
+
+func TestDriverErrorsBelongToEachOperation(t *testing.T) {
+	for _, name := range []string{"start", "do", "run", "go", "fight", "walk"} {
+		t.Run(name, func(t *testing.T) {
+			db := testgame.Load(t, map[string]string{"data/walk.yaml": `locations:
+  path:
+    dungeon:
+      map: "#####\n#S.T#\n#####"
+      tiles:
+        S: {start: true, facing: east}
+        T: {name: Target, do: [{say: Arrived}]}
+`})
+			st := testgame.State(db, 7)
+			d := headless.New(db, st)
+			if err := d.Run(t.Context(), []data.Command{{Gold: data.MustExpr("'bad'")}}); err == nil {
+				t.Fatal("fixture did not fail")
+			}
+			var err error
+			switch name {
+			case "start":
+				err = d.Start()
+			case "do":
+				err = d.Do("Rest")
+			case "run":
+				err = d.Run(t.Context(), []data.Command{{Say: &data.Say{Text: "Ready"}}})
+			case "go":
+				err = d.GoTo("field")
+			case "fight":
+				st.Location = "field"
+				err = d.Fights(1)
+			case "walk":
+				// The move itself also settles, so use a separate successful driver to place the state.
+				setup := headless.New(db, st)
+				if e := setup.Run(t.Context(), []data.Command{{Move: "path"}}); e != nil {
+					t.Fatal(e)
+				}
+				err = d.Walk('T')
+			}
+			if err != nil {
+				t.Fatalf("successful %s repeated an old error: %v", name, err)
+			}
+		})
+	}
+}
+
+const driverData = `
+music:
+  songs: {theme: {file: x.png}}
+enemies:
+  wall:
+    name: Wall
+    image: x.png
+    stats: {mhp: 99999, mmp: 0, atk: 1, def: 99999, mat: 1, mdf: 1, agi: 1, luk: 1}
+    ai: [{use: guard}]
+  brute:
+    name: Brute
+    image: x.png
+    stats: {mhp: 600, mmp: 0, atk: 400, def: 30, mat: 1, mdf: 1, agi: 99, luk: 1}
+    ai: [{use: attack}]
+troops:
+  wall: {members: [wall]}
+  brute: {members: [brute], can_escape: false}
+  chatty:
+    members: [wall]
+    events:
+      - when: "turn == 1"
+        do:
+          - choice: [{label: A, do: [{set: {var.chose: 1}}]}, {label: B, do: []}]
+          - battle: one
+          - mood: calm
+          - sfx: ding
+          - effect: flash
+          - music: {song: theme}
+          - set: {var.talked: 1}
+locations:
+  crypt:
+    name: Crypt
+    dungeon:
+      map: |
+        #######
+        #S..G.#
+        #######
+      tiles:
+        S: {start: true, facing: east}
+        G: {name: Goal, do: [{set: {flag.goal: true}}]}
+  pit:
+    name: Pit
+    encounters: {rate: "1", troops: [{troop: brute}]}
+    exits: [{to: camp}]
+events:
+  opening: {do: [{say: Welcome}, {set: {flag.opened: true}}]}
+  wake: {trigger: auto, once: true, when: "flag.go", do: [{set: {flag.woke: true}}]}
+`
+
+func TestStartRunsTheStartEvent(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"game.yaml": strings.Replace(testgame.Game, "start: {", "start: {event: opening, ", 1), "data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if !st.Flags["opened"] || len(d.Transcript) == 0 || d.Transcript[0] != "Welcome" {
+		t.Errorf("flags %v transcript %v", st.Flags, d.Transcript)
+	}
+}
+
+func TestAutoEventsRunWhenTheyHold(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	st.Flags["go"] = true
+	if err := d.Run(context.Background(), db.Events["opening"].Do); err != nil {
+		t.Fatal(err)
+	}
+	if !st.Flags["woke"] {
+		t.Error("an auto event whose when holds ran after the commands")
+	}
+}
+
+func TestRunNeedsAContextAndStopsWhenItIsDone(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Run(nil, db.Events["opening"].Do); err == nil { //nolint:staticcheck // A nil context is the case under test.
+		t.Error("a nil context")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := d.Run(ctx, db.Events["opening"].Do); err == nil {
+		t.Error("a cancelled context")
+	}
+	if st.Flags["opened"] {
+		t.Error("a cancelled run changed the state")
+	}
+}
+
+// TestBattleResults: a battle that cannot be finished within MaxTurns is a loss, a lost battle raises the party to 1 HP,
+// and an escape is its own result.
+func TestBattleResults(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	d.MaxTurns = 3
+	if got := d.Fight("wall"); got != event.BattleLost || d.Losses != 1 || d.Wins != 0 {
+		t.Errorf("a stalemate is a loss: result %d losses %d", got, d.Losses)
+	}
+	d.MaxTurns = 80
+	for _, a := range st.Members() {
+		a.HP = 0
+	}
+	if got := d.Fight("brute"); got != event.BattleLost {
+		t.Errorf("result %d", got)
+	}
+	for _, a := range st.Members() {
+		if a.HP < 1 {
+			t.Errorf("%s was not raised after the loss", a.Name())
+		}
+	}
+	if d.Battles != 2 {
+		t.Errorf("battles %d", d.Battles)
+	}
+	if !strings.Contains(strings.Join(d.Transcript, "\n"), "[battle brute: lose in") {
+		t.Errorf("the transcript says how it ended: %v", d.Transcript)
+	}
+}
+
+func TestFightsAndGoToStopAtGameOver(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.GoTo("pit"); err == nil {
+		t.Log("no way to the pit from the camp")
+	}
+	st.Location = "pit"
+	err := d.Fights(3)
+	if err == nil && !d.Over {
+		t.Fatal("losing a battle that cannot be lost ends the game")
+	}
+	if err := d.Fights(1); err == nil || !strings.Contains(err.Error(), "game over") {
+		t.Errorf("after the game is over: %v", err)
+	}
+	if err := d.GoTo("camp"); err == nil || !strings.Contains(err.Error(), "game over") {
+		t.Errorf("walking after the game is over: %v", err)
+	}
+	// Restore starts again
+	fresh := testgame.State(db, 2)
+	d.Restore(fresh)
+	if d.Over || d.St != fresh {
+		t.Error("Restore forgets the game over and takes the new state")
+	}
+	if err := d.Run(context.Background(), db.Events["opening"].Do); err != nil || !fresh.Flags["opened"] {
+		t.Errorf("a restored driver runs on the new state: %v", err)
+	}
+}
+
+func TestWalkInADungeon(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Run(context.Background(), []data.Command{{Move: "crypt"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Walk('Z'); err == nil || !strings.Contains(err.Error(), `no way to 'Z'`) {
+		t.Errorf("a mark that is not there: %v", err)
+	}
+	if err := d.Walk('G'); err != nil || !st.Flags["goal"] {
+		t.Errorf("walking to the goal runs its do: %v", err)
+	}
+	if err := d.Walk('G'); err != nil {
+		t.Errorf("already there: %v", err)
+	}
+	if err := d.Walk('S'); err != nil {
+		t.Errorf("back to the start: %v", err)
+	}
+	st.Location = "camp"
+	if err := d.Walk('G'); err == nil {
+		t.Error("there is nothing to walk to outside a dungeon")
+	}
+}
+
+// TestBattleEventsAreAnsweredQuietly: commands in a troop's battle events run without a screen:
+// the first option is taken, a battle inside a battle is won, and effects are ignored.
+func TestBattleEventsAreAnsweredQuietly(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/d.yaml": driverData})
+	st := testgame.State(db, 1)
+	b := battle.New(db, st, "chatty")
+	headless.AutoBattle(db, st, b, nil, 2, nil)
+	if st.Vars["chose"] != 1.0 || st.Vars["talked"] != 1.0 {
+		t.Errorf("the battle event ran to its end: %v", st.Vars)
+	}
+	var seen int
+	b2 := battle.New(db, st, "chatty")
+	headless.AutoBattle(db, st, b2, nil, 2, func(steps []battle.Step) { seen += len(steps) })
+	if seen == 0 {
+		t.Error("the steps are handed to the observer")
+	}
+	if b2.Result != battle.Ongoing {
+		t.Errorf("a battle cut off by the turn limit is left ongoing for the caller, got %v", b2.Result)
+	}
+}

@@ -46,6 +46,7 @@ func (c *command) simBatch() clihelp.Operation {
 	cases := fs.String("cases", "", "read the cases, as JSON Lines, from this `FILE`; - is the standard input; required")
 	keep := fs.Int("games", 4, "keep the definitions of at most this many game `DIRS` read")
 	return clihelp.Operation{Flags: fs, Run: func(ctx context.Context) (err error) {
+		c.report = cliio.Report{Command: "sim batch", Format: "jsonl"}
 		if fs.NArg() != 0 {
 			return cliio.Invalid(diag.Operands, "expected no operands; the game directory of each case is in its args")
 		}
@@ -61,12 +62,18 @@ func (c *command) simBatch() clihelp.Operation {
 			if err != nil {
 				return err
 			}
-			defer func() { err = errors.Join(err, f.Close()) }()
+			defer func() {
+				if closeErr := f.Close(); closeErr != nil {
+					err = errors.Join(err, closeErr)
+				}
+			}()
 			in = f
 		}
 		games := &gameCache{keep: *keep}
-		out := json.NewEncoder(c.out.Writer)
-		out.SetEscapeHTML(false)
+		summary := struct {
+			Succeeded int `json:"succeeded"`
+			Failed    int `json:"failed"`
+		}{}
 		sc := bufio.NewScanner(in)
 		sc.Buffer(make([]byte, 64<<10), 64<<20)
 		for sc.Scan() {
@@ -77,23 +84,38 @@ func (c *command) simBatch() clihelp.Operation {
 			if len(line) == 0 {
 				continue
 			}
-			res := runCase(line, games)
+			res := runCase(ctx, line, games)
 			// One write a result: a program streaming cases reads it before sending the next.
-			if err := out.Encode(res); err != nil {
+			status := "ok"
+			if res.Exit != 0 {
+				status = "failed"
+				summary.Failed++
+			} else {
+				summary.Succeeded++
+			}
+			if err := c.report.Item(c.out, res.ID, status, res); err != nil {
 				return err
 			}
 		}
-		return sc.Err()
+		if err := sc.Err(); err != nil {
+			return err
+		}
+		status := "ok"
+		if summary.Failed > 0 {
+			status = "failed"
+		}
+		if err := c.report.Result(c.out, status, summary); err != nil {
+			return err
+		}
+		if summary.Failed > 0 {
+			return cliio.ErrReported
+		}
+		return nil
 	}}
 }
 
-// batchRun is runWith; set in init, since the command tree holds gozen sim batch.
-var batchRun func(args []string, out, stderr io.Writer, games *gameCache) int
-
-func init() { batchRun = runWith }
-
 // runCase runs one case as gozen sim script would, with the definitions from games.
-func runCase(line []byte, games *gameCache) batchResult {
+func runCase(ctx context.Context, line []byte, games *gameCache) batchResult {
 	var bc batchCase
 	dec := json.NewDecoder(bytes.NewReader(line))
 	dec.DisallowUnknownFields()
@@ -117,7 +139,19 @@ func runCase(line []byte, games *gameCache) batchResult {
 	prev := log.Writer()
 	log.SetOutput(stderr)
 	defer log.SetOutput(prev)
-	exit := batchRun(append([]string{"sim", "script"}, bc.Args...), &stdout, stderr, games)
+	c := &command{out: &cliio.Output{Writer: &stdout}, stderr: &cliio.Output{Writer: stderr}, path: "sim script", games: games}
+	var cfg scriptConfig
+	flags := scriptFlags(&cfg)
+	err := c.parse(flags, bc.Args, pages["sim script"])
+	if err == nil {
+		if flags.NArg() != 1 {
+			err = cliio.Invalid(diag.Operands, "expected one game directory")
+		} else {
+			cfg.dir = flags.Arg(0)
+			err = c.executeScript(ctx, cfg)
+		}
+	}
+	exit := c.finish(err)
 	return batchResult{ID: bc.ID, Exit: exit, Stdout: stdout.String(), Stderr: stderr.String()}
 }
 

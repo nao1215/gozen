@@ -201,6 +201,19 @@ func Entry(fsys fs.FS, dir string, cfg EntryConfig) clihelp.Operation {
 			opts.Script = string(b)
 		}
 		if *trace != "" {
+			if *replay != "" {
+				source, err := os.Stat(*replay)
+				if err != nil {
+					return err
+				}
+				dest, err := os.Stat(*trace)
+				if err != nil && !errors.Is(err, fs.ErrNotExist) {
+					return err
+				}
+				if err == nil && os.SameFile(source, dest) {
+					return argument(errors.New("--trace must not overwrite --replay"))
+				}
+			}
 			gameDir := cfg.GameDir
 			if *dirFlag != "" {
 				gameDir = *dirFlag

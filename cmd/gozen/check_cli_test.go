@@ -68,9 +68,9 @@ func TestCheckJSONReportsEveryProblemWithItsCode(t *testing.T) {
 	}
 	write(t, p, world)
 	// A directory that is not a game.
-	ps = checkJSONOut(t, 1, filepath.Join(t.TempDir(), "absent"))
-	if len(ps) != 1 || ps[0].Code != diag.GameUnreadable.String() {
-		t.Fatalf("%+v", ps)
+	out, stderr := invoke(t, 1, "check", "--format", "json", filepath.Join(t.TempDir(), "absent"))
+	if out != "" || !strings.Contains(stderr, diag.GameUnreadable.String()) {
+		t.Fatalf("stdout %s stderr %s", out, stderr)
 	}
 }
 
@@ -252,7 +252,10 @@ func TestErrorReferenceExamplesProvokeTheirCode(t *testing.T) {
 				}
 				write(t, filepath.Join(dir, filepath.FromSlash(name)), string(data))
 			}
-			ds := diagnoseCheck(dir, "")
+			ds, err := diagnoseCheck(dir, "")
+			if err != nil {
+				t.Fatal(err)
+			}
 			for _, d := range ds {
 				if d.Code == entry.Code.String() {
 					return

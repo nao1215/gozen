@@ -434,8 +434,9 @@ type Game struct {
 	freeze   *ebiten.Image
 	freezeT  int
 
-	frame     []byte
-	lastFrame int
+	recordView *ebiten.Image
+	frame      []byte
+	lastFrame  int
 
 	memo *memoBox
 
@@ -1385,7 +1386,10 @@ func (g *Game) saveShotQuiet(screen *ebiten.Image, name string) {
 	img := g.shots.pixels(screen.Bounds())
 	screen.ReadPixels(img.Pix)
 	if s := g.in.script; g.db.Game.Screen.Native && s != nil && s.size[0] > 0 {
-		img = letterboxShot(img, s.size[0], s.size[1])
+		img, g.failure = letterboxShot(img, s.size[0], s.size[1])
+	}
+	if g.failure != nil {
+		return
 	}
 	g.shots.write(filepath.Join(g.shotDir(), name+".png"), img)
 }
@@ -2501,6 +2505,10 @@ func (g *Game) Close() error {
 	err := errors.Join(g.failure, g.shots.wait(), sound.Close())
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
+	}
+	if g.recordView != nil {
+		g.recordView.Deallocate()
+		g.recordView = nil
 	}
 	g.closePhone()
 	g.closePuppets()

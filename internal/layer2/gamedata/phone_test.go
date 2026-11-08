@@ -107,6 +107,7 @@ func TestPhoneChecks(t *testing.T) {
 		{"fade and pan", `phone: {app: video, video: {frames: [f/1.png, f/2.png], fps: 2, fade: 0.4, pan: true}}`, ""},
 		{"fade too long", `phone: {app: video, video: {frames: [f/1.png], fps: 2, fade: 1}}`, `fade must be between 0 and a frame's length (0.5 seconds)`},
 		{"pan without frames", `phone: {app: video, video: {picture: x.png, pan: true}}`, `fade and pan are for frames`},
+		{"huge fps", `phone: {app: video, video: {frames: [f/1.png], seconds: 1, fps: 1e300}}`, "fps must not exceed 60"},
 		{"negative fps", `phone: {app: video, video: {frames: [f/1.png], fps: -2}}`, `phone.video.fps: fps must not be negative`},
 		{"missing puppet", `phone: {app: video, video: {puppet: none.yaml}}`, `phone.video.puppet: no puppet assets/none.yaml`},
 		{"bounce outside", `phone: {app: video, video: {picture: x.png, seconds: 3, bounce: [5]}}`, `phone.video.bounce[0]: bounce 5 is outside the video (0 to 3 seconds)`},

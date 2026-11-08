@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,17 +63,20 @@ func TestSimBatchPlaysEachCaseAsSimScript(t *testing.T) {
 	}
 	manifest := filepath.Join(work, "cases.jsonl")
 	write(t, manifest, in.String()+"{\"args\": 1}\n")
-	stdout, _ := invoke(t, 0, "sim", "batch", "--cases", manifest)
+	stdout, _ := invoke(t, 1, "sim", "batch", "--cases", manifest)
 	lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
-	if len(lines) != len(cases)+1 {
+	if len(lines) != len(cases)+2 {
 		t.Fatalf("%d results for %d cases: %s", len(lines), len(cases)+1, stdout)
 	}
 	traces := map[string]string{}
 	for i, l := range lines[:len(cases)] {
-		var r batchResult
-		if err := json.Unmarshal([]byte(l), &r); err != nil {
+		var envelope struct {
+			Data batchResult `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(l), &envelope); err != nil {
 			t.Fatal(err)
 		}
+		r := envelope.Data
 		want := alone[i]
 		if r.ID != string(rune('a'+i)) || r.Exit != want.exit || r.Stdout != want.stdout || r.Stderr != want.stderr {
 			t.Errorf("case %d: got %+v, want exit %d stdout %q stderr %q", i, r, want.exit, want.stdout, want.stderr)
@@ -91,8 +95,10 @@ func TestSimBatchPlaysEachCaseAsSimScript(t *testing.T) {
 	if alone[0].trace == alone[1].trace {
 		t.Error("two seeds gave the same trace; the cases do not show the random numbers")
 	}
-	var bad batchResult
-	if err := json.Unmarshal([]byte(lines[len(cases)]), &bad); err != nil || bad.Exit != 2 || bad.Stderr == "" {
+	var bad struct {
+		Data batchResult `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(lines[len(cases)]), &bad); err != nil || bad.Data.Exit != 2 || bad.Data.Stderr == "" {
 		t.Errorf("a case that does not parse: %s", lines[len(cases)])
 	}
 }
@@ -106,9 +112,11 @@ func TestSimBatchArguments(t *testing.T) {
 	invoke(t, 2, "sim", "batch", "--games", "0")
 	manifest := filepath.Join(t.TempDir(), "cases.jsonl")
 	write(t, manifest, `{"id":"x","args":["`+filepath.ToSlash(dir)+`","--script","-"]}`+"\n")
-	stdout, _ := invoke(t, 0, "sim", "batch", "--cases", manifest)
-	var r batchResult
-	if err := json.Unmarshal([]byte(stdout), &r); err != nil || r.ID != "x" || r.Exit != 2 {
+	stdout, _ := invoke(t, 1, "sim", "batch", "--cases", manifest)
+	var r struct {
+		Data batchResult `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(strings.Split(stdout, "\n")[0]), &r); err != nil || r.Data.ID != "x" || r.Data.Exit != 2 {
 		t.Errorf("--script - in a case: %s", stdout)
 	}
 }
@@ -169,43 +177,32 @@ func traceOf(args []string) string {
 // to the standard error; in a batch they are part of that case's stderr, and the log
 // goes back where it was after the case.
 func TestSimBatchKeepsWhatTheGameLogsInTheCase(t *testing.T) {
-	saved := batchRun
-	t.Cleanup(func() { batchRun = saved })
-	batchRun = func(_ []string, _, stderr io.Writer, _ *gameCache) int {
-		log.Print("period already closed")
-		if _, err := fmt.Fprintln(stderr, "after"); err != nil {
-			t.Error(err)
-		}
-		return 0
+	dir := fixture(t)
+	script := filepath.Join(t.TempDir(), "log.txt")
+	write(t, script, "wait 10\ndo gold: \"'word'\"\nwait 10\nquit\n")
+	record, err := json.Marshal(batchCase{ID: "log", Args: []string{dir, "--script", script, "--start", "camp"}})
+	if err != nil {
+		t.Fatal(err)
 	}
 	before := log.Writer()
-	r := runCase([]byte(`{"id":"x","args":["game"]}`), nil)
-	if !strings.HasSuffix(r.Stderr, "period already closed\nafter\n") {
-		t.Errorf("stderr %q", r.Stderr)
+	got := runCase(context.Background(), record, nil)
+	if !strings.Contains(got.Stderr, "number") {
+		t.Fatal(got)
 	}
 	if log.Writer() != before {
-		t.Error("the log was not given back")
+		t.Fatal("log writer was not restored")
 	}
 }
 
 func TestRunCaseRejectsTrailingJSON(t *testing.T) {
-	previous := batchRun
-	t.Cleanup(func() { batchRun = previous })
-	called := false
-	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int {
-		called = true
-		return 0
-	}
 	for _, suffix := range []string{`{}`, `null`, `garbage`, `42`} {
-		called = false
-		got := runCase([]byte(`{"id":"bad","args":[]} `+suffix), nil)
-		if got.Exit != 2 || called || got.ID != "bad" {
-			t.Errorf("suffix %q: result %+v, called %v", suffix, got, called)
+		got := runCase(context.Background(), []byte(`{"id":"bad","args":["--help"]} `+suffix), nil)
+		if got.Exit != 2 || got.Stdout != "" || got.ID != "bad" {
+			t.Fatal(got)
 		}
 	}
-	called = false
-	if got := runCase([]byte("{\"id\":\"ok\",\"args\":[]} \t\r"), nil); got.Exit != 0 || !called {
-		t.Fatalf("trailing whitespace rejected: %+v", got)
+	if got := runCase(context.Background(), []byte("{\"id\":\"ok\",\"args\":[\"--help\"]} \t\r"), nil); got.Exit != 0 {
+		t.Fatal(got)
 	}
 }
 
@@ -239,21 +236,66 @@ func BenchmarkCheckGame(b *testing.B) {
 }
 
 func TestRunCaseRejectsInlineStandardStreams(t *testing.T) {
-	previous := batchRun
-	t.Cleanup(func() { batchRun = previous })
-	called := false
-	batchRun = func([]string, io.Writer, io.Writer, *gameCache) int { called = true; return 0 }
 	for _, arg := range []string{"--script=-", "--trace=-"} {
-		t.Run(arg, func(t *testing.T) {
-			called = false
-			record, err := json.Marshal(batchCase{ID: "inline", Args: []string{"game", arg}})
-			if err != nil {
+		record, err := json.Marshal(batchCase{ID: "inline", Args: []string{"game", arg}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := runCase(context.Background(), record, nil)
+		if result.Exit != 2 || result.Stdout != "" {
+			t.Fatal(result)
+		}
+	}
+}
+
+func TestSimBatchCompletion(t *testing.T) {
+	for _, tc := range []struct {
+		name, cases             string
+		exit, succeeded, failed int
+	}{
+		{"empty", "", 0, 0, 0},
+		{"success", "{\"id\":\"help\",\"args\":[\"--help\"]}\n", 0, 1, 0},
+		{"failure", "{\"id\":\"bad\",\"args\":1}\n", 1, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest := filepath.Join(t.TempDir(), "cases.jsonl")
+			write(t, manifest, tc.cases)
+			stdout, stderr := invoke(t, tc.exit, "sim", "batch", "--cases", manifest)
+			if stderr != "" {
+				t.Fatalf("duplicate error: %s", stderr)
+			}
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != tc.succeeded+tc.failed+1 {
+				t.Fatal(stdout)
+			}
+			var summary struct {
+				Version               int
+				Command, Type, Status string
+				Data                  struct{ Succeeded, Failed int }
+			}
+			if err := json.Unmarshal([]byte(lines[len(lines)-1]), &summary); err != nil {
 				t.Fatal(err)
 			}
-			result := runCase(record, nil)
-			if result.Exit != 2 || called {
-				t.Fatalf("standard stream case executed: %+v, called=%v", result, called)
+			status := "ok"
+			if tc.failed > 0 {
+				status = "failed"
+			}
+			if summary.Version != 1 || summary.Command != "sim batch" || summary.Type != "summary" || summary.Status != status || summary.Data.Succeeded != tc.succeeded || summary.Data.Failed != tc.failed {
+				t.Fatalf("summary: %+v", summary)
+			}
+			if got := run([]string{"sim", "batch", "--cases", manifest}, failingWriter{}, io.Discard); got != 1 {
+				t.Fatalf("failed write exit: %d", got)
 			}
 		})
+	}
+}
+
+func TestRunCaseDoesNotDispatchCommands(t *testing.T) {
+	saved := tree["sim script"]
+	delete(tree, "sim script")
+	t.Cleanup(func() { tree["sim script"] = saved })
+	got := runCase(context.Background(), []byte(`{"id":"help","args":["--help"]}`), nil)
+	if got.Exit != 0 || !strings.Contains(got.Stdout, "[Usage]") {
+		t.Fatalf("case depends on command dispatch: %+v", got)
 	}
 }

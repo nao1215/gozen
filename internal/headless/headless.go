@@ -20,12 +20,14 @@ import (
 	"github.com/nao1215/gozen/internal/world"
 )
 
-// Driver plays a game.
+// Driver plays a game. Errors from Start, Do, GoTo, Fights, Walk and Run
+// belong to that operation; a later operation does not repeat earlier errors.
 type Driver struct {
 	DB *data.DB
 	St *rpg.State
 
 	// Answers are the options to take at the next choices, in order (then 0).
+	// An explicit index outside the current answers fails the operation.
 	Answers []int
 	// Transcript is every line read and every battle fought.
 	Transcript []string
@@ -71,6 +73,7 @@ func New(db *data.DB, st *rpg.State) *Driver {
 
 // Start runs the game's start event and what happens on arriving at the start location.
 func (d *Driver) Start() error {
+	d.errs = nil
 	if ev := d.DB.Game.Start.Event; ev != "" {
 		d.runner.Start(d.DB.Events[ev].Do)
 	}
@@ -123,7 +126,7 @@ func (d *Driver) effect(string) {}
 // settle runs the events until nothing is left to run: the requests are answered, the
 // arrivals and the auto events handled.
 func (d *Driver) settle() error {
-	for range 10000 {
+	for step := range 10000 {
 		if d.ctx != nil {
 			if err := d.ctx.Err(); err != nil {
 				return err
@@ -133,7 +136,10 @@ func (d *Driver) settle() error {
 			return errors.Join(d.errs...)
 		}
 		if d.runner.Running() {
-			d.answer(d.runner.Next())
+			if err := d.answer(d.runner.Next()); err != nil {
+				d.runner.Stop()
+				return errors.Join(errors.Join(d.errs...), fmt.Errorf("headless: request %d: %w", step+1, err))
+			}
 			continue
 		}
 		if d.arrived {
@@ -155,7 +161,7 @@ func (d *Driver) settle() error {
 	return errors.New("the events do not end (an auto event that keeps holding?)")
 }
 
-func (d *Driver) answer(r event.Request) {
+func (d *Driver) answer(r event.Request) error {
 	switch r := r.(type) {
 	case event.Say:
 		if r.Name != "" {
@@ -173,7 +179,9 @@ func (d *Driver) answer(r event.Request) {
 		} else if len(d.Answers) > 0 {
 			n, d.Answers = d.Answers[0], d.Answers[1:]
 		}
-		n = max(0, min(n, r.Answers()-1))
+		if n < 0 || n >= r.Answers() {
+			return fmt.Errorf("answer %d outside [0,%d) for choice %q, options %q", n, r.Answers(), r.Prompt, r.Options)
+		}
 		d.Transcript = append(d.Transcript, "> "+answerText(r, n))
 		d.record(Step{Kind: "choice", Text: answerText(r, n)})
 		d.runner.Answer(n)
@@ -208,7 +216,17 @@ func (d *Driver) answer(r event.Request) {
 		d.Cleared = true
 	case event.GameOver:
 		d.Over = true
+	case nil, event.Wait, event.ClashScene:
+		// Timing and playback of an already resolved clash have no state effects.
+	case event.Tap:
+		if r.Results > 0 {
+			return fmt.Errorf("headless: unsupported phone request with %d results", r.Results)
+		}
+		// Presentation-only phones and slideshows need no answer.
+	default:
+		return fmt.Errorf("headless: unsupported request %T", r)
 	}
+	return nil
 }
 
 // fight fights with the selected participants on AUTO and reports its result as an
@@ -290,6 +308,7 @@ func (quietHost) Handle(event.Effect) {}
 
 // Do takes the entry of the field's menu whose label contains label, and settles.
 func (d *Driver) Do(label string) error {
+	d.errs = nil
 	for _, e := range world.Entries(d.DB, d.St) {
 		if strings.Contains(e.Label, label) {
 			d.runner.Start(e.Commands(d.DB, d.St))
@@ -316,6 +335,7 @@ func (d *Driver) Has(label string) bool {
 // GoTo walks to a location by the shortest way through the exits open now (fighting
 // whatever comes on the way).
 func (d *Driver) GoTo(loc string) error {
+	d.errs = nil
 	for range 50 {
 		if d.Over {
 			return errors.New("game over on the way")
@@ -393,6 +413,7 @@ func (d *Driver) route(loc string) (world.Entry, bool) {
 
 // Fights searches the location for battles n times.
 func (d *Driver) Fights(n int) error {
+	d.errs = nil
 	for range n {
 		if d.Over {
 			return errors.New("game over")
@@ -482,6 +503,7 @@ func (d *Driver) Restore(st *rpg.State) {
 // goal by the shortest way, fighting what it meets, and steps on it, or (for a solid one)
 // looks at it. It stops early when the party leaves the dungeon.
 func (d *Driver) Walk(goal rune) error {
+	d.errs = nil
 	loc := d.St.Location
 	for range 5000 {
 		if d.Over {
@@ -522,6 +544,7 @@ func (d *Driver) Walk(goal rune) error {
 // Run runs commands (an event's) to their end, as Settle does, and reports the events'
 // errors (a test that every scene plays through).
 func (d *Driver) Run(ctx context.Context, cmds []data.Command) error {
+	d.errs = nil
 	if ctx == nil {
 		return errors.New("run: nil context")
 	}
@@ -530,7 +553,6 @@ func (d *Driver) Run(ctx context.Context, cmds []data.Command) error {
 	}
 	d.ctx = ctx
 	defer func() { d.ctx = nil }()
-	d.errs = nil
 	d.runner.Start(cmds)
 	return d.settle()
 }
@@ -549,6 +571,12 @@ func (d *Driver) handle(e event.Effect) {
 		d.sFX(e.Name)
 	case event.VisualEffect:
 		d.effect(e.Name)
+	case event.PhoneEffect:
+		// Presentation is omitted; answer rejects any state-bearing phone Tap.
+	case event.CallCameraEffect, event.CallShareEffect, event.StandEffect, event.VoiceEffect, event.BreedEffect:
+		// Drawing and audio are intentionally omitted.
+	case event.CampaignEffect, event.CarryEffect:
+		// The event runner has already applied these state changes.
 	}
 }
 

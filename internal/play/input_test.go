@@ -884,3 +884,16 @@ func TestScriptRepeatedActionsStillNeedAcknowledgement(t *testing.T) {
 		})
 	}
 }
+
+func TestScriptWindowBounds(t *testing.T) {
+	for _, size := range []string{"8193 1", "1 8193", "8192 4097", "9223372036854775807 9223372036854775807"} {
+		if _, err := parseScript("window " + size); err == nil {
+			t.Errorf("accepted window %s", size)
+		}
+	}
+	for _, size := range []string{"8192 4096", "4096 8192", "390 844"} {
+		if _, err := parseScript("window " + size); err != nil {
+			t.Errorf("window %s: %v", size, err)
+		}
+	}
+}

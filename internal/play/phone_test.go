@@ -3,7 +3,9 @@ package play
 import (
 	"fmt"
 	"image"
+	"io/fs"
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1822,5 +1824,109 @@ func TestPhoneUntimedPageOutcomes(t *testing.T) {
 				t.Fatal("closing changed outcome")
 			}
 		})
+	}
+}
+
+func TestPhoneFramesHugePosition(t *testing.T) {
+	for _, loop := range []bool{false, true} {
+		t.Run(strconv.FormatBool(loop), func(t *testing.T) {
+			c := &phoneClip{v: &data.PhoneVideo{Frames: []string{"a", "b", "c"}, FPS: 1e300, Seconds: 1}, played: 60, loop: loop}
+			cur, _, _, into := c.frames()
+			if cur == "" || math.IsNaN(into) || into < 0 || into > 1 {
+				t.Fatalf("invalid frame %q, %g", cur, into)
+			}
+			if !loop && cur != "c" {
+				t.Fatalf("last frame: %q", cur)
+			}
+		})
+	}
+}
+
+func TestPhoneTimedMixedLockResultSelection(t *testing.T) {
+	for _, action := range []string{"dismiss before call", "open after call", "decline", "answer", "timeout"} {
+		t.Run(action, func(t *testing.T) {
+			cue := data.PhoneCue{App: "lock", Var: "var.result", Timeout: 10, Notices: []data.PhoneNotice{
+				{Text: "Note"}, {Call: true, Title: "Caller"}, {Text: "Receipt"},
+			}}
+			g := phoneGame(t, cue)
+			phoneTicks(g, phoneRise+20)
+			g.in = input{}
+			want := ""
+			switch action {
+			case "dismiss before call":
+				g.in.esc = true
+				want = "dismiss"
+			case "open after call":
+				g.phone.shown = 3
+				g.in.pressed[btnOK] = true
+				want = "open"
+			case "decline":
+				g.phone.cue.Notices = cue.Notices[:2]
+				g.phone.shown = 2
+				g.in.esc = true
+				want = "decline"
+			case "answer":
+				g.phone.shown = 2
+				g.in.pressed[btnOK] = true
+				want = "answer"
+			case "timeout":
+				g.phone.age = phoneRise + 599
+				want = "expired"
+			}
+			g.updatePhone()
+			n := g.phone.answer()
+			if n < 0 || cue.Results()[n].ID != want {
+				t.Fatalf("answer %d, want %s", n, want)
+			}
+		})
+	}
+}
+
+// phoneReadFS observes asset reads made by Update after the fixture is loaded.
+type phoneReadFS struct {
+	fs.FS
+	reads int
+}
+type phoneReadFile struct {
+	fs.File
+	owner *phoneReadFS
+}
+
+func (f *phoneReadFS) Open(name string) (fs.File, error) {
+	file, err := f.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return &phoneReadFile{File: file, owner: f}, nil
+}
+
+func (f *phoneReadFile) Read(b []byte) (int, error) {
+	f.owner.reads++
+	return f.File.Read(b)
+}
+
+func TestPhoneHeadlessClipDoesNotReadPuppetPixels(t *testing.T) {
+	g := phonePuppetGame(t, "base: base.png\nfaces: {normal: {}}\n")
+	counted := &phoneReadFS{FS: g.opts.FS}
+	g.opts.FS, g.opts.headless = counted, true
+	c := &phoneClip{v: &data.PhoneVideo{Puppet: "phone/rig.yaml", Seconds: 1, Bounce: []float64{0}}}
+	for range 65 {
+		c.step(g, false)
+	}
+	if c.played != 60 {
+		t.Fatal(c.played)
+	}
+	if counted.reads != 0 || c.body != nil {
+		t.Fatalf("headless prepared drawing resources: reads=%d body=%v", counted.reads, c.body != nil)
+	}
+	c.paused = true
+	c.step(g, true)
+	if c.played != 60 {
+		t.Fatal("paused clip advanced")
+	}
+	c.paused = false
+	c.step(g, true)
+	if c.played != 1 {
+		t.Fatal("clip did not loop", c.played)
 	}
 }

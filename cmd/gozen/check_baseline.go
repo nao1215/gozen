@@ -114,7 +114,10 @@ func (c *command) checkEnforced(dir, only string, policy checkPolicy) error {
 			return fmt.Errorf("%s: %w", policy.baseline, err)
 		}
 	}
-	ds := diagnoseCheck(dir, only)
+	ds, err := diagnoseCheck(dir, only)
+	if err != nil {
+		return err
+	}
 	current := warningCounts(only, ds)
 	failed := false
 	for _, d := range ds {
@@ -154,6 +157,6 @@ func (c *command) checkEnforced(dir, only string, policy checkPolicy) error {
 		_, err := fmt.Fprintln(c.out, lang.T("check: 構造検査に合格しました。レイアウトは検査していません"))
 		return err
 	}
-	_, err := fmt.Fprintln(c.out, lang.T("check: 検査に合格しました"))
+	_, err = fmt.Fprintln(c.out, lang.T("check: 検査に合格しました"))
 	return err
 }

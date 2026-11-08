@@ -1346,3 +1346,67 @@ events:
 		t.Fatal("an answer past keeping quiet replayed")
 	}
 }
+
+func TestReplayToPhoneAnswers(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, feed := range []bool{false, true} {
+		p := &data.PhoneCue{App: "page", Var: "var.result", Rows: []data.PhoneRow{{Button: "Open"}}}
+		if feed {
+			p = &data.PhoneCue{App: "feed", Posts: []data.PhonePost{
+				{Set: data.Assignments{"var.first": data.MustExpr("1")}},
+				{Set: data.Assignments{"var.second": data.MustExpr("2")}},
+			}}
+		}
+		for _, tc := range []struct {
+			name    string
+			answers []int
+			valid   bool
+		}{
+			{"missing", nil, false},
+			{"negative", []int{-2}, false},
+			{"closed", []int{-1}, true},
+			{"zero", []int{0}, true},
+			{"outside", []int{4}, false},
+			{"two", []int{2}, true},
+			{"three", []int{3}, feed},
+		} {
+			t.Run(fmt.Sprintf("feed=%v/%s", feed, tc.name), func(t *testing.T) {
+				st := testgame.State(db, 7)
+				r := event.New(db, st, &host{})
+				r.Start([]data.Command{{Phone: p}, {Say: &data.Say{Text: "Receipt."}}})
+				_, err := r.ReplayTo(1, tc.answers)
+				if (err == nil) != tc.valid {
+					t.Fatalf("ReplayTo = %v, valid=%v", err, tc.valid)
+				}
+				if feed && tc.valid && tc.answers[0] == 2 && st.Vars["second"] != float64(2) {
+					t.Fatal(st.Vars)
+				}
+				if !feed && tc.valid && tc.answers[0] == 2 && st.Vars["result"] != "open" {
+					t.Fatal(st.Vars)
+				}
+			})
+		}
+	}
+}
+
+func TestStopDiscardsSlideshowPages(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"assets/first.png": "x", "assets/second.png": "x",
+		"data/slides.yaml": "events: {slides: {do: [{image: {files: [first.png, second.png]}}, {say: Old}]}, next: {do: [{say: New}]}}",
+	})
+	h := &host{}
+	r := event.New(db, testgame.State(db, 7), h)
+	r.Start(db.Events["slides"].Do)
+	if _, ok := r.Next().(event.Tap); !ok {
+		t.Fatal("slideshow did not pause")
+	}
+	if h.image != "first.png" {
+		t.Fatal(h.image)
+	}
+	r.Stop()
+	r.Start(db.Events["next"].Do)
+	q, ok := r.Next().(event.Say)
+	if !ok || q.Text != "New" || h.image != "first.png" {
+		t.Fatalf("cancelled page leaked: request=%+v image=%s", q, h.image)
+	}
+}

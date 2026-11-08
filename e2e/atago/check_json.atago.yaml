@@ -415,3 +415,29 @@ scenarios:
   - assert:
       exit_code: 1
       stdout: {contains: ['phone_accent']}
+- name: missing game inputs are fatal diagnostics in every format
+  steps:
+  - run: {command: 'gozen check absent-game --format text'}
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr: {contains: GZN1110}
+  - run: {command: 'gozen check absent-game --format json'}
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: GZN1110}
+  - run: {command: 'gozen check absent-game --format jsonl --strict'}
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: GZN1110}
+  - fixture: {file: directory-game/game.yaml/child, content: blocked}
+  - run: {command: 'gozen check directory-game --only layout --format json'}
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr:
+        json: {path: $.code, equals: GZN1110}

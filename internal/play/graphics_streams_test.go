@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -316,4 +317,45 @@ func tallBar(t *testing.T) (bar, barJa []barButton, barH float64, wide []barButt
 	bar = g.barButtons(l.entries(g))
 	g.setLanguage("ja")
 	return bar, g.barButtons(l.entries(g)), barHeight(bar), wide
+}
+
+// TestGraphicsRecordingResize keeps the encoder geometry across portrait and
+// landscape layouts, including a resize before the first recorded frame.
+func TestGraphicsRecordingResize(t *testing.T) {
+	for _, native := range []bool{false, true} {
+		t.Run(fmt.Sprintf("native=%v", native), func(t *testing.T) {
+			root := t.TempDir()
+			game := filepath.Join(root, "game")
+			fsys := streamsFS(t, "0")
+			if native {
+				fsys["game.yaml"].Data = append(fsys["game.yaml"].Data, []byte("\nscreen: {width: 1280, height: 720, native: true}\n")...)
+			}
+			if err := os.CopyFS(game, fsys); err != nil {
+				t.Fatal(err)
+			}
+			script := filepath.Join(root, "script.txt")
+			if err := os.WriteFile(script, []byte("window 390 844\nwait 10\ntype Pat\npress ok\nwait 30\nwindow 1280 720\nwait 30\nwindow 844 390\nwait 30\nquit\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(root, "record.mp4")
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, hostBin, "--dir", game, "--dev", "--start", "booth", "--mute", "--script", script, "--shots", root, "--record", out) //nolint:gosec // Fixed test host with private fixture paths.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("record: %v\nstdout: %s\nstderr: %s", err, &stdout, &stderr)
+			}
+			probe := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", out) //nolint:gosec // Fixed ffprobe invocation reads this test's recording.
+			stdout.Reset()
+			stderr.Reset()
+			probe.Stdout, probe.Stderr = &stdout, &stderr
+			if err := probe.Run(); err != nil {
+				t.Fatalf("probe: %v: %s", err, &stderr)
+			}
+			if strings.TrimSpace(stdout.String()) != "1280,720" {
+				t.Fatalf("record geometry: %q", stdout.String())
+			}
+		})
+	}
 }
