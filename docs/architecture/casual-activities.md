@@ -83,7 +83,7 @@ No diagonal matching, irregular boards, special-tile combo taxonomy, team system
 
 ## Runtime and result ownership
 
-Gamedata owns definitions and validation. Rules below the presentation layer own attempt state and deterministic updates. Presentation translates input and renders snapshots; it does not decide scores or grant story rewards. Select concrete packages and dependencies in an implementation ADR before changing package boundaries.
+Gamedata owns definitions and validation. Rules below the presentation layer own attempt state and deterministic updates. Presentation translates input and renders snapshots; it does not decide scores or grant story rewards. [Proposed ADR 0064](../decisions/0064-casual-game-runtime.md) specifies package ownership, typed results, input gaps and the first integrated implementation gate. It does not add supported YAML or change the current runtime.
 
 An activity within a game returns one completed, failed or cancelled outcome and explicitly declared counters. The waiting event applies assignments once. Reopening a result screen cannot repeat a reward. An independently installed phone game has its own state and saves under ADR 0063; its score does not automatically modify its parent game.
 
