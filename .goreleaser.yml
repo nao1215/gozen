@@ -1,6 +1,10 @@
 version: 2
 project_name: gozen
 
+# Catalog delivery and phone-game releases are independent of engine versions.
+git:
+  ignore_tags: [game-catalog, 'phone-*']
+
 # The release ships the authoring CLI and a separate generic player runtime.
 before:
   hooks:
