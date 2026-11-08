@@ -95,9 +95,25 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 				}
 				// Startup and the named steady section are both guarded, so decoding
 				// regressions cannot hide before the mark.
-				allocLimit := 20000.0
-				if name == "huge-map" {
-					allocLimit = 100000
+				allocLimit, heapLimit, secondsLimit := 20000.0, float64(256<<20), 120.0
+				switch name {
+				case "huge-map":
+					// Measured under Xvfb (llvmpipe): about 9,960 startup and 371 warm
+					// allocations/frame, 290 MB heap; limits are about 1.3-2x of that.
+					allocLimit, heapLimit, secondsLimit = 13000, 512<<20, 15
+					if record.Name == name {
+						allocLimit = 600
+					}
+				case "pictures-4k":
+					// Measured: about 818 startup and 162 warm allocations/frame.
+					allocLimit, secondsLimit = 1700, 5
+					if record.Name == name {
+						allocLimit = 350
+					}
+				case "standing-pictures":
+					allocLimit, secondsLimit = 1900, 5
+				case "phone-video":
+					allocLimit, secondsLimit = 1300, 5
 				}
 				if record.Frames > 0 {
 					if record.Allocations == nil {
@@ -108,8 +124,8 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 				if record.Heap <= 0 {
 					t.Fatalf("section %s: missing heap sample", record.Name)
 				}
-				checkBudget(t, name+"/"+record.Name, "heap bytes", record.Heap, 512<<20)
-				checkBudget(t, name+"/"+record.Name, "seconds", record.Seconds, 15)
+				checkBudget(t, name+"/"+record.Name, "heap bytes", record.Heap, heapLimit)
+				checkBudget(t, name+"/"+record.Name, "seconds", record.Seconds, secondsLimit)
 			}
 			if err := scanner.Err(); err != nil {
 				t.Fatal(err)

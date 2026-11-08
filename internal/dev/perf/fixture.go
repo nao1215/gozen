@@ -107,10 +107,13 @@ troops: {lesson: {members: [mote]}}
 		}
 		event += "      - phone: {app: video, hold: landscape, video: {frames: ['frame*.png'], fps: 12, seconds: 10}}\n"
 	case "long-conversation":
-		for i := range 2000 {
-			event += fmt.Sprintf("      - say: 'Line %d: The markers show the way through the quiet garden.'\n", i)
+		for i := range 200 {
+			event += fmt.Sprintf("      - say: 'Line %d: Next.'\n", i)
 		}
-		script = "gap 1\nwait 30\nmark long-conversation\nread 60\nquit\n"
+		// read waits for each line's age, rather than taking a total tick count.
+		// Keep the complete conversation within read's 6000-tick deadline.
+		event += "      - gold: 1\n"
+		script = "gap 1\nwait 30\nmark long-conversation\nread 1\nquit\n"
 	case "large-sim":
 		event += "      - say: Ready.\n"
 	default:

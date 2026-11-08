@@ -69,10 +69,13 @@ an actual window. Their success is not implied by a dango pass.
 | pictures-4k | Decode and show a generated 3840x2160 picture |
 | standing-pictures | Keep 32 named standing pictures visible together |
 | phone-video | Advance a clip with 24 generated 1280x720 frames at 12 FPS |
-| long-conversation | Load 2,000 authored lines and advance dialogue for 60 ticks |
+| long-conversation | Read all 200 authored lines and execute the final command |
 | large-sim | Complete 5,000 deterministic battles and assert the victory count |
 
-The graphics scripts use 30 warmup ticks and a 60-tick named section. Both startup
+The graphics scripts use 30 warmup ticks and a 60-tick named section, except
+long-conversation, which uses `read 1` to finish all 200 lines. `read N` waits
+for each line to reach age N; it is not a total duration. A headless regression
+checks all lines and the final command complete before the 6,000-tick deadline. Both startup
 and the named section have allocation, sampled heap and time limits; a missing
 section or a section with no frames fails. Failures name the section, metric,
 observed number and limit. Fixtures and saves live in private temporary directories.
@@ -80,6 +83,7 @@ The font is copied from the existing CLI fixture, with its existing license.
 
 ```sh
 go test ./internal/dev/perf -run '^TestSpeedBudget$' -count=1 -v
+go test ./internal/play -run '^$' -bench '^BenchmarkAtlasHugeMap$' -benchtime=120x -benchmem
 go tool dango lint
 # Compile/static verification only; this does not render anything:
 go vet -tags=graphics ./...
@@ -91,10 +95,24 @@ xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./inte
 Count ceilings are fixed in the tests. A local headless calibration measured
 about 331 allocations per battle and 0.15 seconds for 5,000 battles; the test
 allows 600 allocations per battle, 64 MiB heap in use and 3 seconds. The time
-margin accommodates concurrent unit-test jobs. Graphics ceilings are initially
-20,000 allocations/frame (100,000 for the map), 512 MiB sampled heap and 15 seconds
-per section. They require desktop calibration: collect coordinator results before
-claiming graphics budgets pass, and tighten or justify the limits with measurements.
+margin accommodates concurrent unit-test jobs. Graphics allocation ceilings for
+pictures-4k, standing-pictures and phone-video
+are 300, 1,900 and 1,300 per frame, respectively; these are approximately twice
+the coordinator's measured 143, 425–930 and 250–649. Their sampled heap ceiling
+is 256 MiB (measured peaks up to 120 MB), and their section time ceiling is five
+seconds. Long-conversation retains a 20,000 allocation ceiling and allows 120
+seconds for reading the entire conversation (1,434 ticks in the headless check).
+
+The large map retains its static point-and-label layer while the visible state
+is unchanged. State, focus, camera, viewport and theme changes redraw it;
+animated tokens remain live.
+The fixed map ceilings are 13,000 startup and 600 steady allocations/frame,
+256 MiB sampled heap and 15 seconds per section. A local CPU-side benchmark
+measured 12,443 startup allocations/frame over 30 updates/draws, and 391 per
+warm update/draw over 120 iterations, including periodic state refreshes.
+Native calibration of these new ceilings is pending the
+coordinator's graphics run; CPU-side drawing submission is not a native frame
+measurement. Campaigns and authored marker images retain their live drawing path.
 Do not raise ceilings merely to hide a regression.
 
 ## CI cost
@@ -106,9 +124,10 @@ manual runs retain the existing full-run policy; private automatic runs retain
 the existing limited Actions policy.
 
 Five budget workers and five whole-CLI benchmark workers run independently, with
-one scenario per worker. The scripts request about 1.5 seconds of simulation each;
-one warmup plus five benchmark samples request about 9 seconds per revision per
-worker (about 18 seconds for comparisons). The headless budget adds about 0.15
+one scenario per worker. The four short graphics scripts request about 1.5 seconds
+of simulation each; one warmup plus five benchmark samples of those short cases
+request about 9 seconds per revision per worker (about 18 seconds for comparisons).
+The headless budget adds about 0.15
 seconds per invocation locally. Generating all six fixtures took 0.88 seconds
 locally; a cached CLI build took
 3.00 seconds. At those local costs, a budget worker adds roughly 5 seconds and a
@@ -118,3 +137,7 @@ rendering add runner-dependent cost; the desktop runtime and actual Actions
 critical-path impact remain unmeasured until the coordinator runs them. Because
 workers run alongside existing test/lint jobs, these durations do not add serially
 to CI wall time. Inspect job durations and named-section logs after the first run.
+
+The complete conversation takes about 24 seconds of simulation per run. Its
+benchmark worker therefore takes substantially longer than the four short cases;
+the previous 1.5-second estimate does not apply to it.

@@ -76,7 +76,12 @@ type atlasScene struct {
 	spot         string   // the spot last written to the trace
 	boxes        []plateBox
 	targets      []pointTarget
-	ground       map[string]*ebiten.Image // landmarks settled onto their terrain, by region
+
+	pointLayer      *ebiten.Image
+	pointLayerKey   pointLayerKey
+	pointLayerValid bool
+
+	ground map[string]*ebiten.Image // landmarks settled onto their terrain, by region
 	// warChosen: a campaign's map has chosen its first region
 	warChosen bool
 	// asking: the map's own question (a region's orders) and what it led to are running
@@ -102,6 +107,7 @@ func (s *atlasScene) location(g *Game) *data.Location { return g.db.Locations[s.
 
 // arrive sets the map up for the party's location, the token on its point.
 func (s *atlasScene) arrive(g *Game) {
+	s.pointLayerValid = false
 	s.loc = g.st.Location
 	s.panelHidden = false
 	l := s.location(g)
@@ -148,6 +154,10 @@ func (s *atlasScene) refresh(g *Game) {
 	for _, c := range all {
 		reach[c.Point] = true
 	}
+	previous := s.points
+	if len(previous) != len(ids) {
+		s.pointLayerValid = false
+	}
 	s.points = s.points[:0]
 	index := map[string]int{}
 	for pointIndex, id := range ids {
@@ -157,6 +167,13 @@ func (s *atlasScene) refresh(g *Game) {
 			mp.shown = 0
 		} else if mp.shown == 0 && reach[id] { // hidden until the roads reach it
 			mp.shown = 1
+		}
+		if pointIndex < len(previous) {
+			before := previous[pointIndex]
+			before.choice = -1 // Input indices do not affect painted geometry.
+			if before != mp {
+				s.pointLayerValid = false
+			}
 		}
 		index[id] = len(s.points)
 		s.points = append(s.points, mp)
@@ -852,7 +869,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 			}
 		}
 	}
-	s.layoutPoints(g, dst)
+	s.drawPoints(g, dst)
 	sel := ""
 	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
 		sel = s.choices[s.sel].Point
@@ -892,6 +909,53 @@ func (s *atlasScene) talkView(g *Game) string {
 		return ""
 	}
 	return s.location(g).Map.Talk
+}
+
+// pointLayerKey includes the inputs that can change between state refreshes.
+// Campaign landmarks and authored marker pictures use the live drawing path.
+type pointLayerKey struct {
+	bounds                              image.Rectangle
+	k, ox, oy, ui, scale, label, marker float64
+	selected                            string
+	here                                string
+	walking, panel                      bool
+	theme                               theme
+}
+
+func (s *atlasScene) drawPoints(g *Game, dst *ebiten.Image) {
+	a := s.location(g).Map
+	if s.campaignMap(g) || len(s.points) < 128 || a.Marker != nil && a.Marker.Picture != "" {
+		s.layoutPoints(g, dst)
+		return
+	}
+	for _, p := range s.points {
+		if p.marker != "" {
+			s.layoutPoints(g, dst)
+			return
+		}
+	}
+	k, ox, oy, _ := s.fit(g)
+	key := pointLayerKey{bounds: dst.Bounds(), k: k, ox: ox, oy: oy, ui: g.ui, scale: gfx.Scale(), label: s.labelSize(g), here: s.here, walking: s.path != nil, panel: s.panelVisible(g), theme: g.th}
+	if a.Marker != nil {
+		key.marker = a.Marker.Height
+	}
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+		key.selected = s.choices[s.sel].Point
+	}
+	if s.pointLayer == nil || s.pointLayer.Bounds() != dst.Bounds() {
+		if s.pointLayer != nil {
+			s.pointLayer.Deallocate()
+		}
+		s.pointLayer = ebiten.NewImageWithOptions(dst.Bounds(), nil)
+		s.pointLayerValid = false
+	}
+	if !s.pointLayerValid || key != s.pointLayerKey {
+		s.pointLayer.Clear()
+		s.layoutPoints(g, s.pointLayer)
+		s.pointLayerKey, s.pointLayerValid = key, true
+	}
+	// The token and other animated overlays remain outside this retained layer.
+	dst.DrawImage(s.pointLayer, nil)
 }
 
 // layoutPoints shares marker and plate geometry between drawing and pointer input.
