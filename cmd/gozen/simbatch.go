@@ -46,6 +46,7 @@ func (c *command) simBatch() clihelp.Operation {
 	cases := fs.String("cases", "", "read the cases, as JSON Lines, from this `FILE`; - is the standard input; required")
 	keep := fs.Int("games", 4, "keep the definitions of at most this many game `DIRS` read")
 	return clihelp.Operation{Flags: fs, Run: func(ctx context.Context) (err error) {
+		c.report = cliio.Report{Command: "sim batch", Format: "jsonl"}
 		if fs.NArg() != 0 {
 			return cliio.Invalid(diag.Operands, "expected no operands; the game directory of each case is in its args")
 		}
@@ -61,12 +62,18 @@ func (c *command) simBatch() clihelp.Operation {
 			if err != nil {
 				return err
 			}
-			defer func() { err = errors.Join(err, f.Close()) }()
+			defer func() {
+				if closeErr := f.Close(); closeErr != nil {
+					err = errors.Join(err, closeErr)
+				}
+			}()
 			in = f
 		}
 		games := &gameCache{keep: *keep}
-		out := json.NewEncoder(c.out.Writer)
-		out.SetEscapeHTML(false)
+		summary := struct {
+			Succeeded int `json:"succeeded"`
+			Failed    int `json:"failed"`
+		}{}
 		sc := bufio.NewScanner(in)
 		sc.Buffer(make([]byte, 64<<10), 64<<20)
 		for sc.Scan() {
@@ -79,11 +86,31 @@ func (c *command) simBatch() clihelp.Operation {
 			}
 			res := runCase(line, games)
 			// One write a result: a program streaming cases reads it before sending the next.
-			if err := out.Encode(res); err != nil {
+			status := "ok"
+			if res.Exit != 0 {
+				status = "failed"
+				summary.Failed++
+			} else {
+				summary.Succeeded++
+			}
+			if err := c.report.Item(c.out, res.ID, status, res); err != nil {
 				return err
 			}
 		}
-		return sc.Err()
+		if err := sc.Err(); err != nil {
+			return err
+		}
+		status := "ok"
+		if summary.Failed > 0 {
+			status = "failed"
+		}
+		if err := c.report.Result(c.out, status, summary); err != nil {
+			return err
+		}
+		if summary.Failed > 0 {
+			return cliio.ErrReported
+		}
+		return nil
 	}}
 }
 

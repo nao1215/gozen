@@ -1,10 +1,7 @@
 package play
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io/fs"
 	"sort"
 	"strings"
@@ -15,13 +12,8 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-// Store is where saves are kept (same shape as savefile.Store): an OS directory, memory, or the browser's localStorage.
-type Store interface {
-	Read(name string) ([]byte, error)
-	Write(name string, b []byte) error
-	List() ([]string, error)
-	Remove(name string) error
-}
+// Store is the savefile storage contract supplied by desktop and browser hosts.
+type Store = savefile.Store
 
 // openStore decides the location from Options. Set given to true when it is explicit (Store, SaveDir) or a trial play such as a script
 // (memory that keeps no save).
@@ -62,22 +54,7 @@ func (g *Game) storeTime(name string) (time.Time, bool) {
 
 // writePreserving keeps the current contents as a fingerprinted backup (<name>.before-<sha256>.bak) before writing.
 func (g *Game) writePreserving(name string, b []byte) (string, error) {
-	old, err := g.store.Read(name)
-	if errors.Is(err, fs.ErrNotExist) {
-		return "", g.store.Write(name, b)
-	}
-	if err != nil {
-		return "", err
-	}
-	backup := fmt.Sprintf("%s.before-%x.bak", name, sha256.Sum256(old))
-	if saved, err := g.store.Read(backup); err == nil {
-		if !bytes.Equal(saved, old) {
-			return "", fmt.Errorf("backup content mismatch: %s", backup)
-		}
-	} else if err := g.store.Write(backup, old); err != nil {
-		return "", err
-	}
-	return backup, g.store.Write(name, b)
+	return savefile.WriteStorePreserving(g.store, name, b)
 }
 
 // saveState writes the state. If the current contents are unreadable or in an old format needing correction, it keeps a backup.

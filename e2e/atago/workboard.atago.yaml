@@ -198,8 +198,9 @@ scenarios:
   - run:
       command: gozen sim batch --cases cases.jsonl
   - assert:
-      exit_code: 0
-      stdout: {contains: ['"id":"bad"', '"exit":2', '"id":"good"', '"exit":0']}
+      exit_code: 1
+      stderr: {equals: ''}
+      stdout: {contains: ['"version":1,"command":"sim batch","type":"item","id":"bad","status":"failed"', '"exit":2', '"id":"good","status":"ok"', '"exit":0', '"type":"summary","status":"failed","data":{"succeeded":1,"failed":1}']}
       file: {path: batch.jsonl, contains: '"t":"end"'}
 - name: the office sample checks and plays its capture tour
   steps:

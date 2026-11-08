@@ -179,15 +179,21 @@ func (c *phoneClip) frames() (cur, next string, mix, into float64) {
 	if n == 0 {
 		return "", "", 0, 0
 	}
-	at := float64(c.played) * c.v.FrameRate() / 60
-	i := int(at)
-	into = at - float64(i)
-	if c.loop {
-		i %= n
+	at := float64(c.played) * (c.v.FrameRate() / 60)
+	if math.IsNaN(at) || at < 0 {
+		at = 0
 	}
-	if i >= n-1 && !c.loop {
+	if !c.loop && at >= float64(n-1) {
 		return c.v.Frames[n-1], "", 0, math.Min(1, at-float64(n-1))
 	}
+	if c.loop {
+		at = math.Mod(at, float64(n))
+	}
+	if math.IsNaN(at) || math.IsInf(at, 0) {
+		at = 0
+	}
+	i := int(at)
+	into = at - float64(i)
 	cur = c.v.Frames[i]
 	if fade := c.v.Fade * c.v.FrameRate(); fade > 0 {
 		next = c.v.Frames[(i+1)%n]

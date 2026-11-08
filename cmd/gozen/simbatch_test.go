@@ -62,17 +62,20 @@ func TestSimBatchPlaysEachCaseAsSimScript(t *testing.T) {
 	}
 	manifest := filepath.Join(work, "cases.jsonl")
 	write(t, manifest, in.String()+"{\"args\": 1}\n")
-	stdout, _ := invoke(t, 0, "sim", "batch", "--cases", manifest)
+	stdout, _ := invoke(t, 1, "sim", "batch", "--cases", manifest)
 	lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
-	if len(lines) != len(cases)+1 {
+	if len(lines) != len(cases)+2 {
 		t.Fatalf("%d results for %d cases: %s", len(lines), len(cases)+1, stdout)
 	}
 	traces := map[string]string{}
 	for i, l := range lines[:len(cases)] {
-		var r batchResult
-		if err := json.Unmarshal([]byte(l), &r); err != nil {
+		var envelope struct {
+			Data batchResult `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(l), &envelope); err != nil {
 			t.Fatal(err)
 		}
+		r := envelope.Data
 		want := alone[i]
 		if r.ID != string(rune('a'+i)) || r.Exit != want.exit || r.Stdout != want.stdout || r.Stderr != want.stderr {
 			t.Errorf("case %d: got %+v, want exit %d stdout %q stderr %q", i, r, want.exit, want.stdout, want.stderr)
@@ -91,8 +94,10 @@ func TestSimBatchPlaysEachCaseAsSimScript(t *testing.T) {
 	if alone[0].trace == alone[1].trace {
 		t.Error("two seeds gave the same trace; the cases do not show the random numbers")
 	}
-	var bad batchResult
-	if err := json.Unmarshal([]byte(lines[len(cases)]), &bad); err != nil || bad.Exit != 2 || bad.Stderr == "" {
+	var bad struct {
+		Data batchResult `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(lines[len(cases)]), &bad); err != nil || bad.Data.Exit != 2 || bad.Data.Stderr == "" {
 		t.Errorf("a case that does not parse: %s", lines[len(cases)])
 	}
 }
@@ -106,9 +111,11 @@ func TestSimBatchArguments(t *testing.T) {
 	invoke(t, 2, "sim", "batch", "--games", "0")
 	manifest := filepath.Join(t.TempDir(), "cases.jsonl")
 	write(t, manifest, `{"id":"x","args":["`+filepath.ToSlash(dir)+`","--script","-"]}`+"\n")
-	stdout, _ := invoke(t, 0, "sim", "batch", "--cases", manifest)
-	var r batchResult
-	if err := json.Unmarshal([]byte(stdout), &r); err != nil || r.ID != "x" || r.Exit != 2 {
+	stdout, _ := invoke(t, 1, "sim", "batch", "--cases", manifest)
+	var r struct {
+		Data batchResult `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(strings.Split(stdout, "\n")[0]), &r); err != nil || r.Data.ID != "x" || r.Data.Exit != 2 {
 		t.Errorf("--script - in a case: %s", stdout)
 	}
 }
@@ -253,6 +260,48 @@ func TestRunCaseRejectsInlineStandardStreams(t *testing.T) {
 			result := runCase(record, nil)
 			if result.Exit != 2 || called {
 				t.Fatalf("standard stream case executed: %+v, called=%v", result, called)
+			}
+		})
+	}
+}
+
+func TestSimBatchCompletion(t *testing.T) {
+	for _, tc := range []struct {
+		name, cases             string
+		exit, succeeded, failed int
+	}{
+		{"empty", "", 0, 0, 0},
+		{"success", "{\"id\":\"help\",\"args\":[\"--help\"]}\n", 0, 1, 0},
+		{"failure", "{\"id\":\"bad\",\"args\":1}\n", 1, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest := filepath.Join(t.TempDir(), "cases.jsonl")
+			write(t, manifest, tc.cases)
+			stdout, stderr := invoke(t, tc.exit, "sim", "batch", "--cases", manifest)
+			if stderr != "" {
+				t.Fatalf("duplicate error: %s", stderr)
+			}
+			lines := strings.Split(strings.TrimSpace(stdout), "\n")
+			if len(lines) != tc.succeeded+tc.failed+1 {
+				t.Fatal(stdout)
+			}
+			var summary struct {
+				Version               int
+				Command, Type, Status string
+				Data                  struct{ Succeeded, Failed int }
+			}
+			if err := json.Unmarshal([]byte(lines[len(lines)-1]), &summary); err != nil {
+				t.Fatal(err)
+			}
+			status := "ok"
+			if tc.failed > 0 {
+				status = "failed"
+			}
+			if summary.Version != 1 || summary.Command != "sim batch" || summary.Type != "summary" || summary.Status != status || summary.Data.Succeeded != tc.succeeded || summary.Data.Failed != tc.failed {
+				t.Fatalf("summary: %+v", summary)
+			}
+			if got := run([]string{"sim", "batch", "--cases", manifest}, failingWriter{}, io.Discard); got != 1 {
+				t.Fatalf("failed write exit: %d", got)
 			}
 		})
 	}

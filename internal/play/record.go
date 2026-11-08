@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image/color"
 	"io"
 	"os"
 	"os/exec"
@@ -23,10 +24,23 @@ func (g *Game) recordFrame(screen *ebiten.Image) error {
 		return nil
 	}
 	if g.frame == nil {
-		g.frame = make([]byte, 4*screen.Bounds().Dx()*screen.Bounds().Dy())
+		w, h := g.db.Game.Screen.Width, g.db.Game.Screen.Height
+		g.frame = make([]byte, 4*w*h)
+		g.recordView = ebiten.NewImage(w, h)
 		g.lastFrame = due - 1
 	}
-	screen.ReadPixels(g.frame)
+	// The encoder uses the authored dimensions, even when native or stream
+	// layouts resize before the first frame or during recording.
+	target := g.recordView
+	target.Fill(color.Black)
+	w, h := target.Bounds().Dx(), target.Bounds().Dy()
+	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+	scale := min(float64(w)/float64(sw), float64(h)/float64(sh))
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate((float64(w)-float64(sw)*scale)/2, (float64(h)-float64(sh)*scale)/2)
+	target.DrawImage(screen, op)
+	target.ReadPixels(g.frame)
 	for ; g.lastFrame < due; g.lastFrame++ {
 		if n, err := g.opts.Video.Write(g.frame); err != nil {
 			return err

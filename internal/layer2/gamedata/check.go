@@ -468,6 +468,9 @@ func (c *checker) phoneVideo(where string, v *PhoneVideo, names []string) {
 	if v.Seconds < 0 {
 		c.errorf(diag.Shape, where+".seconds", "%s", lang.T("seconds は０以上を指定してください"))
 	}
+	if v.FPS > 60 {
+		c.errorf(diag.OutOfRange, where+".fps", "fps must not exceed 60")
+	}
 	if v.FPS < 0 {
 		c.errorf(diag.Shape, where+".fps", "fps must not be negative")
 	}

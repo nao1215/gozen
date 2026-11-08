@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1820,6 +1821,21 @@ func TestPhoneUntimedPageOutcomes(t *testing.T) {
 			}
 			if !phoneTicks(g, phoneRise) || g.phone.answer() != idx {
 				t.Fatal("closing changed outcome")
+			}
+		})
+	}
+}
+
+func TestPhoneFramesHugePosition(t *testing.T) {
+	for _, loop := range []bool{false, true} {
+		t.Run(strconv.FormatBool(loop), func(t *testing.T) {
+			c := &phoneClip{v: &data.PhoneVideo{Frames: []string{"a", "b", "c"}, FPS: 1e300, Seconds: 1}, played: 60, loop: loop}
+			cur, _, _, into := c.frames()
+			if cur == "" || math.IsNaN(into) || into < 0 || into > 1 {
+				t.Fatalf("invalid frame %q, %g", cur, into)
+			}
+			if !loop && cur != "c" {
+				t.Fatalf("last frame: %q", cur)
 			}
 		})
 	}

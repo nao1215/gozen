@@ -161,7 +161,10 @@ func TestCloseFinishesScreenshots(t *testing.T) {
 func TestLetterboxShotPreservesPixelsAndOuterSize(t *testing.T) {
 	c := color.NRGBA{20, 40, 60, 255}
 	src := sysSolid(1920, 1080, c)
-	dst := letterboxShot(src, 2560, 1080)
+	dst, err := letterboxShot(src, 2560, 1080)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if dst.Bounds() != image.Rect(0, 0, 2560, 1080) {
 		t.Fatal(dst.Bounds())
 	}
@@ -175,7 +178,19 @@ func TestLetterboxShotPreservesPixelsAndOuterSize(t *testing.T) {
 			t.Fatal("content", p)
 		}
 	}
-	if letterboxShot(src, 1920, 1080) != src {
+	if got, err := letterboxShot(src, 1920, 1080); err != nil || got != src {
 		t.Fatal("unnecessary copy")
+	}
+}
+
+func TestLetterboxShotRejectsOverflow(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("unsafe allocation panicked: %v", r)
+		}
+	}()
+	src := sysSolid(1, 1, color.NRGBA{A: 255})
+	if _, err := letterboxShot(src, int(^uint(0)>>1), int(^uint(0)>>1)); err == nil {
+		t.Fatal("accepted overflow dimensions")
 	}
 }

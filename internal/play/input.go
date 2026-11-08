@@ -10,6 +10,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 )
 
 type button int
@@ -632,6 +634,9 @@ func parseScript(src string) (*script, error) {
 			w, err := strconv.Atoi(c.arg)
 			if err != nil || w < 1 {
 				return nil, fmt.Errorf("script line %d: window WIDTH HEIGHT", line)
+			}
+			if err := picturelimit.Dimensions(w, c.n); err != nil {
+				return nil, fmt.Errorf("script line %d: window: %w", line, err)
 			}
 			c.x, c.y = w, c.n
 		case "wait-graphs":

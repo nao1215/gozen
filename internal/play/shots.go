@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"github.com/nao1215/gozen/internal/layer1/picturelimit"
 )
 
 // shotWriter writes the screenshots off the game loop. Draw only copies the screen's
@@ -111,13 +113,16 @@ func (w *shotWriter) wait() error {
 }
 
 // letterboxShot includes the native target's outer bars without resampling pixels.
-func letterboxShot(src *image.NRGBA, width, height int) *image.NRGBA {
+func letterboxShot(src *image.NRGBA, width, height int) (*image.NRGBA, error) {
+	if err := picturelimit.Dimensions(width, height); err != nil {
+		return nil, err
+	}
 	if width < src.Bounds().Dx() || height < src.Bounds().Dy() || width == src.Bounds().Dx() && height == src.Bounds().Dy() {
-		return src
+		return src, nil
 	}
 	dst := image.NewNRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(dst, dst.Bounds(), image.NewUniform(color.Black), image.Point{}, draw.Src)
 	at := image.Pt((width-src.Bounds().Dx())/2, (height-src.Bounds().Dy())/2)
 	draw.Draw(dst, src.Bounds().Add(at), src, src.Bounds().Min, draw.Src)
-	return dst
+	return dst, nil
 }
