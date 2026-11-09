@@ -444,8 +444,10 @@ type Game struct {
 
 	walkGoal [3]int
 	lastView *ebiten.Image
-	freeze   *ebiten.Image
-	freezeT  int
+	// shaken is the off-screen frame of a shaking screen, kept between frames.
+	shaken  *ebiten.Image
+	freeze  *ebiten.Image
+	freezeT int
 
 	recordView *ebiten.Image
 	frame      []byte
@@ -1293,7 +1295,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	dst := screen
 	var shaken *ebiten.Image
 	if g.shake > 0 {
-		shaken = ebiten.NewImage(int(pw), int(ph))
+		if g.shaken == nil || g.shaken.Bounds().Dx() != int(pw) || g.shaken.Bounds().Dy() != int(ph) {
+			if g.shaken != nil {
+				g.shaken.Deallocate()
+			}
+			g.shaken = ebiten.NewImage(int(pw), int(ph))
+		}
+		shaken = g.shaken
+		shaken.Clear()
 		dst = shaken
 	}
 	g.traceFrameStart()
@@ -1363,7 +1372,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(math.Sin(float64(g.shake)*1.7)*float64(g.shake)*0.8*g.ui, math.Cos(float64(g.shake)*2.3)*float64(g.shake)*0.5*g.ui)
 		screen.DrawImage(shaken, op)
-		shaken.Deallocate()
 	}
 	if g.flash > 0 {
 		fill(screen, withAlpha(colorWhite, uint8(min(255, g.flash*12))))

@@ -221,3 +221,17 @@ func TestMoodNeedsASongWithIt(t *testing.T) {
 		t.Fatalf("override %q", g.moodOverride)
 	}
 }
+
+// BenchmarkShakenDraw measures the CPU side of a frame drawn while the screen shakes
+// (a battle hit), which draws the frame into an off-screen image first.
+func BenchmarkShakenDraw(b *testing.B) {
+	g := openGame(b, Options{Location: "camp"})
+	w, h := g.pixels()
+	screen := ebiten.NewImage(int(w), int(h))
+	defer screen.Deallocate()
+	b.ReportAllocs()
+	for b.Loop() {
+		g.shake = 10
+		g.Draw(screen)
+	}
+}
