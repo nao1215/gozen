@@ -11,6 +11,12 @@ permissions:
   # access to pull requests; contents alone 403s on that call.
   pull-requests: read
 
+# Superseded runs of the same pull request are cancelled; pushes and other
+# events keep a group of their own and finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   scan:
     name: gitleaks

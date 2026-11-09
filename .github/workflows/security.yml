@@ -19,6 +19,12 @@ on:
 permissions:
   contents: read
 
+# Superseded runs of the same pull request are cancelled; pushes and other
+# events keep a group of their own and finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   changes:
     # Tells the jobs below whether a pull request changes more than documentation
