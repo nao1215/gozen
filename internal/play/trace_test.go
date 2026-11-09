@@ -602,7 +602,7 @@ func TestTraceReproActionsDuringChangedSaveNotice(t *testing.T) {
 		t.Fatalf("recorded actions: %v", acts)
 	}
 	for _, act := range acts {
-		if f := frames[int(num(act["tick"]))-1]; !f.Notice || (f.Gold != 123 && f.Gold != 456) {
+		if f := frames[int(traceformat.Number(act["tick"]))-1]; !f.Notice || (f.Gold != 123 && f.Gold != 456) {
 			t.Fatalf("mutation did not run with the notice open: %+v", f)
 		}
 	}
@@ -1065,7 +1065,7 @@ func assertSourceRefused(t *testing.T, buf *bytes.Buffer, kind string) {
 			t.Fatal(err)
 		}
 		var exact traceformat.ExactReplay
-		if err := exact.Check(kind, int(num(line["tick"])), raw); err == nil {
+		if err := exact.Check(kind, int(traceformat.Number(line["tick"])), raw); err == nil {
 			t.Fatalf("accepted unrecorded source %s", kind)
 		}
 	}
@@ -1502,7 +1502,7 @@ func assertTraceTicks(t *testing.T, b []byte) {
 		if err := json.Unmarshal(line, &record); err != nil {
 			t.Fatal(err)
 		}
-		tick := int(num(record["tick"]))
+		tick := int(traceformat.Number(record["tick"]))
 		if tick < previous {
 			t.Fatalf("decreasing tick %d after %d: %s", tick, previous, line)
 		}
@@ -1521,7 +1521,7 @@ func TestTraceMonotonicTicks(t *testing.T) {
 	g.emit("snapshot", nil)
 	assertTraceTicks(t, buf.Bytes())
 	for i, record := range traceLines(t, buf.Bytes(), "snapshot", "memo_open", "memo") {
-		if want := []int{7, 7, 7, 8}[i]; int(num(record["tick"])) != want {
+		if want := []int{7, 7, 7, 8}[i]; int(traceformat.Number(record["tick"])) != want {
 			t.Fatalf("record %d: %v, want tick %d", i, record, want)
 		}
 	}
@@ -1686,7 +1686,7 @@ func TestTraceUpdateInputProperties(t *testing.T) {
 					if err := json.Unmarshal(line, &record); err != nil {
 						t.Fatal(err)
 					}
-					tick := int(num(record["tick"]))
+					tick := int(traceformat.Number(record["tick"]))
 					if record["t"] == "input" {
 						if inputs[tick] {
 							t.Fatalf("duplicate input at tick %d", tick)
@@ -1697,7 +1697,7 @@ func TestTraceUpdateInputProperties(t *testing.T) {
 				if mode == "autopilot" {
 					combined := false
 					for _, record := range traceLines(t, buf.Bytes(), "input") {
-						if num(record["tick"]) != 20 && len(strs(record["press"])) > 0 && len(strs(record["held"])) > 0 && record["mouse"] != nil {
+						if traceformat.Number(record["tick"]) != 20 && len(traceformat.Strings(record["press"])) > 0 && len(traceformat.Strings(record["held"])) > 0 && record["mouse"] != nil {
 							combined = true
 						}
 					}
@@ -2041,7 +2041,7 @@ func TestTraceParkedPointerConfirmation(t *testing.T) {
 					t.Fatal(err)
 				}
 				if line["t"] == "input" {
-					r.inputs[int(num(line["tick"]))] = line
+					r.inputs[int(traceformat.Number(line["tick"]))] = line
 				}
 			}
 			if err := original.Close(); err != nil {

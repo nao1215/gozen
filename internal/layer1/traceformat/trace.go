@@ -221,3 +221,36 @@ func (v *ExactReplay) Check(kind string, tick int, raw []byte) error {
 // SupportsAction reports the actions understood by ordinary and exact replay.
 // The player uses it before dispatch; unknown actions are never accepted.
 func SupportsAction(name string) bool { return exactReplayActions[name] }
+
+// Number reads a numeric field of a decoded trace record: the float64 that JSON
+// decoding gives, or the int and uint64 a record holds before it is written. Any
+// other value is 0. The player's trace readers and the trace command share it.
+func Number(v any) float64 {
+	switch v := v.(type) {
+	case float64:
+		return v
+	case int:
+		return float64(v)
+	case uint64:
+		return float64(v)
+	}
+	return 0
+}
+
+// Strings reads a list field of a trace record, decoded ([]any) or not yet
+// written ([]string), keeping only its strings; anything else is nil.
+func Strings(v any) []string {
+	switch v := v.(type) {
+	case []string:
+		return v
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, s := range v {
+			if s, ok := s.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}

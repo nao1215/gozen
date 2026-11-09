@@ -171,7 +171,7 @@ func (g *Game) emit(kind string, fields traceLine) {
 	maps.Copy(line, fields)
 	// Editors can freeze the simulation after this update has emitted actions.
 	// Keep their boundary and subsequent observations at the latest record tick.
-	g.tr.lastTick = max(g.tr.lastTick, int(num(line["tick"])))
+	g.tr.lastTick = max(g.tr.lastTick, int(traceformat.Number(line["tick"])))
 	line["tick"] = g.tr.lastTick
 	g.tr.lines++
 	if g.tr.enc != nil && g.tr.err == nil {
@@ -1010,7 +1010,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, errors.New(lang.T("replay の入力は１ティック以降でなければならない"))
 			}
 			for _, field := range []string{"press", "held"} {
-				for _, name := range strs(l[field]) {
+				for _, name := range traceformat.Strings(l[field]) {
 					if name == "" {
 						return nil, fmt.Errorf("replay: empty button name in %s at tick %d; older recordings lost the button identity; record a new trace", field, tick)
 					}
@@ -1082,7 +1082,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 			}
 			r.phoneLaunches[tick] = launch
 		case "now":
-			r.now = time.UnixMilli(int64(num(l["unix_ms"]))).In(time.FixedZone("", int(num(l["utc_offset"]))))
+			r.now = time.UnixMilli(int64(traceformat.Number(l["unix_ms"]))).In(time.FixedZone("", int(traceformat.Number(l["utc_offset"]))))
 		default:
 			if r.checked(k) {
 				r.expectLine(k, l)
@@ -1106,7 +1106,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 		r.limit = o.Until - 1
 		for k, ls := range r.expect {
 			r.expect[k] = slices.DeleteFunc(ls, func(l traceLine) bool {
-				return int(num(l["tick"])) > r.limit || (k == "state" && l["terminal"] == true)
+				return int(traceformat.Number(l["tick"])) > r.limit || (k == "state" && l["terminal"] == true)
 			})
 		}
 	}
@@ -1139,8 +1139,8 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	} else if start["location"] != nil {
 		return nil, errors.New("replay: invalid location")
 	}
-	o.Party, o.Flags, o.Items = strs(start["party"]), strs(start["flags"]), strs(start["items"])
-	o.Level, o.Gold, o.Floor = int(num(start["level"])), int(num(start["gold"])), int(num(start["floor"]))
+	o.Party, o.Flags, o.Items = traceformat.Strings(start["party"]), traceformat.Strings(start["flags"]), traceformat.Strings(start["items"])
+	o.Level, o.Gold, o.Floor = int(traceformat.Number(start["level"])), int(traceformat.Number(start["gold"])), int(traceformat.Number(start["floor"]))
 	if value, ok := start["calm"].(bool); ok {
 		o.Calm = value
 	} else if start["calm"] != nil {
@@ -1204,12 +1204,12 @@ func (r *replay) feed(in *input, tick int) {
 	if !ok {
 		return
 	}
-	for _, n := range strs(l["press"]) {
+	for _, n := range traceformat.Strings(l["press"]) {
 		if i := slices.Index(buttonNames[:], n); i >= 0 {
 			in.pressed[i] = true
 		}
 	}
-	for _, n := range strs(l["held"]) {
+	for _, n := range traceformat.Strings(l["held"]) {
 		if i := slices.Index(buttonNames[:], n); i >= 0 {
 			in.held[i] = true
 		}
@@ -1227,10 +1227,10 @@ func (r *replay) feed(in *input, tick int) {
 		in.pdown = down
 	}
 	in.longPress = l["long_press"] == true
-	in.wheel = num(l["wheel"])
-	in.digit = int(num(l["digit"]))
+	in.wheel = traceformat.Number(l["wheel"])
+	in.digit = int(traceformat.Number(l["digit"]))
 	if m, ok := l["mouse"].([]any); ok && len(m) == 2 {
-		in.mouse.X, in.mouse.Y = int(num(m[0])), int(num(m[1]))
+		in.mouse.X, in.mouse.Y = int(traceformat.Number(m[0])), int(traceformat.Number(m[1]))
 		// Ordinary replay retains support for older coordinate-only records.
 		in.moved = true
 	}
@@ -1363,34 +1363,6 @@ func comparableLine(l traceLine) string {
 	return string(b)
 }
 
-func num(v any) float64 {
-	switch v := v.(type) {
-	case float64:
-		return v
-	case int:
-		return float64(v)
-	case uint64:
-		return float64(v)
-	}
-	return 0
-}
-
-func strs(v any) []string {
-	switch v := v.(type) {
-	case []string:
-		return v
-	case []any:
-		out := make([]string, 0, len(v))
-		for _, s := range v {
-			if s, ok := s.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
-}
-
 func newSeed() uint64 { return rand.Uint64()>>12 | 1 } //nolint:gosec // Gameplay seed, not a security token.
 
 func (g *Game) traceEnd() {
@@ -1435,7 +1407,7 @@ func (g *Game) act(name string, args traceLine) bool {
 		}
 		return v
 	}
-	n := func(k string) int { return int(num(args[k])) }
+	n := func(k string) int { return int(traceformat.Number(args[k])) }
 	st := g.st
 	switch name {
 	case "dev_do":

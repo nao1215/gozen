@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 )
 
 func metricsFixture(t *testing.T, lines ...string) playMetrics {
@@ -78,10 +80,10 @@ func TestTraceMetricsStalls(t *testing.T) {
 	}
 	if len(found) != 4 || found["same_screen"].Ticks != 240 ||
 		found["no_state_change"].Ticks != 240 || found["input_without_observed_progress"].Inputs != 1 ||
-		num(found["input_without_observed_progress"].Screen["tick"]) != 0 {
+		traceformat.Number(found["input_without_observed_progress"].Screen["tick"]) != 0 {
 		t.Fatalf("stalls: %+v", m.Stalls)
 	}
-	if len(m.Sections) != 1 || num(m.Sections[0]["frames"]) != 40 {
+	if len(m.Sections) != 1 || traceformat.Number(m.Sections[0]["frames"]) != 40 {
 		t.Fatal(m.Sections)
 	}
 }

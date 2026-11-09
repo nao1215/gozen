@@ -174,7 +174,7 @@ func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, errors.New(lang.T("戦闘記録の入力ティックが重複"))
 			}
 			for _, key := range []string{"press", "held"} {
-				for _, name := range strs(l[key]) {
+				for _, name := range traceformat.Strings(l[key]) {
 					if !slices.Contains(buttonNames[:], name) {
 						return nil, errors.New(lang.T("戦闘記録に未知のボタンがある"))
 					}

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 )
 
 const dragBoard = `planning:
@@ -141,7 +143,7 @@ func TestDragPickAndLook(t *testing.T) {
 	}
 	looks := traceLines(t, buf.Bytes(), "look")
 	l := looks[len(looks)-1]
-	if l["held"] != "Cup" || !strings.Contains(strings.Join(strs(l["disabled"]), ","), "Shelf") {
+	if l["held"] != "Cup" || !strings.Contains(strings.Join(traceformat.Strings(l["disabled"]), ","), "Shelf") {
 		t.Fatal("look does not show the held card and the refusing place", l)
 	}
 	wldPlay(t, g, "pick Bowl\nwait 4\npick Shelf\nwait 8\n", 40)

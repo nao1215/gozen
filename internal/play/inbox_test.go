@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
@@ -26,7 +27,7 @@ func TestInboxNotificationRunsItsDecision(t *testing.T) {
 	wldPlay(t, g, "look\nwait 2\n", 20)
 	looks := traceLines(t, buf.Bytes(), "look")
 	l := looks[len(looks)-1]
-	if l["inbox"] != 2.0 || !strings.Contains(strings.Join(strs(l["controls"]), ","), "Guide") {
+	if l["inbox"] != 2.0 || !strings.Contains(strings.Join(traceformat.Strings(l["controls"]), ","), "Guide") {
 		t.Fatal("the notification is not a control", l)
 	}
 	briefed, worked := g.st.Vars["briefed"], g.st.Vars["worked"]
