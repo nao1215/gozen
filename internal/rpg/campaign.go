@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/optional"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/optional"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // A campaign's state lives in variables with generated names (ADR 0030); these read and

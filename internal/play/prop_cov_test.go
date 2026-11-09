@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/base/geom"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 // Properties of the places that hold for any way of playing them, tried with seeded random

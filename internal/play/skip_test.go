@@ -14,7 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // novelData is a short story: two lines, a third, a choice and a line after it, and an event

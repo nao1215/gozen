@@ -12,7 +12,7 @@
 ^internal/headless/headless\.go:[0-9]+:[0-9]+: unreachable func: Driver\.Walk$
 # Built only for the browser (js/wasm): local storage and picture decoding.
 ^internal/play/store\.go:
-^internal/layer5/picdecode/picdecode\.go:[0-9]+:[0-9]+: unreachable func: browserKind$
+^internal/screen/picdecode/picdecode\.go:[0-9]+:[0-9]+: unreachable func: browserKind$
 # Built only for macOS: the system language.
 ^internal/play/locale\.go:[0-9]+:[0-9]+: unreachable func: appleLanguages$
 # Built only with cgo: the ONNX face detector.

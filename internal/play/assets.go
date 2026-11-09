@@ -15,15 +15,15 @@ import (
 
 	_ "image/jpeg" // decoders for the pictures image.Decode reads
 
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 
 	_ "github.com/deepteams/webp" // a browser build may ship its pictures as WebP
 	"github.com/hajimehoshi/ebiten/v2"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/doll"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/picdecode"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/doll"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/picdecode"
 )
 
 type pictures struct {

@@ -14,7 +14,7 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/headless"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 )
 

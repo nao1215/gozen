@@ -185,14 +185,14 @@ this working tree:
 
 | Contract | Evidence |
 | --- | --- |
-| Compact events and single-item commands | `internal/layer2/gamedata/types.go:1600`, `internal/layer2/gamedata/command.go:288` |
-| Version-aware tactic defaults and shorthand gating | `internal/layer2/gamedata/presence.go:237` |
-| Unique close-name suggestions | `internal/layer2/gamedata/definitions.go:398` |
-| Source-preserving migration and semantic comparison | `internal/layer2/gamedata/migrate.go:31` |
+| Compact events and single-item commands | `internal/model/gamedata/types.go:1600`, `internal/model/gamedata/command.go:288` |
+| Version-aware tactic defaults and shorthand gating | `internal/model/gamedata/presence.go:237` |
+| Unique close-name suggestions | `internal/model/gamedata/definitions.go:398` |
+| Source-preserving migration and semantic comparison | `internal/model/gamedata/migrate.go:31` |
 | Safe copy publication | `cmd/gozen/migrate.go:17` |
 | Every-sample check and seeded simulation comparison | `cmd/gozen/migrate_test.go:20` |
-| Loaded definitions and named replay fingerprints | `internal/layer2/gamedata/migrate_test.go:32` |
-| Migration fuzz oracle | `internal/layer2/gamedata/migrate_test.go:243` |
+| Loaded definitions and named replay fingerprints | `internal/model/gamedata/migrate_test.go:32` |
+| Migration fuzz oracle | `internal/model/gamedata/migrate_test.go:243` |
 
 ## Proposals not implemented
 

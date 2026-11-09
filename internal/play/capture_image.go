@@ -11,7 +11,7 @@ import (
 
 	xdraw "golang.org/x/image/draw"
 
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 )
 
 // CaptureGIF selects an animation instead of a PNG for a capture job.

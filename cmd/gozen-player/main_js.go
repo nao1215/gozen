@@ -10,7 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/play"
 	"github.com/nao1215/gozen/internal/webfs"
 )

@@ -26,7 +26,7 @@ shutil.copytree(source, destination,
 # Decision checks must also work without the narrative ADR documents.
 shutil.rmtree(destination / "docs/decisions")
 # Add a new file only: linked source files must never be modified.
-probe = destination / "internal/layer1/dangofixture"
+probe = destination / "internal/base/dangofixture"
 probe.mkdir()
 (probe / "fixture.go").write_text('package dangofixture\n\nimport "io/fs"\n\ntype Option func(*int)\nfunc LoadWrong(fsys fs.FS, path string) (string, error) { return "", nil }\n')
 

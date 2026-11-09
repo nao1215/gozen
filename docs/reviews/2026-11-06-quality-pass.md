@@ -10,7 +10,7 @@ version or asset was changed.
 
 - Text interpolation stopped at a closing brace inside an expression string.
   A failing five-case regression preceded the fix. Validation and rendering now
-  share the private scanner at `internal/layer2/gamedata/text.go:29`, following
+  share the private scanner at `internal/model/gamedata/text.go:29`, following
   the expression lexer's quote and escape rules. `TestInterpolationQuotedBraces`
   and `FuzzRenderQuotedText` compare interpolation with direct expression values.
 - A batch JSON Lines record could execute its first object despite trailing
@@ -18,7 +18,7 @@ version or asset was changed.
   `cmd/gozen/simbatch.go:105` now requires EOF before running a case.
 - The process-wide expression cache retained unlimited expressions and the
   complete backing strings of dialogue substrings. Its private owner is now
-  `internal/layer2/gamedata/expression_cache.go:19`: at most 1,024 entries,
+  `internal/model/gamedata/expression_cache.go:19`: at most 1,024 entries,
   each with at most 4,096 source bytes. Larger expressions still evaluate but
   bypass caching. Sources are cloned before parsing because AST identifiers
   also retain substrings. Eviction does not invalidate active consumers.
@@ -86,7 +86,7 @@ The installed linter includes staticcheck and unused checks.
 Deferred proposals:
 
 1. Measure byte retention and eviction churn in the presentation image/text
-   caches (`internal/layer5/gfx/cache.go`). Their entry-count bounds are not
+   caches (`internal/screen/gfx/cache.go`). Their entry-count bounds are not
    byte budgets. A lifecycle change needs real graphics tests first.
 2. Keep batch cache validation filesystem-neutral. Its full directory walk is
    visible in profiles, but weakening change detection to improve a benchmark
@@ -177,7 +177,7 @@ and phone-input fuzzing after the deterministic regressions.
   it now receives the existing translated instruction to close the screen.
 - Phone numbers accepted NaN/infinity, and excessively long clips could overflow
   ticks. `TestPhoneFiniteVideoParameters` covers rejection. The checker at
-  `internal/layer2/gamedata/check.go:208` also validates puppet definitions and
+  `internal/model/gamedata/check.go:208` also validates puppet definitions and
   referenced pictures through the shared portrait checker;
   `TestPhoneChecksPuppetContents` first reproduced both omissions. Phone
   diagnostics now have Japanese keys and English translations.

@@ -21,7 +21,7 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

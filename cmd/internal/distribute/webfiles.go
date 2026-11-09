@@ -23,7 +23,7 @@ import (
 	"github.com/deepteams/webp"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // webFile is an entry of a web export's game/files.json: the name the game reads, the

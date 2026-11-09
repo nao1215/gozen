@@ -8,11 +8,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+	"github.com/nao1215/gozen/internal/base/yamlpath"
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/layer1/decodeguard"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 )
 
 // Script is what a Crowd says, as Load and Parse read it. Its parts are read with YAML.

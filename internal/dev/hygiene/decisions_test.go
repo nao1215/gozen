@@ -119,18 +119,23 @@ type archPolicy struct {
 	Deps       map[string]archDeps      `yaml:"deps"`
 }
 
+func inPatterns(c archComponent) []string {
+	switch v := c.In.(type) {
+	case string:
+		return []string{v}
+	case []any:
+		patterns := make([]string, 0, len(v))
+		for _, p := range v {
+			patterns = append(patterns, fmt.Sprint(p))
+		}
+		return patterns
+	}
+	return nil
+}
+
 func componentOf(name string, components map[string]archComponent) string {
 	for id, c := range components {
-		var patterns []string
-		switch v := c.In.(type) {
-		case string:
-			patterns = []string{v}
-		case []any:
-			for _, p := range v {
-				patterns = append(patterns, fmt.Sprint(p))
-			}
-		}
-		for _, p := range patterns {
+		for _, p := range inPatterns(c) {
 			base := strings.TrimSuffix(p, "/**")
 			if name == base || (strings.HasSuffix(p, "/**") && strings.HasPrefix(name, base+"/")) {
 				return id
@@ -225,6 +230,31 @@ func levelViolations(policy archPolicy, levels []hygiene.Level) []string {
 	return out
 }
 
+// TestLevelDirectories keeps the numbered layer directories from returning and
+// puts each level's own packages in its directory (ADR 0064).
+func TestLevelDirectories(t *testing.T) {
+	policy := loadPolicy(t)
+	for _, l := range hygiene.Levels() {
+		if l.Dir == "" {
+			continue
+		}
+		for _, p := range inPatterns(policy.Components[l.Name]) {
+			if !strings.HasPrefix(p, l.Dir+"/") {
+				t.Errorf("component %s maps to %s, outside its level directory %s", l.Name, p, l.Dir)
+			}
+		}
+	}
+	entries, err := os.ReadDir("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.IsDir() && regexp.MustCompile(`^layer\d+$`).MatchString(e.Name()) {
+			t.Errorf("internal/%s: name the directory after its level in internal/dev/hygiene/levels.go", e.Name())
+		}
+	}
+}
+
 func TestLevelOrderRejectsUpwardAndMissing(t *testing.T) {
 	policy := archPolicy{
 		Components: map[string]archComponent{"low": {}, "high": {}, "stray": {}},
@@ -256,13 +286,13 @@ func exprText(t *testing.T, n ast.Node) string {
 
 // Existing specialized loaders are frozen by signature. New exceptions are forbidden.
 var loaderBaseline = map[string]string{
-	"cmd/internal/checkdata/check.go:Load":         "func(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error)",
-	"internal/session/game.go:Load":                "func(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error)",
-	"internal/layer2/gamedata/load.go:Load":        "func(fsys fs.FS) (*DB, error)",
-	"internal/layer2/gamedata/load_dir.go:LoadDir": "func(fsys fs.FS, path string) (*DB, error)",
-	"internal/layer5/sound/files.go:LoadEffects":   "func(fsys fs.FS) int",
-	"internal/layer5/sound/bgm.go:LoadBGM":         "func(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64)",
-	"internal/play/msgfit.go:LoadFonts":            "func(db *data.DB, fsys fs.FS) error",
+	"cmd/internal/checkdata/check.go:Load":        "func(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error)",
+	"internal/session/game.go:Load":               "func(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error)",
+	"internal/model/gamedata/load.go:Load":        "func(fsys fs.FS) (*DB, error)",
+	"internal/model/gamedata/load_dir.go:LoadDir": "func(fsys fs.FS, path string) (*DB, error)",
+	"internal/screen/sound/files.go:LoadEffects":  "func(fsys fs.FS) int",
+	"internal/screen/sound/bgm.go:LoadBGM":        "func(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64)",
+	"internal/play/msgfit.go:LoadFonts":           "func(db *data.DB, fsys fs.FS) error",
 }
 
 func TestAPIShape(t *testing.T) {
@@ -468,7 +498,7 @@ window window_opacity with won written_in x y zoom
 func TestYAMLWords(t *testing.T) {
 	keys := map[string]bool{}
 	sourceFiles(t, func(name string, b []byte) {
-		if !strings.HasPrefix(name, "internal/layer2/gamedata/") || strings.HasSuffix(name, "_test.go") {
+		if !strings.HasPrefix(name, "internal/model/gamedata/") || strings.HasSuffix(name, "_test.go") {
 			return
 		}
 		ast.Inspect(parsed(t, name, b), func(n ast.Node) bool {

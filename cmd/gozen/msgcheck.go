@@ -20,16 +20,16 @@ import (
 
 	"github.com/nao1215/gozen/internal/diag"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/play"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

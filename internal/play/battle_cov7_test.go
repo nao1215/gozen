@@ -4,7 +4,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // TestFoeBoxesProperty: for any mix of up to eight foes of every size in the game, the boxes stay

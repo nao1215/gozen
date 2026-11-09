@@ -18,7 +18,7 @@ import (
 	md "github.com/nao1215/markdown"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 //go:embed templates

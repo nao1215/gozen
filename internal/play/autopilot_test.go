@@ -10,8 +10,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 // btlDiveGame is a town with a rest, a shop and a way down into a made dungeon whose

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/base/geom"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // campaignOpen opens the campaign of testdata/campaign on its map, its YAML changed by repl.

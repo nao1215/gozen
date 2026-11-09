@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 	"github.com/nao1215/gozen/internal/world"
 )

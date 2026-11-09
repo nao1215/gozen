@@ -21,7 +21,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // The same route supplies the published demonstration and this native E2E.

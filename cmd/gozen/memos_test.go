@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer1/memo"
+	"github.com/nao1215/gozen/internal/base/memo"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

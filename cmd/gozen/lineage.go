@@ -6,7 +6,7 @@ import (
 
 	md "github.com/nao1215/markdown"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // lineageLines writes a species' family tree as an indented Markdown list: each line is a

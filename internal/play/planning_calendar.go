@@ -12,8 +12,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/expr"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 func planningMarkers(p *data.Planning, v data.PlanningView, start, end time.Time) []data.TimelineMarker {

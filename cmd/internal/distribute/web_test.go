@@ -22,8 +22,8 @@ import (
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/cmd/internal/starter"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer2/gamepackage"
+	"github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamepackage"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

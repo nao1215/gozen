@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // Keys is the list of names an expression-side object holds (so that gozen's Query can map the object to a Go value; ADR 0021).

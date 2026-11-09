@@ -4,7 +4,7 @@ import (
 	"image"
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // A bust with a height goes across the top of the entry, the text under it;

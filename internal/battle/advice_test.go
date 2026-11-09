@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/base/optional"
 	"github.com/nao1215/gozen/internal/battle"
-	"github.com/nao1215/gozen/internal/layer1/optional"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/testgame"
 )

@@ -13,7 +13,7 @@ import (
 	"net/url"
 	"syscall/js"
 
-	"github.com/nao1215/gozen/internal/layer2/gamepackage"
+	"github.com/nao1215/gozen/internal/model/gamepackage"
 )
 
 func defaultPhoneArchiveStore(g *Game) (gamepackage.Store, error) {

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // Check each equipment-stone combination (stone_sets) one by one for whether it can be assembled

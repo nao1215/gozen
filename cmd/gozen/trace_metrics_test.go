@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
+	"github.com/nao1215/gozen/internal/base/traceformat"
 )
 
 func metricsFixture(t *testing.T, lines ...string) playMetrics {

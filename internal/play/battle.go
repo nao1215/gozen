@@ -17,10 +17,10 @@ import (
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/expr"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/sound"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/sound"
 )
 
 type bphase int

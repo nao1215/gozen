@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/battle"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	"github.com/nao1215/gozen/internal/rpg"
 	lang "github.com/nao1215/gozen/internal/text"
 )

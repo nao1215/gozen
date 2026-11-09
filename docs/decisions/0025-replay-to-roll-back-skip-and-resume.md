@@ -1,6 +1,6 @@
 # ADR 0025: Replay to roll back, skip and resume
 
-Status: Accepted (2026-10-21). Stages 0, 2 and 2b are done (`schema_version: 4`, `ui.rollback`, rolling back, the choice's `id` and `chose`, the save in the middle of an event, save format version 2). Home: `internal/play` (the history and the replay), `internal/rpg` (the save envelope), `internal/layer2/gamedata` (the YAML words).
+Status: Accepted (2026-10-21). Stages 0, 2 and 2b are done (`schema_version: 4`, `ui.rollback`, rolling back, the choice's `id` and `chose`, the save in the middle of an event, save format version 2). Home: `internal/play` (the history and the replay), `internal/rpg` (the save envelope), `internal/model/gamedata` (the YAML words).
 
 ## Users and problem
 

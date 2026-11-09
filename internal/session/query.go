@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer3/scope"
+	"github.com/nao1215/gozen/internal/rules/scope"
 )
 
 // Query evaluates an expression on the state and puts its value in out, a pointer: a

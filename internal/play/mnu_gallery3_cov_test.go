@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // mnuFinishReplay pushes the recollection and plays it to its end.

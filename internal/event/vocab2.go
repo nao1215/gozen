@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
-	"github.com/nao1215/gozen/internal/layer3/field"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
+	"github.com/nao1215/gozen/internal/rules/field"
 )
 
 // Commands of spec version 2 and the names usable only in event expressions (ADR 0021).

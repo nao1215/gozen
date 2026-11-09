@@ -116,8 +116,8 @@ No compatibility layer is placed. The coexistence in stages 3 to 5 is only insid
 Stage 1 reduced only "what nobody uses". What users use stays until it is replaced in stages 3 to 6.
 
 - Counting method: with `golang.org/x/tools/go/packages`, the downstream game, the streamer game and the whole of Gozen (including tests) were read with types, and for each public identifier the references from "outside users", "`cmd/gozen`", "other Gozen packages" and "its own package" were counted.
-- `assetfs` was moved to `internal/assetfs` and `sound` to `internal/layer5/sound` (0 outside users).
-- Among the type aliases of `data`, those whose name and members no outside user uses were removed. `cmd/gozen` uses `internal/layer2/gamedata` directly.
+- `assetfs` was moved to `internal/assetfs` and `sound` to `internal/screen/sound` (0 outside users).
+- Among the type aliases of `data`, those whose name and members no outside user uses were removed. `cmd/gozen` uses `internal/model/gamedata` directly.
 - In packages with implementations, functions, methods, types and constants used only within their own package were made private, and those used nowhere were deleted. Methods that satisfy an interface, fields of public types, and types that outside users use through values were kept.
 - `internal/dev/apilist` does not count members (fields and methods) of private types. A private type cannot be used by name, and its members are not part of the public promise.
 - The empty reserved directory `x/` was removed. Experiments will be placed in `x/` when a concrete user appears.
@@ -174,7 +174,7 @@ Construction promises during the coexistence:
 ## Result of stage 4
 
 - `play.Main(ctx, fsys, dir, args, play.Config)` took over the game's main (the start options, help and `--dev` of the current `runner.Run` were moved as they are). `runner.Run` now only calls `play.Main` and is removed in stage 6, after users have moved (the main of the large work still uses it).
-- `play.New(*gozen.Session, play.Config) (*Screen, error)`: shows a Session on screen in your own Ebitengine loop or in a browser. A freshly made Session continues from the start event, and a played Session continues from where it is, playing on the Session's state. `Config.Dev` follows the Session. The Session's contents are passed through an internal entrance (`internal/layer4/sessionlink`), without increasing the public API.
+- `play.New(*gozen.Session, play.Config) (*Screen, error)`: shows a Session on screen in your own Ebitengine loop or in a browser. A freshly made Session continues from the start event, and a played Session continues from where it is, playing on the Session's state. `Config.Dev` follows the Session. The Session's contents are passed through an internal entrance (`internal/drive/sessionlink`), without increasing the public API.
 - `play.Config` has three fields: `Store` (opens a `gozen.Store` from the work's ID), `Mute` and `Output`. Random numbers, save location, window size, full screen and authoring settings are only in the start options of `play.Main` (`play.Development` was removed). The `Scene` entrance is not placed (the author's decision 6).
 - All saving goes through `gozen.Store` (slots, auto, settings, recollections, read marks). The default is the `gozen/<ID>` in the OS user's configuration directory, and in the browser (GOOS=js) it is localStorage (`gozen/<ID>/<name>`). A trial play uses memory (no temporary directory is made). The saved time is shown if the storage place knows it (`ModTime`, not public).
 - Wayfinder (`examples/play`) runs with `play.Main` on the desktop and `play.New(session)` on `GOOS=js`. It was started in headless Chrome, the screen appeared, and it was confirmed that the autosave goes into localStorage. js/wasm was added to the CI cross-build.
@@ -207,7 +207,7 @@ Public count: 1,450 to 197 (and 619 more in `api/schema.txt`). The breakdown is 
 ## Superseded decisions
 
 - [ADR 0002](0002-public-api-scope.md): the list of packages under the v0 contract and the reservation of `x/`. The public packages are reduced stage by stage according to "Treatment" above, and finally become `gozen`, `play`, `gfx`, `react`, `chat` and `puppet`. `assetfs` and `sound` were removed from the contract in stage 1.
-- [ADR 0010](0010-core-ownership.md): "YAML type aliases are the public contract", "`Host.Handle(Effect)` and a sealed `Effect`", and "saving through `rpg.Parse` and `savefile`". The YAML types move to the separate promise of `schema`, effects and waits become one struct each, and saving becomes `Session.Save`, `Restore` and `Store`. That `internal/layer2/gamedata` owns the definition types does not change.
+- [ADR 0010](0010-core-ownership.md): "YAML type aliases are the public contract", "`Host.Handle(Effect)` and a sealed `Effect`", and "saving through `rpg.Parse` and `savefile`". The YAML types move to the separate promise of `schema`, effects and waits become one struct each, and saving becomes `Session.Save`, `Restore` and `Store`. That `internal/model/gamedata` owns the definition types does not change.
 - [ADR 0014](0014-dungeon-host-adoption.md): the publication of `dungeon`. Step-by-step operation is folded into commands (`step`, `turn`, `walk`) and observation into expressions (`map`, `cell(x, y)`, `pos`), and `dungeon` leaves the public surface in stage 6.
 - [ADR 0015](0015-reaction-and-chat.md): the publication of the `react` book types (characters, rules, asks, memory) and the `chat` script types. The book and the script become opaque types and are read as YAML with `YAML(path)`. `Analyzer` is not made public until a user appears.
 

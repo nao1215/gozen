@@ -10,8 +10,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
 // puppetSet holds the moving portraits of actors with a puppet (Actor.Puppet),

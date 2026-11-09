@@ -14,8 +14,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/diag"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
 // Load writes a count summary to out and warnings to diagnostics, borrowing all inputs.

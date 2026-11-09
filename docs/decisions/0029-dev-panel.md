@@ -1,6 +1,6 @@
 # ADR 0029: The development panel (F8)
 
-Status: Accepted (2026-10-21). Done (stages 0 and 6). This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/layer2/gamedata` (the index), `internal/play` (the panel).
+Status: Accepted (2026-10-21). Done (stages 0 and 6). This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/model/gamedata` (the index), `internal/play` (the panel).
 
 ## Users and problem
 

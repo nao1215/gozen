@@ -12,12 +12,12 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/atlas"
-	"github.com/nao1215/gozen/internal/layer5/doll"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/stage"
+	"github.com/nao1215/gozen/internal/base/geom"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/atlas"
+	"github.com/nao1215/gozen/internal/screen/doll"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/stage"
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/world"
 )

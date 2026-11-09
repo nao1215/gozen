@@ -15,9 +15,9 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // CaptureJob selects a deterministic view for the CLI's image batch.

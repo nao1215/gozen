@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// Streams is the progress of the live streams (ADR 0048), kept by internal/layer3/broadcast.
+// Streams is the progress of the live streams (ADR 0048), kept by internal/rules/broadcast.
 type Streams struct {
 	// Open is when the game was last open, in Unix seconds (0: never).
 	Open int64 `json:"open,omitempty"`
@@ -19,7 +19,7 @@ type Streams struct {
 
 // MaxNextEpisode is the highest next episode a save keeps: the episodes are taken round
 // from it, and a stream adds its episodes to it, which must not overflow.
-// internal/layer3/broadcast goes on no further when an episode is seen.
+// internal/rules/broadcast goes on no further when an episode is seen.
 const MaxNextEpisode = 1 << 30
 
 // check reports the first next episode of a channel or a duo out of 0 to MaxNextEpisode, or

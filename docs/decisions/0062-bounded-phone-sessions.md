@@ -14,7 +14,7 @@ Messages, posts and rows use existing expressions in `when`. Omitted conditions 
 
 ## Ownership and compatibility
 
-Definitions and validation remain in `internal/layer2/gamedata`; the event runner evaluates visibility and applies the selected result. `internal/play` owns layout, scrolling and input. It never writes gameplay flags directly. The existing `internal/rpg` flag and variable save format remains sufficient.
+Definitions and validation remain in `internal/model/gamedata`; the event runner evaluates visibility and applies the selected result. `internal/play` owns layout, scrolling and input. It never writes gameplay flags directly. The existing `internal/rpg` flag and variable save format remains sufficient.
 
 Loading restores flags and variables. Reopening the phone reconstructs the visible contacts, messages and posts from those values. This change does not save the active app, scroll position or progress through an open phone. Existing save restrictions stay in place, and old result indices retain their meaning.
 

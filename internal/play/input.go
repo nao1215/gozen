@@ -11,7 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 )
 
 type button int

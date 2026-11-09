@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/base/traceformat"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

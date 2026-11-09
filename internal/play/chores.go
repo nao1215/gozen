@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

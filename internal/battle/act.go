@@ -7,9 +7,9 @@ import (
 
 	lang "github.com/nao1215/gozen/internal/text"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/safeint"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // act plays one action.

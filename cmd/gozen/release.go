@@ -11,9 +11,9 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
+	"github.com/nao1215/gozen/internal/model/assetpolicy"
 
-	"github.com/nao1215/gozen/internal/layer1/assetfs"
+	"github.com/nao1215/gozen/internal/base/assetfs"
 )
 
 func (c *command) release() clihelp.Operation {

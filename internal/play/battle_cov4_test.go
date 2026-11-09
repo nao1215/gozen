@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/battle"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/sound"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/screen/sound"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

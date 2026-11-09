@@ -8,7 +8,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

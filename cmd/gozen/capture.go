@@ -17,16 +17,16 @@ import (
 
 	"github.com/nao1215/gozen/internal/cliio"
 
-	"github.com/nao1215/gozen/internal/layer1/decodeguard"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer2/assetpolicy"
+	"github.com/nao1215/gozen/internal/model/assetpolicy"
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/layer1/assetfs"
+	"github.com/nao1215/gozen/internal/base/assetfs"
 
 	lang "github.com/nao1215/gozen/internal/text"
 )

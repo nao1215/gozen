@@ -3,7 +3,7 @@ package play
 import (
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // campaign.order_view: icons offers a region's orders as a row of icons: left and right

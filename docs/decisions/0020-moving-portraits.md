@@ -1,6 +1,6 @@
 # ADR 0020: Moving portraits (puppet)
 
-Status: Accepted (2026-10-19). Home: `puppet` (a layer 5 public package), `internal/layer5/puppet` (the shared implementation), `internal/layer2/puppetdef` (YAML types and validation), and `gozen puppet` (checking and cutting out differences).
+Status: Accepted (2026-10-19). Home: `puppet` (a layer 5 public package), `internal/screen/puppet` (the shared implementation), `internal/model/puppetdef` (YAML types and validation), and `gozen puppet` (checking and cutting out differences).
 
 ## Users and problem
 
@@ -38,7 +38,7 @@ In RPG conversations, writing a puppet YAML in the companion definition `Actor.P
 
 ### Layers
 
-`puppet` uses Ebitengine, so it is a layer 5 public package, and an independent component is added to `.go-arch-lint.yml` (same permissions as `gfx` and the like; it does not refer to the sideways `gfx` or `play`). The implementation lives in `internal/layer5/puppet` so that it creates no sideways dependency when `internal/play` later uses it for conversation portraits. The YAML types and structure validation know nothing about images, so they live in `internal/layer2/puppetdef` (layer 2, where YAML use is allowed). No exception that allows YAML in layer 5 shared implementations is added.
+`puppet` uses Ebitengine, so it is a layer 5 public package, and an independent component is added to `.go-arch-lint.yml` (same permissions as `gfx` and the like; it does not refer to the sideways `gfx` or `play`). The implementation lives in `internal/screen/puppet` so that it creates no sideways dependency when `internal/play` later uses it for conversation portraits. The YAML types and structure validation know nothing about images, so they live in `internal/model/puppetdef` (layer 2, where YAML use is allowed). No exception that allows YAML in layer 5 shared implementations is added.
 
 `gozen puppet` checks with the same `Load` and prints the position of each difference. With `--out`, it writes the picture of differences cut out small and a YAML with `at` into a new directory (to make the distribution smaller).
 
@@ -48,7 +48,7 @@ The author's request (2026-10-19): in the sample game, show a character whose ri
 
 `springs:` (a list of parts) was added to the YAML. Each part gets a range (rectangle or polygon), a root (an edge of the range or a point), what it follows (`head` or `body`), a direction (`x`, `y` or `both`), the spring's stiffness and damping, an amount (`amount`) and a limit on the lag (`limit`). `body` follows where the root point moves under breathing and the whole-body reactions (hop, shrink, shake), so a part attached low on the body sways with a lag behind the vertical motion of the body. Where parts overlap, a later part in the list replaces the motion of an earlier one.
 
-- No public API is added. Only YAML items; the Go types are in `internal/layer2/puppetdef`. `api/public.txt` does not change.
+- No public API is added. Only YAML items; the Go types are in `internal/model/puppetdef`. `api/public.txt` does not change.
 
 An actor or enemy can reuse a puppet YAML with `soft_sway:` regions. Each region uses the spring settings above and a rectangle or ellipse in base-picture pixels. A body-following region trails breathing and whole-body reactions. This keeps the extra control in the same layer 2 YAML definition and the same layer 5 motion implementation; no public Go declaration is added.
 - `hair` goes through the same computation as the first part of the list (root on the top edge, following the head). Existing YAML is read as is, and the mesh vertices are bit-for-bit the same as before the change (`TestHairUnchanged`, `TestHairIsASpring`).
@@ -66,11 +66,11 @@ An actor or enemy can reuse a puppet YAML with `soft_sway:` regions. Each region
 
 ## Verification
 
-- `internal/layer2/puppetdef/spec_test.go`: loading valid YAML, 26 kinds of errors (unknown keys, picture extension, range, strength, kind of reaction, hair without a head, and so on), and `FuzzParse`.
-- `internal/layer5/puppet/spring_test.go`: the look of hair is unchanged (the sum of the mesh before the change), a default part equal to hair gives the same motion as hair, the same sway for the same seed, swaying with a lag behind the body's hop and settling, the direction limit and the cap, vertices outside the range do not move and the order of overlaps, stability with stiff springs and a low TPS, and the weight of a point root.
-- `internal/layer5/puppet/puppet_test.go`: automatic cutting of differences (location, transparency of the edge, ignoring tiny dots, a picture with no difference), 8 kinds of loading errors, the same motion for the same seed and different motion for different seeds, the number of blinks and mouth shapes, expression blending, returning to the original when a reaction ends, the original mesh coordinates being inside the picture and the vertices never straying from the picture by more than the head radius over 3000 updates, the head weight (nothing below the base of the neck moves), and reading back the `--out` output to get the same differences.
+- `internal/model/puppetdef/spec_test.go`: loading valid YAML, 26 kinds of errors (unknown keys, picture extension, range, strength, kind of reaction, hair without a head, and so on), and `FuzzParse`.
+- `internal/screen/puppet/spring_test.go`: the look of hair is unchanged (the sum of the mesh before the change), a default part equal to hair gives the same motion as hair, the same sway for the same seed, swaying with a lag behind the body's hop and settling, the direction limit and the cap, vertices outside the range do not move and the order of overlaps, stability with stiff springs and a low TPS, and the weight of a point root.
+- `internal/screen/puppet/puppet_test.go`: automatic cutting of differences (location, transparency of the edge, ignoring tiny dots, a picture with no difference), 8 kinds of loading errors, the same motion for the same seed and different motion for different seeds, the number of blinks and mouth shapes, expression blending, returning to the original when a reaction ends, the original mesh coordinates being inside the picture and the vertices never straying from the picture by more than the head radius over 3000 updates, the head weight (nothing below the base of the neck moves), and reading back the `--out` output to get the same differences.
 - `puppet/puppet_test.go`: loading, creating, reacting, expressions and errors through the public API. `puppet/graphics_test.go` (`make graphics`, Xvfb): reads the real rendering and checks the base color, translucency, blinking, mouth, the colors midway and at the end of an expression, that the bottom edge lifts when hopping, that nothing is drawn after Close, and that the mesh draws nothing outside the shape.
-- `internal/layer2/gamedata/check_test.go`: 4 kinds of errors of a companion's `puppet` (missing file, YAML error, missing picture, missing companion expression) and the valid form.
+- `internal/model/gamedata/check_test.go`: 4 kinds of errors of a companion's `puppet` (missing file, YAML error, missing picture, missing companion expression) and the valid form.
 - `e2e/atago/puppet.atago.yaml`: the output of `gozen puppet`, writing and reading back with `--out`, an existing output destination, and the exit code on error.
 - Not confirmed: rendering on WASM, Windows and macOS. Speed when many bodies of large pictures (4000 pixels or more on the long side) are shown.
 

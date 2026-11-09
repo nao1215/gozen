@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 func TestDungeonSnapSettingRoundTrip(t *testing.T) {

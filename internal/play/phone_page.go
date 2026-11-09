@@ -10,8 +10,8 @@ import (
 
 	"rsc.io/qr"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 // The page of the phone (ADR 0057) is any app or web page: a browser's

@@ -10,7 +10,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/exp/textinput"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 // textField is a line typed with the keyboard or an input method: the memo's line and

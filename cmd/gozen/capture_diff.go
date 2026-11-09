@@ -16,7 +16,7 @@ import (
 	"reflect"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 )
 
 // ShotDiff holds optional capture report facts. It is exported so encoding/json

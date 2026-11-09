@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 )
 
 // shotWriter writes the screenshots off the game loop. Draw only copies the screen's

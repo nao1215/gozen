@@ -6,7 +6,7 @@ Scope: checkout `2271a50`, reviewed on 2026-10-23; Linux/amd64, Go 1.26.10. The 
 
 ### P1: road weights can make route search effectively hang
 
-Evidence: `internal/layer3/atlas/atlas.go:105` adds two `int` values without checking overflow. The validator only rejects negative road steps (`internal/layer2/gamedata/atlas.go:249`). Roads are bidirectional, so an overflow can repeatedly lower the distance back to a previously visited node.
+Evidence: `internal/rules/atlas/atlas.go:105` adds two `int` values without checking overflow. The validator only rejects negative road steps (`internal/model/gamedata/atlas.go:249`). Roads are bidirectional, so an overflow can repeatedly lower the distance back to a previously visited node.
 
 Reproduction: construct an Atlas with two points named `0` and `1`, one road between them with `Steps: math.MaxInt`, and call `atlas.Routes(&rpg.State{}, a, "0")`. A compiled probe was terminated by `timeout 3s` with exit 124. The corresponding small road with one step returns immediately. This reproduces the route algorithm directly; an end-to-end YAML load of this case was not run.
 
@@ -14,17 +14,17 @@ Fix direction: use checked addition and define how unrepresentable total distanc
 
 ### P1: normal pictures have no decoded-size guard
 
-Evidence: `internal/play/assets.go:193` reads the full file and calls `picdecode.Decode`; `internal/layer5/picdecode/picdecode.go:16` calls `image.Decode` without inspecting dimensions first. `assets.go:190` then converts to an Ebitengine image. `internal/layer2/gamedata/check.go:132` and `:138` check picture/file existence, not image dimensions or decoding success. Map picture dimensions are read without an upper bound in `internal/layer2/gamedata/stage.go:370`.
+Evidence: `internal/play/assets.go:193` reads the full file and calls `picdecode.Decode`; `internal/screen/picdecode/picdecode.go:16` calls `image.Decode` without inspecting dimensions first. `assets.go:190` then converts to an Ebitengine image. `internal/model/gamedata/check.go:132` and `:138` check picture/file existence, not image dimensions or decoding success. Map picture dimensions are read without an upper bound in `internal/model/gamedata/stage.go:370`.
 
 A generated PNG of 65,536 by 1 pixels passed `picdecode.Decode` and returned those bounds with no error. This intentionally uses little memory. No huge square allocation or GPU crash was attempted. A 16,384-square RGBA buffer alone requires 1 GiB, before GPU copies and other allocations; exhaustion and backend texture failures remain risks inferred from this path, not reproduced crashes.
 
-The 256 MiB picture cache is not a decoding limit: accounting and trimming occur after loading, and `trim` retains the last image even if it exceeds the budget (`assets.go:155`). Puppets do have an 8,192-side guard (`internal/layer5/puppet/rig.go:22`, `:237`); this does not cover ordinary backgrounds and enemy images.
+The 256 MiB picture cache is not a decoding limit: accounting and trimming occur after loading, and `trim` retains the last image even if it exceeds the budget (`assets.go:155`). Puppets do have an 8,192-side guard (`internal/screen/puppet/rig.go:22`, `:237`); this does not cover ordinary backgrounds and enemy images.
 
 Fix direction: check encoded input size, dimensions and total pixel count before decoding, and use overflow-safe size arithmetic. Align checker diagnostics with runtime rejection. Treat GPU texture limits separately from CPU pixel budgets. Consider the sum of simultaneously visible images: LRU eviction below that working set can cause repeated decoding on successive frames.
 
 ### P2: large enemy groups lose mouse hit targets
 
-Evidence: `internal/play/battle.go:1311` lays all enemies out in one row, shrinks the row to fit, then converts each rectangle to integer coordinates at `:1378`. The troop validator only requires a nonempty list (`internal/layer2/gamedata/check.go:217`). Mouse selection tests these rectangles at `internal/play/battle.go:1069`.
+Evidence: `internal/play/battle.go:1311` lays all enemies out in one row, shrinks the row to fit, then converts each rectangle to integer coordinates at `:1378`. The troop validator only requires a nonempty list (`internal/model/gamedata/check.go:217`). Mouse selection tests these rectangles at `internal/play/battle.go:1069`.
 
 A temporary same-package probe created a 1280 by 720 Game and repeated neutral 64 by 64 images, then counted empty rectangles returned by `foeBoxes`:
 
@@ -56,11 +56,11 @@ These are separate process samples, not a statistical benchmark or peak RSS. For
 Recommended order:
 
 1. Build adjacency lists, evaluate road eligibility once per refresh, keep distances/predecessors, and reconstruct only paths actually needed by choices or the chosen destination. Preserve deterministic tie behavior and dynamic conditions.
-2. Avoid repeated `PointIDs` construction in `Visited`: each call rebuilds ordered keys (`internal/layer3/atlas/atlas.go:327`, `internal/layer2/gamedata/stage.go:348`), and map refresh calls it per point.
+2. Avoid repeated `PointIDs` construction in `Visited`: each call rebuilds ordered keys (`internal/rules/atlas/atlas.go:327`, `internal/model/gamedata/stage.go:348`), and map refresh calls it per point.
 3. Cache label placement until geometry/selection/labels change. `internal/play/atlas.go:687` compares each candidate label against all previously placed boxes on every draw. Consider a spatial index and an explicit dense-map display policy.
 4. Reuse battle layout per frame/update; add geometry and CPU benchmarks at increasing actor counts. Measure actual frames before claiming a target frame rate.
 
-Existing safeguards should be retained: dungeon side limits and their tests (`internal/layer3/dungeon/limits_test.go`), puppet side limits, and campaign `max_soldiers` validation at 12 (`internal/layer2/gamedata/campaign.go:656`). No claim is made that every extreme input is broken.
+Existing safeguards should be retained: dungeon side limits and their tests (`internal/rules/dungeon/limits_test.go`), puppet side limits, and campaign `max_soldiers` validation at 12 (`internal/model/gamedata/campaign.go:656`). No claim is made that every extreme input is broken.
 
 ## Documentation and skill accuracy
 

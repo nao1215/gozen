@@ -14,7 +14,7 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
 // puppetCmd checks a moving portrait and, with --out, writes it with every

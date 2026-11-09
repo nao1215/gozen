@@ -8,7 +8,7 @@ A host game's exploration controller and route evaluation advance one step at a 
 
 ## Decision
 
-`dungeon` is added as the public entry point of layer 3. The owner of the implementation stays `internal/layer3/dungeon`, and the public surface is limited to the following set needed for the game side's operations. Generation algorithms, drawing, and internal caches for exploration are not public. It is implemented within the existing layer permissions, and no exception is added.
+`dungeon` is added as the public entry point of layer 3. The owner of the implementation stays `internal/rules/dungeon`, and the public surface is limited to the following set needed for the game side's operations. Generation algorithms, drawing, and internal caches for exploration are not public. It is implemented within the existing layer permissions, and no exception is added.
 
 | Public identifier | Who uses it and for what |
 | --- | --- |

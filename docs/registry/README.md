@@ -46,7 +46,7 @@ These commands are maintainer tools, not new author-facing CLI commands:
 ```sh
 python3 scripts/update-game-catalog.py
 go run ./cmd/internal/gamecatalog check docs/registry/catalog.json docs/registry/sources.json
-go test -race ./internal/layer2/gamepackage ./cmd/internal/gamecatalog
+go test -race ./internal/model/gamepackage ./cmd/internal/gamecatalog
 ```
 
 To check immutability against an earlier trusted snapshot, supply its filename as the final argument to `check`. `sign CATALOG SIGNATURE` uses the signing-key environment variable and writes only the detached signature. It never prints the private key.

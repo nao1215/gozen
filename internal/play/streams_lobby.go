@@ -13,10 +13,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/nao1215/gozen/internal/chat"
-	"github.com/nao1215/gozen/internal/layer2/puppetdef"
-	"github.com/nao1215/gozen/internal/layer3/broadcast"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/model/puppetdef"
+	"github.com/nao1215/gozen/internal/rules/broadcast"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 	lang "github.com/nao1215/gozen/internal/text"
 	"github.com/nao1215/gozen/internal/world"
 )

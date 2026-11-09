@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // The strongest way to equip stones (the stone shop's suggestion). It uses all owned stones (in the bag and equipped by members)
