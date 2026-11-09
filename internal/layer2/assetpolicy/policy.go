@@ -67,7 +67,6 @@ func Load(base fs.FS, name string) (Policy, error) {
 	return p, nil
 }
 
-
 func (f RecordFields) approval(m map[string]any) Approval {
 	str := func(k string) string {
 		s, ok := assetfs.Field(m, k).(string)

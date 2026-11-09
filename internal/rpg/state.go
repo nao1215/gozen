@@ -447,6 +447,14 @@ func (s *State) AverageLevel() int {
 	return sum / max(1, n)
 }
 
+// Holds reports whether condition e evaluates to true in the state's environment;
+// an evaluation error counts as false. The field, the atlas and the player share it
+// for authored when conditions.
+func (s *State) Holds(e data.Expr) bool {
+	ok, err := e.Bool(s.Env())
+	return err == nil && ok
+}
+
 // Wiped reports whether every member has fallen.
 func (s *State) Wiped() bool {
 	for _, a := range s.Members() {

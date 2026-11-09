@@ -494,8 +494,6 @@ func clone(db *data.DB, st *rpg.State, seed uint64) (*rpg.State, error) {
 	return c, nil
 }
 
-
-
 func (r *runner) shop(st *rpg.State) {
 	if r.o.NoTown {
 		return
@@ -531,7 +529,6 @@ func (r *runner) shop(st *rpg.State) {
 		}
 	}
 }
-
 
 func standUp(st *rpg.State) {
 	for _, a := range st.Members() {

@@ -877,9 +877,6 @@ func (b *bot) boss(f int) *Boss {
 	return r
 }
 
-
-
-
 func (b *bot) entriesAt(loc string) []world.Entry {
 	if b.db.Locations[loc] == nil {
 		return nil

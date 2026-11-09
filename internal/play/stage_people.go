@@ -76,7 +76,7 @@ func (g *Game) newStagePeople(s *stageScene) []*stagePerson {
 			p.next = 1
 		}
 		p.spec = newDollSpec(person.Image, def.Doll, s.sc.Camera)
-		if !g.holds(person.When) {
+		if !g.st.Holds(person.When) {
 			p.fade = 1
 		}
 		g.dollSheet(p.spec)
@@ -85,16 +85,11 @@ func (g *Game) newStagePeople(s *stageScene) []*stagePerson {
 	return out
 }
 
-func (g *Game) holds(e data.Expr) bool {
-	ok, err := e.Bool(g.st.Env())
-	return err == nil && ok
-}
-
 // advancePeople walks the people along their paths and fades those whose when changed.
 func (s *stageScene) advancePeople(g *Game) {
 	for _, p := range s.people {
 		want := 1.0
-		if g.holds(p.person.When) {
+		if g.st.Holds(p.person.When) {
 			want = 0
 		}
 		p.fade += math.Max(-tickSecond*3, math.Min(tickSecond*3, want-p.fade))
@@ -159,7 +154,7 @@ func (g *Game) stagePeopleFigures(s *stageScene, out []stage.Figure) []stage.Fig
 func (g *Game) lines(p *data.Person) []string {
 	var out []string
 	for _, b := range p.Bubbles {
-		if g.holds(b.When) {
+		if g.st.Holds(b.When) {
 			out = append(out, data.Render(b.Text, g.st.Env()))
 		}
 	}
