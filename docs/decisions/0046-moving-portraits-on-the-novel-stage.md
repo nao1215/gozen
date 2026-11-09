@@ -1,6 +1,6 @@
 # ADR 0046: Moving portraits on the novel stage
 
-Status: Accepted (2026-10-26). Home: `internal/model/gamedata` (`ui.stage_puppets` and its check), `internal/play` (the stage), `internal/screen/puppet` (the reduced composition).
+Status: Accepted (2026-10-26). Home: `internal/model/gamedata` (`ui.stage_puppets` and its check), `internal/screen/play` (the stage), `internal/screen/puppet` (the reduced composition).
 
 ## Users and problem
 

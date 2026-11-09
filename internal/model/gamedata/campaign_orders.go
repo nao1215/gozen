@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // OrderCmd is the order command: the id of an order, and the general and the target region

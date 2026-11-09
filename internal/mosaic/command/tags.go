@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
 	"github.com/nao1215/gozen/internal/mosaic"
 )

@@ -7,7 +7,7 @@ import (
 	"github.com/nao1215/gozen/internal/base/memo"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 func designMemos(root, run string, db *data.DB, cfg *designeval.Config, runs []*designeval.Run, sums []designeval.Summary) ([]string, error) {

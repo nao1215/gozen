@@ -25,14 +25,14 @@ version or asset was changed.
   Boundary and concurrent tests cover reuse, eviction, invalid input and
   oversized sources.
 - Collection evaluation allocated a map and chain for every element.
-  `internal/expr/collections.go:23` gives each evaluation its own budget and
+  `internal/base/expr/collections.go:23` gives each evaluation its own budget and
   each collection its own reusable item scope. Nested scopes retain their
   lexical behavior. Partition, filter/count and concurrent evaluation tests
   supplement the existing nested-scope and visit-budget tests.
 - Three existing clash tests succeeded without entering the clash screen:
   their target did not border player territory. A new entry assertion first
   failed. The fixture now supplies a valid border and asserts entry and exit
-  (`internal/play/clash_integration_test.go:37`). The coverage-named test file
+  (`internal/screen/play/clash_integration_test.go:37`). The coverage-named test file
   was renamed to describe its integration responsibility.
 
 ## Measurements
@@ -166,7 +166,7 @@ and phone-input fuzzing after the deterministic regressions.
 - Loading or closing a game retained its phone. `TestPhoneReleasedOnResetAndClose`
   failed before `startState` and `Close` shared `closePhone`. Owned canvases,
   icons, media images and puppet references are released by
-  `internal/play/phone.go:876`; `TestPhoneCloseReleasesOwnedReferences` creates
+  `internal/screen/play/phone.go:876`; `TestPhoneCloseReleasesOwnedReferences` creates
   those resources before checking cleanup and repeated close.
 - Cursor replay and held Skip stopped at a phone. `TestPhoneFastForward` failed
   before the phone accepted both fast-forward paths. The schema-11

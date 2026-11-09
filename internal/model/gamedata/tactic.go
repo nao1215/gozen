@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
-	"github.com/nao1215/gozen/internal/expr"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/expr"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 // TacticRow is one row of a selectable tactic. It stores no display name or expression, only a stable ID into the catalog.

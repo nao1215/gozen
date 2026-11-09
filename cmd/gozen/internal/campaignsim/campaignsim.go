@@ -13,9 +13,9 @@ import (
 	"sort"
 
 	"github.com/nao1215/gozen/internal/base/optional"
-	"github.com/nao1215/gozen/internal/headless"
+	"github.com/nao1215/gozen/internal/drive/headless"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/campaign"
 )
 

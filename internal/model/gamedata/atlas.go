@@ -5,7 +5,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // Atlas is a location shown as a map: one picture with points joined by roads (map:). A

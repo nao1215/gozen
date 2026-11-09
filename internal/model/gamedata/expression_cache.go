@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 // Bound both entry count and source size. Long expressions remain valid but

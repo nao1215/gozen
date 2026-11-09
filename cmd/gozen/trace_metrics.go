@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/base/traceformat"
-	"github.com/nao1215/gozen/internal/diag"
 )
 
 type metricPoint struct {

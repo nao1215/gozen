@@ -2,7 +2,7 @@
 // episodes a stream plays one after another (ADR 0052), when each beat plays, who is live, which episode each channel plays, when an
 // episode counts as seen, the affection steps, the days in a row and the gold earned
 // while the game was closed. The clock and the random source are passed in, so the
-// rules run headless. The stream screen of internal/play uses them.
+// rules run headless. The stream screen of internal/screen/play uses them.
 package broadcast
 
 import (
@@ -12,7 +12,7 @@ import (
 	"time"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // Show is a stream on the air: the episodes of a slot one after another.

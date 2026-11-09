@@ -14,7 +14,7 @@ Fix direction: use checked addition and define how unrepresentable total distanc
 
 ### P1: normal pictures have no decoded-size guard
 
-Evidence: `internal/play/assets.go:193` reads the full file and calls `picdecode.Decode`; `internal/screen/picdecode/picdecode.go:16` calls `image.Decode` without inspecting dimensions first. `assets.go:190` then converts to an Ebitengine image. `internal/model/gamedata/check.go:132` and `:138` check picture/file existence, not image dimensions or decoding success. Map picture dimensions are read without an upper bound in `internal/model/gamedata/stage.go:370`.
+Evidence: `internal/screen/play/assets.go:193` reads the full file and calls `picdecode.Decode`; `internal/screen/picdecode/picdecode.go:16` calls `image.Decode` without inspecting dimensions first. `assets.go:190` then converts to an Ebitengine image. `internal/model/gamedata/check.go:132` and `:138` check picture/file existence, not image dimensions or decoding success. Map picture dimensions are read without an upper bound in `internal/model/gamedata/stage.go:370`.
 
 A generated PNG of 65,536 by 1 pixels passed `picdecode.Decode` and returned those bounds with no error. This intentionally uses little memory. No huge square allocation or GPU crash was attempted. A 16,384-square RGBA buffer alone requires 1 GiB, before GPU copies and other allocations; exhaustion and backend texture failures remain risks inferred from this path, not reproduced crashes.
 
@@ -24,7 +24,7 @@ Fix direction: check encoded input size, dimensions and total pixel count before
 
 ### P2: large enemy groups lose mouse hit targets
 
-Evidence: `internal/play/battle.go:1311` lays all enemies out in one row, shrinks the row to fit, then converts each rectangle to integer coordinates at `:1378`. The troop validator only requires a nonempty list (`internal/model/gamedata/check.go:217`). Mouse selection tests these rectangles at `internal/play/battle.go:1069`.
+Evidence: `internal/screen/play/battle.go:1311` lays all enemies out in one row, shrinks the row to fit, then converts each rectangle to integer coordinates at `:1378`. The troop validator only requires a nonempty list (`internal/model/gamedata/check.go:217`). Mouse selection tests these rectangles at `internal/screen/play/battle.go:1069`.
 
 A temporary same-package probe created a 1280 by 720 Game and repeated neutral 64 by 64 images, then counted empty rectangles returned by `foeBoxes`:
 
@@ -41,7 +41,7 @@ Fix direction: establish a supported visible group size, with validation and a d
 
 ## Game performance
 
-`atlas.Routes` scans every road for every expanded point (`atlas.go:99`) and materializes a complete path for every destination (`:113`). On a chain, total path storage is quadratic even if road lookup is optimized. `atlasScene.update` refreshes the map every 60 updates (`internal/play/atlas.go:239`), so an idle map can incur repeated work.
+`atlas.Routes` scans every road for every expanded point (`atlas.go:99`) and materializes a complete path for every destination (`:113`). On a chain, total path storage is quadratic even if road lookup is optimized. `atlasScene.update` refreshes the map every 60 updates (`internal/screen/play/atlas.go:239`), so an idle map can incur repeated work.
 
 Measured using a generated chain of points, unit road weights, an empty state, a GC before each measurement, wall time around `Routes`, and the difference in `runtime.MemStats.TotalAlloc`:
 
@@ -57,7 +57,7 @@ Recommended order:
 
 1. Build adjacency lists, evaluate road eligibility once per refresh, keep distances/predecessors, and reconstruct only paths actually needed by choices or the chosen destination. Preserve deterministic tie behavior and dynamic conditions.
 2. Avoid repeated `PointIDs` construction in `Visited`: each call rebuilds ordered keys (`internal/rules/atlas/atlas.go:327`, `internal/model/gamedata/stage.go:348`), and map refresh calls it per point.
-3. Cache label placement until geometry/selection/labels change. `internal/play/atlas.go:687` compares each candidate label against all previously placed boxes on every draw. Consider a spatial index and an explicit dense-map display policy.
+3. Cache label placement until geometry/selection/labels change. `internal/screen/play/atlas.go:687` compares each candidate label against all previously placed boxes on every draw. Consider a spatial index and an explicit dense-map display policy.
 4. Reuse battle layout per frame/update; add geometry and CPU benchmarks at increasing actor counts. Measure actual frames before claiming a target frame rate.
 
 Existing safeguards should be retained: dungeon side limits and their tests (`internal/rules/dungeon/limits_test.go`), puppet side limits, and campaign `max_soldiers` validation at 12 (`internal/model/gamedata/campaign.go:656`). No claim is made that every extreme input is broken.

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/headless/balance"
+	"github.com/nao1215/gozen/internal/drive/headless/balance"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // gozen sim battle --state counts from the memo's .save with the same function and seed as the dev balance display (F7).

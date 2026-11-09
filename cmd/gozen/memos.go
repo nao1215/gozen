@@ -21,8 +21,8 @@ import (
 
 	"github.com/nao1215/gozen/internal/base/memo"
 
-	lang "github.com/nao1215/gozen/internal/text"
-	"github.com/nao1215/gozen/internal/text/catalog"
+	lang "github.com/nao1215/gozen/internal/base/text"
+	"github.com/nao1215/gozen/internal/base/text/catalog"
 )
 
 type memoEntry struct {

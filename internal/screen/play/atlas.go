@@ -1,0 +1,1388 @@
+package play
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"math"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+
+	"github.com/nao1215/gozen/internal/base/geom"
+	lang "github.com/nao1215/gozen/internal/base/text"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/atlas"
+	"github.com/nao1215/gozen/internal/rules/world"
+	"github.com/nao1215/gozen/internal/screen/doll"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/stage"
+)
+
+// A map (ADR 0022): one picture with the roads painted in it, and points the party goes
+// between. The token stands on a point; choosing another point (arrow keys and OK, a click
+// or a tap, the list) walks the token along the roads one at a time, each road's steps,
+// battles and do running when the token reaches its end (the rules' cross and reach
+// commands, in the order atlas.Go puts them). The screen draws a small marker on each
+// point it shows and a quiet name plate; it draws the roads' lines only when the map asks
+// (draw_roads), for the picture is meant to have them.
+
+const (
+	tokenSpeed   = 0.12  // of the picture's width a second
+	tokenHeight  = 0.095 // the face's, of the screen's height, when the map does not say
+	dollHeight   = 0.17  // the doll's (token: doll)
+	markerHeight = 0.06  // of the screen's height, when the map does not say
+	defaultLabel = 0.03  // the name plates' text, of the screen's height
+	pointHit     = 40.0  // UI units around a point a click or a tap takes it (a finger)
+)
+
+// mapPoint is what the screen knows of a point, found when the state changes.
+type mapPoint struct {
+	id     string
+	at     geom.Pt
+	shown  int // 0 hidden, 1 a mark only, 2 dim, 3 visited (or the token's)
+	open   bool
+	label  string
+	marker string
+	choice int // its index in choices, -1 when it is not one
+}
+
+// mapRoad is what the screen knows of a road.
+type mapRoad struct {
+	line   geom.Polyline
+	shown  bool
+	usable bool
+}
+
+type atlasScene struct {
+	cameraCenter geom.Pt
+	cameraZoom   float64
+	cameraPan    bool
+	panelHidden  bool
+	loc          string
+	pic          string
+	age          int
+	banner       int
+	sel          int
+	choices      []atlas.Choice
+	points       []mapPoint
+	roads        []mapRoad
+	here         string
+	dirty        bool     // the state may have changed: find the points again when idle
+	leader       dollSpec // the token's doll when the map has no token picture
+	spot         string   // the spot last written to the trace
+	boxes        []plateBox
+	targets      []pointTarget
+
+	pointLayer      *ebiten.Image
+	pointLayerKey   pointLayerKey
+	pointLayerValid bool
+
+	ground map[string]*ebiten.Image // landmarks settled onto their terrain, by region
+	// warChosen: a campaign's map has chosen its first region
+	warChosen bool
+	// asking: the map's own question (a region's orders) and what it led to are running
+	asking bool
+
+	// the walk along the roads: the commands still to run, and the road being walked
+	queue  []data.Command
+	path   geom.Polyline
+	walked float64
+	at     geom.Pt // the token, in the picture's pixels
+	dir    geom.Pt
+	cross  *data.Command // run when the token reaches the road's end
+	phase  float64
+}
+
+func newAtlasScene(g *Game) *atlasScene {
+	s := &atlasScene{}
+	s.arrive(g)
+	return s
+}
+
+func (s *atlasScene) location(g *Game) *data.Location { return g.db.Locations[s.loc] }
+
+// arrive sets the map up for the party's location, the token on its point.
+func (s *atlasScene) arrive(g *Game) {
+	s.pointLayerValid = false
+	s.loc = g.st.Location
+	s.panelHidden = false
+	l := s.location(g)
+	s.pic = l.Map.Picture
+	s.age, s.banner, s.queue, s.path, s.cross = 0, 240, nil, nil, nil
+	s.leader = g.leaderDoll()
+	s.leader = newDollSpec(s.leader.picture, s.leader.doll, 30)
+	s.dir = geom.Pt{Y: 1}
+	atlas.Visit(g.db, g.st, s.loc, atlas.Here(g.db, g.st)) // standing there is having been there
+	s.warChosen = false
+	s.refresh(g)
+	if !s.campaignMap(g) {
+		s.sel = s.firstChoice()
+	}
+	if p := l.Map.Points[s.here]; p != nil {
+		s.at = p.At.Pt()
+	}
+	s.resetCamera(g, false)
+}
+
+// firstChoice is the first choice that is not the point the token stands on.
+func (s *atlasScene) firstChoice() int {
+	for i, c := range s.choices {
+		if c.Point != s.here {
+			return i
+		}
+	}
+	return 0
+}
+
+// refresh finds the choices and what each point and road shows (after the state changed):
+// the hidden points are neither drawn nor chosen.
+func (s *atlasScene) refresh(g *Game) {
+	a := s.location(g).Map
+	s.here = atlas.Here(g.db, g.st)
+	if s.here != s.spot {
+		s.spot = s.here
+		g.emit("spot", traceLine{"location": s.loc, "spot": s.here})
+	}
+	ids := a.PointIDs()
+	preview := s.previewState(g)
+	all := atlas.Choices(g.db, preview)
+	reach := map[string]bool{}
+	for _, c := range all {
+		reach[c.Point] = true
+	}
+	previous := s.points
+	if len(previous) != len(ids) {
+		s.pointLayerValid = false
+	}
+	s.points = s.points[:0]
+	index := map[string]int{}
+	for pointIndex, id := range ids {
+		p := a.Points[id]
+		mp := mapPoint{id: id, at: p.At.Pt(), shown: s.shownOf(g, id, pointIndex), open: atlas.Open(preview, p), label: s.labelOf(g, id), marker: p.Marker, choice: -1}
+		if p.Hide == "closed" && !mp.open {
+			mp.shown = 0
+		} else if mp.shown == 0 && reach[id] { // hidden until the roads reach it
+			mp.shown = 1
+		}
+		if pointIndex < len(previous) {
+			before := previous[pointIndex]
+			before.choice = -1 // Input indices do not affect painted geometry.
+			if before != mp {
+				s.pointLayerValid = false
+			}
+		}
+		index[id] = len(s.points)
+		s.points = append(s.points, mp)
+	}
+	s.choices = s.choices[:0]
+	for _, c := range all {
+		if s.points[index[c.Point]].shown == 0 {
+			continue
+		}
+		s.points[index[c.Point]].choice = len(s.choices)
+		s.choices = append(s.choices, c)
+	}
+	if s.campaignMap(g) {
+		s.campaignChoices(g)
+	} else {
+		s.sel = min(s.sel, max(0, len(s.choices)-1))
+	}
+	s.roads = s.roads[:0]
+	for i := range a.Roads {
+		r := &a.Roads[i]
+		mr := mapRoad{}
+		if len(r.Between) == 2 && a.Points[r.Between[0]] != nil && a.Points[r.Between[1]] != nil {
+			mr.line = roadLine(a, r, r.Between[0])
+			mr.shown = s.points[index[r.Between[0]]].shown > 0 && s.points[index[r.Between[1]]].shown > 0
+			mr.usable = atlas.Usable(preview, a, r)
+		}
+		s.roads = append(s.roads, mr)
+	}
+	if p := a.Points[s.here]; p != nil && s.path == nil {
+		s.at = p.At.Pt()
+	}
+	s.dirty = false
+}
+
+// fit is how the picture lies on the screen (pixels): the scale and the offset.
+func (s *atlasScene) fit(g *Game) (k, ox, oy float64, ok bool) {
+	img := g.pics.get(s.pic)
+	if img == nil {
+		return 0, 0, 0, false
+	}
+	l, t, pw, ph := s.view(g)
+	b := img.Bounds()
+	k = math.Min(pw/float64(b.Dx()), ph/float64(b.Dy()))
+	if s.location(g).Map.Camera != nil {
+		k *= max(1, s.cameraZoom)
+		s.clampCamera(g, k, float64(b.Dx()), float64(b.Dy()))
+		return k, l + pw/2 - s.cameraCenter.X*k, t + ph/2 - s.cameraCenter.Y*k, true
+	}
+	return k, l + (pw-float64(b.Dx())*k)/2, t + (ph-float64(b.Dy())*k)/2, true
+}
+
+// view is the part of the screen the picture is fitted to (pixels): the left and top
+// edges, the width and the height; the whole screen less the map's safe_area.
+func (s *atlasScene) view(g *Game) (l, t, w, h float64) {
+	pw, ph := g.pixels()
+	a := s.location(g).Map.SafeArea
+	if len(a) != 4 {
+		return 0, 0, pw, ph
+	}
+	return pw * a[3], ph * a[0], pw * (1 - a[1] - a[3]), ph * (1 - a[0] - a[2])
+}
+
+// Camera state belongs to the scene. Entering or loading starts at the current
+// point; returning from an overlay keeps the current view. Browsing never mutates State.
+func (s *atlasScene) cameraLimit(g *Game) float64 {
+	if c := s.location(g).Map.Camera; c != nil && c.MaxZoom > 0 {
+		return c.MaxZoom
+	}
+	return 8
+}
+
+func (s *atlasScene) resetCamera(g *Game, overview bool) {
+	s.cameraZoom, s.cameraCenter, s.cameraPan = 1, s.at, false
+	c := s.location(g).Map.Camera
+	if c == nil || overview {
+		return
+	}
+	s.cameraZoom = c.Zoom
+	if s.cameraZoom == 0 {
+		s.cameraZoom = min(2, s.cameraLimit(g))
+	}
+}
+
+// clampCamera keeps the camera on the picture (k its scale, w and h its size). A picture
+// that can cover the whole screen at k never shows an edge inside the screen, under the
+// safe_area's bands too; one that can only cover the safe part covers that; a smaller one
+// stands in the middle of the safe part.
+func (s *atlasScene) clampCamera(g *Game, k, w, h float64) {
+	l, t, iw, ih := s.view(g)
+	fw, fh := g.pixels()
+	s.cameraCenter.X = clampAxis(s.cameraCenter.X, w, k, l, iw, fw)
+	s.cameraCenter.Y = clampAxis(s.cameraCenter.Y, h, k, t, ih, fh)
+}
+
+// clampAxis clamps the camera's centre c along one axis: the picture is size long, shown
+// at k; the safe part begins at lo and is span long, of a screen full long.
+func clampAxis(c, size, k, lo, span, full float64) float64 {
+	shown := size * k
+	off := lo + span/2 - c*k // where the picture's edge shows
+	switch {
+	case shown >= full:
+		off = max(full-shown, min(0, off))
+	case shown >= span:
+		off = max(lo+span-shown, min(lo, off))
+	default:
+		off = lo + (span-shown)/2
+	}
+	return (lo + span/2 - off) / k
+}
+
+func (s *atlasScene) panCamera(g *Game, dx, dy float64) bool {
+	k, _, _, ok := s.fit(g)
+	if !ok {
+		return false
+	}
+	before := s.cameraCenter
+	pw, ph := g.pixels()
+	s.cameraCenter = s.cameraCenter.Add(geom.Pt{X: dx * pw / k, Y: dy * ph / k})
+	s.fit(g)
+	return s.cameraCenter != before
+}
+
+func (s *atlasScene) zoomCamera(g *Game, factor float64) {
+	s.fit(g) // Clamp the old view before preserving its center.
+	s.cameraZoom = max(1, min(s.cameraLimit(g), s.cameraZoom*factor))
+	s.fit(g)
+}
+
+func (s *atlasScene) revealCameraPoint(g *Game, p geom.Pt) {
+	if s.location(g).Map.Camera == nil {
+		return
+	}
+	k, _, _, ok := s.fit(g)
+	if !ok {
+		return
+	}
+	_, _, pw, ph := s.view(g)
+	spanX, spanY := pw/k*.35, ph/k*.35
+	s.cameraCenter.X = max(p.X-spanX, min(p.X+spanX, s.cameraCenter.X))
+	s.cameraCenter.Y = max(p.Y-spanY, min(p.Y+spanY, s.cameraCenter.Y))
+	s.fit(g)
+}
+
+func (s *atlasScene) cameraPointVisible(g *Game, p geom.Pt) bool {
+	if s.location(g).Map.Camera == nil {
+		return true
+	}
+	x, y := s.screen(g, p)
+	w, h := g.screen()
+	return x >= 0 && x <= w && y >= 0 && y <= h
+}
+
+func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
+	before, hidden, center := s.sel, s.panelHidden, s.cameraCenter
+	from := s.at
+	if s.sel >= 0 && s.sel < len(s.choices) {
+		from = s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt()
+	}
+	best, score := s.sel, math.Inf(1)
+	for i, c := range s.choices {
+		d := s.location(g).Map.Points[c.Point].At.Pt().Sub(from)
+		ahead := d.X*want.X + d.Y*want.Y
+		if i == s.sel || ahead <= 0 {
+			continue
+		}
+		side := math.Abs(d.X*want.Y - d.Y*want.X)
+		value := d.Len() + side*2
+		if value < score {
+			best, score = i, value
+		}
+	}
+	if best != s.sel {
+		s.panelHidden = false
+		s.sel = best
+		g.sfx("cursor")
+	}
+	if len(s.choices) > 0 {
+		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
+	}
+	return s.sel != before || s.panelHidden != hidden || s.cameraCenter != center
+}
+
+// cameraButtons are in screen coordinates, independent of the map transform; none when
+// the map's camera hides them.
+func (s *atlasScene) cameraButtons(g *Game) []plateBox {
+	if c := s.location(g).Map.Camera; c == nil || c.Buttons == "hidden" {
+		return nil
+	}
+	_, h := g.screen()
+	boxes := make([]plateBox, 8)
+	for i := range boxes {
+		boxes[i] = plateBox{x: 24 + float64(i)*74, y: h - 104, w: 68, h: 42}
+	}
+	return boxes
+}
+
+func (s *atlasScene) cameraAction(g *Game, n int) bool {
+	switch n {
+	case 0:
+		return s.panCamera(g, -.2, 0)
+	case 1:
+		return s.panCamera(g, .2, 0)
+	case 2:
+		return s.panCamera(g, 0, -.2)
+	case 3:
+		return s.panCamera(g, 0, .2)
+	case 4:
+		s.zoomCamera(g, 1/1.25)
+	case 5:
+		s.zoomCamera(g, 1.25)
+	case 6:
+		s.resetCamera(g, true)
+	case 7:
+		s.resetCamera(g, false)
+	}
+	return true
+}
+
+func (s *atlasScene) updateCamera(g *Game) bool {
+	if s.location(g).Map.Camera == nil {
+		return false
+	}
+	in := &g.in
+	if in.inspect(in.click) {
+		x, y := float64(in.mouse.X), float64(in.mouse.Y)
+		for i, b := range s.cameraButtons(g) {
+			if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
+				in.query(s.cameraAction(g, i))
+				return true
+			}
+		}
+	}
+	switch {
+	case in.pressedKey(btnMapZoomIn) || in.wheel > 0:
+		s.zoomCamera(g, 1.25)
+		return true
+	case in.pressedKey(btnMapZoomOut) || in.wheel < 0:
+		s.zoomCamera(g, 1/1.25)
+		return true
+	case in.pressedKey(btnMapOverview):
+		s.resetCamera(g, true)
+		return true
+	case in.pressedKey(btnMapFocus):
+		s.resetCamera(g, false)
+		return true
+	case in.pressedKey(btnMapPan):
+		s.cameraPan = !s.cameraPan
+		return true
+	case len(s.choices) > 0 && in.pressedKey(btnNext):
+		s.sel = (s.sel + 1) % len(s.choices)
+		s.panelHidden = false
+		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
+		return true
+	}
+	if s.cameraPan {
+		dx, dy := 0.0, 0.0
+		if in.inspect(in.held[btnLeft] || in.pressed[btnLeft]) {
+			dx--
+		}
+		if in.inspect(in.held[btnRight] || in.pressed[btnRight]) {
+			dx++
+		}
+		if in.inspect(in.held[btnUp] || in.pressed[btnUp]) {
+			dy--
+		}
+		if in.inspect(in.held[btnDown] || in.pressed[btnDown]) {
+			dy++
+		}
+		if dx != 0 || dy != 0 {
+			in.query(s.panCamera(g, dx*.015, dy*.015))
+			return true
+		}
+	}
+	return false
+}
+
+func (s *atlasScene) drawCamera(g *Game, dst *ebiten.Image) {
+	labels := []string{"<", ">", "^", "v", "-", "+", lang.T("全体"), lang.T("現在地")}
+	bs := s.cameraButtons(g)
+	if len(bs) == 0 {
+		return
+	}
+	alpha := s.cameraButtonsAlpha(g, bs)
+	for i, b := range bs {
+		gfx.FillRoundRect(dst, float32(b.x), float32(b.y), float32(b.w), float32(b.h), 8, withAlpha(g.th.window, uint8(240*alpha)))
+		gfx.DrawText(dst, labels[i], b.x+b.w/2, b.y+9, sizeS*.75, withAlpha(g.th.text, uint8(255*alpha)))
+	}
+	if alpha < 1 {
+		return
+	}
+	_, h := g.screen()
+	hint := lang.T("P / R3: 地図を動かす")
+	if s.cameraPan {
+		hint = lang.T("P / R3: 選択に戻る")
+	}
+	g.text(dst, hint, 24, h-135, sizeS*.7, g.th.text)
+}
+
+// cameraButtonsAlpha is how opaque the camera's buttons draw: faint ones are see-through
+// until the pointer is over one of them.
+func (s *atlasScene) cameraButtonsAlpha(g *Game, bs []plateBox) float64 {
+	if s.location(g).Map.Camera.Buttons != "faint" {
+		return 1
+	}
+	x, y := float64(g.in.mouse.X), float64(g.in.mouse.Y)
+	for _, b := range bs {
+		if inPlate(b, x, y) {
+			return 1
+		}
+	}
+	return 0.35
+}
+
+// screen is where a point of the picture shows, in UI units.
+func (s *atlasScene) screen(g *Game, p geom.Pt) (float64, float64) {
+	k, ox, oy, _ := s.fit(g)
+	return (ox + p.X*k) / g.ui, (oy + p.Y*k) / g.ui
+}
+
+// walking reports whether the token is on its way (a road, or commands still to run).
+func (s *atlasScene) walking() bool { return s.path != nil || len(s.queue) > 0 }
+
+func (s *atlasScene) update(g *Game) {
+	s.age++
+	s.banner = max(0, s.banner-1)
+	if s.path != nil {
+		s.walk(g)
+		return
+	}
+	if g.pump() {
+		s.dirty = true
+		return
+	}
+	if g.enterAt != "" {
+		loc := g.enterAt
+		g.enterAt = ""
+		if g.st.Location == loc {
+			cmds := g.startArrival(true)
+			s.dirty = true
+			if len(cmds) > 0 {
+				return
+			}
+		}
+	}
+	if cmds := world.Auto(g.db, g.st); cmds != nil {
+		g.events.Start(cmds)
+		s.dirty = true
+		return
+	}
+	if len(s.queue) > 0 { // the next road, or the arrival
+		c := s.queue[0]
+		s.queue = s.queue[1:]
+		s.dirty = true
+		if c.Cross != "" && s.startRoad(g, c) {
+			return
+		}
+		g.events.Start([]data.Command{c})
+		return
+	}
+	// idle: what the map asked is over
+	s.asking = false
+	if s.dirty || s.age%60 == 0 { // the state changed (or a while passed): look again
+		s.refresh(g)
+		if s.sel < len(s.choices) && s.choices[s.sel].Point == s.here && !s.campaignMap(g) && s.location(g).Map.Activation != "instant" {
+			s.sel = s.firstChoice()
+		}
+	}
+	in := &g.in
+	if s.updateSelectionPanel(g) {
+		return
+	}
+	if s.updateEndTurn(g) {
+		return
+	}
+	if s.updateCamera(g) {
+		return
+	}
+	if in.openList() {
+		g.sfx("decide")
+		g.push(newEntryListOf(g, s.take, s.listed))
+		return
+	}
+	if in.inspect(in.click) {
+		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
+			in.query(true)
+			if s.location(g).Map.SelectionPanel != nil {
+				s.focusPoint(c.Point)
+				return
+			}
+			s.goTo(g, c)
+		}
+		return
+	}
+	if len(s.choices) == 0 {
+		return
+	}
+	var want geom.Pt
+	switch {
+	case in.inspect(in.pressed[btnUp]) || in.wheel > 0:
+		want = geom.Pt{Y: -1}
+	case in.inspect(in.pressed[btnDown]) || in.wheel < 0:
+		want = geom.Pt{Y: 1}
+	case in.inspect(in.pressed[btnLeft]):
+		want = geom.Pt{X: -1}
+	case in.inspect(in.pressed[btnRight]):
+		want = geom.Pt{X: 1}
+	}
+	if want != (geom.Pt{}) {
+		in.query(s.selectToward(g, want))
+		return
+	}
+	if in.ok() {
+		s.goTo(g, s.choices[s.sel])
+	}
+}
+
+// listed reports whether an entry goes in the list (a hidden point does not).
+func (s *atlasScene) listed(e world.Entry) bool {
+	if e.Choice == nil {
+		return true
+	}
+	for _, p := range s.points {
+		if p.id == e.Choice.Point {
+			return p.shown > 0
+		}
+	}
+	return true
+}
+
+// selectToward selects the choice whose way out of the token's point is nearest the way
+// (another than the one selected when the way is the same).
+func (s *atlasScene) selectToward(g *Game, want geom.Pt) bool {
+	if a := s.location(g).Map; a.Camera != nil || a.SelectionPanel != nil || a.Activation == "instant" {
+		return s.selectCameraPoint(g, want)
+	}
+	best, bd := s.sel, 0.3
+	for i, c := range s.choices {
+		d := s.firstStep(g, c).Sub(s.at)
+		if i == s.sel || d.Len() == 0 {
+			continue
+		}
+		if dot := (d.X*want.X + d.Y*want.Y) / d.Len(); dot > bd {
+			best, bd = i, dot
+		}
+	}
+	if best != s.sel {
+		g.sfx("cursor")
+		s.sel = best
+		return true
+	}
+	return false
+}
+
+// firstStep is where the way to a choice first heads (its first road's first bend).
+func (s *atlasScene) firstStep(g *Game, c atlas.Choice) geom.Pt {
+	a := s.location(g).Map
+	if len(c.Roads) == 0 {
+		return a.Points[c.Point].At.Pt()
+	}
+	line := roadLine(a, &a.Roads[c.Roads[0]], s.here)
+	if len(line) > 1 {
+		return line[1]
+	}
+	return a.Points[c.Point].At.Pt()
+}
+
+// pointAt prefers the last visible marker or plate drawn, then the nearest anchor
+// within a finger's reach. Layout is recomputed so input never uses stale bounds.
+func (s *atlasScene) pointAt(g *Game, x, y float64) (atlas.Choice, bool) {
+	s.layoutPoints(g, nil)
+	for _, target := range slices.Backward(s.targets) {
+		b := target.box
+		if x >= b.x && x <= b.x+b.w && y >= b.y && y <= b.y+b.h {
+			return s.choices[target.choice], true
+		}
+	}
+	best, bd := -1, pointHit
+	for _, p := range s.points {
+		if p.choice < 0 || p.shown == 0 {
+			continue
+		}
+		px, py := s.screen(g, p.at)
+		if d := math.Hypot(px-x, py-y); d < bd {
+			best, bd = p.choice, d
+		}
+	}
+	if best < 0 && s.campaignMap(g) { // inside a region's area
+		for _, p := range s.points {
+			r := g.db.Regions[p.id]
+			if p.choice < 0 || p.shown == 0 || r == nil || len(r.Area) < 3 {
+				continue
+			}
+			var q geom.Poly
+			for _, a := range r.Area.Poly() {
+				ax, ay := s.screen(g, a)
+				q = append(q, geom.Pt{X: ax, Y: ay})
+			}
+			if q.Inside(geom.Pt{X: x, Y: y}) {
+				best = p.choice
+				break
+			}
+		}
+	}
+	if best < 0 {
+		return atlas.Choice{}, false
+	}
+	return s.choices[best], true
+}
+
+// take runs an entry of the list: a point of the map walks there, the rest as the menu.
+func (s *atlasScene) take(g *Game, e world.Entry) {
+	switch {
+	case e.Kind == world.Menu:
+		g.push(newMenu(g))
+	case e.Choice != nil:
+		s.goTo(g, *e.Choice)
+	default:
+		g.sfx("decide")
+		g.events.Start(e.Commands(g.db, g.st))
+		s.dirty = true
+	}
+}
+
+// go_ sets off to a choice: its commands run one at a time, a road's after the token has
+// walked it.
+func (s *atlasScene) goTo(g *Game, c atlas.Choice) {
+	if s.regionPoint(g, c.Point) && s.location(g).Map.Activation != "instant" {
+		s.regionOrders(g, c.Point)
+		return
+	}
+	g.sfx("decide")
+	e := world.Entry{Kind: world.Exit, Choice: &c, Spot: c.Point}
+	s.queue = e.Commands(g.db, g.st)
+	s.dirty = true
+	fields := traceLine{"location": s.loc, "from": s.here, "to": c.Point, "roads": c.Roads}
+	if s.location(g).Map.Activation == "instant" {
+		g.emit("activate", fields)
+	} else {
+		g.emit("travel", fields)
+	}
+}
+
+// startRoad sets the token walking the road of a cross command (false when it has none).
+func (s *atlasScene) startRoad(g *Game, c data.Command) bool {
+	a := s.location(g).Map
+	is, _, _ := strings.Cut(c.Cross, ">")
+	i, err := strconv.Atoi(is)
+	if err != nil || i < 0 || i >= len(a.Roads) {
+		return false
+	}
+	s.path = roadLine(a, &a.Roads[i], atlas.Here(g.db, g.st))
+	s.walked, s.cross = 0, &c
+	g.sfx("step")
+	return len(s.path) > 1
+}
+
+// walk moves the token along the road; at its end the road's command runs.
+func (s *atlasScene) walk(g *Game) {
+	img := g.pics.get(s.pic)
+	rate := s.location(g).Map.TravelSpeed
+	if rate == 0 {
+		rate = tokenSpeed
+	}
+	speed := rate * tickSecond * 1000
+	if img != nil {
+		speed = rate * tickSecond * float64(img.Bounds().Dx())
+	}
+	s.walked += speed
+	s.phase = math.Mod(s.phase+tickSecond*7, 2*math.Pi)
+	at, dir := s.path.At(s.walked)
+	s.at = at
+	s.revealCameraPoint(g, at)
+	if dir != (geom.Pt{}) {
+		s.dir = dir
+	}
+	if s.walked < s.path.Length() {
+		return
+	}
+	s.path = nil
+	if c := s.cross; c != nil {
+		s.cross = nil
+		g.events.Start([]data.Command{*c})
+	}
+}
+
+// roadLine is a road's line from the point from (the via points in their order or back).
+func roadLine(a *data.Atlas, r *data.Road, from string) geom.Polyline {
+	if len(r.Between) != 2 || a.Points[r.Between[0]] == nil || a.Points[r.Between[1]] == nil {
+		return nil
+	}
+	line := geom.Polyline{a.Points[r.Between[0]].At.Pt()}
+	for _, v := range r.Via {
+		line = append(line, v.Pt())
+	}
+	line = append(line, a.Points[r.Between[1]].At.Pt())
+	if r.Between[1] == from {
+		for i, j := 0, len(line)-1; i < j; i, j = i+1, j-1 {
+			line[i], line[j] = line[j], line[i]
+		}
+	}
+	return line
+}
+
+// shownOf is how a point shows: 0 hidden, 1 a mark only, 2 dim, 3 visited (or the token's).
+// A hidden point shows as a mark once the open roads reach it (refresh).
+func (s *atlasScene) shownOf(g *Game, id string, pointIndex int) int {
+	mapped := g.st.Mapped[s.loc]
+	if id == s.here || pointIndex >= 0 && pointIndex < len(mapped) && mapped[pointIndex] != 0 {
+		return 3
+	}
+	switch s.location(g).Map.Unknown {
+	case "hidden":
+		return 0
+	case "dim":
+		return 2
+	case "named":
+		return 3
+	}
+	return 1
+}
+
+// labelOf is a point's name: its label, else the name of where it leads, else "".
+func (s *atlasScene) labelOf(g *Game, id string) string {
+	p := s.location(g).Map.Points[id]
+	switch {
+	case p.Label != "":
+		return data.Render(p.Label, s.previewState(g).Env())
+	case p.To != "" && g.db.Locations[p.To] != nil:
+		return data.Render(g.db.Locations[p.To].Name, s.previewState(g).Env())
+	case s.regionPoint(g, id):
+		return regionLabel(g, id)
+	}
+	return ""
+}
+
+var (
+	pinRed    = color.NRGBA{0xc4, 0x4a, 0x3a, 0xff}
+	plateBack = color.NRGBA{0x1c, 0x22, 0x2a, 0xff}
+	pinGray   = color.NRGBA{0x80, 0x80, 0x84, 0xff}
+	plateInk  = color.NRGBA{0xf4, 0xef, 0xe2, 0xff}
+)
+
+func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
+	k, ox, oy, ok := s.fit(g)
+	if !ok {
+		return
+	}
+	l := s.location(g)
+	a := l.Map
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	op.GeoM.Scale(k, k)
+	op.GeoM.Translate(ox, oy)
+	dst.DrawImage(g.pics.get(s.pic), op)
+	u := g.ui
+	toScreen := func(p geom.Pt) (float32, float32) {
+		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
+	}
+	talk := s.talkView(g)
+	if talk != "" {
+		defer fill(dst, color.NRGBA{0, 0, 0, 0x90})
+	}
+	if talk == "hide" { // the picture only
+		s.layoutPoints(g, nil)
+		return
+	}
+	if s.campaignMap(g) {
+		sel := ""
+		if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+			sel = s.choices[s.sel].Point
+		}
+		s.drawAreas(g, dst, toScreen, sel)
+	}
+	sel0 := ""
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+		sel0 = s.choices[s.sel].Point
+	}
+	if s.campaignMap(g) && a.RegionRoads != "always" {
+		s.drawReach(g, dst, toScreen, sel0)
+	}
+	if s.campaignMap(g) && a.RegionRoads == "always" || !s.campaignMap(g) && a.DrawRoads { // only when asked: the roads are painted in the picture
+		for _, r := range s.roads {
+			if !r.shown {
+				continue
+			}
+			c, w := withAlpha(plateInk, 210), float32(4)
+			if !r.usable {
+				c, w = withAlpha(colorShadowNRGBA, 110), 2
+			}
+			for j := 1; j < len(r.line); j++ {
+				x0, y0 := toScreen(r.line[j-1])
+				x1, y1 := toScreen(r.line[j])
+				gfx.StrokeLine(dst, x0, y0, x1, y1, w, c, true)
+			}
+		}
+	}
+	s.drawPoints(g, dst)
+	sel := ""
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+		sel = s.choices[s.sel].Point
+	}
+	_, sh := g.screen()
+	war := s.campaignMap(g)
+	if !war {
+		s.drawToken(g, dst, k, ox, oy)
+	}
+	if g.talk.active || len(g.stack) > 1 && !s.barOpen(g) {
+		return
+	}
+	if a.Camera != nil {
+		s.drawCamera(g, dst)
+	}
+	if war {
+		s.drawCampaign(g, dst, sel)
+		s.drawSelectionPanel(g, dst)
+		g.text(dst, lang.T("方向：選ぶ　決定：命令　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+		return
+	}
+	if s.banner > 0 {
+		name := data.Render(l.Name, g.st.Env())
+		al := math.Min(1, float64(s.banner)/30)
+		w := math.Max(220, gfx.TextWidth(name, sizeL)+60)
+		gfx.FillRoundRect(dst, 36, 28, float32(w), 60, 14, withAlpha(g.th.window, uint8(float64(g.th.window.A)*al)))
+		g.text(dst, name, 64, 40, sizeL, withAlpha(g.th.text, uint8(255*al)))
+	}
+	g.text(dst, lang.T("方向：選ぶ　決定：進む　メニュー：一覧"), 36, sh-40, sizeS*0.8, withAlpha(g.th.text, 200))
+	s.drawSelectionPanel(g, dst)
+}
+
+// talkView is how the map shows now (map.talk): dim or hide while a conversation that is
+// not the map's own question runs, "" otherwise.
+func (s *atlasScene) talkView(g *Game) string {
+	if !g.talk.active || s.asking {
+		return ""
+	}
+	return s.location(g).Map.Talk
+}
+
+// pointLayerKey includes the inputs that can change between state refreshes.
+// Campaign landmarks and authored marker pictures use the live drawing path.
+type pointLayerKey struct {
+	bounds                              image.Rectangle
+	k, ox, oy, ui, scale, label, marker float64
+	selected                            string
+	here                                string
+	walking, panel                      bool
+	theme                               theme
+}
+
+func (s *atlasScene) drawPoints(g *Game, dst *ebiten.Image) {
+	a := s.location(g).Map
+	if s.campaignMap(g) || len(s.points) < 128 || a.Marker != nil && a.Marker.Picture != "" {
+		s.layoutPoints(g, dst)
+		return
+	}
+	for _, p := range s.points {
+		if p.marker != "" {
+			s.layoutPoints(g, dst)
+			return
+		}
+	}
+	k, ox, oy, _ := s.fit(g)
+	key := pointLayerKey{bounds: dst.Bounds(), k: k, ox: ox, oy: oy, ui: g.ui, scale: gfx.Scale(), label: s.labelSize(g), here: s.here, walking: s.path != nil, panel: s.panelVisible(g), theme: g.th}
+	if a.Marker != nil {
+		key.marker = a.Marker.Height
+	}
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+		key.selected = s.choices[s.sel].Point
+	}
+	if s.pointLayer == nil || s.pointLayer.Bounds() != dst.Bounds() {
+		if s.pointLayer != nil {
+			s.pointLayer.Deallocate()
+		}
+		s.pointLayer = ebiten.NewImageWithOptions(dst.Bounds(), nil)
+		s.pointLayerValid = false
+	}
+	if !s.pointLayerValid || key != s.pointLayerKey {
+		s.pointLayer.Clear()
+		s.layoutPoints(g, s.pointLayer)
+		s.pointLayerKey, s.pointLayerValid = key, true
+	}
+	// The token and other animated overlays remain outside this retained layer.
+	dst.DrawImage(s.pointLayer, nil)
+}
+
+// layoutPoints shares marker and plate geometry between drawing and pointer input.
+// A nil destination performs layout only, including label collision avoidance.
+func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
+	a := s.location(g).Map
+	k, ox, oy, _ := s.fit(g)
+	u := g.ui
+	toScreen := func(p geom.Pt) (float32, float32) { return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u) }
+	sel := ""
+	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
+		sel = s.choices[s.sel].Point
+	}
+	_, sh := g.screen()
+	mh := markerHeight * sh
+	if a.Marker != nil && a.Marker.Height > 0 {
+		mh = a.Marker.Height * sh
+	}
+	// the markers, then the name plates laid out so they keep off each other and the markers
+	s.boxes = s.boxes[:0]
+	s.targets = s.targets[:0]
+	if a.Camera != nil {
+		s.boxes = append(s.boxes, s.cameraButtons(g)...)
+	}
+	if s.panelVisible(g) {
+		s.boxes = append(s.boxes, s.selectionPanelBox(g))
+	}
+	war := s.campaignMap(g)
+	for i := range s.points { // a region's plate follows its garrison at once
+		if war && g.db.Regions[s.points[i].id] != nil && s.location(g).Map.Points[s.points[i].id].Label == "" {
+			s.points[i].label = regionLabel(g, s.points[i].id)
+		}
+	}
+	for _, p := range s.points {
+		x, y := toScreen(p.at)
+		if !s.cameraPointVisible(g, p.at) {
+			continue
+		}
+		if p.id == s.here && s.path == nil && !war { // the token stands on its own point: keep plates off it
+			th := tokenSize(a) * sh
+			if a.Token == nil || a.Token.Picture == "" && !a.Token.Doll { // the round face, its ring too
+				s.boxes = append(s.boxes, plateBox{x: float64(x) - th*0.55, y: float64(y) - th*1.2, w: th * 1.1, h: th * 1.36})
+			} else {
+				s.boxes = append(s.boxes, plateBox{x: float64(x) - th*0.25, y: float64(y) - th*1.2, w: th * 0.5, h: th * 1.46})
+			}
+			continue
+		}
+		if p.shown == 0 {
+			continue
+		}
+		h := mh
+		if p.id == sel {
+			h *= 1.3
+		}
+		if war && g.db.Regions[p.id] != nil && g.db.Regions[p.id].Landmark != "" {
+			mw := float64(g.pics.get(s.pic).Bounds().Dx()) * k / u
+			if box, ok := s.drawLandmark(g, dst, p, float64(x), float64(y), mw); ok {
+				s.addPointBox(p, box)
+				continue
+			}
+		}
+		if war && g.db.Regions[p.id] != nil && len(g.db.Regions[p.id].Area) >= 3 { // the area tells the owner: only the plate
+			continue
+		}
+		if war && g.db.Regions[p.id] != nil {
+			s.drawRegionMarker(g, dst, p, float64(x), float64(y), h)
+		} else {
+			s.drawMarker(g, dst, p, float64(x), float64(y), h, pointAlpha(p))
+		}
+		if war && g.db.Regions[p.id] != nil { // a flag reaches to the right of its pole
+			s.addPointBox(p, regionMarkerBox(float64(x), float64(y), h))
+			s.boxes[len(s.boxes)-1] = regionMarkerBox(float64(x), float64(y), mh*1.3)
+		} else {
+			s.addPointBox(p, s.markerBox(g, p, float64(x), float64(y), h))
+			// Reserve the largest marker footprint for collision placement while
+			// keeping pointer targets equal to the marker actually painted.
+			s.boxes[len(s.boxes)-1] = s.markerBox(g, p, float64(x), float64(y), mh*1.3)
+		}
+	}
+	// Stable point order keeps focus changes from moving neighboring plates.
+	for _, p := range s.points {
+		if p.shown > 0 && s.cameraPointVisible(g, p.at) {
+			s.drawPlate(g, dst, p, sel, mh)
+		}
+	}
+}
+
+func regionMarkerBox(x, y, h float64) plateBox {
+	return plateBox{x: x - h*0.24 - 2, y: y - h - 2, w: h*.86 + 6, h: h*1.24 + 4}
+}
+
+type pointTarget struct {
+	box    plateBox
+	choice int
+}
+
+func (s *atlasScene) addPointBox(p mapPoint, box plateBox) {
+	s.boxes = append(s.boxes, box)
+	if p.shown > 0 && p.choice >= 0 {
+		s.targets = append(s.targets, pointTarget{box: box, choice: p.choice})
+	}
+}
+
+// markerBox uses the same aspect ratio and bottom anchor as drawMarker.
+func (s *atlasScene) markerBox(g *Game, p mapPoint, x, y, h float64) plateBox {
+	pic := p.marker
+	if pic == "" && s.location(g).Map.Marker != nil {
+		pic = s.location(g).Map.Marker.Picture
+	}
+	if pic != "" {
+		b := g.pics.get(pic).Bounds()
+		w := h * float64(b.Dx()) / float64(b.Dy())
+		return plateBox{x: x - w/2, y: y - h, w: w, h: h}
+	}
+	r := h*.28 + 1.5
+	return plateBox{x: x - r, y: y - h - 1.5, w: r * 2, h: h + 3}
+}
+
+// labelSize is the text height of the name plates in UI units: the map's label_size (a
+// fraction of the screen's height), 0.03 when not given.
+func (s *atlasScene) labelSize(g *Game) float64 {
+	_, sh := g.screen()
+	k := s.location(g).Map.LabelSize
+	if k <= 0 {
+		k = defaultLabel
+	}
+	return sh * k
+}
+
+func pointAlpha(p mapPoint) float32 {
+	if p.shown == 2 {
+		return 0.45
+	}
+	return 1
+}
+
+func (s *atlasScene) pointIndex(id string) int {
+	for i, p := range s.points {
+		if p.id == id && id != "" {
+			return i
+		}
+	}
+	return -1
+}
+
+// plateBox is a box taken on the screen (a plate or a marker, UI units).
+type plateBox struct{ x, y, w, h float64 }
+
+// overlap is the area two boxes share.
+func (b plateBox) overlap(o plateBox) float64 {
+	w := math.Min(b.x+b.w, o.x+o.w) - math.Max(b.x, o.x)
+	h := math.Min(b.y+b.h, o.y+o.h) - math.Max(b.y, o.y)
+	if w <= 0 || h <= 0 {
+		return 0
+	}
+	return w * h
+}
+
+// drawPlate draws a point's name plate (the visited points and the one chosen; a point not
+// visited shows "?" when the map marks them): dark, framed and lifted by a soft shadow, the
+// chosen one in the window's color. It goes under its point, else above its
+// marker, else beside it, where it keeps off the plates and markers already placed.
+func (s *atlasScene) drawPlate(g *Game, dst *ebiten.Image, p mapPoint, sel string, mh float64) {
+	name := p.label
+	if p.shown == 1 && p.id != sel {
+		name = "?"
+	}
+	if p.label == "" && p.shown != 1 {
+		return
+	}
+	alpha := pointAlpha(p)
+	size := s.labelSize(g)
+	px, py := s.screen(g, p.at)
+	// Reserve the revealed name even when this point currently shows only a
+	// question mark or no plate. Revealing it must not displace other labels.
+	width := gfx.TextWidth(p.label, size)
+	if p.shown == 1 {
+		width = math.Max(width, gfx.TextWidth("?", size))
+	}
+	w, h := width+size*1.1, size*1.55
+	under := px - w/2
+	tries := []plateBox{
+		{under, py + 6, w, h},                      // under the point
+		{under, py - mh*1.3 - h - 6, w, h},         // over the marker
+		{px + mh*0.5, py - mh*0.6 - h/2, w, h},     // to the right
+		{px - mh*0.5 - w, py - mh*0.6 - h/2, w, h}, // to the left
+		{under + w*0.6, py + 6, w, h},              // under, to one side or the other
+		{under - w*0.6, py + 6, w, h},
+		{under, py + 12 + h, w, h}, // further under
+	}
+	sw, sh := g.screen()
+	// the first place that takes nothing already placed, else the one that takes the least
+	box, least := tries[0], math.Inf(1)
+	for _, t := range tries {
+		t.x, t.y = math.Max(4, math.Min(sw-4-t.w, t.x)), math.Max(4, math.Min(sh-4-t.h, t.y))
+		taken := 0.0
+		for _, o := range s.boxes {
+			taken += t.overlap(o)
+		}
+		if taken < least {
+			box, least = t, taken
+		}
+		if taken == 0 {
+			break
+		}
+	}
+	if name == "" || p.shown == 2 && p.id != sel {
+		s.boxes = append(s.boxes, box)
+		return
+	}
+	s.addPointBox(p, box)
+	if dst == nil {
+		return
+	}
+	if short := s.plateName(g, p, sel); short != "" { // the place keeps the full plate's room
+		name = short
+		dw := gfx.TextWidth(name, size) + size*1.1
+		box.x, box.w = box.x+(box.w-dw)/2, dw
+	}
+	bg, edge := withAlpha(plateBack, uint8(235*alpha)), withAlpha(g.th.border, uint8(200*alpha))
+	if p.id == sel {
+		bg, edge = withAlpha(g.th.window, 245), withAlpha(g.th.accent, 255)
+	}
+	r := float32(h * 0.35)
+	gfx.FillRoundRect(dst, float32(box.x+2), float32(box.y+4), float32(box.w), float32(box.h), r, withAlpha(colorShadowNRGBA, uint8(110*alpha)))
+	gfx.FillRoundRect(dst, float32(box.x), float32(box.y), float32(box.w), float32(box.h), r, bg)
+	gfx.StrokeRoundRect(dst, float32(box.x+1), float32(box.y+1), float32(box.w-2), float32(box.h-2), r, 2, edge)
+	gfx.DrawText(dst, name, box.x+box.w/2, box.y+(box.h-size)/2-size*0.1, size, withAlpha(plateInk, uint8(255*alpha)))
+}
+
+// drawMarker draws a point's marker standing on (x, y) (UI units), h tall: its picture, the
+// map's, or a small pin (gray when the point is closed).
+func (s *atlasScene) drawMarker(g *Game, dst *ebiten.Image, p mapPoint, x, y, h float64, alpha float32) {
+	if dst == nil {
+		return
+	}
+	a := s.location(g).Map
+	pic := p.marker
+	if pic == "" && a.Marker != nil {
+		pic = a.Marker.Picture
+	}
+	if pic != "" {
+		img := g.pics.get(pic)
+		b := img.Bounds()
+		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		sc := h / float64(b.Dy())
+		op.GeoM.Scale(sc, sc)
+		box := s.markerBox(g, p, x, y, h)
+		op.GeoM.Translate(box.x, box.y)
+		if !p.open {
+			op.ColorScale.Scale(0.55, 0.55, 0.58, 1)
+		}
+		op.ColorScale.ScaleAlpha(alpha)
+		gfx.DrawImage(dst, img, op)
+		return
+	}
+	c := pinRed
+	if !p.open {
+		c = pinGray
+	}
+	r := float32(h * 0.28)
+	hx, hy := float32(x), float32(y-h+float64(r))
+	gfx.FillCircle(dst, float32(x), float32(y), r*0.45, withAlpha(colorShadowNRGBA, uint8(90*alpha)), true) // its foot
+	gfx.StrokeLine(dst, float32(x), float32(y), hx, hy, 2.5, withAlpha(colorShadowNRGBA, uint8(230*alpha)), true)
+	gfx.FillCircle(dst, hx, hy, r+1.5, withAlpha(colorShadowNRGBA, uint8(220*alpha)), true)
+	gfx.FillCircle(dst, hx, hy, r, withAlpha(c, uint8(255*alpha)), true)
+	gfx.FillCircle(dst, hx-r*0.3, hy-r*0.3, r*0.3, withAlpha(plateInk, uint8(200*alpha)), true)
+}
+
+// tokenSize is the token's height in fractions of the screen's height.
+func tokenSize(a *data.Atlas) float64 {
+	switch {
+	case a.Token != nil && a.Token.Height > 0:
+		return a.Token.Height
+	case a.Token != nil && a.Token.Doll:
+		return dollHeight
+	}
+	return tokenHeight
+}
+
+// drawToken draws the party's token on the map: the map's token picture, else the
+// leader's round face sliding along the roads (bobbing a little), else with token: doll
+// the leader's doll walking. A dark shadow and a small ring mark where the party is.
+func (s *atlasScene) drawToken(g *Game, dst *ebiten.Image, k, ox, oy float64) {
+	a := s.location(g).Map
+	_, ph := g.pixels()
+	h := tokenSize(a) * ph
+	x, y := ox+s.at.X*k, oy+s.at.Y*k
+	ux, uy, uh := float32(x/g.ui), float32(y/g.ui), float32(h/g.ui)
+	face := a.Token == nil || a.Token.Picture == "" && !a.Token.Doll
+	if face {
+		ellipse(g, dst, ux, uy, uh*0.34, uh*0.12, 0, withAlpha(colorShadowNRGBA, 170))
+		ellipse(g, dst, ux, uy, uh*0.4, uh*0.15, 2.5, withAlpha(g.th.accent, 230))
+		s.drawFace(g, dst, x, y, h)
+		return
+	}
+	defer s.drawFinder(g, dst, x/g.ui, y/g.ui, h/g.ui)
+	// a dark shadow and a ring at the token's feet (where the party is), even as it walks
+	gfx.FillCircle(dst, ux, uy, uh*0.2, withAlpha(colorShadowNRGBA, 170), true)
+	gfx.StrokeCircle(dst, ux, uy, uh*0.24, 3, withAlpha(g.th.accent, 230), true)
+	if a.Token.Picture != "" {
+		img := g.pics.get(a.Token.Picture)
+		b := img.Bounds()
+		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		sc := h / float64(b.Dy())
+		op.GeoM.Scale(sc, sc)
+		op.GeoM.Translate(x-float64(b.Dx())*sc/2, y-h)
+		dst.DrawImage(img, op)
+		return
+	}
+	sheet := g.dollSheet(s.leader)
+	if sheet == nil {
+		return
+	}
+	side := doll.Side(s.dir.X, s.dir.Y)
+	pose := doll.Pose(s.path != nil, s.phase)
+	sub, ok := sheet.SubImage(image.Rect(side*stage.SheetW, pose*stage.SheetH, (side+1)*stage.SheetW, (pose+1)*stage.SheetH)).(*ebiten.Image)
+	if !ok {
+		return
+	}
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	sc := h / stage.SheetH * 1.12
+	op.GeoM.Scale(sc, sc)
+	op.GeoM.Translate(x-stage.SheetW*sc/2, y-stage.SheetH*sc)
+	dst.DrawImage(sub, op)
+}
+
+// ellipse fills (width 0) or strokes a flat ellipse centered on (x, y), UI units.
+func ellipse(g *Game, dst *ebiten.Image, x, y, rx, ry, width float32, c color.NRGBA) {
+	u := float32(g.ui)
+	var path vector.Path
+	for i := range 48 {
+		t := float64(i) / 48 * 2 * math.Pi
+		px, py := (x+rx*float32(math.Cos(t)))*u, (y+ry*float32(math.Sin(t)))*u
+		if i == 0 {
+			path.MoveTo(px, py)
+		} else {
+			path.LineTo(px, py)
+		}
+	}
+	path.Close()
+	op := &vector.DrawPathOptions{AntiAlias: true}
+	op.ColorScale.ScaleWithColor(c)
+	if width > 0 {
+		vector.StrokePath(dst, &path, &vector.StrokeOptions{Width: width * u}, op)
+		return
+	}
+	vector.FillPath(dst, &path, nil, op)
+}
+
+// drawFace draws the leader's round face (the balloons' face) h across (pixels), standing
+// over (x, y): framed in the accent color, lifted by a soft shadow, bobbing a little while
+// it slides. A plain round piece while the face is not ready (or there is no picture).
+func (s *atlasScene) drawFace(g *Game, dst *ebiten.Image, x, y, h float64) {
+	r := h / 2
+	cy := y - r - h*0.12
+	if s.path != nil {
+		cy -= math.Abs(math.Sin(float64(s.age)/6)) * h * 0.06
+	}
+	u := g.ui
+	ux, uy, ur := float32(x/u), float32(cy/u), float32(r/u)
+	gfx.FillCircle(dst, ux+2, uy+4, ur+3, withAlpha(colorShadowNRGBA, 120), true)
+	gfx.FillCircle(dst, ux, uy, ur+3, g.th.accent, true)
+	img := g.dollFace(s.leader)
+	if img == nil {
+		gfx.FillCircle(dst, ux, uy, ur-1, g.th.window, true)
+		return
+	}
+	b := img.Bounds()
+	op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+	sc := (h - 2) / float64(b.Dx())
+	op.GeoM.Scale(sc, sc)
+	op.GeoM.Translate(x-float64(b.Dx())*sc/2, cy-float64(b.Dy())*sc/2)
+	dst.DrawImage(img, op)
+}
+
+// drawFinder draws a small arrow over the token's head (x, y: its feet; h: its height,
+// UI units), bobbing, so the party is found at a glance on a busy picture.
+func (s *atlasScene) drawFinder(g *Game, dst *ebiten.Image, x, y, h float64) {
+	bob := math.Sin(float64(s.age)/12) * h * 0.03
+	top := math.Max(4, y-h*1.04-h*0.12+bob) // on the screen even when the head is not
+	w := h * 0.09
+	var path vector.Path
+	u := float32(g.ui)
+	path.MoveTo(float32(x-w)*u, float32(top)*u)
+	path.LineTo(float32(x+w)*u, float32(top)*u)
+	path.LineTo(float32(x)*u, float32(top+w*1.3)*u)
+	path.Close()
+	for i, c := range []color.NRGBA{withAlpha(colorShadowNRGBA, 220), g.th.accent} {
+		op := &vector.DrawPathOptions{AntiAlias: true}
+		if i == 0 {
+			op.ColorScale.ScaleWithColor(c)
+			vector.StrokePath(dst, &path, &vector.StrokeOptions{Width: 4 * u, LineJoin: vector.LineJoinRound}, op)
+			continue
+		}
+		op.ColorScale.ScaleWithColor(c)
+		vector.FillPath(dst, &path, nil, op)
+	}
+}
+
+// scriptWalk is the script's walk on a map: to a point (by id) by its choice. A point
+// leading somewhere ends the walk as soon as the token sets off (the road and the arrival
+// go on by themselves: wait after it); a point with only do ends when the token is there.
+func (s *atlasScene) scriptWalk(g *Game, arg string) (button, bool) {
+	if s.walking() {
+		return btnNone, false
+	}
+	p := s.location(g).Map.Points[arg]
+	if p == nil {
+		g.failure = fmt.Errorf("script: walk %s: the map %s has no such point", arg, s.loc)
+		return 0, true
+	}
+	if s.dirty {
+		s.refresh(g)
+	}
+	if s.here == arg && p.To == "" {
+		return 0, true
+	}
+	for _, c := range s.choices {
+		if c.Point == arg {
+			s.goTo(g, c)
+			if c.Locked || p.To != "" {
+				return 0, true
+			}
+			return btnNone, false
+		}
+	}
+	g.failure = fmt.Errorf("script: walk %s: no open road leads there from %s (or the point is hidden)", arg, s.here)
+	return 0, true
+}

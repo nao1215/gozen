@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // scheduleDependencies checks the declared ordering without trying to solve

@@ -1,6 +1,6 @@
 # ADR 0026: Read lines, their record, and skipping
 
-Status: Accepted (2026-10-21). Implemented: the source key, the record's envelope, the marks of options taken, skip mode, scene skip, the read rate, the trace and the script (`TestGraphicsNovel`, `internal/play/skip_test.go`). Home: `internal/event` (the key of a line), `internal/play` (the record, skip mode, scene skip).
+Status: Accepted (2026-10-21). Implemented: the source key, the record's envelope, the marks of options taken, skip mode, scene skip, the read rate, the trace and the script (`TestGraphicsNovel`, `internal/screen/play/skip_test.go`). Home: `internal/rules/event` (the key of a line), `internal/screen/play` (the record, skip mode, scene skip).
 
 ## Users and problem
 

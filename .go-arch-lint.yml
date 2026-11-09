@@ -14,7 +14,7 @@ exclude:
   - bin
   - dist
   # the graphics tests' window host, a test harness like the _test.go files
-  - internal/play/testdata
+  - internal/screen/play/testdata
 excludeFiles:
   # Runtime dependency policy; external test harnesses may compose layers.
   - '^.*_test\.go$'
@@ -29,27 +29,27 @@ vendors:
   width: { in: [golang.org/x/text/width] }
   norm: { in: [golang.org/x/text/unicode/norm] }
   pflag: { in: [github.com/spf13/pflag] }
-  # QR codes on a phone's page (internal/play/phone_page.go) and their check.
+  # QR codes on a phone's page (internal/screen/play/phone_page.go) and their check.
   qr: { in: [rsc.io/qr, "rsc.io/qr/**"] }
-  # The browser's localStorage for the saves of a web build (internal/play/store_js.go),
+  # The browser's localStorage for the saves of a web build (internal/screen/play/store_js.go),
   # its pictures decoded by the browser (internal/screen/picdecode), its frame meter
-  # (internal/play/platform_js.go), the page that the browser build of Go Zen
+  # (internal/screen/play/platform_js.go), the page that the browser build of Go Zen
   # reports its loading to, and the game's files fetched whole by the browser
-  # (internal/webfs).
+  # (internal/base/webfs).
   js: { in: [syscall/js] }
 components:
-  expr: { in: ["internal/expr", "internal/expr/**"] }
-  text: { in: ["internal/text", "internal/text/**"] }
-  savefile: { in: ["internal/savefile", "internal/savefile/**"] }
-  chat: { in: "internal/chat/**" }
-  rpg: { in: ["internal/rpg", "internal/rpg/**"] }
-  battle: { in: ["internal/battle", "internal/battle/**"] }
-  event: { in: ["internal/event", "internal/event/**"] }
-  world: { in: ["internal/world", "internal/world/**"] }
-  react: { in: "internal/react/**" }
-  headless: { in: ["internal/headless", "internal/headless/**"] }
-  play: { in: "internal/play/**" }
-  session: { in: "internal/session/**" }
+  expr: { in: ["internal/base/expr", "internal/base/expr/**"] }
+  text: { in: ["internal/base/text", "internal/base/text/**"] }
+  savefile: { in: ["internal/base/savefile", "internal/base/savefile/**"] }
+  chat: { in: "internal/base/chat/**" }
+  rpg: { in: ["internal/model/rpg", "internal/model/rpg/**"] }
+  battle: { in: ["internal/rules/battle", "internal/rules/battle/**"] }
+  event: { in: ["internal/rules/event", "internal/rules/event/**"] }
+  world: { in: ["internal/rules/world", "internal/rules/world/**"] }
+  react: { in: "internal/base/react/**" }
+  headless: { in: ["internal/drive/headless", "internal/drive/headless/**"] }
+  play: { in: "internal/screen/play/**" }
+  session: { in: "internal/drive/session/**" }
   base: { in: "internal/base/**" }
   model: { in: "internal/model/**" }
   rules: { in: "internal/rules/**" }
@@ -60,11 +60,11 @@ components:
   repro: { in: "cmd/internal/repro/**" }
   dango: { in: "cmd/internal/dango/**" }
   player: { in: "cmd/gozen-player/**" }
-  cliio: { in: "internal/cliio/**" }
+  cliio: { in: "internal/base/cliio/**" }
   # GNU-style options and help pages shared by gozen and its production commands (ADR 0018).
-  clihelp: { in: "internal/clihelp/**" }
+  clihelp: { in: "internal/base/clihelp/**" }
   # Diagnostic codes (ADR 0024): a leaf like clihelp, used by the commands, the loader and the tools.
-  diag: { in: ["internal/diag", "internal/diag/**"] }
+  diag: { in: ["internal/base/diag", "internal/base/diag/**"] }
   promptgen: { in: "internal/promptgen" }
   promptcmd: { in: "internal/promptgen/command/**" }
   mosaic: { in: ["internal/mosaic", "internal/mosaic/detect/**", "internal/mosaic/segment/**", "internal/mosaic/settings/**", "internal/mosaic/tagger/**"] }
@@ -72,7 +72,7 @@ components:
   experiments: { in: "x/**" }
   examples: { in: "examples/**" }
   # The file system the browser builds of the samples read their game from (fetched files).
-  webfs: { in: "internal/webfs/**" }
+  webfs: { in: "internal/base/webfs/**" }
   dev: { in: "internal/dev/**" }
   testgame: { in: "internal/testgame/**" }
 deps:

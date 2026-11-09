@@ -43,7 +43,7 @@ func TestCommandRegistryCoverage(t *testing.T) {
 		}
 	}
 	for _, target := range []struct{ path, function string }{
-		{"check.go", "commands"}, {"../../event/event.go", "run"},
+		{"check.go", "commands"}, {"../../rules/event/event.go", "run"},
 	} {
 		t.Run(target.function, func(t *testing.T) {
 			cases := commandCases(t, target.path, target.function)
@@ -111,8 +111,8 @@ func TestCommandRegistryCoverage(t *testing.T) {
 		}
 	})
 	// Also prevent registering an accompanying field that execution and validation never use.
-	runtimeFields := commandSelectors(t, "../../event/event.go", "")
-	for _, path := range []string{"../../event/stones.go", "../../event/sp.go", "../../event/vocab2.go"} {
+	runtimeFields := commandSelectors(t, "../../rules/event/event.go", "")
+	for _, path := range []string{"../../rules/event/stones.go", "../../rules/event/sp.go", "../../rules/event/vocab2.go"} {
 		for name := range commandSelectors(t, path, "") {
 			runtimeFields[name] = true
 		}
@@ -134,7 +134,7 @@ func TestCommandRegistryCoverage(t *testing.T) {
 
 	// Also check that a verb passed to the helper executor is handled there.
 	for _, target := range []struct{ path, function string }{
-		{"../../event/stones.go", "stones"}, {"../../event/sp.go", "sp"},
+		{"../../rules/event/stones.go", "stones"}, {"../../rules/event/sp.go", "sp"},
 	} {
 		cases := commandCases(t, target.path, target.function)
 		for name := range cases {
@@ -142,7 +142,7 @@ func TestCommandRegistryCoverage(t *testing.T) {
 				t.Errorf("%s の %s は未登録", target.function, name)
 			}
 		}
-		file, err := parser.ParseFile(token.NewFileSet(), "../../event/event.go", nil, 0)
+		file, err := parser.ParseFile(token.NewFileSet(), "../../rules/event/event.go", nil, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

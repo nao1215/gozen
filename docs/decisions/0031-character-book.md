@@ -1,6 +1,6 @@
 # ADR 0031: The character book (profiles)
 
-Status: Accepted (2026-10-21). Done. Home: `internal/model/gamedata` (the definitions and their checks), `internal/play` (the screen), `internal/rules/scope` (the query).
+Status: Accepted (2026-10-21). Done. Home: `internal/model/gamedata` (the definitions and their checks), `internal/screen/play` (the screen), `internal/rules/scope` (the query).
 
 ## Users and problem
 

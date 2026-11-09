@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
 	"github.com/nao1215/gozen/internal/testgame"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // TestPhoneChecks: a phone names a known hold and app, carries the one list its

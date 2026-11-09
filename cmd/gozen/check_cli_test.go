@@ -12,7 +12,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/testgame"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 type problem struct {

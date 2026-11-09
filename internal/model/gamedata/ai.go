@@ -3,9 +3,9 @@ package gamedata
 import (
 	"fmt"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 // RuleUsage returns the effect of the skill or item a rule refers to. It returns nil if invalid, deleted or unusable.

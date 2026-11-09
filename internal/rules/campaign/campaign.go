@@ -11,11 +11,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
-	"github.com/nao1215/gozen/internal/expr"
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // The defaults of the clash.

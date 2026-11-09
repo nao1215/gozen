@@ -6,11 +6,11 @@ package field
 
 import (
 	"github.com/nao1215/gozen/internal/base/optional"
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/atlas"
 	"github.com/nao1215/gozen/internal/rules/campaign"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // Kind is what an entry of the field's menu does.

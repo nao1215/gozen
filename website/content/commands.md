@@ -768,7 +768,7 @@ changed origin. YAML and assets remain downloadable; export does not hide them.
 
 Set `GOZEN_CPUPROFILE=cpu.pprof` before a command to record its CPU activity:
 
-<!-- verify: skip needs a game checkout and a script of your own; internal/play's WorkspaceFrameTime test profiles the same way -->
+<!-- verify: skip needs a game checkout and a script of your own; internal/screen/play's WorkspaceFrameTime test profiles the same way -->
 ```sh
 GOZEN_CPUPROFILE=cpu.pprof gozen sim script examples/workshop/game --start workshop --script tour.txt
 go tool pprof cpu.pprof

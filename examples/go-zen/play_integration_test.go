@@ -18,8 +18,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	gozen "github.com/nao1215/gozen/internal/drive/session"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	gozen "github.com/nao1215/gozen/internal/session"
 )
 
 // missingArt matches the check's report of a picture that is not drawn yet.

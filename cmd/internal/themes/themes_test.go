@@ -96,7 +96,7 @@ func TestAddFailsWhenTheDestinationIsBlocked(t *testing.T) {
 // none of the runtime packages may depend on this one. go-arch-lint also forbids it,
 // because play is not allowed to depend on the commands.
 func TestRuntimeDoesNotCarryTheThemes(t *testing.T) {
-	out, err := exec.CommandContext(t.Context(), "go", "list", "-deps", "github.com/nao1215/gozen/internal/session", "github.com/nao1215/gozen/internal/play", "github.com/nao1215/gozen/internal/screen/gfx", "github.com/nao1215/gozen/internal/model/gamedata").Output()
+	out, err := exec.CommandContext(t.Context(), "go", "list", "-deps", "github.com/nao1215/gozen/internal/drive/session", "github.com/nao1215/gozen/internal/screen/play", "github.com/nao1215/gozen/internal/screen/gfx", "github.com/nao1215/gozen/internal/model/gamedata").Output()
 	if err != nil {
 		t.Fatalf("go list failed: %v", err)
 	}

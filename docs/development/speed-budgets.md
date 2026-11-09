@@ -83,7 +83,7 @@ The font is copied from the existing CLI fixture, with its existing license.
 
 ```sh
 go test ./internal/dev/perf -run '^TestSpeedBudget$' -count=1 -v
-go test ./internal/play -run '^$' -bench '^BenchmarkAtlasHugeMap$' -benchtime=120x -benchmem
+go test ./internal/screen/play -run '^$' -bench '^BenchmarkAtlasHugeMap$' -benchtime=120x -benchmem
 go tool dango lint
 # Compile/static verification only; this does not render anything:
 go vet -tags=graphics ./...

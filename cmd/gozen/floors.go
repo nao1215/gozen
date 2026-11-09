@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 

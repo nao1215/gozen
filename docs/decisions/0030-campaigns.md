@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) and 7 (the rules in the manner of Kichikuou Rance) are done; the rest is under "Plan" below. Home: `internal/model/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/rules/campaign` (the rules).
+Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) and 7 (the rules in the manner of Kichikuou Rance) are done; the rest is under "Plan" below. Home: `internal/model/gamedata` (YAML types, checks and the expression names), `internal/model/rpg` (the names on a play, `set`), `internal/rules/campaign` (the rules).
 
 ## Users and problem
 

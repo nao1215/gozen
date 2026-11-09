@@ -1,6 +1,6 @@
 # ADR 0029: The development panel (F8)
 
-Status: Accepted (2026-10-21). Done (stages 0 and 6). This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/model/gamedata` (the index), `internal/play` (the panel).
+Status: Accepted (2026-10-21). Done (stages 0 and 6). This continues [ADR 0017](0017-dev-balance-panel.md) (F7, the balance display). Home: `internal/model/gamedata` (the index), `internal/screen/play` (the panel).
 
 ## Users and problem
 
@@ -10,7 +10,7 @@ The author of a novel game, and the agent that writes YAML for them, test a bran
 
 ### F8 opens the panel; the frame meter moves into it
 
-F8 under `--dev` already toggles the frame meter (`internal/play/meter.go`: ticks and frames a second, the longest and average Update and Draw). F8 becomes the panel, and the meter becomes one of its tabs, "Frames": choosing it hides the panel's body and leaves the meter in the corner, as it is drawn now, until F8 closes the panel. The browser's `?fps` meter does not change. Until the panel lands, F8 keeps toggling the meter.
+F8 under `--dev` already toggles the frame meter (`internal/screen/play/meter.go`: ticks and frames a second, the longest and average Update and Draw). F8 becomes the panel, and the meter becomes one of its tabs, "Frames": choosing it hides the panel's body and leaves the meter in the corner, as it is drawn now, until F8 closes the panel. The browser's `?fps` meter does not change. Until the panel lands, F8 keeps toggling the meter.
 
 Another key was considered (F6 is free), but two development keys for overlays that cannot be shown together would only add to the list of keys. One key opens what the development screen shows.
 

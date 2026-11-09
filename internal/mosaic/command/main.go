@@ -17,10 +17,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	_ "github.com/deepteams/webp" // decodes the WebP pictures a game may hold
 	"github.com/spf13/pflag"

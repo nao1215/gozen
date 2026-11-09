@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/base/optional"
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	world "github.com/nao1215/gozen/internal/rules/field"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 // The steps of each facing (north, east, south, west) on the map.

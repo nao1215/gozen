@@ -6,8 +6,8 @@ import (
 	"io/fs"
 	"strconv"
 
-	"github.com/nao1215/gozen/internal/cliio"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/cliio"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/nao1215/gozen/cmd/internal/checkdata"
 	"github.com/nao1215/gozen/internal/model/gamedata"

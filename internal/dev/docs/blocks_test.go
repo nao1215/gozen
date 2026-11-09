@@ -17,7 +17,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	gozen "github.com/nao1215/gozen/internal/session"
+	gozen "github.com/nao1215/gozen/internal/drive/session"
 )
 
 // The documents whose steps are checked: README.md, the website's pages and the skill.

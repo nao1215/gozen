@@ -29,6 +29,6 @@ The decision in this ADR is the record at the time of adoption. The following po
 - `dungeon` was added to the contract by [ADR 0014](0014-dungeon-host-adoption.md) as the public entry point of layer 3. "is not included in the current public contract" in "Consequences" above is the state at the time of adoption.
 - `react` (layer 3) and `chat` (layer 1) were added by [ADR 0015](0015-reaction-and-chat.md).
 - `puppet` (layer 5) was added by [ADR 0020](0020-moving-portraits.md).
-- Win-rate calculation (`balance`) lives in `internal/headless/balance` instead of `x/`, and is shared by `gozen sim` and the development balance display ([ADR 0017](0017-dev-balance-panel.md)). Design evaluation (`designeval`) is in `cmd/gozen/internal/designeval`. Whether to make it public will be decided in a separate ADR.
+- Win-rate calculation (`balance`) lives in `internal/drive/headless/balance` instead of `x/`, and is shared by `gozen sim` and the development balance display ([ADR 0017](0017-dev-balance-panel.md)). Design evaluation (`designeval`) is in `cmd/gozen/internal/designeval`. Whether to make it public will be decided in a separate ADR.
 
 The policy of narrowing the public types and functions, and the policy of promising no compatibility for experiments in `x/`, have not changed.

@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // ShareImageMinW and ShareImageMinH are the smallest picture of a browser export's link card that the sites

@@ -12,8 +12,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 // A campaign is a game of regions held by factions over turns (schema_version 5, ADR

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // Profile is a page of the character book (ADR 0031): who a character is, shown on the

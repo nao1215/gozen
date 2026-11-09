@@ -5,8 +5,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/diag"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/diag"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 // DefinitionWarnings returns positioned warnings for definitions with no known

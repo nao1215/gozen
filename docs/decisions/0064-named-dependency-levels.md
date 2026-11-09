@@ -1,6 +1,6 @@
 # ADR 0064: Named dependency levels
 
-Status: Accepted; implemented in three steps. Date: 2026-11-09. Changes: [ADR 0008](0008-architecture-and-api.md) (the numbered layer directories) and the layer names of [ADR 0010](0010-core-ownership.md).
+Status: Implemented (in three steps). Date: 2026-11-09. Changes: [ADR 0008](0008-architecture-and-api.md) (the numbered layer directories) and the layer names of [ADR 0010](0010-core-ownership.md).
 
 ## Context
 
@@ -29,6 +29,6 @@ The change is made in three steps, each with the same behavior: (1) the level ta
 
 ## Consequences
 
-A new package is placed by choosing its level first; its directory then says the level, and a dependency on a higher level fails `make lint` with the names of both levels. Paths in earlier ADRs and the changelog keep the names they had when they were written.
+A new package is placed by choosing its level first; its directory then says the level, and a dependency on a higher level fails `make lint` with the names of both levels. Paths in the other documents, earlier ADRs included, name the new directories so their links keep working; the changelog keeps the paths it had when each entry was written.
 
 Alternatives not adopted: keeping the numbers and documenting them (the names would still not say what a level holds, and a document is not checked); generating `.go-arch-lint.yml` from the table (a second tool for a list a test can check); a seventh level for the CLI I/O packages (`diag`, `clihelp` and `cliio` depend on nothing of a game, and `play` uses `clihelp`, so they belong to `base`).

@@ -11,19 +11,19 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
 	"github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/diag"
 
-	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/headless/balance"
+	"github.com/nao1215/gozen/internal/base/expr"
+	"github.com/nao1215/gozen/internal/drive/headless/balance"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 func (c *command) curve() clihelp.Operation {

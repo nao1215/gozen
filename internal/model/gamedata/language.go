@@ -6,8 +6,8 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/base/decodeguard"
-	lang "github.com/nao1215/gozen/internal/text"
-	"github.com/nao1215/gozen/internal/text/catalog"
+	lang "github.com/nao1215/gozen/internal/base/text"
+	"github.com/nao1215/gozen/internal/base/text/catalog"
 )
 
 // UseWords chooses the process-wide words (text.Use) from game.yaml's language and text in

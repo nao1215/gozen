@@ -14,7 +14,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/parser"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 type config struct {

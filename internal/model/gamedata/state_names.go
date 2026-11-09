@@ -8,13 +8,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/base/decodeguard"
-	"github.com/nao1215/gozen/internal/expr"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/expr"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 // StateNames is the optional variable declarations and the setting that rejects unknown names.

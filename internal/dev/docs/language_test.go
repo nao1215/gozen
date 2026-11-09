@@ -175,7 +175,7 @@ func TestCheckLanguageFindsProblems(t *testing.T) {
 		"internal/x/testdata/note.json":        "{\"a\": \"テスト\"}\n",
 		"README.md":                            "A gozen (御膳) is a meal.\n",
 		"website/content/_index.md":            "Fine.\n",
-		"internal/play/x.go":                   "// shows a nude figure\n",
+		"internal/screen/play/x.go":            "// shows a nude figure\n",
 		"internal/mosaic/command/help.go":      "// penis, pussy\n",
 		"website/content/production-tools.md":  "## gozen prompt\n\nnsfw\n\n## gozen mosaic\n\npenis\n\n### Fetching\n\npussy\n\n## Next\n\nnipple\n",
 		"internal/x/testdata/note.md":          "テスト\n",
@@ -186,7 +186,7 @@ func TestCheckLanguageFindsProblems(t *testing.T) {
 	for _, want := range []string{
 		"docs/x.md:3: Japanese in a document",
 		"data/schema/x.schema.json:2: Japanese in a document",
-		`internal/play/x.go:1: "nude" belongs only to the mosaic tool`,
+		`internal/screen/play/x.go:1: "nude" belongs only to the mosaic tool`,
 		`website/content/production-tools.md:3: "nsfw"`,
 		`website/content/production-tools.md:15: "nipple"`,
 	} {

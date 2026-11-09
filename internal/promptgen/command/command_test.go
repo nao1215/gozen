@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/cliio"
 )
 
 const catalogYAML = `

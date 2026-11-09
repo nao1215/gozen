@@ -48,7 +48,7 @@ retain plain screen continuations, as described below.
 Run the example's rules and save/resume checks with:
 
 ```sh
-go test ./internal/session -run 'Test(EventArgumentsResume|BoundEventRootAndChangedSave)'
+go test ./internal/drive/session -run 'Test(EventArgumentsResume|BoundEventRootAndChangedSave)'
 ```
 
 This is the event-call slice of [ADR 0054](../decisions/0054-typed-event-and-screen-arguments.md).
@@ -113,8 +113,8 @@ while a screen is open. The current slot stays intact on refusal.
 The rules and input tests load the documented example:
 
 ```sh
-go test ./internal/session -run '^TestScreenArguments$'
-go test ./internal/play -run '^TestAuthorScreenArguments$'
+go test ./internal/drive/session -run '^TestScreenArguments$'
+go test ./internal/screen/play -run '^TestAuthorScreenArguments$'
 atago run --ci --parallel 1 --skip-tag graphics,web e2e/atago/planning.atago.yaml
 ```
 
@@ -156,9 +156,9 @@ The input script uses `press save`; the save menu itself is an overlay and does
 not become part of the saved continuation.
 
 ```sh
-go test ./internal/session -run 'TestScreen(Arguments|Continuation)'
-go test ./internal/rpg -run TestScreenReplayCacheOwnership
-go test ./internal/play -run TestAuthorScreenContinuationAcrossFrontends
+go test ./internal/drive/session -run 'TestScreen(Arguments|Continuation)'
+go test ./internal/model/rpg -run TestScreenReplayCacheOwnership
+go test ./internal/screen/play -run TestAuthorScreenContinuationAcrossFrontends
 ```
 
 The save stores the root snapshot and random state with an input transcript, not

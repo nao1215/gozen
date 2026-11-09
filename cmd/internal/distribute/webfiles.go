@@ -28,7 +28,7 @@ import (
 
 // webFile is an entry of a web export's game/files.json: the name the game reads, the
 // file the page serves and its size, whether that file is gzip, and whether the page
-// fetches it only when the game opens it (a recorded stream voice; internal/webfs).
+// fetches it only when the game opens it (a recorded stream voice; internal/base/webfs).
 // Source identifies the file it was made from (shrinkSource), so that a later export
 // given this one (--reuse) takes the served file as it is when its source has not changed.
 type webFile struct {

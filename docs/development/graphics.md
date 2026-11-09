@@ -41,12 +41,12 @@ CI prepares the OS dependencies with setup-ebitengine pinned by SHA. On Linux Xv
 # Linux
 xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
 # Windows / macOS (in a desktop environment)
-go test -tags=graphics ./internal/play ./internal/screen/puppet -run TestGraphics -count=1
+go test -tags=graphics ./internal/screen/play ./internal/screen/puppet -run TestGraphics -count=1
 ```
 
 The pixel check of `./puppet` runs one Ebitengine loop during the test, and does the drawing and `ReadPixels` of each test inside the loop's Update. With small neutral shapes it checks the base picture, translucency, blinking, lip sync, switching of expressions (the blended colors in the middle and the final color), the bouncing reaction, that nothing is drawn after Close, and that the mesh does not come out away from the shape.
 
-Six scenarios (title, field, conversation, battle, dungeon and the balance panel (F7)) are started in separate processes. For the drawn scene (`stage:`, [maps and drawn scenes](../architecture/scenes.md)), `TestGraphicsStage` walks `internal/play/testdata/stage` (a small picture made by a script) and checks with the trace that the player's figure is visible, that clicking a figure walks to it and talks, that it disappears behind the fronts of a pillar (a pixel check), and that the range of an exit moves to another place. `TestGraphicsMap` checks that a piece walks the roads on a map, the one line of a closed point, and going from a point to a place. `TestGraphicsWild` checks a map inside a map (`at_point`), `token.picture` (pixels), the roads of `draw_roads` (pixels), that a point with `unknown: hidden` does not appear in the list, and that a battle on a road happens before arrival. `TestGraphicsNovel` plays `internal/play/testdata/novel` six times over one save directory and checks with the trace that skip mode passes the lines read in an earlier run and stops before a line not read and before a choice, that rolling back shows the line before and going on shows the same line again, that a portrait brought in by `stand` is drawn on the left and gone after it leaves (pixels), and that the F8 panel opens, draws its tabs and jumps to an event ([ADR 0026](../decisions/0026-read-lines-and-skipping.md)). `TestGraphicsCampaign` plays `internal/play/testdata/campaign` and checks that each region of a campaign's map stands a flag in its owner's colour (pixels), that OK on a region lists its orders, that an attack turns the region's flag to the player's colour, and that the trace has the `region`, `order` and `end_turn` lines ([ADR 0030](../decisions/0030-campaigns.md)). The seed is fixed, a test-only save destination is used, and PNGs are taken inside Draw. They check the PNG decoding, the size of 960×540, that the content is not a single color, and the normal exit of the process. This is not a pixel-exact golden, so the quality of layout and text still needs a separate check. The audio device is muted.
+Six scenarios (title, field, conversation, battle, dungeon and the balance panel (F7)) are started in separate processes. For the drawn scene (`stage:`, [maps and drawn scenes](../architecture/scenes.md)), `TestGraphicsStage` walks `internal/screen/play/testdata/stage` (a small picture made by a script) and checks with the trace that the player's figure is visible, that clicking a figure walks to it and talks, that it disappears behind the fronts of a pillar (a pixel check), and that the range of an exit moves to another place. `TestGraphicsMap` checks that a piece walks the roads on a map, the one line of a closed point, and going from a point to a place. `TestGraphicsWild` checks a map inside a map (`at_point`), `token.picture` (pixels), the roads of `draw_roads` (pixels), that a point with `unknown: hidden` does not appear in the list, and that a battle on a road happens before arrival. `TestGraphicsNovel` plays `internal/screen/play/testdata/novel` six times over one save directory and checks with the trace that skip mode passes the lines read in an earlier run and stops before a line not read and before a choice, that rolling back shows the line before and going on shows the same line again, that a portrait brought in by `stand` is drawn on the left and gone after it leaves (pixels), and that the F8 panel opens, draws its tabs and jumps to an event ([ADR 0026](../decisions/0026-read-lines-and-skipping.md)). `TestGraphicsCampaign` plays `internal/screen/play/testdata/campaign` and checks that each region of a campaign's map stands a flag in its owner's colour (pixels), that OK on a region lists its orders, that an attack turns the region's flag to the player's colour, and that the trace has the `region`, `order` and `end_turn` lines ([ADR 0030](../decisions/0030-campaigns.md)). The seed is fixed, a test-only save destination is used, and PNGs are taken inside Draw. They check the PNG decoding, the size of 960×540, that the content is not a single color, and the normal exit of the process. This is not a pixel-exact golden, so the quality of layout and text still needs a separate check. The audio device is muted.
 
 `make graphics` runs up to four scenarios concurrently to bound window and inotify resources; set `GRAPHICS_JOBS` to override this limit. The aggregate test budget is 20 minutes (`GRAPHICS_TIMEOUT`), allowing cold builds and queued scenarios on software-rendered CI; individual subprocess deadlines remain enforced.
 
@@ -56,7 +56,7 @@ Without Xvfb or a drawing environment, the tests fail. A skip or a mere compile 
 
 Running the game with `--script`, `--trace`, `--replay` and `--record` is described for users on the site: [Scripts and screenshots](https://nao1215.github.io/gozen/edit-play-loop/#scripts-and-screenshots) and [Trace and replay](https://nao1215.github.io/gozen/edit-play-loop/#trace-and-replay). Developer notes follow.
 
-- The canonical list of button names is `scriptButtons` in `internal/play/input.go`.
+- The canonical list of button names is `scriptButtons` in `internal/screen/play/input.go`.
 - `hold BUTTON[+BUTTON...] TICKS` holds controls for 1 to 36000 exact simulation ticks; `shift` is also accepted. For example, `hold up+shift+right 60` walks diagonally in an opt-in continuous space. The first tick also presses each button; the next script command releases them. Held controls and Shift are recorded in input traces.
 - A picture name that contains a path separator is rejected. A script needs an explicit `--shots`.
 - In a development capture, `battle-hp enemy|party INDEX HP` sets a living battle unit's HP by zero-based troop or party index. HP must be from 1 through that unit's maximum. The trace records each setup as `battle_setup`; it does not count as a damage event.
@@ -130,7 +130,7 @@ fail on their values. Headless simulations do not draw or emit either kind.
 The `screen` member of reproduction JSON is the latest record at or before the
 target; its own `tick` identifies when that structure was drawn. Old traces omit it.
 
-Measure the digest with `go test ./internal/play -run '^$' -bench
+Measure the digest with `go test ./internal/screen/play -run '^$' -bench
 'BenchmarkScreen(Digest|ChangedRecord)' -benchmem`. The graphics fixture is
 `TestGraphicsTraceLayout`, already included in `make graphics`.
 
@@ -202,7 +202,7 @@ established across seeking and ordinary drawing. Ordinary replay still accepts
 the explicit `guides on` action.
 
 Exact reproduction uses the shared `ExactReplay` validator in
-`internal/play/trace.go`. Both `trace --repro` and `run --replay ... --until N`
+`internal/screen/play/trace.go`. Both `trace --repro` and `run --replay ... --until N`
 accept only explicitly listed record kinds through the target tick (`N - 1`
 for `--until`). `exactReplayKinds` documents the complete allow-list: `start`
 restores context, `save_write` restores save timestamps, `input`, receiver-bound `pick`, and supported `act` names drive replay,
@@ -275,7 +275,7 @@ confirmation dialogs, title/save/system menus, authored lists and surface contro
 
 #### External-state audit
 
-The table covers the runtime in `internal/play` and its lower-layer dependencies.
+The table covers the runtime in `internal/screen/play` and its lower-layer dependencies.
 “Recorded” means captured in the trace; “restored” means reconstructed from that
 record or deterministic immutable inputs; “refused” means the shared validator
 rejects the source through the target tick, even if its UI has since closed.
@@ -355,7 +355,7 @@ Changed resources are rejected. Live reloads and author-tool screen changes
 are rejected only when their events occur through the target tick. Old traces without a game directory or required save bytes report
 what must be recorded again; ordinary replay of older traces is unchanged.
 
-Run the PNG comparison with `go test -tags=graphics ./internal/play -run
+Run the PNG comparison with `go test -tags=graphics ./internal/screen/play -run
 '^TestGraphicsScreensRepro$' -count=1` from a desktop (wrap with
 `xvfb-run --auto-servernum --error-file=/dev/stderr` on Linux). It records neutral
 novel, campaign and battle-puppet fixtures and executes the printed reproduction
@@ -417,7 +417,7 @@ but the overlay does not change saved state or consume gameplay randomness.
 pixels, gameplay records with and without Frames, and replayed state. Run:
 
 ```sh
-xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./internal/play -run '^TestGraphicsNovelOverlay$' -count=1
+xvfb-run --auto-servernum --error-file=/dev/stderr go test -tags=graphics ./internal/screen/play -run '^TestGraphicsNovelOverlay$' -count=1
 ```
 
 The existing `playtest-panel` documentation job captures `s-frames`; regenerate

@@ -72,7 +72,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0061](0061-dango-maintainer-tests.md) | Maintainer decision tests with dango | Implemented | Reproduction shares the typed author CLI bundle operation |
 | [0062](0062-bounded-phone-sessions.md) | Authored phone information unlocked by flags, history, replies, home and contacts | Accepted and implemented | Replaces the unimplemented persistent-session proposal |
 | [0063](0063-phone-game-packages.md) | Gozen games inside phone apps | Accepted for implementation | One host loop, isolated child resources and approved packages |
-| [0064](0064-named-dependency-levels.md) | Named dependency levels | Accepted; implemented in three steps | base, model, rules, drive, screen and app, ordered once in internal/dev/hygiene/levels.go |
+| [0064](0064-named-dependency-levels.md) | Named dependency levels | Implemented | base, model, rules, drive, screen and app, ordered once in internal/dev/hygiene/levels.go |
 
 [ADR 0041](0041-yaml-authoring-and-distribution.md) retires the public Go APIs; current implementation boundaries are in [Boundaries](../architecture/boundaries.md). Earlier entries record historical decisions.
 
@@ -86,8 +86,8 @@ The symbols in ADRs and design documents are stages of the initial implementatio
 | --- | --- |
 | D1 to D10 | The 10 design decisions made before the initial implementation. They are written up in ADR 0001 to 0009 (the "Decision" column of the table above) |
 | T1 | Foundation. Modules, layer dependency checks, the public API list, development documents |
-| T2 | The core that does not draw (layers 1 to 4) and a neutral game for tests |
-| T3 | Drawing, sound, and running (layers 5 and 6), and the dungeon |
+| T2 | The core that does not draw (the levels base to drive) and a neutral game for tests |
+| T3 | Drawing, sound, and running (the screen level), and the dungeon |
 | T4 | The generic CLI and the atago E2E |
 | T5 | Authoring support (`gozen prompt`, `gozen mosaic`) and the ONNX cgo build |
 | T6 | The sample game, the README, and capturing the introduction images |

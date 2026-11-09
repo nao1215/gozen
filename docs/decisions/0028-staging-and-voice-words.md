@@ -1,6 +1,6 @@
 # ADR 0028: The words of staging and voice
 
-Status: Accepted (2026-10-21). Staging (stage 3) and voice (stage 4) are done. Home: `internal/model/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/screen/sound` (the screen and the sound).
+Status: Accepted (2026-10-21). Staging (stage 3) and voice (stage 4) are done. Home: `internal/model/gamedata` (the words and the checks), `internal/rules/event` (the effects), `internal/screen/play` and `internal/screen/sound` (the screen and the sound).
 
 ## Users and problem
 

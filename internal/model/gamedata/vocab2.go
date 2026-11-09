@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/expr"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"

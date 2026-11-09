@@ -40,7 +40,7 @@ perf=false
 while IFS= read -r f; do
   case "${f}" in
     *.md | docs/* | website/*) ;;
-    internal/play/* | internal/layer*/* | internal/headless/* | internal/battle/* | internal/rpg/* | internal/event/* | internal/world/* | internal/text/* | internal/expr/* | internal/react/* | internal/savefile/* | internal/clihelp/* | internal/cliio/* | e2e/atago/fixtures/game/assets/regular.ttf | internal/dev/perf/* | internal/dev/hygiene/* | cmd/gozen/* | cmd/gozen-player/* | bench/* | go.mod | go.sum | .github/workflows/ci.yml | .github/workflows/bench.yml | scripts/ci_changes.sh) perf=true ;;
+    internal/screen/play/* | internal/layer*/* | internal/drive/headless/* | internal/rules/battle/* | internal/model/rpg/* | internal/rules/event/* | internal/rules/world/* | internal/base/text/* | internal/base/expr/* | internal/base/react/* | internal/base/savefile/* | internal/base/clihelp/* | internal/base/cliio/* | e2e/atago/fixtures/game/assets/regular.ttf | internal/dev/perf/* | internal/dev/hygiene/* | cmd/gozen/* | cmd/gozen-player/* | bench/* | go.mod | go.sum | .github/workflows/ci.yml | .github/workflows/bench.yml | scripts/ci_changes.sh) perf=true ;;
   esac
 done <<< "${files}"
 

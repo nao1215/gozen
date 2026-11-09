@@ -5,7 +5,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // ThemeRoot is the folder of a game's assets (relative to assets/) that holds its dungeon

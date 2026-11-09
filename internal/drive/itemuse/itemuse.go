@@ -5,9 +5,9 @@ package itemuse
 import (
 	"fmt"
 
-	"github.com/nao1215/gozen/internal/battle"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
+	"github.com/nao1215/gozen/internal/rules/battle"
 )
 
 // For is a function that uses an item on db and st. If target is "", the first party member receives it. The user is the first party member.

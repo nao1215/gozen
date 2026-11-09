@@ -15,8 +15,8 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 
-	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 // ComplexityConfig controls authoring warnings consumed by checkdata. Zero uses

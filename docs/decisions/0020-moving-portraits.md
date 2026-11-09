@@ -32,13 +32,13 @@ Overlay small difference pictures on one base picture, and draw the result warpe
 | `SetFace(name)` | Change the expression softly (0.25 s by default) |
 | `Close` | Release the GPU images |
 
-In RPG conversations, writing a puppet YAML in the companion definition `Actor.Puppet` (one public field of `data`) turns the conversation window's portrait into a puppet (`internal/play/puppets.go`). It calls `SetFace` with the expression name of the line and moves the mouth only while characters are being displayed.
+In RPG conversations, writing a puppet YAML in the companion definition `Actor.Puppet` (one public field of `data`) turns the conversation window's portrait into a puppet (`internal/screen/play/puppets.go`). It calls `SetFace` with the expression name of the line and moves the mouth only while characters are being displayed.
 
 `puppet` exposes 17 declarations (3 types, 2 functions, 8 methods, 3 fields, and the package). Compositing, deformation and motion are kept internal, and strength values are changed only in YAML. The YAML format is described in [Moving portraits](../architecture/puppet.md).
 
 ### Layers
 
-`puppet` uses Ebitengine, so it is a layer 5 public package, and an independent component is added to `.go-arch-lint.yml` (same permissions as `gfx` and the like; it does not refer to the sideways `gfx` or `play`). The implementation lives in `internal/screen/puppet` so that it creates no sideways dependency when `internal/play` later uses it for conversation portraits. The YAML types and structure validation know nothing about images, so they live in `internal/model/puppetdef` (layer 2, where YAML use is allowed). No exception that allows YAML in layer 5 shared implementations is added.
+`puppet` uses Ebitengine, so it is a layer 5 public package, and an independent component is added to `.go-arch-lint.yml` (same permissions as `gfx` and the like; it does not refer to the sideways `gfx` or `play`). The implementation lives in `internal/screen/puppet` so that it creates no sideways dependency when `internal/screen/play` later uses it for conversation portraits. The YAML types and structure validation know nothing about images, so they live in `internal/model/puppetdef` (layer 2, where YAML use is allowed). No exception that allows YAML in layer 5 shared implementations is added.
 
 `gozen puppet` checks with the same `Load` and prints the position of each difference. With `--out`, it writes the picture of differences cut out small and a YAML with `at` into a new directory (to make the distribution smaller).
 

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
