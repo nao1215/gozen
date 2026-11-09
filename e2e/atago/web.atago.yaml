@@ -773,7 +773,7 @@ scenarios:
               const counter = await phoneSaved(counterPrefix + 'save1.json');
               if (counter.state.gold !== 4) throw new Error('bundled child did not collect four tokens');
               await leavePhoneGame();
-              document.body.dataset.phoneBundled = JSON.stringify({counter: counter.state.gold});
+              document.body.dataset.phoneBundled = JSON.stringify({error: null, counter: counter.state.gold});
             } catch (error) { document.body.dataset.phoneBundled = JSON.stringify({error: String(error)}); }
           })(); true
       - wait_visible: 'body[data-phone-bundled]'
@@ -782,6 +782,8 @@ scenarios:
   - assert:
       value:
         json:
+        # Null unless the page caught an error, which a failure then shows.
+        - {path: $.error, equals: null}
         - {path: $.counter, equals: 4}
   # Each CDP step has its own deadline; browser state survives between phases.
   - cdp:
@@ -801,7 +803,7 @@ scenarios:
               await phoneKeys('ArrowRight', 'ArrowRight', 'Enter'); await testFrames(40);
               await key('Escape'); await testFrames(40);
               if (phoneFetches !== 3 || phoneSave('phone-apps.json')) throw new Error('cancelled download published an app');
-              document.body.dataset.phoneRejected = JSON.stringify({downloads: phoneFetches, published: phoneSave('phone-apps.json') !== null});
+              document.body.dataset.phoneRejected = JSON.stringify({error: null, downloads: phoneFetches, published: phoneSave('phone-apps.json') !== null});
             } catch (error) { document.body.dataset.phoneRejected = JSON.stringify({error: String(error)}); }
           })(); true
       - wait_visible: 'body[data-phone-rejected]'
@@ -810,6 +812,8 @@ scenarios:
   - assert:
       value:
         json:
+        # Null unless the page caught an error, which a failure then shows.
+        - {path: $.error, equals: null}
         - {path: $.downloads, equals: 3}
         - {path: $.published, equals: false}
   - cdp:
@@ -840,7 +844,7 @@ scenarios:
               const trail = await phoneSaved(trailPrefix + 'save1.json');
               if (trail.state.gold !== 7) throw new Error('installed child did not reach hill');
               await leavePhoneGame();
-              document.body.dataset.phoneResult = JSON.stringify({counter: counter.state.gold, trail: trail.state.gold, downloads: phoneFetches, version: apps.trail.version, binaryBytes: archive.byteLength, quotaExpected: exceeded === ('${package_scale}' === 'large')});
+              document.body.dataset.phoneResult = JSON.stringify({error: null, counter: counter.state.gold, trail: trail.state.gold, downloads: phoneFetches, version: apps.trail.version, binaryBytes: archive.byteLength, quotaExpected: exceeded === ('${package_scale}' === 'large')});
             } catch (error) { document.body.dataset.phoneResult = JSON.stringify({error: String(error)}); }
           })(); true
       - wait_visible: 'body[data-phone-result]'
@@ -849,6 +853,8 @@ scenarios:
   - assert:
       value:
         json:
+        # Null unless the page caught an error, which a failure then shows.
+        - {path: $.error, equals: null}
         - {path: $.counter, equals: 4}
         - {path: $.trail, equals: 7}
         - {path: $.downloads, equals: 4}
@@ -897,14 +903,16 @@ scenarios:
                 const header = localStorage.getItem('gozen/cli-expedition/phone-apps.json').split('\n')[0] + '\n';
                 const legacy = header + btoa(String.fromCharCode(...retained));
                 localStorage.setItem('gozen/cli-expedition/phone-package-' + old.sha256 + '.b64', legacy);
+                // "blocked" only says a connection of the game is still open (it closes each
+                // after its transaction); the deletion runs once it closes, so wait for success.
                 await new Promise((resolve, reject) => {
                   const request = indexedDB.deleteDatabase('gozen-phone-packages');
-                  request.onsuccess = resolve;
-                  request.onerror = () => reject(request.error);
-                  request.onblocked = () => reject(new Error('archive database remained open'));
+                  const late = setTimeout(() => reject(new Error('archive database remained open')), 20000);
+                  request.onsuccess = () => { clearTimeout(late); resolve(); };
+                  request.onerror = () => { clearTimeout(late); reject(request.error); };
                 });
               }
-              document.body.dataset.phoneStorageFailure = JSON.stringify({writes: failedArchiveWrites, version: phoneSave('phone-apps.json').trail.version, gold: phoneSave(trailPrefix + 'save1.json').state.gold});
+              document.body.dataset.phoneStorageFailure = JSON.stringify({error: null, writes: failedArchiveWrites, version: phoneSave('phone-apps.json').trail.version, gold: phoneSave(trailPrefix + 'save1.json').state.gold});
             } catch (error) { document.body.dataset.phoneStorageFailure = JSON.stringify({error: String(error)}); }
           })(); true
       - wait_visible: 'body[data-phone-storage-failure]'
@@ -913,6 +921,8 @@ scenarios:
   - assert:
       value:
         json:
+        # Null unless the page caught an error, which a failure then shows.
+        - {path: $.error, equals: null}
         - {path: $.writes, equals: 1}
         - {path: $.version, equals: 1.0.0}
         - {path: $.gold, equals: 7}
@@ -953,7 +963,7 @@ scenarios:
               await key('Enter'); await testFrames(30);
               // Completing the host event publishes its normal autosave.
               const host = await phoneSaved('auto.json');
-              document.body.dataset.phoneOffline = JSON.stringify({gold: restored.state.gold, downloads: phoneFetches, hostSave: host.state.gold, hostLocation: host.state.location});
+              document.body.dataset.phoneOffline = JSON.stringify({error: null, gold: restored.state.gold, downloads: phoneFetches, hostSave: host.state.gold, hostLocation: host.state.location});
             } catch (error) { document.body.dataset.phoneOffline = JSON.stringify({error: String(error), storage: Object.keys(localStorage).filter(k => k.includes('cli-expedition')), screen: document.querySelector('canvas').toDataURL()}); }
           })(); true
       - wait_visible: 'body[data-phone-offline]'
@@ -962,6 +972,8 @@ scenarios:
   - assert:
       value:
         json:
+        # Null unless the page caught an error, which a failure then shows.
+        - {path: $.error, equals: null}
         - {path: $.gold, equals: 7}
         - {path: $.downloads, equals: 0}
         - {path: $.hostSave, equals: 0}
