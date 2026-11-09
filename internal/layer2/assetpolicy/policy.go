@@ -67,30 +67,16 @@ func Load(base fs.FS, name string) (Policy, error) {
 	return p, nil
 }
 
-func field(m map[string]any, key string) any {
-	var v any = m
-	if key == "" {
-		return nil
-	}
-	for k := range strings.SplitSeq(key, ".") {
-		x, ok := v.(map[string]any)
-		if !ok {
-			return nil
-		}
-		v = x[k]
-	}
-	return v
-}
 
 func (f RecordFields) approval(m map[string]any) Approval {
 	str := func(k string) string {
-		s, ok := field(m, k).(string)
+		s, ok := assetfs.Field(m, k).(string)
 		if !ok {
 			return ""
 		}
 		return s
 	}
-	b := func(k string) bool { v, ok := field(m, k).(bool); return ok && v }
+	b := func(k string) bool { v, ok := assetfs.Field(m, k).(bool); return ok && v }
 	a := Approval{File: str(f.File), Source: str(f.Source), Status: str(f.Status), Required: b(f.Required) && !b(f.Original)}
 	a.Approved = f.Status == "" || slices.Contains(f.Accepted, a.Status)
 	if f.Approved != "" {
@@ -98,13 +84,13 @@ func (f RecordFields) approval(m map[string]any) Approval {
 	}
 	// Treat a judgement value of the wrong type like an omitted one and do not approve.
 	for _, key := range []string{f.Required, f.Original, f.Approved} {
-		if v := field(m, key); v != nil {
+		if v := assetfs.Field(m, key); v != nil {
 			if _, ok := v.(bool); !ok {
 				a.Approved = false
 			}
 		}
 	}
-	if v := field(m, f.Reject); v != nil {
+	if v := assetfs.Field(m, f.Reject); v != nil {
 		switch x := v.(type) {
 		case []any:
 			a.Approved = a.Approved && len(x) == 0
@@ -142,7 +128,7 @@ func (p Policy) ReadRecords(top fs.FS) ([]Approval, []string, error) {
 		}
 		seen[a.File] = true
 		approvals = append(approvals, a)
-		if out, ok := field(row, p.Records.Output).(string); ok && out != "" {
+		if out, ok := assetfs.Field(row, p.Records.Output).(string); ok && out != "" {
 			if out != a.File {
 				return nil, nil, fmt.Errorf("assetfs: output differs from source path %q", a.File)
 			}

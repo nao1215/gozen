@@ -23,7 +23,11 @@ type Approval struct {
 	Status   string `json:"status,omitempty"`
 }
 
-func field(m map[string]any, key string) any {
+// Field reads a dotted key ("a.b.c") of a decoded YAML or JSON record, nil when a
+// step is missing or is not a mapping. The asset manifest reader and
+// internal/layer2/assetpolicy, which maps approval records, share it so both
+// resolve configured record fields the same way.
+func Field(m map[string]any, key string) any {
 	var v any = m
 	if key == "" {
 		return nil

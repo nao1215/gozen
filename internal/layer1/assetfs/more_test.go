@@ -351,7 +351,7 @@ func TestWithinAndHelpers(t *testing.T) {
 			t.Errorf("within(%q, %q) = %v", c.p, c.dir, got)
 		}
 	}
-	if field(map[string]any{"a": map[string]any{"b": "c"}}, "a.b") != "c" || field(map[string]any{"a": 1}, "a.b") != nil || field(nil, "") != nil {
+	if Field(map[string]any{"a": map[string]any{"b": "c"}}, "a.b") != "c" || Field(map[string]any{"a": 1}, "a.b") != nil || Field(nil, "") != nil {
 		t.Error("field follows dotted keys only through objects")
 	}
 }
