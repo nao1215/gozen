@@ -2590,6 +2590,10 @@ func (g *Game) Close() error {
 		g.recordView.Deallocate()
 		g.recordView = nil
 	}
+	if g.shaken != nil {
+		g.shaken.Deallocate()
+		g.shaken = nil
+	}
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })
