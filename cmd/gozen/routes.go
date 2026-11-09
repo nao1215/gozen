@@ -12,6 +12,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/headless"
 	"github.com/nao1215/gozen/internal/layer2/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
@@ -75,7 +76,9 @@ func (c *command) routes() clihelp.Operation {
 		report := routesReport{Paths: len(paths), Endings: []routeEnding{}, UnreachableEndings: []string{}, UnofferedOptions: []routeOption{}, FlagsSetNeverRead: []string{}}
 		counts := map[string]int{}
 		examples := map[string][]string{}
-		offered := map[string]bool{}
+		// offered holds the ChoiceKey of each option shown: the prompt and label as written,
+		// so a prompt or label with {var.x} still matches its definition.
+		offered := map[uint64]bool{}
 		for _, p := range paths {
 			if p.Left > 0 {
 				report.Truncated = true
@@ -97,8 +100,8 @@ func (c *command) routes() clihelp.Operation {
 			}
 			for _, step := range p.Steps {
 				if step.Kind == "choice" {
-					for _, option := range step.Options {
-						offered[step.Prompt+"\x00"+option] = true
+					for _, key := range step.Keys {
+						offered[key] = true
 					}
 				}
 			}
@@ -119,7 +122,11 @@ func (c *command) routes() clihelp.Operation {
 		}
 		db.EachCommand(func(cmd *gamedata.Command) {
 			for _, option := range cmd.Choice {
-				if !offered[cmd.Prompt+"\x00"+option.Label] {
+				if option.LabelExpr.Set() {
+					// label_expr picks its source while playing, so no written label names it.
+					continue
+				}
+				if !offered[event.ChoiceKey(cmd.Prompt, option.Label)] {
 					report.UnofferedOptions = append(report.UnofferedOptions, routeOption{Prompt: cmd.Prompt, Option: option.Label})
 				}
 			}

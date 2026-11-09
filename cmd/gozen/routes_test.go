@@ -192,3 +192,36 @@ func TestSimRoutesFindsClearInsideUnreachableChoice(t *testing.T) {
 		t.Fatalf("missing nested clear: %+v", report)
 	}
 }
+
+func TestSimRoutesMatchesFilledPromptsAndLabels(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "game")
+	world := `locations: {camp: {name: Camp}}
+events:
+  opening:
+    do:
+      - set: {var.battery: 40}
+      - prompt: "Battery {var.battery}%. Where now?"
+        choice:
+          - {label: Light the room, do: [{say: Lit.}]}
+          - {label: "Wait ({var.battery}%)", do: [{say: Waited.}]}
+          - {label: Never offered, when: "var.battery > 100", do: [{say: Charged.}]}
+          - {label_expr: "'Go back'", do: [{say: Back.}]}
+      - clear: true
+`
+	files := fstest.MapFS{
+		"game.yaml":       {Data: []byte("schema_version: 10\nid: filled-prompts\nstart: {location: camp, party: [], event: opening}\n")},
+		"data/world.yaml": {Data: []byte(world)},
+	}
+	if err := os.CopyFS(dir, files); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := invoke(t, 0, "sim", "routes", dir, "--format", "json")
+	var report routesReport
+	if err := json.Unmarshal(resultData(t, out, "sim routes"), &report); err != nil {
+		t.Fatal(err)
+	}
+	want := []routeOption{{Prompt: "Battery {var.battery}%. Where now?", Option: "Never offered"}}
+	if !slices.Equal(report.UnofferedOptions, want) {
+		t.Fatalf("options shown with filled-in text were reported as never offered: %+v", report.UnofferedOptions)
+	}
+}

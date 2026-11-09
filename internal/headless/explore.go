@@ -82,6 +82,9 @@ type Step struct {
 	Faces   bool   // image: do not hide the portraits
 	Song    string // music: the song
 	Loc     string // move: the destination
+	// Keys are the choice's event.ChoiceKey values, one per option in the order of
+	// Options: they name the prompt and labels as written, before {...} is filled in.
+	Keys []uint64
 }
 
 // Log is the path's lines, choices and battles, for an error message.
@@ -261,7 +264,7 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 					return p, branches
 				}
 				p.Lines = append(p.Lines, "> "+answerText(q, n))
-				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Text: answerText(q, n)})
+				p.Steps = append(p.Steps, Step{Kind: "choice", Prompt: q.Prompt, Options: append([]string(nil), q.Options...), Keys: append([]uint64(nil), q.Keys...), Text: answerText(q, n)})
 				p.Picks = append(p.Picks, n)
 				r.Answer(n)
 			case event.Battle:

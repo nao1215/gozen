@@ -13,6 +13,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - An unknown phone `app` lists every app, including `game` and `store`, and suggests a near name such as `contacts` for `contact`.
 - A misspelled command equally close to two commands (such as `sat` for `say` and `set`) gets no suggestion instead of the alphabetically first one, as definition fields already did.
 - The phone command reference and schema description no longer claim that phone never changes state or offers only three apps.
+- `gozen sim routes` no longer reports a choice option as never offered when its prompt or label fills in a value such as `{var.battery}`, and it skips options whose label comes from `label_expr` instead of reporting them with an empty label.
 
 ### Changed
 
