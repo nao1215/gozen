@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image/color"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -280,7 +281,32 @@ func DrawTextRight(dst *ebiten.Image, s string, x, y, size float64, clr color.Co
 }
 
 func Wrap(s string, size, width float64) []string {
-	return wrapWith(s, func(line []rune) bool { return TextWidth(string(line), size) <= width })
+	k := fitKey{s, size, width, active.scale, active.popOn}
+	if lines, ok := active.wrapCache[k]; ok {
+		return slices.Clone(lines)
+	}
+	lines := wrapWith(s, func(line []rune) bool { return TextWidth(string(line), size) <= width })
+	remember(active.wrapCache, k, lines)
+	return slices.Clone(lines)
+}
+
+// fitKey identifies a text fitted to a width under the active scale and face.
+// Fonts change only through LoadFonts, which calls Reset and drops the results.
+type fitKey struct {
+	s                  string
+	size, width, scale float64
+	pop                bool
+}
+
+// remember keeps a fitted result for the draws of the next frames. The cache
+// holds at most cacheLimit texts; a full cache starts over. The key owns its
+// text so a cached label never retains a larger dialogue source.
+func remember[V any](cache map[fitKey]V, k fitKey, v V) {
+	if len(cache) >= cacheLimit {
+		clear(cache)
+	}
+	k.s = strings.Clone(k.s)
+	cache[k] = v
 }
 
 func wrapWith(s string, fits func([]rune) bool) []string {
@@ -436,14 +462,21 @@ func Ellipsis(s string, size, width float64) string {
 	if TextWidth(s, size) <= width {
 		return s
 	}
+	k := fitKey{s, size, width, active.scale, active.popOn}
+	if t, ok := active.ellipsisCache[k]; ok {
+		return t
+	}
+	t := "…"
 	r := []rune(s)
 	for len(r) > 0 {
 		r = r[:len(r)-1]
-		if t := string(r) + "…"; TextWidth(t, size) <= width {
-			return t
+		if c := string(r) + "…"; TextWidth(c, size) <= width {
+			t = c
+			break
 		}
 	}
-	return "…"
+	remember(active.ellipsisCache, k, t)
+	return t
 }
 
 func FitLines(s string, size, width float64, lines int) ([]string, float64) {

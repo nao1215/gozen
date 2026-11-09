@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 )
 
-func useFont(t *testing.T) {
+func useFont(t testing.TB) {
 	t.Helper()
 	t.Cleanup(Reset)
 	if err := LoadFonts(goregular.TTF, nil); err != nil {
@@ -436,8 +437,10 @@ func TestResetClearsEverything(t *testing.T) {
 	FillRoundRect(dst, 0, 0, 10, 10, 2, color.White)
 	DrawTextOutline(dst, "x", 0, 0, 12, color.White)
 	RoundedMask(ebiten.NewImage(8, 8), 2)
+	Wrap("a b c d", 12, 10)
+	Ellipsis("a long label", 12, 10)
 	Reset()
-	if len(active.shapeCache)+len(active.textCache)+len(active.maskCache)+len(active.faceCache) != 0 {
+	if len(active.shapeCache)+len(active.textCache)+len(active.maskCache)+len(active.faceCache)+len(active.wrapCache)+len(active.ellipsisCache) != 0 {
 		t.Fatal("caches survive Reset")
 	}
 	if active.regularSource != nil || active.popSource != nil || Scale() != 1 {
@@ -517,5 +520,68 @@ func TestTextDoesNotCacheOffscreenGlyphs(t *testing.T) {
 	DrawTextLeft(dst, "Camp", 20, 30, 22.5, color.Black)
 	if len(active.glyphCache) != n {
 		t.Fatal("position or tint caused duplicate glyph copies")
+	}
+}
+
+// TestFittedTextFollowsScaleAndFonts: remembered wraps and ellipses equal fresh
+// ones, are owned by the caller, and never outlive a scale or font change.
+func TestFittedTextFollowsScaleAndFonts(t *testing.T) {
+	useFont(t)
+	first := Wrap(benchParagraph, 20, 420)
+	first[0] = "changed by the caller"
+	again := Wrap(benchParagraph, 20, 420)
+	if again[0] == first[0] {
+		t.Fatal("a caller's change reached the remembered wrap")
+	}
+	fresh := wrapWith(benchParagraph, func(line []rune) bool { return TextWidth(string(line), 20) <= 420 })
+	if !slices.Equal(again, fresh) {
+		t.Fatalf("remembered wrap %q, fresh %q", again, fresh)
+	}
+	short := Ellipsis(benchParagraph, 20, 160)
+	SetScale(2)
+	if got := Wrap(benchParagraph, 20, 420); !slices.Equal(got, wrapWith(benchParagraph, func(line []rune) bool { return TextWidth(string(line), 20) <= 420 })) {
+		t.Fatalf("wrap at scale 2 is %q", got)
+	}
+	SetScale(1)
+	if err := LoadFonts(gobold.TTF, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(active.wrapCache)+len(active.ellipsisCache) != 0 {
+		t.Fatal("fitted text survives a font change")
+	}
+	if Ellipsis(benchParagraph, 20, 160) == "" || short == "" {
+		t.Fatal("empty ellipsis")
+	}
+	for i := range cacheLimit + 5 {
+		Wrap(strings.Repeat("x ", i%50)+string(rune('a'+i%26))+strconv.Itoa(i), 12, 100)
+	}
+	if len(active.wrapCache) > cacheLimit {
+		t.Fatalf("wrap cache grew to %d", len(active.wrapCache))
+	}
+}
+
+// benchParagraph is a dialogue-sized paragraph a screen wraps again on every frame.
+const benchParagraph = "The guide stops at the gate, looks back at the lanterns of the camp and says that the road through the pass will be closed before the first snow, so the party should decide tonight whether to wait or to climb."
+
+// BenchmarkWrapSameText measures wrapping the same text repeatedly, as a draw
+// function does on every frame.
+func BenchmarkWrapSameText(b *testing.B) {
+	useFont(b)
+	b.ReportAllocs()
+	for b.Loop() {
+		if len(Wrap(benchParagraph, 20, 420)) < 2 {
+			b.Fatal("not wrapped")
+		}
+	}
+}
+
+// BenchmarkEllipsisSameText measures shortening the same overlong label on every frame.
+func BenchmarkEllipsisSameText(b *testing.B) {
+	useFont(b)
+	b.ReportAllocs()
+	for b.Loop() {
+		if !strings.HasSuffix(Ellipsis(benchParagraph, 20, 160), "…") {
+			b.Fatal("not shortened")
+		}
 	}
 }
