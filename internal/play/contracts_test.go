@@ -149,7 +149,7 @@ func TestNotesOptInAndBuildInfoOptOut(t *testing.T) {
 	g.in.pressed[btnMemo] = true
 	m := g.memoInfo()
 	g.memoResume(&m)
-	if m.Version != "" || len(m.Retake) != 0 || m.Trace != "" {
+	if m.Version != "" || m.Trace != "" {
 		t.Fatalf("unexpected development metadata: %+v", m)
 	}
 	g.quickMemo("note", "A neutral test note", "human")

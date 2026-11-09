@@ -64,13 +64,12 @@ type Memo struct {
 
 	Data map[string]any `json:"data,omitempty"`
 
-	Image   string   `json:"image,omitempty"`
-	Save    string   `json:"save,omitempty"`
-	Rand    []byte   `json:"rand,omitempty"`
-	Resume  *Resume  `json:"resume,omitempty"`
-	Trace   string   `json:"trace,omitempty"`
-	Version string   `json:"version,omitempty"`
-	Retake  []string `json:"retake,omitempty"`
+	Image   string  `json:"image,omitempty"`
+	Save    string  `json:"save,omitempty"`
+	Rand    []byte  `json:"rand,omitempty"`
+	Resume  *Resume `json:"resume,omitempty"`
+	Trace   string  `json:"trace,omitempty"`
+	Version string  `json:"version,omitempty"`
 }
 
 type Resume struct {
