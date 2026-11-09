@@ -1010,7 +1010,11 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 				return nil, errors.New(lang.T("replay の入力は１ティック以降でなければならない"))
 			}
 			for _, field := range []string{"press", "held"} {
-				for _, name := range traceformat.Strings(l[field]) {
+				names, err := replayButtons(l, field)
+				if err != nil {
+					return nil, err
+				}
+				for _, name := range names {
 					if name == "" {
 						return nil, fmt.Errorf("replay: empty button name in %s at tick %d; older recordings lost the button identity; record a new trace", field, tick)
 					}
@@ -1347,6 +1351,22 @@ func (g *Game) traceSummary() any {
 	}
 	delete(out, "frames")
 	return out
+}
+
+// replayButtons reads the press or held list of a recorded input. Every entry
+// must be a string, so a damaged record is refused rather than replayed with
+// buttons left out.
+func replayButtons(l traceLine, field string) ([]string, error) {
+	v := l[field]
+	if v == nil {
+		return nil, nil
+	}
+	list, ok := v.([]any)
+	names := traceformat.Strings(v)
+	if !ok || len(names) != len(list) {
+		return nil, fmt.Errorf("replay: button names in %s must be strings", field)
+	}
+	return names, nil
 }
 
 func comparableLine(l traceLine) string {

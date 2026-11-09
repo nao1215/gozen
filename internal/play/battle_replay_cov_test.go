@@ -136,6 +136,13 @@ func TestBattleReplayRefusals(t *testing.T) {
 			btlClose(t, g)
 		}
 	}
+	// A damaged button list is refused at its line, not passed over to a later failure.
+	if g, err := New(Options{FS: btlFiles(t, "", ""), NoSound: true, SaveDir: t.TempDir(), Replay: btlWriteTrace(t, join(start, capture, []byte(`{"t":"input","tick":99999,"held":[false]}`))), ReplayBattle: 1, Seed: 1}); err == nil || !strings.Contains(err.Error(), "button names in held must be strings") {
+		t.Errorf("a non-string button was not refused: %v", err)
+		if err == nil {
+			btlClose(t, g)
+		}
+	}
 	if g, err := New(Options{FS: btlFiles(t, "", ""), NoSound: true, SaveDir: t.TempDir(), Replay: filepath.Join(t.TempDir(), "missing.jsonl"), ReplayBattle: 1, Seed: 1}); err == nil {
 		t.Error("a missing trace file was accepted")
 		btlClose(t, g)

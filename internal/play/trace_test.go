@@ -2732,6 +2732,7 @@ func TestWldReplayRefusesABrokenOrChangedRecord(t *testing.T) {
 		{"lines after the end", join(append(append([]string{}, lines...), `{"t":"input","tick":99999,"press":["ok"]}`)...), nil, "invalid order, end or tick"},
 		{"input at tick 0", join(append([]string{lines[0], `{"t":"input","tick":0,"press":["ok"]}`}, lines[1:]...)...), nil, "input must be at tick 1 or later"},
 		{"unknown button", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"input","tick":2,"press":["jump"]}`))...), nil, `unknown button "jump"`},
+		{"button not a word", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"input","tick":2,"held":[false]}`))...), nil, "button names in held must be strings"},
 		{"repeated input tick", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"input","tick":2,"press":["ok"]}`), atInput(`{"t":"input","tick":2,"press":["ok"]}`))...), nil, "repeats input tick " + strconv.Itoa(inputFrame.Tick)},
 		{"unknown action", join(append(append([]string{}, lines[:firstInput]...), atInput(`{"t":"act","tick":2,"name":"fly"}`))...), nil, `unknown direct action "fly"`},
 		{"action at tick 0", join(append([]string{lines[0], `{"t":"act","tick":0,"name":"run"}`}, lines[1:]...)...), nil, "direct actions must be at tick 1 or later"},
