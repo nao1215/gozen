@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 )

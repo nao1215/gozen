@@ -9,8 +9,8 @@ import (
 
 	"golang.org/x/image/font/sfnt"
 
+	"github.com/nao1215/gozen/internal/base/text/catalog"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/text/catalog"
 )
 
 // languageWarnings reports a game whose own words are Japanese while game.yaml leaves the

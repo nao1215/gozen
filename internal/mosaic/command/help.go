@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/base/clihelp"
 )
 
 // The help pages of gozen mosaic. The examples use the synthetic fixture of

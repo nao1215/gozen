@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // SpeechTerms declares preferred text and explicitly disallowed alternatives.

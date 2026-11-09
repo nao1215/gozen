@@ -126,7 +126,7 @@ Counts (identifiers in `api/public.txt`, excluding package lines): 1,709 to 1,32
 
 Things kept in stage 1 although outside users do not use them (replaced in stages 3 to 6):
 
-- Fields of public types (406), and what other Gozen packages (such as `internal/play`) and `cmd/gozen` use. Moving them requires moving the contents to internal, which is the work of stage 3.
+- Fields of public types (406), and what other Gozen packages (such as `internal/screen/play`) and `cmd/gozen` use. Moving them requires moving the contents to internal, which is the work of stage 3.
 - Types that appear in public fields and function types (`battle.DecisionTiming`, `RuleReason`, `StepKind`, `rpg.StoneLoadout`, `chat.Source`, `Mask`, `react.Analyzer`).
 - Sets of constants that do not hold together if only some values are removed (`react.TagEmpty`, `AcrosticPrefix`, `battle.DecisionAction`).
 - Entrances kept even in the smallest form (`chat.Load`, `react.Load`).

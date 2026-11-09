@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 func TestEventArgumentDiagnostics(t *testing.T) {

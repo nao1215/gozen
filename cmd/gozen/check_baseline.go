@@ -8,10 +8,10 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/nao1215/gozen/internal/cliio"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/cliio"
+	"github.com/nao1215/gozen/internal/base/diag"
+	lang "github.com/nao1215/gozen/internal/base/text"
 	"github.com/nao1215/gozen/internal/model/gamedata"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 type checkPolicy struct {

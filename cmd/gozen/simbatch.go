@@ -15,9 +15,9 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/cliio"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/cliio"
+	"github.com/nao1215/gozen/internal/base/diag"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 

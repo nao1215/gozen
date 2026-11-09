@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/world"
+	"github.com/nao1215/gozen/internal/rules/world"
 )
 
 type Policy struct {

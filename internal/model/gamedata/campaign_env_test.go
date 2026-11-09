@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 // TestHasRegionValue: a region holds a value it declares or one the play has set, and no other.

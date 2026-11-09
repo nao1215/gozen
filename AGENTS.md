@@ -12,7 +12,7 @@ Gozen is a no-code game creation toolkit for 2D RPGs, visual novels and strategy
 
 ## Design and implementation
 
-- Keep application packages under `internal/` and assign them a layer before adding imports. Only executable entry points belong outside internal.
+- Keep application packages under `internal/` and assign them a level (`internal/dev/hygiene/levels.go`, ADR 0064) before adding imports; an engine package lives in its level's directory. Only executable entry points belong outside internal.
 - Follow the downward dependency policy. Ebitengine belongs only to presentation and startup. Stable packages must not import experiments, commands, or development tooling.
 - Use a small `Config` struct consistently rather than functional options. Use `Load(fsys fs.FS, path string) (T, error)` for filesystem loading. See the API rules for context, errors, ownership, and extension interfaces.
 - Explain the consumer and purpose of every cross-package export. Document its contract and add meaningful usage coverage. Run `make boundary` to prevent public application packages.

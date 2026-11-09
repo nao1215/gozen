@@ -1,6 +1,6 @@
 # Internal presentation and startup
 
-`internal/play` owns the game window, menus, scripts, capture, sound and saves. `cmd/gozen` and the private `cmd/gozen-player` call it directly. Authors run `gozen run GAME` or export a game with a matching prebuilt runtime; there is no public Go screen API.
+`internal/screen/play` owns the game window, menus, scripts, capture, sound and saves. `cmd/gozen` and the private `cmd/gozen-player` call it directly. Authors run `gozen run GAME` or export a game with a matching prebuilt runtime; there is no public Go screen API.
 
 `Main` receives context, filesystem, arguments and `EntryConfig`. `Entry` registers the shared startup operation for `gozen run`; capture calls the internal batch renderer. These entry points do not invoke another CLI. Ebitengine runs one loop per process. Close and output failures reach the caller.
 

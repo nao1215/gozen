@@ -4,7 +4,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 func TestUseWordsFollowsGameYAML(t *testing.T) {

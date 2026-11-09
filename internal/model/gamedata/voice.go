@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // Voice (schema_version 4, ADR 0028): a line's say.voice names a sound, found in the

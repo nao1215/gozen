@@ -24,7 +24,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+      - -s -w -X github.com/nao1215/gozen/internal/base/clihelp.version=v{{ .Version }}
     # Release binaries have no ONNX inference: cgo would need a cross C
     # toolchain for every target. `gozen mosaic` says how to reinstall with
     # inference (CGO_ENABLED=1 go install ...) when a command needs it
@@ -46,7 +46,7 @@ builds:
     binary: gozen-player
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+      - -s -w -X github.com/nao1215/gozen/internal/base/clihelp.version=v{{ .Version }}
     env: [CGO_ENABLED=0]
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
@@ -60,7 +60,7 @@ builds:
     binary: gozen-player
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/nao1215/gozen/internal/clihelp.version=v{{ .Version }}
+      - -s -w -X github.com/nao1215/gozen/internal/base/clihelp.version=v{{ .Version }}
     env: [CGO_ENABLED=0]
     goos: [js]
     goarch: [wasm]

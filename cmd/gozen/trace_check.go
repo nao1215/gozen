@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/cliio"
 	"github.com/nao1215/gozen/internal/base/traceformat"
-	"github.com/nao1215/gozen/internal/cliio"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 type traceIssue struct {

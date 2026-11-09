@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
-	"github.com/nao1215/gozen/internal/expr"
 )
 
 // CampaignState is what a campaign's names read of a play: its variables (by name,

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/diag"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/diag"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 func TestTraceStructuredFiltersPreserveRecords(t *testing.T) {

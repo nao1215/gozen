@@ -11,8 +11,8 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/base/decodeguard"
-	"github.com/nao1215/gozen/internal/expr"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/expr"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 type Config struct {

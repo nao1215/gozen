@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 const offerWords = "A long recommendation keeps going and going, past the edge of the window "

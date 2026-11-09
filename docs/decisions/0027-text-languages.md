@@ -1,6 +1,6 @@
 # ADR 0027: The languages of a game's text
 
-Status: Accepted (2026-10-21). Done (stage 5). This extends [ADR 0019](0019-engine-languages.md) from the engine's words to the game's own text. Home: `internal/model/gamedata` (the files and the checks), `internal/text` (the active language).
+Status: Accepted (2026-10-21). Done (stage 5). This extends [ADR 0019](0019-engine-languages.md) from the engine's words to the game's own text. Home: `internal/model/gamedata` (the files and the checks), `internal/base/text` (the active language).
 
 ## Users and problem
 

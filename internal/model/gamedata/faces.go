@@ -9,7 +9,7 @@ import (
 	"io/fs"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // FacesFile is where gozen art faces writes the face boxes of the standing pictures (ADR 0022):

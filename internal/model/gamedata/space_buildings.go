@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // SpaceMaterial supplies play with a building surface. Width/Height are world

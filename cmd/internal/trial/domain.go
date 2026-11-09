@@ -8,8 +8,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/battle"
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
+	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 

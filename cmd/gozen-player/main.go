@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 
-	"github.com/nao1215/gozen/internal/play"
+	"github.com/nao1215/gozen/internal/screen/play"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // TestReferencePageIsCurrent keeps website/content/errors.md equal to the registry.

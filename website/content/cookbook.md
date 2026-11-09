@@ -1320,7 +1320,7 @@ text:
   はじめから: New journey
 ```
 
-[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
+[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/base/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
 
 ## Offer the game in two languages
 

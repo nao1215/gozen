@@ -4,7 +4,7 @@ The CLI is the single `gozen` binary ([ADR 0016](../decisions/0016-single-cli.md
 
 ## Commands
 
-The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with the internal player entry in `internal/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models` register operations through `internal/mosaic/command.New`. The root parses once; help describes those same registered flags without loading inputs.
+The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf runs. The help pages are `groups` and `pages` in `cmd/gozen/help.go`, keyed by the command path. `run` shares its options and help groups with the internal player entry in `internal/screen/play/entry.go`; it requires a directory operand instead of `--dir`. `prompt` registers its operation through `internal/promptgen/command.New`; the root parses its flags once. `mosaic` and `models` register operations through `internal/mosaic/command.New`. The root parses once; help describes those same registered flags without loading inputs.
 
 | Group | Commands | What they share |
 | --- | --- | --- |
@@ -33,11 +33,11 @@ A diagnostic can end with a code, `[GZN1101]`; `gozen check --format json` carri
 | `GZN11xx` to `GZN19xx` | 1 | the definitions, fonts, simulation, traces, output paths, capture, packaging, art tools, I/O |
 | `GZN21xx` to `GZN25xx` | 2 | the command shape, a value, a combination, a named path or ID, help |
 
-The registry is `internal/diag`: `register` is the only way to make a code and needs a summary, a detail and a fix. Rules:
+The registry is `internal/base/diag`: `register` is the only way to make a code and needs a summary, a detail and a fix. Rules:
 
 - One code per fix, not per call site. Reword a message freely; never renumber a code.
 - `cliio.Invalid(code, …)` is an argument error (exit 2); `code.Errorf(…)` or `code.Wrap(err)` marks a failure (exit 1); a definitions check passes the code to `errorf` or `warnf`.
-- After adding or changing an entry, run `go run ./internal/dev/errgen` to rewrite `website/content/errors.md`. The tests of `internal/diag` fail when the page is stale, when a code is not raised from non-test code, when its first digit disagrees with its package, and when no scenario of `e2e/atago` asserts it with the matching `exit_code` (a code that needs cgo, a display or the network is listed in `untested` with the reason).
+- After adding or changing an entry, run `go run ./internal/dev/errgen` to rewrite `website/content/errors.md`. The tests of `internal/base/diag` fail when the page is stale, when a code is not raised from non-test code, when its first digit disagrees with its package, and when no scenario of `e2e/atago` asserts it with the matching `exit_code` (a code that needs cgo, a display or the network is listed in `untested` with the reason).
 - `gozen help GZN1101` prints the entry.
 
 When testing, run the built binary directly. The exit status of `go run` itself can differ from the CLI's exit status, so the E2E does not use it.
@@ -84,7 +84,7 @@ suite excludes `web`; the Website and Release Smoke workflows run it separately.
 
 [ADR 0042](../decisions/0042-command-and-output-contract.md) defines the target
 command and output contracts. The shared I/O and argument errors now live in
-`internal/cliio`; protected output paths remain in `cmd/internal/cli`.
+`internal/base/cliio`; protected output paths remain in `cmd/internal/cli`.
 `cliio.Report.Finish` handles exit values and fatal diagnostics. A failed stdout
 or stderr write exits 1, including when reporting invalid arguments. A failed
 result already written to stdout uses `cliio.ErrReported` to avoid a duplicate
@@ -106,7 +106,7 @@ to stderr and may prevent the terminal summary.
 The real-binary contracts live in `e2e/atago/new.atago.yaml`,
 `e2e/atago/theme.atago.yaml` and the existing `errors.atago.yaml`. They cover
 argument order, a leading-dash directory, format framing, structured diagnostics,
-creation, validation and overwrite refusal. `internal/diag/usage_test.go` checks
+creation, validation and overwrite refusal. `internal/base/diag/usage_test.go` checks
 both textual assertions and JSON `$.code` matchers against each code's exit value.
 The registry and existing code meanings are unchanged.
 

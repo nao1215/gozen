@@ -133,16 +133,20 @@ func inPatterns(c archComponent) []string {
 	return nil
 }
 
+// componentOf returns the component that owns a package. Like go-arch-lint, the
+// most specific pattern wins: a level's directory (internal/base/**) holds the
+// named components under it (internal/base/expr/**).
 func componentOf(name string, components map[string]archComponent) string {
-	for id, c := range components {
-		for _, p := range inPatterns(c) {
+	owner, longest := "", -1
+	for _, id := range slices.Sorted(maps.Keys(components)) {
+		for _, p := range inPatterns(components[id]) {
 			base := strings.TrimSuffix(p, "/**")
-			if name == base || (strings.HasSuffix(p, "/**") && strings.HasPrefix(name, base+"/")) {
-				return id
+			if (name == base || (strings.HasSuffix(p, "/**") && strings.HasPrefix(name, base+"/"))) && len(base) > longest {
+				owner, longest = id, len(base)
 			}
 		}
 	}
-	return ""
+	return owner
 }
 
 func loadPolicy(t *testing.T) archPolicy {
@@ -231,16 +235,35 @@ func levelViolations(policy archPolicy, levels []hygiene.Level) []string {
 }
 
 // TestLevelDirectories keeps the numbered layer directories from returning and
-// puts each level's own packages in its directory (ADR 0064).
+// puts every package of an engine level in the level's directory, so a path
+// tells its level (ADR 0064). Application components keep their own places.
 func TestLevelDirectories(t *testing.T) {
 	policy := loadPolicy(t)
+	dirs := map[string]bool{}
 	for _, l := range hygiene.Levels() {
 		if l.Dir == "" {
 			continue
 		}
-		for _, p := range inPatterns(policy.Components[l.Name]) {
-			if !strings.HasPrefix(p, l.Dir+"/") {
-				t.Errorf("component %s maps to %s, outside its level directory %s", l.Name, p, l.Dir)
+		dirs[l.Dir] = true
+		for _, c := range l.Components {
+			for _, p := range inPatterns(policy.Components[c]) {
+				if p != l.Dir+"/**" && !strings.HasPrefix(p, l.Dir+"/") {
+					t.Errorf("component %s (%s) maps to %s, outside its level directory %s", c, l.Name, p, l.Dir)
+				}
+			}
+		}
+	}
+	for _, l := range hygiene.Levels() {
+		if l.Dir != "" {
+			continue
+		}
+		for _, c := range l.Components {
+			for _, p := range inPatterns(policy.Components[c]) {
+				for d := range dirs {
+					if strings.HasPrefix(p, d+"/") {
+						t.Errorf("application component %s maps to %s, inside the level directory %s", c, p, d)
+					}
+				}
 			}
 		}
 	}
@@ -287,12 +310,12 @@ func exprText(t *testing.T, n ast.Node) string {
 // Existing specialized loaders are frozen by signature. New exceptions are forbidden.
 var loaderBaseline = map[string]string{
 	"cmd/internal/checkdata/check.go:Load":        "func(fsys fs.FS, out, diagnostics io.Writer) (*gamedata.DB, error)",
-	"internal/session/game.go:Load":               "func(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error)",
+	"internal/drive/session/game.go:Load":         "func(fsys fs.FS, dir string, extra ...fs.FS) (*Game, error)",
 	"internal/model/gamedata/load.go:Load":        "func(fsys fs.FS) (*DB, error)",
 	"internal/model/gamedata/load_dir.go:LoadDir": "func(fsys fs.FS, path string) (*DB, error)",
 	"internal/screen/sound/files.go:LoadEffects":  "func(fsys fs.FS) int",
 	"internal/screen/sound/bgm.go:LoadBGM":        "func(fsys fs.FS, songs []Song, first string, oneShot []string, vol float64)",
-	"internal/play/msgfit.go:LoadFonts":           "func(db *data.DB, fsys fs.FS) error",
+	"internal/screen/play/msgfit.go:LoadFonts":    "func(db *data.DB, fsys fs.FS) error",
 }
 
 func TestAPIShape(t *testing.T) {
@@ -669,7 +692,7 @@ func commandExecutionViolations(f *ast.File, name string) []string {
 		if imported == "os/exec" && !slices.Contains(commandExecAllowlist, name) {
 			violations = append(violations, "os/exec import is forbidden; write artifacts or call typed operations")
 		}
-		if imported == module+"internal/clihelp" {
+		if imported == module+"internal/base/clihelp" {
 			alias := "clihelp"
 			if imp.Name != nil {
 				alias = imp.Name.Name
@@ -723,7 +746,7 @@ func TestCommandExecutionGuard(t *testing.T) {
 		{"method parser", "package main; func handler(c *command) { c.parse(nil,nil,nil) }", true},
 		{"method parser alias", "package main; func handler(c *command) { f := c.parse; f(nil,nil,nil) }", true},
 		{"dispatch alias", "package main; func handler() { f := runWith; f(nil) }", true},
-		{"parser", `package main; import cli "github.com/nao1215/gozen/internal/clihelp"; func handler() { cli.Parse(nil,nil) }`, true},
+		{"parser", `package main; import cli "github.com/nao1215/gozen/internal/base/clihelp"; func handler() { cli.Parse(nil,nil) }`, true},
 		{"output", `package main; func handler() { argv := []string{"gozen", "run"}; script := "exec gozen run"; _, _ = argv, script }`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -887,7 +910,7 @@ func TestCIGoTestRetry(t *testing.T) {
 		mosaic    = "github.com/nao1215/gozen/internal/mosaic"
 		promptgen = "github.com/nao1215/gozen/internal/promptgen"
 	)
-	ok := "ok  \tgithub.com/nao1215/gozen/internal/rpg\t0.1s\n"
+	ok := "ok  \tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"
 	gcCrash := func(pkg string) string {
 		return "runtime: marked free object in span\nfatal error: found pointer to free object\n\ngoroutine 3 [running]:\nruntime.throw()\n\tC:/go/src/runtime/panic.go:1243\nFAIL\t" + pkg + "\t0.1s\n"
 	}
@@ -907,8 +930,8 @@ func TestCIGoTestRetry(t *testing.T) {
 		{"bounded retries", "windows", []string{gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic)}, 1, []string{"test ./...", "test -count=1 " + mosaic, "test -count=1 " + mosaic, "test -count=1 " + mosaic}},
 		{"ordinary failure after a retry", "windows", []string{gcCrash(mosaic), "--- FAIL: TestX (0.00s)\nFAIL\n" + "FAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./...", "test -count=1 " + mosaic}},
 		{"other platform", "linux", []string{gcCrash(mosaic)}, 1, []string{"test ./..."}},
-		{"unlisted package", "windows", []string{gcCrash("github.com/nao1215/gozen/internal/play")}, 1, []string{"test ./..."}},
-		{"crash beside an ordinary failure", "windows", []string{gcCrash(mosaic) + "--- FAIL: TestY (0.00s)\nFAIL\nFAIL\tgithub.com/nao1215/gozen/internal/rpg\t0.1s\n"}, 1, []string{"test ./..."}},
+		{"unlisted package", "windows", []string{gcCrash("github.com/nao1215/gozen/internal/screen/play")}, 1, []string{"test ./..."}},
+		{"crash beside an ordinary failure", "windows", []string{gcCrash(mosaic) + "--- FAIL: TestY (0.00s)\nFAIL\nFAIL\tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"}, 1, []string{"test ./..."}},
 		{"failed test in the crashed package", "windows", []string{"--- FAIL: TestZ (0.00s)\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
 		{"test panic", "windows", []string{"panic: boom\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
 		{"deadlock", "windows", []string{"fatal error: all goroutines are asleep - deadlock!\nFAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./..."}},

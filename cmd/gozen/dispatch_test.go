@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // ADR 0024: a diagnostic ends with its code, the first digit of the code is the exit status,

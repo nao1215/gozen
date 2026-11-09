@@ -3,7 +3,7 @@ package gamedata
 import (
 	"testing"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 func TestUsesFindsVerbInBranches(t *testing.T) {

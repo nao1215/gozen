@@ -13,7 +13,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/base/picturelimit"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/goccy/go-yaml"
 

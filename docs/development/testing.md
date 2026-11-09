@@ -29,7 +29,7 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 | `make workflows` | `actionlint`, `zizmor --offline .github/workflows` | syntax, expressions and shell of GitHub Actions workflows; their pins, credentials, injection and caches |
 | `make lint` | `go-arch-lint check`, `make boundary`, `make tidy`, `make workflows`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen`, `examples/novel` and `examples/campaign`, in order | dependencies, API, modules, workflows, static analysis, formatting |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | compiling the core, `gozen` and internal, samples and development tools |
-| `make graphics` | `go test -tags=graphics ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun' -count=1` and `go test -tags=graphics ./internal/screen/puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
+| `make graphics` | `go test -tags=graphics ./internal/screen/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun' -count=1` and `go test -tags=graphics ./internal/screen/puppet -run TestGraphics -count=1` | real loop and PNG checks of 6 screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
 | `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.25.2 |
 | `make docs-images` / `make docs-images-check` | `go test ./internal/dev/docs -run '^TestDocImages$' -count=1` with `GOZEN_DOCS_IMAGES=update` (or `check`); inside xvfb-run on Linux | remake the README and site pictures from the ledger / fail if stale ([README and site pictures and steps](docs.md)) |
 | `make docs-steps` | `GOZEN_DOCS_STEPS=1 go test ./internal/dev/docs -run '^TestDocSteps$' -count=1` | running the steps of the README and site |
@@ -66,8 +66,8 @@ T7 collected the configuration, OSes, permissions, pinned tools and dependency u
 
 ```sh
 go test -race -short ./...
-go test ./internal/expr -run '^$' -fuzz '^FuzzParse$' -fuzztime=10s -parallel=2
-go test ./internal/session -run TestExpeditionRoundTrip
+go test ./internal/base/expr -run '^$' -fuzz '^FuzzParse$' -fuzztime=10s -parallel=2
+go test ./internal/drive/session -run TestExpeditionRoundTrip
 ```
 
 The race check needs cgo and a C compiler. It runs with `-short`, which skips the heavy tests (`covSlow`) that would take about 2.5 minutes and 4.3 GB under the race detector; they still run in the normal `go test ./...`. The sample uses original in-memory definitions and generated images, and runs moving, talking, battle, saving and restoring. The integration test asserts `location=trail battles=1 wins=1 gold=3`. OS file operations of the save destination are isolated by the tests of `savefile` and `rpg` with `t.TempDir()`.
@@ -93,9 +93,9 @@ a conditional drop, a message decision and a shared-picture call. Its state
 and process restart checks live in `e2e/atago/workboard.atago.yaml`.
 
 ```sh
-go test ./internal/rpg -run '^$' -bench BenchmarkEntityPublicRead -benchmem -count=3 -o build/rpg.test -cpuprofile build/entity.cpu
-go test ./internal/play -run '^TestWorkspaceFrameTime$' -count=1 -v -o build/play.test -cpuprofile build/workboard.cpu
-go test -c -o build/play.test ./internal/play
+go test ./internal/model/rpg -run '^$' -bench BenchmarkEntityPublicRead -benchmem -count=3 -o build/rpg.test -cpuprofile build/entity.cpu
+go test ./internal/screen/play -run '^TestWorkspaceFrameTime$' -count=1 -v -o build/play.test -cpuprofile build/workboard.cpu
+go test -c -o build/play.test ./internal/screen/play
 /usr/bin/time -v build/play.test -test.run '^TestPicturesWarmMany$' -test.count=1
 ```
 
@@ -110,7 +110,7 @@ outside that reservation; it is not a total-process memory limit.
 For actual pixels and lifecycle checks on Linux:
 
 ```sh
-xvfb-run -a go test -tags graphics ./internal/play/ -count=1
+xvfb-run -a go test -tags graphics ./internal/screen/play/ -count=1
 GOZEN_DOCS_IMAGES_ONLY='workboard-*.jpg' xvfb-run -a make docs-images
 ```
 

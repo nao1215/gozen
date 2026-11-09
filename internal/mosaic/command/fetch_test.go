@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 )
 
 // fakeHub serves a tiny pinned model, counts requests, and points the package at it.

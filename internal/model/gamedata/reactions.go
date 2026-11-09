@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/nao1215/gozen/internal/react"
+	"github.com/nao1215/gozen/internal/base/react"
 )
 
 func (db *DB) loadReactions() error {

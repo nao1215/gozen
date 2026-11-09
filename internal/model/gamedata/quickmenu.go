@@ -1,6 +1,6 @@
 package gamedata
 
-import "github.com/nao1215/gozen/internal/diag"
+import "github.com/nao1215/gozen/internal/base/diag"
 
 // novelWindow checks ui.quick_menu and ui.novel_window (schema_version 10).
 func (c *checker) novelWindow(u *UIStyle) {

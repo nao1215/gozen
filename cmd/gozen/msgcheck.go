@@ -13,12 +13,12 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/sfnt"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/nao1215/gozen/internal/model/gamedata"
 
@@ -26,11 +26,11 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 
-	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/play"
-	"github.com/nao1215/gozen/internal/rpg"
+	lang "github.com/nao1215/gozen/internal/base/text"
+	"github.com/nao1215/gozen/internal/model/rpg"
+	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/screen/gfx"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/screen/play"
 )
 
 func (c *command) layout(dir string, out io.Writer) error {

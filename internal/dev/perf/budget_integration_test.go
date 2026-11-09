@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nao1215/gozen/internal/headless/balance"
+	"github.com/nao1215/gozen/internal/drive/headless/balance"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/play"
+	"github.com/nao1215/gozen/internal/screen/play"
 )
 
 func TestSpeedBudget(t *testing.T) {

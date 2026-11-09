@@ -9,10 +9,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
-	"github.com/nao1215/gozen/internal/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // The floors made anew (data.Generate): a dive makes the floor's map from a seed kept in the

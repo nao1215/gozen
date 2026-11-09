@@ -2,7 +2,7 @@
 
 Gozen is a YAML-and-assets game toolkit. Describe the behavior you need in an issue before proposing a large feature or a CLI/YAML contract change. For bugs, include the Go version, OS, command, expected result and a small reproducible example. Use original, neutral fixtures and remove private data, models and machine-specific paths.
 
-Read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture/overview.md), [API rules](docs/architecture/api-guidelines.md), and relevant [ADRs](docs/decisions/index.md). Application packages belong under internal with an assigned layer. Keep dependencies directed downward and graphics outside the core. Explain the consumer and contract of each new export and run `make boundary`.
+Read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture/overview.md), [API rules](docs/architecture/api-guidelines.md), and relevant [ADRs](docs/decisions/index.md). Application packages belong under internal with an assigned level (internal/dev/hygiene/levels.go). Keep dependencies directed downward and graphics outside the core. Explain the consumer and contract of each new export and run `make boundary`.
 
 Before v1.0.0 the YAML and save formats may change between versions without migration tools. Do not add migration commands or YAML upgraders.
 

@@ -4,14 +4,14 @@ The renderer previously rebuilt and uploaded a 64 × 64 × 8 RGBA occupancy atla
 
 ## Reproduce
 
-The fixture generator is `spaceScalingFixture` in `internal/play/space_test.go`. It pads the public `examples/space/game` maps to 48 × 40 and 64 × 64 without moving the original geometry or camera. It tests one, three and eight aligned levels. The one-level variant removes the stair flights; additional padded levels are open air. A separate dense variant fills the added area with floors and periodic walls, rather than presenting empty extra levels as a dense town. All fixtures pass the normal loader.
+The fixture generator is `spaceScalingFixture` in `internal/screen/play/space_test.go`. It pads the public `examples/space/game` maps to 48 × 40 and 64 × 64 without moving the original geometry or camera. It tests one, three and eight aligned levels. The one-level variant removes the stair flights; additional padded levels are open air. A separate dense variant fills the added area with floors and periodic walls, rather than presenting empty extra levels as a dense town. All fixtures pass the normal loader.
 
 ```sh
-go test ./internal/play -run '^TestSpaceOccupancy' \
+go test ./internal/screen/play -run '^TestSpaceOccupancy' \
   -bench '^BenchmarkSpaceOccupancy' -benchtime=100ms -count=3
-LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a go test -tags=graphics ./internal/play \
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a go test -tags=graphics ./internal/screen/play \
   -run '^$' -bench '^BenchmarkGraphicsSpaceScaling$' -benchtime=1x -count=2
-LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a go test -tags=graphics ./internal/play \
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a go test -tags=graphics ./internal/screen/play \
   -run '^TestGraphicsSpace' -count=1 -v
 ```
 
@@ -19,7 +19,7 @@ The CPU benchmark compares the retained full rebuild with a cache lookup under t
 
 The native graphics benchmark varies dimensions, levels, depth 8/16, and stationary/moving cameras. Set `GOZEN_SPACE_BENCH_DENSE=1` to fill the added area with geometry; leave it unset for open-air padding. It starts a fresh host per sample, warms up for 120 simulation ticks, and reports sampled CPU Update/Draw durations in milliseconds and FPS/TPS. The first logged Draw provides `startup-ms`, including process startup and initial scene loading. `ns/op` includes fixture preparation and the scripted run. Sampled p50/p95 values are not full-frame latency percentiles or GPU timings: Ebitengine can defer GPU execution beyond Draw. Do not interpret the fixed script waits as traversal latency.
 
-For revision comparisons, build `internal/play/testdata/host` for each revision and set `GOZEN_SPACE_BENCH_HOST` to the desired binary when running the same harness. The reference host used the occupancy implementation at `f528405` with the same Update diagnostic instrumentation. For an older host without Update samples, apply only the `GOZEN_DEBUG` timing block at the start of `Game.Update` before building; leave its occupancy implementation unchanged. The benchmark is explicit and does not run during ordinary CI tests.
+For revision comparisons, build `internal/screen/play/testdata/host` for each revision and set `GOZEN_SPACE_BENCH_HOST` to the desired binary when running the same harness. The reference host used the occupancy implementation at `f528405` with the same Update diagnostic instrumentation. For an older host without Update samples, apply only the `GOZEN_DEBUG` timing block at the start of `Game.Update` before building; leave its occupancy implementation unchanged. The benchmark is explicit and does not run during ordinary CI tests.
 
 ## Cache correctness
 
@@ -104,7 +104,7 @@ Set `GOZEN_SPACE_BENCH_SPRITES` to 0, 16 or 64 with the same harness:
 
 ```sh
 LIBGL_ALWAYS_SOFTWARE=1 GOZEN_SPACE_BENCH_SPRITES=16 xvfb-run -a \
-  go test -tags=graphics ./internal/play -run '^$' \
+  go test -tags=graphics ./internal/screen/play -run '^$' \
   -bench '^BenchmarkGraphicsSpaceScaling/48x40x3/depth=16' -benchtime=1x -count=2
 ```
 
@@ -126,10 +126,10 @@ The 16-image moving runs recorded lower FPS even though the 64-image moving runs
 `BenchmarkFreeSpaceController` measures the fixed-tick controller on a neutral 40 × 36 × 4 dense fixture derived from the public plaza. Walking reverses every 60 updates and uses a speed stage; idle still validates/synchronizes the saved pose. Median results from three 300 ms runs on the environment above were 0.165 microseconds per idle update (zero allocations) and 2.925 microseconds per walking update (4102 bytes, 9 allocations). These are CPU controller costs, excluding rendering and fixture setup.
 
 ```sh
-go test ./internal/play -run '^$' -bench '^BenchmarkFreeSpaceController$' \
+go test ./internal/screen/play -run '^$' -bench '^BenchmarkFreeSpaceController$' \
   -benchtime=300ms -count=3
 LIBGL_ALWAYS_SOFTWARE=1 GOZEN_SPACE_BENCH_FREE=1 GOZEN_SPACE_BENCH_DENSE=1 \
-  xvfb-run -a go test -tags=graphics ./internal/play -run '^$' \
+  xvfb-run -a go test -tags=graphics ./internal/screen/play -run '^$' \
   -bench '^BenchmarkGraphicsSpaceScaling/40x36x4' -benchtime=1x -count=2
 ```
 
@@ -164,10 +164,10 @@ Frame interval measures successive Draw start times, including pacing; it is not
 ```sh
 for mode in boxes materials roofs combined; do
   GOZEN_SPACE_BENCH_BUILDINGS="$mode" LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a \
-    go test -tags=graphics ./internal/play -run '^$' \
+    go test -tags=graphics ./internal/screen/play -run '^$' \
     -bench '^BenchmarkGraphicsSpaceScaling/40x36x4' -benchtime=1x -count=2
 done
-go test ./internal/play -run '^$' -bench '^BenchmarkBuildingSpaceUpdates$' \
+go test ./internal/screen/play -run '^$' -bench '^BenchmarkBuildingSpaceUpdates$' \
   -benchtime=300ms -count=3
 ```
 

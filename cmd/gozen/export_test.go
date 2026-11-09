@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/cmd/internal/distribute"
-	"github.com/nao1215/gozen/internal/clihelp"
+	"github.com/nao1215/gozen/internal/base/clihelp"
 )
 
 func TestExportWebReportsPublishedDirectory(t *testing.T) {

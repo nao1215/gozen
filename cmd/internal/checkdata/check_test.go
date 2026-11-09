@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/image/font/gofont/goregular"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // Relative accepts a portable slash-separated path within a supplied filesystem.

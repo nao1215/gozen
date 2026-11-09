@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/screen/puppet"

@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/react"
-	lang "github.com/nao1215/gozen/internal/text"
+	"github.com/nao1215/gozen/internal/base/react"
+	lang "github.com/nao1215/gozen/internal/base/text"
 
-	"github.com/nao1215/gozen/internal/text/catalog"
+	"github.com/nao1215/gozen/internal/base/text/catalog"
 
 	"github.com/goccy/go-yaml"
 )

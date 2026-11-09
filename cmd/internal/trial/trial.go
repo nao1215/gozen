@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing/fstest"
 
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/model/gamedata"

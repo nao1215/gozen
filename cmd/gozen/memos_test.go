@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/base/memo"
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 func shotImage() image.Image {

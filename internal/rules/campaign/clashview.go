@@ -5,9 +5,9 @@ import (
 	"math"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // A march decided by a clash shown as units (fight: clash_view, ADR 0030): the generals

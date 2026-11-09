@@ -4,7 +4,7 @@ import (
 	"iter"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/expr"
+	"github.com/nao1215/gozen/internal/base/expr"
 )
 
 // Interpolations are the expressions embedded in a line of text as {expression}. "{{"

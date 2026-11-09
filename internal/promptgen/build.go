@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 type Source struct {

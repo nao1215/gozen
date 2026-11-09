@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/react"
+	"github.com/nao1215/gozen/internal/base/react"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

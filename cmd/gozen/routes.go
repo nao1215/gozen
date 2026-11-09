@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/headless"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/drive/headless"
 	"github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
+	"github.com/nao1215/gozen/internal/rules/event"
 )
 
 type routeEnding struct {

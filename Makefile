@@ -121,7 +121,7 @@ campaign-graphics:
 
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
-	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout' -count=1
+	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/screen/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout' -count=1
 	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/screen/puppet -run TestGraphics -count=1
 
 cli-build:
@@ -151,7 +151,7 @@ e2e-web: cli-build web-runtime
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_WEB_RUNTIME="$(CURDIR)/build/runtime/web" $(ATAGO) run --ci --parallel 1 --tag web ../../e2e/atago
 
 e2e-graphics: cli-build desktop-runtime
-	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./internal/play/testdata/host
+	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./internal/screen/play/testdata/host
 	mkdir -p build/atago
 	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_GAME_BIN="$(CURDIR)/bin/gozen-game" GOZEN_RUNTIME="$(CURDIR)/build/runtime/local" GOZEN_EXE_SUFFIX="" $(ATAGO) run --ci --parallel 1 --tag graphics ../../e2e/atago
 

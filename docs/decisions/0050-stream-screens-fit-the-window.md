@@ -1,6 +1,6 @@
 # ADR 0050: Stream screens fit the window
 
-Status: Accepted (2026-10-27). Home: `internal/play` (the size the screen is drawn at, the stream screens' layouts, touch scrolling).
+Status: Accepted (2026-10-27). Home: `internal/screen/play` (the size the screen is drawn at, the stream screens' layouts, touch scrolling).
 
 ## Context
 

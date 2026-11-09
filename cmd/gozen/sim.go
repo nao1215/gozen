@@ -6,15 +6,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/cliio"
+	"github.com/nao1215/gozen/internal/base/cliio"
 
 	"github.com/nao1215/gozen/internal/model/gamedata"
 
-	"github.com/nao1215/gozen/internal/clihelp"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/clihelp"
+	"github.com/nao1215/gozen/internal/base/diag"
 
-	"github.com/nao1215/gozen/internal/battle"
-	"github.com/nao1215/gozen/internal/headless/balance"
+	"github.com/nao1215/gozen/internal/drive/headless/balance"
+	"github.com/nao1215/gozen/internal/rules/battle"
 )
 
 func (c *command) sim() clihelp.Operation {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 func line(text string) data.Beat { return data.Beat{Line: &data.StreamLine{Text: text}} }

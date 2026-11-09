@@ -18,10 +18,10 @@ Current evidence (before implementation):
   `types.go:1707` defines author screens without parameters and `types.go:1719`
   binds an entry to a literal entity ID.
 - `internal/model/gamedata/command.go:98` and `:125` store literal `call` and
-  `open` names. `internal/event/event.go:1022` pushes the named command list;
+  `open` names. `internal/rules/event/event.go:1022` pushes the named command list;
   `event.go:313` has no argument environment per frame.
-- `internal/play/author_screen.go:48` renders screen entries against state alone.
-- `internal/rpg/cursor.go:12` records an event-start replay cursor, not execution
+- `internal/screen/play/author_screen.go:48` renders screen entries against state alone.
+- `internal/model/rpg/cursor.go:12` records an event-start replay cursor, not execution
   frames. [ADR 0025](0025-replay-to-roll-back-skip-and-resume.md) defines replay
   boundaries, including `open`.
 
@@ -316,13 +316,13 @@ then verifies saving after close and event completion.
 
 The concrete ownership gaps are:
 
-- `internal/play/author_screen.go`, `activate` and `update`, suspend a runner and
+- `internal/screen/play/author_screen.go`, `activate` and `update`, suspend a runner and
   request in memory. The `done` callback resumes the opener only in that live view.
-- `internal/play/rollback.go`, `cursor` and `saveBytes`, save either an active entry
+- `internal/screen/play/rollback.go`, `cursor` and `saveBytes`, save either an active entry
   root or current state. Neither representation includes the suspended screen.
-- `internal/play/save_report.go`, `loadSavedGame`, reconstructs current state and
+- `internal/screen/play/save_report.go`, `loadSavedGame`, reconstructs current state and
   a single event cursor. `startState` in `play.go` replaces the scene stack.
-- `internal/session/session.go`, `Next` and `Save`, treat `open` as a boundary and
+- `internal/drive/session/session.go`, `Next` and `Save`, treat `open` as a boundary and
   save only current state after it. The session currently has no screen selection
   or close lifecycle. Extending only play would leave the non-rendering contract
   unimplemented.

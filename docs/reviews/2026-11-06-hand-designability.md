@@ -99,7 +99,7 @@ Order, pauses and partial failure still matter. This is bounded iteration, not
 one transaction. Dynamic state destinations are incompatible with strict literal
 state declarations; typed entity attributes are preferable for a new design.
 Source: `internal/model/gamedata/arguments.go:91`,
-`internal/event/event.go:1240`, and
+`internal/rules/event/event.go:1240`, and
 [the argument contract](../development/event-arguments.md#repeating-a-call-over-a-collection).
 
 Text interpolation and `say.text_expr` can select per-entity definition data
@@ -139,7 +139,7 @@ all-ready comparison; add an explicit nonempty condition if that is undesirable.
 Do not replace formulas with cached variables unless the refresh points are
 clear. Observations deliberately refresh through `plan: {op: observe}` and may
 be stale between observations; they are not live computed properties.
-Executable collection examples are at `internal/rpg/planning_test.go:100`.
+Executable collection examples are at `internal/model/rpg/planning_test.go:100`.
 
 ### Indexed names: model the entity or date, not its spelling
 
@@ -235,7 +235,7 @@ per-person detail screens. A planning rule's error handling differs from a
 sequence of independent event commands: preserve successful behavior and review
 failure atomicity before migrating. See `internal/model/gamedata/planning.go:193`
 and `:578`, `internal/rules/planning/planning.go:18`, and
-`internal/event/event.go:355`.
+`internal/rules/event/event.go:355`.
 
 Positioned workspace cards are a remaining problem: repeating an entry repeats
 its fixed bounds too (`internal/model/gamedata/types.go:2004`). Collection

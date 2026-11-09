@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/nao1215/gozen/cmd/internal/checkdata"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // gameFS opens the game directory dir. When dir has no readable game.yaml it

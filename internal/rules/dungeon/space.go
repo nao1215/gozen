@@ -2,7 +2,7 @@ package dungeon
 
 import (
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // spaceStep resolves topology without committing state. Intermediate stairs stay

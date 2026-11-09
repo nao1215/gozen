@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/model/rpg"
 )
 
 // Here is where the party stands at its location: its spot when that is a point of the

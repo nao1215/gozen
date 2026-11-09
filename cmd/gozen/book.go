@@ -9,8 +9,8 @@ import (
 
 	md "github.com/nao1215/markdown"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
 	"github.com/nao1215/gozen/internal/model/gamedata"
-	lang "github.com/nao1215/gozen/internal/text"
 )
 
 func loadBook(dir string) (*bookReport, error) {

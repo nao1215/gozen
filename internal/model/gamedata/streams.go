@@ -17,7 +17,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/nao1215/gozen/internal/base/decodeguard"
-	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/base/diag"
 )
 
 // Streams is the live-stream file named by game.yaml streams (schema_version 9, ADR 0048):

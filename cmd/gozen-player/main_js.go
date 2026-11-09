@@ -10,9 +10,9 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/base/webfs"
 	"github.com/nao1215/gozen/internal/model/gamedata"
-	"github.com/nao1215/gozen/internal/play"
-	"github.com/nao1215/gozen/internal/webfs"
+	"github.com/nao1215/gozen/internal/screen/play"
 )
 
 func main() {

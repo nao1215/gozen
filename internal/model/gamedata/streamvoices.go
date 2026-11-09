@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/nao1215/gozen/internal/react"
+	"github.com/nao1215/gozen/internal/base/react"
 )
 
 // StreamVoiceLine is one authoring record consumed by gozen book --section voices.

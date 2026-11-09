@@ -6,7 +6,7 @@ Accepted: 2026-10-18 (T3). The existing layers, the single module, and the conte
 
 The entry points for game authors are `runner.Run` and `play.Run`. For authors embedding into an existing Ebitengine app, we provide `play.New` and Update/Draw/Layout/Close of `Game`. Arguments and output destinations are explicit, and the library does not terminate the process. The app owns the exit code, signals, and the choice of standard output.
 
-The many screen and production settings stay in `internal/play.Options`, and the public surface is narrowed to a small `play.Config` and an optional `play.Development`. Production features that have a write destination require explicit specification. Normal saving uses Gozen's directory under `savefile`, and trial runs such as scripts use a temporary save location unless one is explicitly specified.
+The many screen and production settings stay in `internal/screen/play.Options`, and the public surface is narrowed to a small `play.Config` and an optional `play.Development`. Production features that have a write destination require explicit specification. Normal saving uses Gozen's directory under `savefile`, and trial runs such as scripts use a temporary save location unless one is explicitly specified.
 
 The shared implementations of presentation are `internal/screen/gfx` and `internal/screen/sound`, and file recording of memos is `internal/base/memo`. Memos take the standard library's image and byte strings, and know nothing of the screen or game rules. dungeon uses `internal/rules/dungeon` from T2. No sideways dependency between public packages is added.
 

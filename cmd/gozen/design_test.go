@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/cmd/gozen/internal/designeval"
-	lang "github.com/nao1215/gozen/internal/text"
+	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
 // designGame copies the design sample (a camp, an inn and a three-floor cave with a
