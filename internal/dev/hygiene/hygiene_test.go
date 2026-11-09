@@ -164,12 +164,14 @@ func repositoryTexts(t *testing.T, visit func(name string, contents []byte)) {
 			return walkErr
 		}
 		if d.IsDir() {
+			// Generated output lives in the top-level bin, build and dist; a source
+			// directory of the same name further down is read.
 			switch name {
-			case "website/public", "website/resources":
+			case "website/public", "website/resources", "bin", "build", "dist":
 				return fs.SkipDir
 			}
 			switch d.Name() {
-			case ".git", ".agents", ".codex", ".aws", ".cache", "bin", "build", "dist", "vendor", "node_modules":
+			case ".git", ".agents", ".codex", ".aws", ".cache", "vendor", "node_modules":
 				return fs.SkipDir
 			}
 			return nil
@@ -385,14 +387,21 @@ func TestFixturesAreReferenced(t *testing.T) {
 		}
 	}
 	for _, entry := range wanted {
-		// A fixture is named by its path below the fixtures directory, a script by its file name.
-		word := path.Base(entry)
+		// A fixture is named by its path below the fixtures directory, a script by its
+		// path from the repository root or, from its own directory, by a path ending in
+		// its name; a common word such as "web" alone is no reference.
+		word := entry
 		if strings.HasPrefix(entry, "e2e/atago/fixtures/") {
-			word = "fixtures/" + word
+			word = "fixtures/" + path.Base(entry)
 		}
+		const end = `(?:$|[^A-Za-z0-9._-])`
+		full := regexp.MustCompile(`(?:^|[^A-Za-z0-9._-])` + regexp.QuoteMeta(word) + end)
+		near := regexp.MustCompile(`/` + regexp.QuoteMeta(path.Base(entry)) + end)
 		referenced := false
 		for name, contents := range texts {
-			if name != entry && !strings.HasPrefix(name, entry+"/") && bytes.Contains(contents, []byte(word)) {
+			named := bytes.Contains(contents, []byte(word)) && full.Match(contents) ||
+				path.Dir(name) == path.Dir(entry) && bytes.Contains(contents, []byte(path.Base(entry))) && near.Match(contents)
+			if name != entry && !strings.HasPrefix(name, entry+"/") && named {
 				referenced = true
 				break
 			}
