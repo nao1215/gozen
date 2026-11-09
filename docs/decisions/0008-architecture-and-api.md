@@ -1,6 +1,6 @@
 # ADR 0008: Downward dependencies and a small API
 
-Status: Accepted. Date: 2026-10-18. Corresponds to: D8.
+Status: Partly changed. Date: 2026-10-18. Corresponds to: D8. The numbered `internal/layerN/` directories were replaced by the named levels of [ADR 0064](0064-named-dependency-levels.md).
 
 ## Context
 

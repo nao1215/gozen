@@ -16,7 +16,7 @@ This directory records design decisions about Gozen's layout, public contract, d
 | [0005](0005-examples-and-assets.md) | D5 Examples and assets | Accepted | |
 | [0006](0006-platforms-and-ci.md) | D6 Supported environments and CI | Partly changed | Per-module checks are in [0009](0009-single-module.md). The current CI layout is in [CI layout](../development/ci.md) |
 | [0007](0007-adoption.md) | D7 Embedding through the public API | Partly changed | Product direction and staged API retirement in [0041](0041-yaml-authoring-and-distribution.md) |
-| [0008](0008-architecture-and-api.md) | D8 Layers and the minimal API | Accepted | |
+| [0008](0008-architecture-and-api.md) | D8 Layers and the minimal API | Partly changed | The numbered layer directories became the named levels of [0064](0064-named-dependency-levels.md) |
 | [0009](0009-single-module.md) | D9, D10 Adoption path and the change to a single module | Accepted | |
 | [0010](0010-core-ownership.md) | T2 Owner of the shared model and rules | Partly changed | The public dungeon package is in [0014](0014-dungeon-host-adoption.md). The YAML type contract, the shape of effects and listeners, and the save entry point are in [0021](0021-query-and-commands.md) |
 | [0011](0011-presentation-ownership.md) | T3 Ownership of presentation and the launch boundary | Partly changed | The public `play.Run` and `sound` were removed in [0021](0021-query-and-commands.md) |

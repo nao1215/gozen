@@ -528,6 +528,14 @@ func TestMachineHelpUsesTheRegisteredFlagsWithoutInputs(t *testing.T) {
 			if flag == nil || flag.DefValue != option.Default || flag.Value.Type() != option.Type {
 				t.Fatalf("%s: %+v", description.Command, option)
 			}
+			// A usage that names its own default ("(default: GAME/x.yaml)") is
+			// resolved at run time; a registered default would contradict it
+			// in the machine-readable help.
+			if _, named, ok := strings.Cut(flag.Usage, "(default: "); ok && !slices.Contains([]string{"", "0", "false", "[]"}, option.Default) {
+				if !strings.HasPrefix(named, option.Default) {
+					t.Errorf("%s --%s: usage names the default %q but the registered default is %q", description.Command, option.Name, named, option.Default)
+				}
+			}
 		}
 	}
 	one, _ := invoke(t, 0, "help", "capture", "--format", "json")

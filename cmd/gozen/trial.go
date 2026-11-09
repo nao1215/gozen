@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -25,7 +26,7 @@ func (c *command) trialCmd() clihelp.Operation {
 	fl := clihelp.NewFlagSet("gozen trial")
 	var out string
 	fl.StringVarP(&out, "out", "o", "", "write the trial to this new `DIR`; required unless --dry-run")
-	conf := fl.String("config", "trial.yaml", "the range settings `FILE`, relative to the working directory (default: GAME/trial.yaml)")
+	conf := fl.String("config", "", "the range settings `FILE`, relative to the working directory (default: GAME/trial.yaml)")
 	overlay := fl.String("overlay", "", "take replaced assets from this `DIR` (needs --inspect)")
 	inspect := fl.String("inspect", "", "the inspection records `FILE` (JSON Lines) from production; needed with --overlay")
 	list := fl.String("list", "", "write the list of what was kept and dropped to this new `FILE`")
@@ -49,10 +50,9 @@ func (c *command) trialCmd() clihelp.Operation {
 		if err := gamedata.UseWords(os.DirFS(src)); err != nil {
 			return err
 		}
-		configPath := filepath.Join(src, "trial.yaml")
-		if fl.Changed("config") {
-			configPath = *conf
-		}
+		// The default is empty, not trial.yaml, so help --format json does not
+		// advertise a file in the working directory: it is the game's own.
+		configPath := cmp.Or(*conf, filepath.Join(src, "trial.yaml"))
 		cfg, err := trial.Load(os.DirFS(filepath.Dir(configPath)), filepath.Base(configPath))
 		if err != nil {
 			if diag.Of(err) == 0 {

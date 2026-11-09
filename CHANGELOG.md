@@ -16,6 +16,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.
 - A session's answer outside a choice's answers leaves the choice asked; before, the choice was passed over and a save made then could not be restored.
 - A party without MP (a game without magic) is never counted as worn by MP, so `sim dive --worn-mp`, the balance runner and the design evaluation bot no longer turn back on every floor and never face a boss.
+- `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
 
 ## v0.23.2 - 2026-11-09
 
