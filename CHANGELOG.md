@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.23.2 - 2026-11-09
+
 ### Added
 
 - Add named dependency levels (base, model, rules, drive, screen, app) ordered once in `internal/dev/hygiene/levels.go`; dango rejects a component without a level or one that depends on a higher level (ADR 0064). The packages of `internal/layer1` to `internal/layer5` now live in `internal/base`, `internal/model`, `internal/rules`, `internal/drive` and `internal/screen`. The named packages moved into their levels too (`internal/base/expr`, `internal/model/rpg`, `internal/rules/event`, `internal/drive/headless`, `internal/screen/play` and the others), so a path tells its level.
@@ -15,10 +17,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A misspelled command equally close to two commands (such as `sat` for `say` and `set`) gets no suggestion instead of the alphabetically first one, as definition fields already did.
 - The phone command reference and schema description no longer claim that phone never changes state or offers only three apps.
 - `gozen sim routes` no longer reports a choice option as never offered when its prompt or label fills in a value such as `{var.battery}`, and it skips options whose label comes from `label_expr` instead of reporting them with an empty label.
+- A replay whose recorded `press` or `held` list holds a value that is not a string is refused with an error instead of being replayed with those buttons left out.
 
 ### Changed
 
 - Screens that wrap or shorten the same text on every frame reuse the previous result, removing most per-frame text measurement.
+- A shaking screen keeps its off-screen frame between frames instead of allocating a full-screen image each frame.
 
 ## v0.23.1 - 2026-11-09
 
