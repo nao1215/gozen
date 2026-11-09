@@ -170,7 +170,7 @@ func Run(db *data.DB, o Config) (Result, error) {
 			hp += r.end(st, b)
 			if b.Result == battle.Lost {
 				r.lost(st)
-			} else if o.RestEvery > 0 && (partyHP(st) < o.WornHP || partyMP(st) < o.WornMP) {
+			} else if o.RestEvery > 0 && (st.PartyHPRatio() < o.WornHP || st.PartyMPRatio() < o.WornMP) {
 
 				fl.WentBack = true
 				fl.Backs++
@@ -182,9 +182,9 @@ func Run(db *data.DB, o Config) (Result, error) {
 		if t := o.Guards[f]; t != "" && o.Bosses[f] == "" {
 			r.guard(st, &fl, t, f)
 		}
-		fl.MPLeft = partyMP(st)
+		fl.MPLeft = st.PartyMPRatio()
 		fl.Wiped = fl.Lost
-		worn := o.RestEvery > 0 && (partyHP(st) < o.WornHP || fl.MPLeft < o.WornMP)
+		worn := o.RestEvery > 0 && (st.PartyHPRatio() < o.WornHP || fl.MPLeft < o.WornMP)
 		if o.RestEvery <= 0 || f%o.RestEvery == 0 || o.Bosses[f] != "" || worn {
 			fl.Rested = true
 			if worn && f%o.RestEvery != 0 && o.Bosses[f] == "" {
@@ -229,7 +229,7 @@ func Run(db *data.DB, o Config) (Result, error) {
 			}
 			fl.BossRateEnd = rate
 		}
-		fl.Level = avgLevel(st)
+		fl.Level = st.AverageLevel()
 		if t := o.Bosses[f]; t != "" {
 			b := r.fight(st, t)
 			for i := 0; b.Result != battle.Won && i < 5; i++ {
@@ -418,7 +418,7 @@ func (r *runner) end(st *rpg.State, b *battle.Battle) float64 {
 		}
 	}
 	// do not overwrite the post-battle attrition rate with the recovery after returning.
-	hp := partyHP(st)
+	hp := st.PartyHPRatio()
 	if r.o.Events && b.Result != battle.Lost {
 		if ev := r.db.Events[r.db.Game.Battle.After]; ev != nil {
 			r.run(st, ev.Do)
@@ -494,23 +494,7 @@ func clone(db *data.DB, st *rpg.State, seed uint64) (*rpg.State, error) {
 	return c, nil
 }
 
-func partyHP(st *rpg.State) float64 {
-	hp, mhp := 0, 0
-	for _, a := range st.Members() {
-		hp += max(0, a.HP)
-		mhp += a.Stat("mhp")
-	}
-	return float64(hp) / float64(max(1, mhp))
-}
 
-func avgLevel(st *rpg.State) int {
-	sum, n := 0, 0
-	for _, a := range st.Members() {
-		sum += a.Level
-		n++
-	}
-	return sum / max(1, n)
-}
 
 func (r *runner) shop(st *rpg.State) {
 	if r.o.NoTown {
@@ -548,14 +532,6 @@ func (r *runner) shop(st *rpg.State) {
 	}
 }
 
-func partyMP(st *rpg.State) float64 {
-	mp, mmp := 0, 0
-	for _, a := range st.Members() {
-		mp += max(0, a.MP)
-		mmp += a.Stat("mmp")
-	}
-	return float64(mp) / float64(max(1, mmp))
-}
 
 func standUp(st *rpg.State) {
 	for _, a := range st.Members() {

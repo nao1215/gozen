@@ -413,6 +413,40 @@ func (s *State) Members() []*Actor {
 	return out
 }
 
+// PartyHPRatio is the party's current HP over its maximum HP, from 0 to 1; a
+// fallen member counts as 0. The headless balance runner and the design
+// evaluation bot use it to decide when the party is worn out.
+func (s *State) PartyHPRatio() float64 {
+	hp, mhp := 0, 0
+	for _, a := range s.Members() {
+		hp += max(0, a.HP)
+		mhp += a.Stat("mhp")
+	}
+	return float64(hp) / float64(max(1, mhp))
+}
+
+// PartyMPRatio is the party's current MP over its maximum MP, from 0 to 1, as
+// PartyHPRatio is for HP.
+func (s *State) PartyMPRatio() float64 {
+	mp, mmp := 0, 0
+	for _, a := range s.Members() {
+		mp += max(0, a.MP)
+		mmp += a.Stat("mmp")
+	}
+	return float64(mp) / float64(max(1, mmp))
+}
+
+// AverageLevel is the members' mean level rounded down, 0 for an empty party.
+// The headless balance runner and the design evaluation bot report it.
+func (s *State) AverageLevel() int {
+	sum, n := 0, 0
+	for _, a := range s.Members() {
+		sum += a.Level
+		n++
+	}
+	return sum / max(1, n)
+}
+
 // Wiped reports whether every member has fallen.
 func (s *State) Wiped() bool {
 	for _, a := range s.Members() {
