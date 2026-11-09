@@ -45,6 +45,8 @@ func TestPhoneChecks(t *testing.T) {
 		{"puppet", `phone: {app: video, video: {puppet: p/rig.yaml}}`, ""},
 		{"unknown app", `phone: {app: mail, messages: [{text: Hi}]}`, `phone.app: app must be chat, feed, video, page, lock, banner, home, contacts, game or store, not "mail"`},
 		{"misspelled app", `phone: {app: contact, rows: [{text: Hi}]}`, `phone.app: app must be chat, feed, video, page, lock, banner, home, contacts, game or store, not "contact" (did you mean "contacts"?)`},
+		{"misspelled game", `phone: {app: gmae}`, `phone.app: app must be chat, feed, video, page, lock, banner, home, contacts, game or store, not "gmae" (did you mean "game"?)`},
+		{"misspelled store", `phone: {app: stroe}`, `phone.app: app must be chat, feed, video, page, lock, banner, home, contacts, game or store, not "stroe" (did you mean "store"?)`},
 		{"unknown hold", `phone: {app: chat, hold: flat, messages: [{text: Hi}]}`, `phone.hold: hold must be portrait or landscape, not "flat"`},
 		{"no messages", `phone: {app: chat}`, `phone.messages: app chat needs messages`},
 		{"other list", `phone: {app: chat, messages: [{text: Hi}], posts: [{picture: x.png}]}`, `phone.posts: app chat does not show posts`},

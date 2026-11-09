@@ -391,8 +391,10 @@ func TestOverlayRejectsBadNamesAndListsReplacements(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	found := false
 	for _, e := range es {
 		if e.Name() == "a.png" {
+			found = true
 			info, err := e.Info()
 			if err != nil {
 				t.Fatal(err)
@@ -401,6 +403,9 @@ func TestOverlayRejectsBadNamesAndListsReplacements(t *testing.T) {
 				t.Errorf("a listed replacement carries the replacement's size, got %d", info.Size())
 			}
 		}
+	}
+	if !found {
+		t.Error("the listing lacks the replacement")
 	}
 	f, err := o.Open("assets")
 	if err != nil {
@@ -579,9 +584,13 @@ func TestBuildRefusesOverlappingAndStaleOutputs(t *testing.T) {
 		t.Error("the replacement folder inside the source was copied")
 	}
 	// a record that fails the gate stops the build before anything is copied
-	_, err = Tree{Src: src, Top: top, Prefix: "assets", Dst: filepath.Join(t.TempDir(), "out2"), Outputs: []string{"a.png", "b.png"}}.Build([]Approval{{File: "a.png", Source: sum("orig"), Approved: true, Required: true}, {File: "b.png", Source: "wrong", Approved: true}})
+	out2 := filepath.Join(t.TempDir(), "out2")
+	_, err = Tree{Src: src, Top: top, Prefix: "assets", Dst: out2, Outputs: []string{"a.png", "b.png"}}.Build([]Approval{{File: "a.png", Source: sum("orig"), Approved: true, Required: true}, {File: "b.png", Source: "wrong", Approved: true}})
 	if err == nil || !strings.Contains(err.Error(), "source changed") {
 		t.Errorf("a changed source stops the build: %v", err)
+	}
+	if _, err := os.Stat(out2); !os.IsNotExist(err) {
+		t.Errorf("the destination was made before the gate failed: %v", err)
 	}
 	// a file of top that is in src but has no record
 	_, err = Tree{Src: src, Top: top, Prefix: "assets", Dst: filepath.Join(t.TempDir(), "out3")}.Build([]Approval{{File: "a.png", Source: sum("orig"), Approved: true, Required: true}})
