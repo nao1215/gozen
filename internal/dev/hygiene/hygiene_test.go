@@ -14,7 +14,7 @@ import (
 )
 
 // testFileBaselineLimit is the size of testFileBaseline when the rule was added.
-const testFileBaselineLimit = 76
+const testFileBaselineLimit = 69
 
 // These are generic location formats, never a project-specific word list.
 func locationPatterns() []*regexp.Regexp {
@@ -242,16 +242,12 @@ func TestRemovedFeatures(t *testing.T) {
 const testFileBaseline = `
 internal/battle/states_more_test.go
 internal/event/more_test.go
-internal/headless/balance/odds_more_test.go
-internal/layer1/assetfs/more_test.go
 internal/layer1/geom/more_test.go
 internal/layer1/memo/more_test.go
 internal/layer2/gamedata/check_scenes_more_test.go
 internal/layer2/gamedata/shapes_more_test.go
-internal/layer2/gamedata/types_more_test.go
 internal/layer3/atlas/more_test.go
 internal/layer3/dungeon/host_more_test.go
-internal/layer3/dungeon/roam_more_test.go
 internal/layer5/puppet/more_test.go
 internal/play/autopilot_cov2_test.go
 internal/play/battle_cov2_test.go
@@ -313,9 +309,6 @@ internal/play/unicode_cov_test.go
 internal/play/walk_cov_test.go
 internal/play/world_cov_test.go
 internal/play/world_fixture_cov_test.go
-internal/rpg/actor_more_test.go
-internal/rpg/set_more_test.go
-internal/rpg/stones_more_test.go
 `
 
 // vagueTest matches coverage-driven test file names: more, extra, cov and coverage
