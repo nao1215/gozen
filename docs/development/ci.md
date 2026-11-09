@@ -11,7 +11,7 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | Job | Environment and check | What counts as a result |
 | --- | --- | --- |
 | lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12, zizmor v1.31.1. `make lint` | import direction, API list, tidy modules, static analysis, formatting, workflow syntax and security |
-| unit | Ubuntu, Windows and macOS × Go 1.26.10 / stable. `go test ./...` with cgo enabled | non-graphics contracts, including `gozen` and internal |
+| unit | Ubuntu, Windows and macOS × Go 1.26.10 / stable. `go test ./...` with cgo enabled, through [scripts/ci_go_test.sh](../../scripts/ci_go_test.sh). On Windows it reruns, at most three times, only a listed package (internal/mosaic, internal/promptgen) that died of the Go runtime heap crash of golang/go#81238 without a failed test or panic; every other failure fails at once | non-graphics contracts, including `gozen` and internal |
 | race | Linux, stable, `go test -race -short ./...` with cgo enabled | race check of the non-graphics contracts (the heavy tests, skipped by `-short`, run without `-race` in the other jobs) |
 | build | amd64 on 3 OSes, arm64 on Linux and macOS, js/wasm. cgo disabled | all packages on desktop targets; the player and its dependencies for browsers. arm64 and wasm are cross-builds. No ONNX inference |
 | graphics | 3 OSes, stable. Linux uses setup-ebitengine and Xvfb; Windows and macOS use the native desktop | real loop of 6 screens with PNG checks, pixel checks of the moving standing pictures, and the capture E2E that starts a real game as a child process. Audio is muted |

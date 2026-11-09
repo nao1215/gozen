@@ -777,6 +777,92 @@ func TestCIChangeScope(t *testing.T) {
 	}
 }
 
+// TestCIGoTestRetry runs the unit job's script against a stand-in go command.
+// Only the known Windows runtime crash of a listed package is retried; ordinary
+// failures, other packages and other platforms fail on the first run.
+func TestCIGoTestRetry(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skipf("the unit job script requires bash: %v", err)
+	}
+	script, err := filepath.Abs("../../../scripts/ci_go_test.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		mosaic    = "github.com/nao1215/gozen/internal/mosaic"
+		promptgen = "github.com/nao1215/gozen/internal/promptgen"
+	)
+	ok := "ok  \tgithub.com/nao1215/gozen/internal/rpg\t0.1s\n"
+	gcCrash := func(pkg string) string {
+		return "runtime: marked free object in span\nfatal error: found pointer to free object\n\ngoroutine 3 [running]:\nruntime.throw()\n\tC:/go/src/runtime/panic.go:1243\nFAIL\t" + pkg + "\t0.1s\n"
+	}
+	exception := "Exception 0xc0000005 0x8 0x7ff704622728 0x7ff704622728\nPC=0x7ff704622728\nfatal error: runtime.goparkunlock(...)\nFAIL\t" + promptgen + "\t0.1s\n"
+	pass := func(pkg string) string { return "ok  \t" + pkg + "\t0.1s\n" }
+	for _, tc := range []struct {
+		name, goos string
+		runs       []string // output of each go test run; a run fails when it has FAIL
+		status     int
+		calls      []string
+	}{
+		{"success", "windows", []string{ok}, 0, []string{"test ./..."}},
+		{"GC crash retried", "windows", []string{ok + gcCrash(mosaic) + "FAIL\n", pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"index out of range in the collector", "windows", []string{strings.Replace(gcCrash(mosaic), "found pointer to free object", "index out of range", 1), pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"access violation retried", "windows", []string{exception, pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + promptgen}},
+		{"both packages retried together", "windows", []string{gcCrash(mosaic) + exception, pass(mosaic) + pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + mosaic + " " + promptgen}},
+		{"bounded retries", "windows", []string{gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic)}, 1, []string{"test ./...", "test -count=1 " + mosaic, "test -count=1 " + mosaic, "test -count=1 " + mosaic}},
+		{"ordinary failure after a retry", "windows", []string{gcCrash(mosaic), "--- FAIL: TestX (0.00s)\nFAIL\n" + "FAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"other platform", "linux", []string{gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"unlisted package", "windows", []string{gcCrash("github.com/nao1215/gozen/internal/play")}, 1, []string{"test ./..."}},
+		{"crash beside an ordinary failure", "windows", []string{gcCrash(mosaic) + "--- FAIL: TestY (0.00s)\nFAIL\nFAIL\tgithub.com/nao1215/gozen/internal/rpg\t0.1s\n"}, 1, []string{"test ./..."}},
+		{"failed test in the crashed package", "windows", []string{"--- FAIL: TestZ (0.00s)\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"test panic", "windows", []string{"panic: boom\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"deadlock", "windows", []string{"fatal error: all goroutines are asleep - deadlock!\nFAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./..."}},
+		{"build failure", "windows", []string{"FAIL\t" + mosaic + " [build failed]\nFAIL\n"}, 1, []string{"test ./..."}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for i, out := range tc.runs {
+				if err := os.WriteFile(filepath.Join(dir, "out"+strconv.Itoa(i+1)), []byte(out), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			stand := filepath.Join(dir, "go")
+			body := `#!/usr/bin/env bash
+if [ "$1" = env ]; then echo "$FAKE_GOOS"; exit 0; fi
+n=$(( $(cat "$FAKE_DIR/count" 2>/dev/null || echo 0) + 1 ))
+echo "$n" > "$FAKE_DIR/count"
+echo "$*" >> "$FAKE_DIR/calls"
+[ -f "$FAKE_DIR/out$n" ] || exit 99
+cat "$FAKE_DIR/out$n"
+grep -q '^FAIL' "$FAKE_DIR/out$n" && exit 1
+exit 0
+`
+			if err := os.WriteFile(stand, []byte(body), 0o700); err != nil { //nolint:gosec // An executable stand-in inside the test temporary directory.
+				t.Fatal(err)
+			}
+			cmd := exec.CommandContext(t.Context(), "bash", script) //nolint:gosec // Repository script with a stand-in go command.
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), "GO="+filepath.ToSlash(stand), "FAKE_GOOS="+tc.goos, "FAKE_DIR="+filepath.ToSlash(dir))
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			status := 0
+			if exit, isExit := err.(*exec.ExitError); isExit { //nolint:errorlint // Run returns the exit error itself.
+				status = exit.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			calls, err := os.ReadFile(filepath.Join(dir, "calls")) //nolint:gosec // Output inside the test temporary directory.
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Split(strings.TrimSuffix(string(calls), "\n"), "\n"); status != tc.status || !slices.Equal(got, tc.calls) {
+				t.Fatalf("status %d calls %q, want %d %q; stdout=%s stderr=%s", status, got, tc.status, tc.calls, &stdout, &stderr)
+			}
+		})
+	}
+}
+
 // TestSnapshotEngineTagSelection runs the workflow's real selection command with
 // engine and independent catalog tags both at HEAD and on nearer ancestors.
 func TestSnapshotEngineTagSelection(t *testing.T) {

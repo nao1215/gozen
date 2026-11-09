@@ -152,8 +152,11 @@ jobs:
           $env:PATH = $posixTools + [IO.Path]::PathSeparator + $env:PATH
           Get-Command make, sh, grep -ErrorAction Stop | Out-Null
       # One module: the gozen command and its internal implementations are tested.
-      - run: go test ./...
+      # On Windows the script retries only a known Go runtime heap crash
+      # (golang/go#81238) in the packages it lists; any other failure fails.
+      - run: ./scripts/ci_go_test.sh
         if: needs.changes.outputs.code != 'false'
+        shell: bash
         env:
           CGO_ENABLED: "1"
 
