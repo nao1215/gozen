@@ -6,10 +6,15 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
+
+// testFileBaselineLimit is the size of testFileBaseline when the rule was added.
+const testFileBaselineLimit = 76
 
 // These are generic location formats, never a project-specific word list.
 func locationPatterns() []*regexp.Regexp {
@@ -146,5 +151,261 @@ func TestApplicationPackagesAreInternal(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// repositoryTexts calls visit with every text file of the checkout: files holding a
+// NUL byte (pictures, sounds, archives) and built or ignored outputs are skipped.
+func repositoryTexts(t *testing.T, visit func(name string, contents []byte)) {
+	t.Helper()
+	fsy := os.DirFS("../../..")
+	err := fs.WalkDir(fsy, ".", func(name string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			switch name {
+			case "website/public", "website/resources":
+				return fs.SkipDir
+			}
+			switch d.Name() {
+			case ".git", ".agents", ".codex", ".aws", ".cache", "bin", "build", "dist", "vendor", "node_modules":
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if name == ".git" {
+			return nil
+		}
+		contents, err := fs.ReadFile(fsy, name)
+		if err != nil {
+			return err
+		}
+		if !bytes.ContainsRune(contents, 0) {
+			visit(name, contents)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// removedFeatures are names of features that were deliberately removed. They must not
+// come back as code, YAML, schema, documentation or fixtures; only the changelog keeps
+// their history. Returning one needs a new ADR, which also deletes its line here.
+var removedFeatures = []string{
+	// The casual-game runner: runners in game.yaml, the run_game command and schema 12.
+	"run_game", "RunnerDefinition", "SchemaVersion12", "layer3/casual", "0064-casual-game-runtime", "casual-activities",
+	// The gozen migrate command; YAML and saves have no migration tools before v1.0.0.
+	"gozen migrate",
+}
+
+// removedYAMLWords are game-data YAML keys of removed features. Unlike the names above
+// they are ordinary words (an atago spec has its own runners), so only game-data tags
+// and generated schema properties are checked.
+var removedYAMLWords = []string{"runners"}
+
+// TestRemovedFeatures keeps removed features from returning through leftover references.
+func TestRemovedFeatures(t *testing.T) {
+	t.Parallel()
+	repositoryTexts(t, func(name string, contents []byte) {
+		// The changelog, decision and review records keep the history; this list names them.
+		if name == "CHANGELOG.md" || name == "internal/dev/hygiene/hygiene_test.go" || strings.HasPrefix(name, "docs/decisions/") || strings.HasPrefix(name, "docs/reviews/") {
+			return
+		}
+		for _, word := range removedFeatures {
+			if i := bytes.Index(contents, []byte(word)); i >= 0 {
+				t.Errorf("%s: byte %d names the removed feature %q; remove the leftover reference", name, i, word)
+			}
+		}
+		if strings.HasPrefix(name, "data/schema/") && strings.HasSuffix(name, ".json") {
+			for _, word := range removedYAMLWords {
+				if bytes.Contains(contents, []byte(`"`+word+`":`)) {
+					t.Errorf("%s: the schema still has the removed YAML key %q", name, word)
+				}
+			}
+		}
+		if strings.HasPrefix(name, "internal/layer2/gamedata/") && strings.HasSuffix(name, ".go") {
+			for _, word := range removedYAMLWords {
+				if bytes.Contains(contents, []byte(`yaml:"`+word+`"`)) || bytes.Contains(contents, []byte(`yaml:"`+word+`,`)) {
+					t.Errorf("%s: game data still reads the removed YAML key %q", name, word)
+				}
+			}
+		}
+	})
+}
+
+// testFileBaseline lists test files named before the naming rule (AGENTS.md); they are
+// debt to consolidate into the file named after their implementation. The list may only
+// shrink: delete a line when its file is merged or renamed.
+const testFileBaseline = `
+internal/battle/states_more_test.go
+internal/event/more_test.go
+internal/headless/balance/odds_more_test.go
+internal/layer1/assetfs/more_test.go
+internal/layer1/geom/more_test.go
+internal/layer1/memo/more_test.go
+internal/layer2/gamedata/check_scenes_more_test.go
+internal/layer2/gamedata/shapes_more_test.go
+internal/layer2/gamedata/types_more_test.go
+internal/layer3/atlas/more_test.go
+internal/layer3/dungeon/host_more_test.go
+internal/layer3/dungeon/roam_more_test.go
+internal/layer5/puppet/more_test.go
+internal/play/autopilot_cov2_test.go
+internal/play/battle_cov2_test.go
+internal/play/battle_cov3_test.go
+internal/play/battle_cov4_test.go
+internal/play/battle_cov5_test.go
+internal/play/battle_cov6_test.go
+internal/play/battle_cov7_test.go
+internal/play/battle_cov8_test.go
+internal/play/battle_fx_cov_test.go
+internal/play/battle_hooks_cov_test.go
+internal/play/battle_replay_cov2_test.go
+internal/play/battle_replay_cov_test.go
+internal/play/cinema_cov_test.go
+internal/play/core_cov_test.go
+internal/play/draw_cov_test.go
+internal/play/extras_cov_test.go
+internal/play/fast_cov_test.go
+internal/play/field_cov_test.go
+internal/play/floor_cov_test.go
+internal/play/fuzz_cov_test.go
+internal/play/fuzzread_cov_test.go
+internal/play/graphs_cov_test.go
+internal/play/helpers_cov_test.go
+internal/play/language_cov_test.go
+internal/play/misc_cov_test.go
+internal/play/mnu_bug_fusion_cov_test.go
+internal/play/mnu_bug_tree_cov_test.go
+internal/play/mnu_cgreview_cov_test.go
+internal/play/mnu_extra_cov_test.go
+internal/play/mnu_extrahelp_cov_test.go
+internal/play/mnu_gallery2_cov_test.go
+internal/play/mnu_gallery3_cov_test.go
+internal/play/mnu_gallery_cov_test.go
+internal/play/mnu_profiles_cov_test.go
+internal/play/mnu_shop_cov_test.go
+internal/play/new_cov_test.go
+internal/play/novel2_cov_test.go
+internal/play/novel_cov_test.go
+internal/play/progress_cov_test.go
+internal/play/prop_cov_test.go
+internal/play/replay_cov_test.go
+internal/play/requests_cov_test.go
+internal/play/scenecheck_cov_test.go
+internal/play/scenes_cov_test.go
+internal/play/startat_cov_test.go
+internal/play/tactics_cov2_test.go
+internal/play/tactics_cov_test.go
+internal/play/talk_cov_test.go
+internal/play/title_cov_test.go
+internal/play/title_flow_cov_test.go
+internal/play/titlemusic_cov_test.go
+internal/play/trace3_cov_test.go
+internal/play/trace_act_cov_test.go
+internal/play/trace_fuzz_cov_test.go
+internal/play/trace_scene_cov_test.go
+internal/play/ui_cov_test.go
+internal/play/unicode_cov_test.go
+internal/play/walk_cov_test.go
+internal/play/world_cov_test.go
+internal/play/world_fixture_cov_test.go
+internal/rpg/actor_more_test.go
+internal/rpg/set_more_test.go
+internal/rpg/stones_more_test.go
+`
+
+// vagueTest matches coverage-driven test file names: more, extra, cov and coverage
+// suffixes, optionally numbered.
+var vagueTest = regexp.MustCompile(`(?:^|_)(?:more|extra|cov|coverage)\d*_test\.go$`)
+
+// numberedTest matches a numbered test file, which is vague unless an implementation
+// file has the same number (vocab2.go is tested in vocab2_test.go).
+var numberedTest = regexp.MustCompile(`\d_test\.go$`)
+
+// TestTestFileNames applies the AGENTS.md naming rule: a unit test file is named after
+// its implementation, never with a vague or numbered coverage suffix.
+func TestTestFileNames(t *testing.T) {
+	t.Parallel()
+	baseline := strings.Fields(testFileBaseline)
+	if !slices.IsSorted(baseline) || len(slices.Compact(slices.Clone(baseline))) != len(baseline) {
+		t.Fatal("test file baseline must contain sorted, unique paths")
+	}
+	if len(baseline) > testFileBaselineLimit {
+		t.Fatal("test file baseline may only shrink")
+	}
+	found := map[string]bool{}
+	fsy := os.DirFS("../../..")
+	err := fs.WalkDir(fsy, ".", func(name string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case ".git", ".agents", ".codex", ".aws", ".cache", "bin", "build", "dist", "vendor", "node_modules", "testdata":
+				return fs.SkipDir
+			}
+			return nil
+		}
+		base := path.Base(name)
+		vague := vagueTest.MatchString(base)
+		if !vague && numberedTest.MatchString(base) {
+			_, err := fs.Stat(fsy, strings.TrimSuffix(name, "_test.go")+".go")
+			vague = err != nil
+		}
+		if !vague {
+			return nil
+		}
+		found[name] = true
+		if !slices.Contains(baseline, name) {
+			t.Errorf("%s: name the test file after its implementation (foo.go is tested in foo_test.go) or extend that file", name)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range baseline {
+		if !found[name] {
+			t.Errorf("%s: renamed or merged; remove it from the test file baseline", name)
+		}
+	}
+}
+
+// TestFixturesAreReferenced rejects stray E2E fixtures and scripts: each entry of
+// e2e/atago/fixtures and each file of scripts/ and bench/ must be named by another file.
+func TestFixturesAreReferenced(t *testing.T) {
+	t.Parallel()
+	texts := map[string][]byte{}
+	repositoryTexts(t, func(name string, contents []byte) { texts[name] = contents })
+	var wanted []string
+	for _, dir := range []string{"e2e/atago/fixtures", "scripts", "bench"} {
+		entries, err := os.ReadDir("../../../" + dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			wanted = append(wanted, dir+"/"+e.Name())
+		}
+	}
+	for _, entry := range wanted {
+		// A fixture is named by its path below the fixtures directory, a script by its file name.
+		word := path.Base(entry)
+		if strings.HasPrefix(entry, "e2e/atago/fixtures/") {
+			word = "fixtures/" + word
+		}
+		referenced := false
+		for name, contents := range texts {
+			if name != entry && !strings.HasPrefix(name, entry+"/") && bytes.Contains(contents, []byte(word)) {
+				referenced = true
+				break
+			}
+		}
+		if !referenced {
+			t.Errorf("%s: nothing names %q; delete the stray file or reference it where it is used", entry, word)
+		}
 	}
 }

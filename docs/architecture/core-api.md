@@ -8,4 +8,4 @@ A loaded `Game` is shared read-only. Each `Session` owns its state, randomness a
 
 The directory loader is `internal/layer2/gamedata.LoadDir`. It validates the filesystem path, scopes reads to that directory, and returns structured diagnostics. `internal/savefile` owns directory and memory stores, independently of sessions and graphics.
 
-Package relocation does not change YAML schema or save versions. The pre-retirement fixture and CLI restore scenario live in `e2e/atago/fixtures/pre-api-retirement.save` and `e2e/atago/graphics.atago.yaml`.
+Package relocation does not change YAML schema or save versions. The pre-retirement fixture and CLI restore scenario live in `e2e/atago/fixtures/pre-api-retirement.save` and `e2e/atago/graphics.atago.yaml`; `e2e/atago/fixtures/pre-api-retirement.txt` records how the save was made.
