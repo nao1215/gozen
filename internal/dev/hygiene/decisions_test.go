@@ -819,6 +819,8 @@ func TestDeadcodeGate(t *testing.T) {
 
 // TestCIChangeScope exercises the real merge-diff classifier, including missing
 // history. Required checks may omit expensive steps only on an explicit false.
+// A change inside any engine level directory must start the performance job, so
+// moving or adding a level directory cannot silently drop it from the filter.
 func TestCIChangeScope(t *testing.T) {
 	for _, tool := range []string{"bash", "git"} {
 		if _, err := exec.LookPath(tool); err != nil {
@@ -829,22 +831,29 @@ func TestCIChangeScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct {
-		name, event string
-		files       []string
-		history     bool
-		code, docs  string
-	}{
-		{"release notes PR", "pull_request", []string{"CHANGELOG.md"}, true, "false", "false"},
-		{"mixed docs PR", "pull_request", []string{"CHANGELOG.md", "README.md"}, true, "false", "true"},
-		{"mixed code PR", "pull_request", []string{"CHANGELOG.md", "main.go"}, true, "true", "true"},
-		{"executable examples", "pull_request", []string{"docs/examples/game.yaml"}, true, "true", "true"},
-		{"unknown path", "pull_request", []string{"unknown"}, true, "true", "true"},
-		{"main push", "push", []string{"CHANGELOG.md"}, true, "true", "true"},
-		{"manual run", "workflow_dispatch", []string{"CHANGELOG.md"}, true, "true", "true"},
-		{"empty diff", "pull_request", nil, true, "true", "true"},
-		{"missing history", "pull_request", []string{"CHANGELOG.md"}, false, "true", "true"},
-	} {
+	type scopeCase struct {
+		name, event      string
+		files            []string
+		history          bool
+		code, docs, perf string
+	}
+	cases := []scopeCase{
+		{"release notes PR", "pull_request", []string{"CHANGELOG.md"}, true, "false", "false", "false"},
+		{"mixed docs PR", "pull_request", []string{"CHANGELOG.md", "README.md"}, true, "false", "true", "false"},
+		{"mixed code PR", "pull_request", []string{"CHANGELOG.md", "main.go"}, true, "true", "true", "false"},
+		{"executable examples", "pull_request", []string{"docs/examples/game.yaml"}, true, "true", "true", "false"},
+		{"unknown path", "pull_request", []string{"unknown"}, true, "true", "true", "false"},
+		{"main push", "push", []string{"CHANGELOG.md"}, true, "true", "true", "true"},
+		{"manual run", "workflow_dispatch", []string{"CHANGELOG.md"}, true, "true", "true", "true"},
+		{"empty diff", "pull_request", nil, true, "true", "true", "true"},
+		{"missing history", "pull_request", []string{"CHANGELOG.md"}, false, "true", "true", "true"},
+	}
+	for _, l := range hygiene.Levels() {
+		if l.Dir != "" {
+			cases = append(cases, scopeCase{"level " + l.Name, "pull_request", []string{l.Dir + "/pkg/file.go"}, true, "true", "true", "true"})
+		}
+	}
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			git := func(args ...string) {
@@ -886,7 +895,7 @@ func TestCIChangeScope(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range []string{"code=" + tc.code + "\n", "docs_runtime=" + tc.docs + "\n"} {
+			for _, want := range []string{"code=" + tc.code + "\n", "docs_runtime=" + tc.docs + "\n", "perf=" + tc.perf + "\n"} {
 				if !strings.Contains("\n"+string(got), "\n"+want) {
 					t.Fatalf("outputs %q missing %q", got, want)
 				}
