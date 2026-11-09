@@ -25,6 +25,7 @@ func Reset() {
 	clear(active.popFaces)
 	clear(active.wrapCache)
 	clear(active.ellipsisCache)
+	active.wrapBytes, active.ellipsisBytes = 0, 0
 	active.regularSource, active.popSource, active.titleSource, active.subSource = nil, nil, nil, nil
 	active.scale = 1
 }
@@ -40,6 +41,7 @@ type Context struct {
 	textCache                                        map[textKey]textImage
 	wrapCache                                        map[fitKey][]string
 	ellipsisCache                                    map[fitKey]string
+	wrapBytes, ellipsisBytes                         int
 	glyphCache                                       map[*ebiten.Image]*ebiten.Image
 	glyphPage                                        *ebiten.Image
 	glyphX, glyphY, glyphRow                         int

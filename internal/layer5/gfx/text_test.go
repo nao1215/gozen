@@ -542,6 +542,11 @@ func TestFittedTextFollowsScaleAndFonts(t *testing.T) {
 	if got := Wrap(benchParagraph, 20, 420); !slices.Equal(got, wrapWith(benchParagraph, func(line []rune) bool { return TextWidth(string(line), 20) <= 420 })) {
 		t.Fatalf("wrap at scale 2 is %q", got)
 	}
+	cached := Ellipsis(benchParagraph, 20, 160)
+	clear(active.ellipsisCache)
+	if fresh := Ellipsis(benchParagraph, 20, 160); cached != fresh {
+		t.Fatalf("ellipsis at scale 2 is %q, fresh %q", cached, fresh)
+	}
 	SetScale(1)
 	if err := LoadFonts(gobold.TTF, nil); err != nil {
 		t.Fatal(err)
@@ -557,6 +562,44 @@ func TestFittedTextFollowsScaleAndFonts(t *testing.T) {
 	}
 	if len(active.wrapCache) > cacheLimit {
 		t.Fatalf("wrap cache grew to %d", len(active.wrapCache))
+	}
+}
+
+// TestFittedTextKeepsAByteBudget: long passages are kept only up to
+// fitByteLimit bytes of texts and results, and the count the cache keeps
+// matches what it holds.
+func TestFittedTextKeepsAByteBudget(t *testing.T) {
+	useFont(t)
+	passage := strings.Repeat("x", 64<<10)
+	for i := range 2 * fitByteLimit / (2 * len(passage)) {
+		k := fitKey{s: passage + strconv.Itoa(i)}
+		remember(active.wrapCache, &active.wrapBytes, k, []string{passage})
+		remember(active.ellipsisCache, &active.ellipsisBytes, k, passage)
+	}
+	if len(active.wrapCache) == 0 || len(active.ellipsisCache) == 0 {
+		t.Fatal("the caches kept nothing")
+	}
+	held := 0
+	for k, lines := range active.wrapCache {
+		held += len(k.s)
+		for _, l := range lines {
+			held += len(l)
+		}
+	}
+	if held > fitByteLimit || held != active.wrapBytes {
+		t.Fatalf("wrap cache holds %d bytes, counts %d, limit %d", held, active.wrapBytes, fitByteLimit)
+	}
+	held = 0
+	for k, v := range active.ellipsisCache {
+		held += len(k.s) + len(v)
+	}
+	if held > fitByteLimit || held != active.ellipsisBytes {
+		t.Fatalf("ellipsis cache holds %d bytes, counts %d, limit %d", held, active.ellipsisBytes, fitByteLimit)
+	}
+	huge := fitKey{s: strings.Repeat("x", fitByteLimit)}
+	remember(active.wrapCache, &active.wrapBytes, huge, []string{"x"})
+	if _, ok := active.wrapCache[huge]; ok {
+		t.Fatal("a text larger than the budget was kept")
 	}
 }
 
