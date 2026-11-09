@@ -40,7 +40,7 @@ Command:
   notice: "Shows a short notice at the top of the screen without stopping the event."
   message: "Queues a chat message ({who, text, event}) as a top-right notification on full-screen surfaces; opening shows a bubble and runs the event, which asks for the decision. Queuing does not stop the event."
   call_view: "Changes only how a video call looks, without changing any state: camera {who, on} turns a participant's camera view on or off, and share {who, picture} puts a shared screen on the stage, until a line outside a call."
-  phone: "Shows a phone over the scene until the player puts it down (ADR 0057): one of the apps listed under app, held upright or with hold landscape on its side. Buttons, calls and liked posts may set state, and var keeps the outcome."
+  phone: "Shows a phone over the scene until the player puts it down (ADR 0057): one of the apps listed under app, held upright or with hold landscape on its side. A banner without var does not wait. Buttons, calls and liked posts may set state, and var keeps the outcome of the apps other than feed, video, game and store."
   on_escape: "With `battle`, the commands that run when the party escapes."
   on_lose: "With `battle`, the commands that run when the party loses."
   on_win: "With `battle`, the commands that run when the party wins."
