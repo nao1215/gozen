@@ -129,7 +129,7 @@ func TestCheckMarkdownLinksFindsBrokenOnes(t *testing.T) {
 }
 
 // codeCitation is a Go file named in backticks, with an optional line.
-var codeCitation = regexp.MustCompile("`(?:\\./)?([A-Za-z0-9][A-Za-z0-9_./-]*\\.go)(:[0-9]+)?`")
+var codeCitation = regexp.MustCompile("`(?:\\./)?([A-Za-z0-9][A-Za-z0-9_./-]*\\.go)(:\\d+)?`")
 
 // TestCodeCitations: a current document names Go files that exist, by a path
 // from the root, a path's tail or a bare file name, and never by line, since
