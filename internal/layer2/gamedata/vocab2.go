@@ -267,17 +267,13 @@ func (c *checker) unknownFields(w string, cmd *Command) bool {
 	return true
 }
 
-// nearest is the command field or declared command name closest to name (candidate for a typo). "" if none.
+// nearest is the command field or declared command name closest to name (candidate
+// for a typo), "" if none or if several are equally close, as nearestName decides
+// for definition fields.
 func (c *checker) nearest(name string) string {
-	best, bestD := "", 3
 	candidates := slices.Sorted(maps.Keys(commandKeys))
 	candidates = append(candidates, slices.Sorted(maps.Keys(c.db.Game.Verbs))...)
-	for _, k := range candidates {
-		if d := editDistance(name, k); d < bestD && d < len([]rune(name)) {
-			best, bestD = k, d
-		}
-	}
-	return best
+	return nearestName(name, candidates)
 }
 
 // editDistance is an edit distance that counts swapping two adjacent characters as 1.

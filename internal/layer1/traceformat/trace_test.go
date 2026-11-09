@@ -3,6 +3,7 @@ package traceformat_test
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -76,5 +77,27 @@ func TestExactReplayRequiresSourceAuditRevision(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "record again") {
 			t.Fatalf("revision %d: %v", revision, err)
 		}
+	}
+}
+
+// TestRecordFieldReaders: numbers and lists read the same before and after a record
+// goes through JSON, and anything else reads as the zero value.
+func TestRecordFieldReaders(t *testing.T) {
+	for _, v := range []any{2.0, 2, uint64(2)} {
+		if traceformat.Number(v) != 2 {
+			t.Errorf("Number(%T) = %v", v, traceformat.Number(v))
+		}
+	}
+	if traceformat.Number("2") != 0 || traceformat.Number(nil) != 0 {
+		t.Error("a non-number must read as 0")
+	}
+	if got := traceformat.Strings([]any{"a", 1.0, "b"}); !slices.Equal(got, []string{"a", "b"}) {
+		t.Errorf("decoded list %q", got)
+	}
+	if got := traceformat.Strings([]string{"a"}); !slices.Equal(got, []string{"a"}) {
+		t.Errorf("unwritten list %q", got)
+	}
+	if traceformat.Strings("a") != nil {
+		t.Error("a non-list must read as nil")
 	}
 }

@@ -44,11 +44,6 @@ type Entry struct {
 	Choice *atlas.Choice
 }
 
-func holds(st *rpg.State, e data.Expr) bool {
-	ok, err := e.Bool(st.Env())
-	return err == nil && ok
-}
-
 // Entries are what can be done at the party's location now: talk to the people there,
 // the location's actions, the things and the spots with do of its stage, search (when it
 // has battles), the points of its map, the exits, and the menu. At a map or a stage each
@@ -63,7 +58,7 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 		if loc.TalkOnEnter { // played on entering (Arrive)
 			break
 		}
-		if holds(st, p.When) {
+		if st.Holds(p.When) {
 			e := Entry{Kind: Talk, Label: lang.T("話す：") + data.Render(p.Name, env), Person: p}
 			if sp := stagePerson(stage, p.ID); sp != nil {
 				e.Spot = stage.NearestSpot(sp.Feet())
@@ -74,7 +69,7 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 	}
 	for i := range loc.Actions {
 		a := &loc.Actions[i]
-		if holds(st, a.When) {
+		if st.Holds(a.When) {
 			e := Entry{Kind: Do, Label: data.Render(a.Label, env), Action: a}
 			if stage != nil {
 				if t := stage.ThingOf(a.ID); t != nil {
@@ -88,7 +83,7 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 	if stage != nil {
 		for i := range stage.Things {
 			t := &stage.Things[i]
-			if t.Action != "" || !holds(st, t.When) || t.Once && st.Done[atlas.DoneKey(st.Location, t.ID)] {
+			if t.Action != "" || !st.Holds(t.When) || t.Once && st.Done[atlas.DoneKey(st.Location, t.ID)] {
 				continue
 			}
 			c := t.Area.Poly().Center()
@@ -129,7 +124,7 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 	}
 	for i := range loc.Exits {
 		e := &loc.Exits[i]
-		if !holds(st, e.When) {
+		if !st.Holds(e.When) {
 			continue
 		}
 		label := e.Label
@@ -147,8 +142,8 @@ func Entries(db *data.DB, st *rpg.State) []Entry {
 // mark sets New if the new expression holds, and marks the item if a mark expression is written and holds.
 // The mark character is lang.T("　！") (changeable via the game's game.yaml text). What the mark signals is up to the game.
 func mark(st *rpg.State, e *Entry, n, m data.Expr) {
-	e.New = n.Set() && holds(st, n)
-	if m.Set() && holds(st, m) {
+	e.New = n.Set() && st.Holds(n)
+	if m.Set() && st.Holds(m) {
 		e.Marked = true
 		e.Label += lang.T("　！")
 	}
@@ -214,7 +209,7 @@ func Arrive(db *data.DB, st *rpg.State, battles bool) []data.Command {
 		if ev.Trigger != "enter" || ev.Location != st.Location || (ev.Once && st.Done[id]) {
 			continue
 		}
-		if !holds(st, ev.When) {
+		if !st.Holds(ev.When) {
 			continue
 		}
 		if ev.Once {
@@ -252,7 +247,7 @@ func Auto(db *data.DB, st *rpg.State) []data.Command {
 		if ev.Trigger != "auto" || (ev.Location != "" && ev.Location != st.Location) || (ev.Once && st.Done[id]) {
 			continue
 		}
-		if !holds(st, ev.When) {
+		if !st.Holds(ev.When) {
 			continue
 		}
 		if ev.Once {
@@ -294,7 +289,7 @@ func Step(db *data.DB, st *rpg.State, spot string) []data.Command {
 func talkOnEnter(st *rpg.State, id string, loc *data.Location) []data.Command {
 	var here []int
 	for i := range loc.People {
-		if holds(st, loc.People[i].When) && len(loc.People[i].Talk) > 0 {
+		if st.Holds(loc.People[i].When) && len(loc.People[i].Talk) > 0 {
 			here = append(here, i)
 		}
 	}
@@ -302,7 +297,7 @@ func talkOnEnter(st *rpg.State, id string, loc *data.Location) []data.Command {
 		return nil
 	}
 	for _, i := range here {
-		if p := &loc.People[i]; p.New.Set() && holds(st, p.New) {
+		if p := &loc.People[i]; p.New.Set() && st.Holds(p.New) {
 			return p.Talk
 		}
 	}

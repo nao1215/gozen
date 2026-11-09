@@ -70,6 +70,17 @@ Dango also checks generated schemas against the Go types and translation keys ag
   list and its maximum live beside the test; remove entries as coverage improves.
   Never grow or replace the allowlist to admit a new word.
 
+- Removed-feature tombstones reject names of deliberately removed features (the
+  casual-game runner, its schema version and the migrate command, listed in
+  `internal/dev/hygiene/hygiene_test.go`) anywhere outside the changelog, decision
+  and review records, and their YAML keys in game-data tags and generated schemas.
+  Returning a feature needs a new ADR that also deletes its tombstone.
+- File organization checks reject new test files with vague or numbered coverage
+  suffixes (`_more_test.go`, `_cov2_test.go`) and E2E fixtures, scripts or bench
+  files that no other file names. The existing misnamed test files form a fixed
+  baseline that may only shrink as they are consolidated. Naming is lexical: a
+  reference proves a file is mentioned, not that it is used.
+
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.

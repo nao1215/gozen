@@ -95,14 +95,14 @@ func (b *Battle) act(a Action) []Step {
 		if use.Scope != "dead_ally" && use.Scope != "all_dead_allies" && !t.Alive() {
 			continue
 		}
-		if physical && !contains(u.allies(), t) { // someone may take it for t
+		if physical && !slices.Contains(u.allies(), t) { // someone may take it for t
 			if c, msg := b.coverer(t); c != nil {
 				steps = append(steps, Step{Kind: Message, Text: b.text(msg, t, c, name, 0), User: c, Target: t})
 				t = c
 			}
 		}
 		reached = append(reached, t)
-		if physical && !b.countering && t.Alive() && !contains(countered, t) {
+		if physical && !b.countering && t.Alive() && !slices.Contains(countered, t) {
 			countered = append(countered, t) // after the action: maybe a counter
 		}
 		if use.Hit.Set() {
@@ -232,7 +232,7 @@ func (b *Battle) targets(u *Unit, scope string, chosen *Unit, hits int) []*Unit 
 		if len(pool) == 0 {
 			return nil
 		}
-		if chosen != nil && contains(pool, chosen) {
+		if chosen != nil && slices.Contains(pool, chosen) {
 			return []*Unit{chosen}
 		}
 		if u.Enemy { // the foes strike at the front row more
@@ -243,7 +243,7 @@ func (b *Battle) targets(u *Unit, scope string, chosen *Unit, hits int) []*Unit 
 	var out []*Unit
 	switch scope {
 	case "one_enemy":
-		if chosen != nil && chosen.Alive() && !contains(u.foes(), chosen) && !contains(u.allies(), chosen) {
+		if chosen != nil && chosen.Alive() && !slices.Contains(u.foes(), chosen) && !slices.Contains(u.allies(), chosen) {
 			chosen = nil
 		}
 		if chosen != nil && chosen.Alive() {
@@ -280,10 +280,6 @@ func (b *Battle) targets(u *Unit, scope string, chosen *Unit, hits int) []*Unit 
 		}
 	}
 	return rep
-}
-
-func contains(us []*Unit, u *Unit) bool {
-	return slices.Contains(us, u)
 }
 
 // effEnv is the scope of an effect: a (the user), b (the target) and the battle's names.

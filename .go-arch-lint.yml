@@ -56,11 +56,11 @@ components:
   private6: { in: "internal/layer6/**" }
   # One CLI (ADR 0016): gozen owns prompt and mosaic through their internal command packages.
   commands: { in: ["cmd/gozen/**", "cmd/internal/checkdata/**", "cmd/internal/cli/**", "cmd/internal/distribute/**", "cmd/internal/gamecatalog/**", "cmd/internal/starter/**", "cmd/internal/themes/**", "cmd/internal/trial/**"] }
-  # GNU-style options and help pages shared by gozen, its production commands, and runner (ADR 0018).
   repro: { in: "cmd/internal/repro/**" }
   dango: { in: "cmd/internal/dango/**" }
   player: { in: "cmd/gozen-player/**" }
   cliio: { in: "internal/cliio/**" }
+  # GNU-style options and help pages shared by gozen and its production commands (ADR 0018).
   clihelp: { in: "internal/clihelp/**" }
   # Diagnostic codes (ADR 0024): a leaf like clihelp, used by the commands, the loader and the tools.
   diag: { in: ["internal/diag", "internal/diag/**"] }

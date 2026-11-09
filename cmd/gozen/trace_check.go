@@ -101,13 +101,13 @@ func who(key string) string {
 
 func (c *traceChecker) line(l map[string]any, raw []byte) error {
 	k := str(l["t"])
-	tick := int(num(l["tick"]))
+	tick := int(traceformat.Number(l["tick"]))
 	switch k {
 	case "start":
 		if err := useTraceLanguage(l); err != nil {
 			return err
 		}
-		if s := num(l["speed"]); s > 1 {
+		if s := traceformat.Number(l["speed"]); s > 1 {
 			c.speed = s
 		}
 	case "say":
@@ -127,7 +127,7 @@ func (c *traceChecker) line(l map[string]any, raw []byte) error {
 			c.add(tick, "voice", lang.T("ボイス %s が読めない（%s）"), str(l["file"]), c.say())
 		}
 	case "rollback":
-		if from, to := num(l["from"]), num(l["to"]); l["back_into"] != true && to >= from {
+		if from, to := traceformat.Number(l["from"]), traceformat.Number(l["to"]); l["back_into"] != true && to >= from {
 			c.add(tick, "rollback", lang.T("戻る操作で行が戻っていない（%v 行目から %v 行目）"), from, to)
 		}
 	case "stand":
@@ -236,7 +236,7 @@ func (c *traceChecker) music(l map[string]any, tick int) {
 			c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んでから %.1f 秒鳴らないまま次の曲 %q を頼んだ"), c.wantSong, float64(tick-c.wantAt)/60/c.speed, wanted)
 		}
 		c.wantSong = wanted
-		c.wantAt = int(num(l["asked_at"]))
+		c.wantAt = int(traceformat.Number(l["asked_at"]))
 		if _, ok := l["asked_at"]; !ok {
 			c.wantAt = tick
 		}
@@ -244,8 +244,8 @@ func (c *traceChecker) music(l map[string]any, tick int) {
 	}
 	if w, ok := l["wait"]; ok {
 		c.waiting = false
-		if c.late(int(num(w))) {
-			c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んでから鳴り始めるまで %.1f 秒（直前の台詞: %s）"), str(l["song"]), num(w)/60/c.speed, c.say())
+		if c.late(int(traceformat.Number(w))) {
+			c.add(c.wantAt, "music-late", lang.T("曲 %s を頼んでから鳴り始めるまで %.1f 秒（直前の台詞: %s）"), str(l["song"]), traceformat.Number(w)/60/c.speed, c.say())
 		}
 	}
 }
@@ -270,7 +270,7 @@ func checkTrace(input io.Reader, musicLate float64) (*traceChecker, error) {
 		if err != nil {
 			return nil, err
 		}
-		last = int(num(l["tick"]))
+		last = int(traceformat.Number(l["tick"]))
 		if err := c.line(l, sc.Bytes()); err != nil {
 			return nil, err
 		}

@@ -16,11 +16,6 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
-func holds(st *rpg.State, e data.Expr) bool {
-	ok, err := e.Bool(st.Env())
-	return err == nil && ok
-}
-
 // Here is where the party stands at its location: its spot when that is a point of the
 // map or a spot of the stage, else the location's start ("" for other locations).
 func Here(db *data.DB, st *rpg.State) string {
@@ -39,11 +34,11 @@ func Here(db *data.DB, st *rpg.State) string {
 }
 
 // Open reports whether a point of a map is open now (its when holds).
-func Open(st *rpg.State, p *data.MapPoint) bool { return p != nil && holds(st, p.When) }
+func Open(st *rpg.State, p *data.MapPoint) bool { return p != nil && st.Holds(p.When) }
 
 // Usable reports whether a road is open now: its when holds and both ends are open.
 func Usable(st *rpg.State, a *data.Atlas, r *data.Road) bool {
-	if len(r.Between) != 2 || !holds(st, r.When) {
+	if len(r.Between) != 2 || !st.Holds(r.When) {
 		return false
 	}
 	return Open(st, a.Points[r.Between[0]]) && Open(st, a.Points[r.Between[1]])
@@ -192,7 +187,7 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 			// closed: offered when an open road from a reached point leads to it
 			for i := range a.Roads {
 				r := &a.Roads[i]
-				if !slices.Contains(r.Between, id) || !holds(st, r.When) {
+				if !slices.Contains(r.Between, id) || !st.Holds(r.When) {
 					continue
 				}
 				if w, reached := routes.path(Other(r, id)); reached {
@@ -326,7 +321,7 @@ func PickTroop(st *rpg.State, troops []data.TroopPick) string {
 	var picks []data.TroopPick
 	total := 0.0
 	for _, t := range troops {
-		if !holds(st, t.When) {
+		if !st.Holds(t.When) {
 			continue
 		}
 		if t.Weight <= 0 {

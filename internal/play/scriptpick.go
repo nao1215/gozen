@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	data "github.com/nao1215/gozen/internal/layer2/gamedata"
 	lang "github.com/nao1215/gozen/internal/text"
 )
@@ -282,7 +283,7 @@ func (g *Game) replayPick(target any) {
 		return
 	}
 	kind, items := g.scriptPickables()
-	index := int(num(line["index"]))
+	index := int(traceformat.Number(line["index"]))
 	if kind != line["on"] || index < 0 || index >= len(items) || items[index].label != line["label"] || items[index].disabled {
 		g.failure = fmt.Errorf("replay: pick target changed at tick %d", g.tick)
 		return

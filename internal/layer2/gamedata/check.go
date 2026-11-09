@@ -214,7 +214,11 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	}
 	keys := map[string]string{"chat": "messages", "feed": "posts", "video": "video", "page": "rows", "home": "rows", "contacts": "rows", "lock": "notices", "banner": "notices"}
 	if _, ok := lists[p.App]; !ok {
-		c.errorf(diag.Shape, where+".app", lang.T("app は chat・feed・video・page・lock・banner・home・contacts のいずれかを指定してください（指定値 %q）"), p.App)
+		message := fmt.Sprintf(lang.T("app は chat・feed・video・page・lock・banner・home・contacts・game・store のいずれかを指定してください（指定値 %q）"), p.App)
+		if near := nearestName(p.App, append(slices.Clone(apps), "game", "store")); near != "" {
+			message += fmt.Sprintf(lang.T("（%q の誤りですか？）"), near)
+		}
+		c.errorf(diag.Shape, where+".app", "%s", message)
 		return
 	}
 	for _, app := range apps {

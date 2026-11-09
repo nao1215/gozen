@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 	"github.com/nao1215/gozen/internal/rpg"
 )
 
@@ -70,7 +71,7 @@ func TestFlowGoesInOrder(t *testing.T) {
 	}
 	looks := traceLines(t, buf.Bytes(), "look")
 	l := looks[len(looks)-1]
-	if l["flow"] != "day" || l["step"] != 2.0 || !strings.Contains(strings.Join(strs(l["disabled"]), ","), "3 Act") {
+	if l["flow"] != "day" || l["step"] != 2.0 || !strings.Contains(strings.Join(traceformat.Strings(l["disabled"]), ","), "3 Act") {
 		t.Fatal("look does not show the step or the locked step", l)
 	}
 	if err := g.scriptPick(&g.in, "3 Act"); err == nil {

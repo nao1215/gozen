@@ -72,6 +72,10 @@ func TestVersion2Checks(t *testing.T) {
 			}
 		})
 	}
+	// A typo equally close to two commands (say and set) is not a correction.
+	if _, err := loadV2(v2Head, "  e: {do: [{sat: hi}]}\n"); err == nil || !strings.Contains(err.Error(), `unknown field "sat"`) || strings.Contains(err.Error(), "did you mean") {
+		t.Fatalf("a tied typo must get no suggestion, got %v", err)
+	}
 	db, err := loadV2(v2Head+"verbs: {roll: sub}\nscreens: {album: {title: Notes, entries: [{label: Entry, text: Welcome}]}}\n", `  e: {do: [{roll: true}, {open: album}, {use: tonic, target: scout}, {equip: {actor: scout, item: blade}}, {pick: Rest}, {set: {gold: "gold + 1", party: [scout], location: camp, item.tonic: 2, actor.scout.tactics: auto}}, {if: "len(menu) > 0 && result == '' && !over && !cleared && len(repairs) == 0 && cell(0, 0) == nil && len(map) == 0 && actor.scout.tactics.mode == 'auto'"}]}
 `)
 	if err != nil {

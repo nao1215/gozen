@@ -43,7 +43,7 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
 
 ## A phone on the screen
 
-`phone` shows a phone over the scene and waits until the player puts it down (ADR 0057). Skip and Ctrl pass it, but stop at one that keeps a result (a button, a call, a liked post), as at a choice. `app` is `chat`, `feed`, `video`, `page`, `lock` or `banner`, each with its own list; `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down (ADR 0057); a banner without `var` does not wait. Skip and Ctrl pass it, but stop at one that keeps a result (a button, a call, a liked post), as at a choice. `app` is `chat`, `feed`, `video`, `page`, `lock`, `banner`, `home`, `contacts`, `game` or `store`; the first eight each take their own list, while `game` and `store` take none and need `phone.apps` in game.yaml (`game` names an app ID with `game:`; see [the phone games guide](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md)); `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml
@@ -81,12 +81,12 @@ The head's horizontal center follows `stand.at` or automatic placement. `stage_s
 - Footage: `frames: [clips/battle/*.jpg]` (pictures or patterns under assets/, sorted) plays them at `fps` (12 by default) over the `picture`, the poster; a feed loops them, the video app and a chat's video stop on the last; `seconds` defaults to the frames' length. Cut a video into JPEGs with ffmpeg; the engine decodes no video files.
 - A `page` (a browser bar with `url`, or `title` with `color`) scrolls `rows`: `text` (`size`, `bold`), `picture` (whole, `caption`), `pictures` (grid, `columns` 2 or 3), `item` (icon, title, text, value), `button` (puts the phone down). `locked: '!flag.x'` darkens a picture or grid with a lock and `label`.
 - A `lock` screen shows `time`/`date` and `notices` one a press (`auto` by themselves); `call: true` is an incoming call (OK answers, Cancel declines; list the call twice to ring again). `ring: 8` stops it after eight seconds unanswered and puts the phone down with `missed`, setting the call's `missed`.
-- `var: var.x` keeps a button's `id` (or label), `answer`, `decline` or `missed`; a button's or call's `set` is the `set` command's map. Branch on it after the phone.
+- `var: var.x` keeps a button's `id` (or label), `answer`, `decline`, `missed`, for a page, home, contacts, lock or banner `open` or `dismiss`, or for a page, lock or banner the `timeout` result (`expired` unless `timeout_result` names another); a button's or call's `set` is the `set` command's map. Branch on it after the phone.
 - A feed post's `set` runs when the phone is put down with the post liked (a second tap takes the like back and keeps nothing), so the story reacts to a like given by mistake. Only a click or a tap likes (the keys and the pad scroll), so a like is never required. A feed has no `var`; `browse: true` rejects `set`; at most 31 posts of a feed have `set`.
 - A page's buttons take the keys and the pad (left, right, Tab ring one; OK presses it). `qr: text` draws a crisp QR code with `caption`.
 - Chat: `time`, `read: true` (owner's), `day` (a separator; a message of only `day` is the separator). Pictures keep their shape and open full screen on a press or a click. Posts: `time`. No `icon`: a circle with the name's first letter.
 - Footage: `fade: 0.3` cross-fades frames, `pan: true` pushes in on each, so a few pictures at a low `fps` look smooth.
-- A feed post with only `text` is a timeline card (`replies`, `reposts`). `app: banner` does not wait: a push banner at the top over any scene; a click opens the notice's `event`.
+- A feed post with only `text` is a timeline card (`replies`, `reposts`). `app: banner` without `var` does not wait: a push banner at the top over any scene; a click opens the notice's `event`. With `var` it waits for `open`, `dismiss` or its `timeout`, and takes exactly one notice without `event`.
 
 <!-- verify: parse a fragment of an event; the pictures are the author's files; ann_chat is the author's event -->
 ```yaml

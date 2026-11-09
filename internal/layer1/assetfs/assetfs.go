@@ -103,11 +103,11 @@ func (o *OverlayFS) load() {
 	}
 	o.sums = map[string]string{}
 	for _, e := range es {
-		file, ok := field(e, o.man.File).(string)
+		file, ok := Field(e, o.man.File).(string)
 		if !ok || file == "" {
 			continue
 		}
-		sum, ok := field(e, o.man.Sum).(string)
+		sum, ok := Field(e, o.man.Sum).(string)
 		if !ok {
 			sum = ""
 		} // if absent, "" (unused)

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/diag"
+	"github.com/nao1215/gozen/internal/layer1/traceformat"
 )
 
 type metricPoint struct {
@@ -146,7 +147,7 @@ func (r *metricReader) stall(o metricObservation, kind string, inputs int) {
 }
 
 func (r *metricReader) record(l map[string]any) error {
-	tick := num(l["tick"])
+	tick := traceformat.Number(l["tick"])
 	if r.seen && tick < r.at.Tick {
 		return diag.TraceBroken.Errorf("metrics require nondecreasing trace ticks")
 	}
@@ -208,7 +209,7 @@ func (r *metricReader) consume(kind string, l map[string]any, changed bool) bool
 	case "battle":
 		return true
 	case "input":
-		if len(strs(l["press"])) > 0 || l["click"] == true || l["esc"] == true || num(l["digit"]) > 0 {
+		if len(traceformat.Strings(l["press"])) > 0 || l["click"] == true || l["esc"] == true || traceformat.Number(l["digit"]) > 0 {
 			if r.inputs == 0 {
 				r.input = r.observation()
 			}
@@ -308,7 +309,7 @@ func (r *metricReader) signals(kind string, l, previous map[string]any, exists b
 			r.signal("phone_call")
 		}
 	case "scene":
-		if slices.Contains(strs(l["stack"]), "battle") && !slices.Contains(strs(previous["stack"]), "battle") {
+		if slices.Contains(traceformat.Strings(l["stack"]), "battle") && !slices.Contains(traceformat.Strings(previous["stack"]), "battle") {
 			r.signal("battle")
 		}
 	case "battle":

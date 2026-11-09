@@ -45,7 +45,7 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | `open` | Opens a game screen by name. |
 | `open_wall` | Turns the wall next to the party's cell in a dungeon into the tile of the given map character, such as a hidden stair. |
 | `order` | Gives an order of the campaign: its ID, or a map of the ID, the general and the target region. The general and the target it needs are asked when not given. Needs schema version 5. |
-| `phone` | Show a chat, feed or video phone overlay until dismissed, without mutating game state. |
+| `phone` | Show a phone app (chat, feed, video, page, lock, banner, home, contacts, game or store) until it is put down (a banner without `var` does not wait); buttons, calls and liked posts may `set` state, and `var` keeps the outcome of the apps other than feed, video, game and store. |
 | `pick` | Picks an item of the current location's menu (a person, action or exit) by its label. |
 | `plan` | Apply one deterministic planning operation. |
 | `release` | Permanently releases one owned monster instance. Needs schema version 6. |

@@ -273,7 +273,7 @@ func Play(db *data.DB, c *Config, p Persona) *Run {
 	b.run.End = b.t
 	b.run.Days = min(b.day, days)
 	b.run.Deepest = int(b.num(c.Game.Deepest))
-	b.run.Level = avgLevel(st)
+	b.run.Level = st.AverageLevel()
 	floors := make([]int, 0, len(b.bosses))
 	for f := range b.bosses {
 		floors = append(floors, f)
@@ -877,33 +877,6 @@ func (b *bot) boss(f int) *Boss {
 	return r
 }
 
-func partyHP(st *rpg.State) float64 {
-	hp, m := 0, 0
-	for _, a := range st.Members() {
-		hp += max(0, a.HP)
-		m += a.Stat("mhp")
-	}
-	return float64(hp) / float64(max(1, m))
-}
-
-func partyMP(st *rpg.State) float64 {
-	mp, m := 0, 0
-	for _, a := range st.Members() {
-		mp += max(0, a.MP)
-		m += a.Stat("mmp")
-	}
-	return float64(mp) / float64(max(1, m))
-}
-
-func avgLevel(st *rpg.State) int {
-	s, n := 0, 0
-	for _, a := range st.Members() {
-		s += a.Level
-		n++
-	}
-	return s / max(1, n)
-}
-
 func (b *bot) entriesAt(loc string) []world.Entry {
 	if b.db.Locations[loc] == nil {
 		return nil
@@ -1099,7 +1072,7 @@ func (b *bot) dive() {
 	})
 	b.worn = false
 	b.policyFailed = map[string]bool{}
-	b.logf("dive (deepest %d, goal %d, gold %d, shards %d, Lv%d)", deepest, goal, b.st.Gold, b.st.ItemCount(g.BackItem, false), avgLevel(b.st))
+	b.logf("dive (deepest %d, goal %d, gold %d, shards %d, Lv%d)", deepest, goal, b.st.Gold, b.st.ItemCount(g.BackItem, false), b.st.AverageLevel())
 	for range 100 {
 		if !b.inDungeon() || b.run.Cleared {
 			return
@@ -1190,7 +1163,7 @@ func (b *bot) bossFloor(f int) bool {
 	}
 	rate := b.winRateNow(b.db, b.st, rec.Troop, g.Tries, g.MaxTurns)
 	if !rec.Measured {
-		rec.Measured, rec.Rate, rec.Level = true, rate, avgLevel(b.st)
+		rec.Measured, rec.Rate, rec.Level = true, rate, b.st.AverageLevel()
 		sn := b.snap("")
 		rec.At = &sn
 	}
@@ -1209,7 +1182,7 @@ func (b *bot) bossFloor(f int) bool {
 	}
 	rec.RateEnd = rate
 
-	if partyHP(b.st) < 0.7 || partyMP(b.st) < 0.4 {
+	if b.st.PartyHPRatio() < 0.7 || b.st.PartyMPRatio() < 0.4 {
 		return false
 	}
 	return true
@@ -1219,7 +1192,7 @@ func (b *bot) checkWorn() {
 	if !b.inDungeon() {
 		return
 	}
-	if partyHP(b.st) < b.c.Game.WornHP || partyMP(b.st) < b.c.Game.WornMP {
+	if b.st.PartyHPRatio() < b.c.Game.WornHP || b.st.PartyMPRatio() < b.c.Game.WornMP {
 		b.worn = true
 	}
 }

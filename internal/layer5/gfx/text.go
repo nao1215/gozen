@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image/color"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -280,7 +281,50 @@ func DrawTextRight(dst *ebiten.Image, s string, x, y, size float64, clr color.Co
 }
 
 func Wrap(s string, size, width float64) []string {
-	return wrapWith(s, func(line []rune) bool { return TextWidth(string(line), size) <= width })
+	k := fitKey{s, size, width, active.scale, active.popOn}
+	if lines, ok := active.wrapCache[k]; ok {
+		return slices.Clone(lines)
+	}
+	lines := wrapWith(s, func(line []rune) bool { return TextWidth(string(line), size) <= width })
+	remember(active.wrapCache, &active.wrapBytes, k, lines)
+	return slices.Clone(lines)
+}
+
+// fitKey identifies a text fitted to a width under the active scale and face.
+// Fonts change only through LoadFonts, which calls Reset and drops the results.
+type fitKey struct {
+	s                  string
+	size, width, scale float64
+	pop                bool
+}
+
+// fitByteLimit bounds the bytes of texts and results one fitted-text cache keeps.
+const fitByteLimit = 4 << 20
+
+// remember keeps a fitted result for the draws of the next frames. The cache
+// holds at most cacheLimit texts and fitByteLimit bytes, counted in used; a
+// full cache starts over, and a result larger than the budget is not kept. The
+// key owns its text so a cached label never retains a larger dialogue source.
+func remember[V string | []string](cache map[fitKey]V, used *int, k fitKey, v V) {
+	size := len(k.s)
+	switch v := any(v).(type) {
+	case string:
+		size += len(v)
+	case []string:
+		for _, l := range v {
+			size += len(l)
+		}
+	}
+	if size > fitByteLimit {
+		return
+	}
+	if len(cache) >= cacheLimit || *used+size > fitByteLimit {
+		clear(cache)
+		*used = 0
+	}
+	k.s = strings.Clone(k.s)
+	cache[k] = v
+	*used += size
 }
 
 func wrapWith(s string, fits func([]rune) bool) []string {
@@ -436,14 +480,21 @@ func Ellipsis(s string, size, width float64) string {
 	if TextWidth(s, size) <= width {
 		return s
 	}
+	k := fitKey{s, size, width, active.scale, active.popOn}
+	if t, ok := active.ellipsisCache[k]; ok {
+		return t
+	}
+	t := "…"
 	r := []rune(s)
 	for len(r) > 0 {
 		r = r[:len(r)-1]
-		if t := string(r) + "…"; TextWidth(t, size) <= width {
-			return t
+		if c := string(r) + "…"; TextWidth(c, size) <= width {
+			t = c
+			break
 		}
 	}
-	return "…"
+	remember(active.ellipsisCache, &active.ellipsisBytes, k, t)
+	return t
 }
 
 func FitLines(s string, size, width float64, lines int) ([]string, float64) {

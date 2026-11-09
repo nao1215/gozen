@@ -25,7 +25,7 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-func gameFiles(t *testing.T) fstest.MapFS {
+func gameFiles(t testing.TB) fstest.MapFS {
 	t.Helper()
 	img := image.NewNRGBA(image.Rect(0, 0, 16, 16))
 	for y := range 16 {
@@ -54,7 +54,7 @@ func gameFiles(t *testing.T) fstest.MapFS {
 	}
 }
 
-func openGame(t *testing.T, opts Options) *Game {
+func openGame(t testing.TB, opts Options) *Game {
 	t.Helper()
 	opts.FS = gameFiles(t)
 	opts.NoSound = true
@@ -149,7 +149,7 @@ func TestNotesOptInAndBuildInfoOptOut(t *testing.T) {
 	g.in.pressed[btnMemo] = true
 	m := g.memoInfo()
 	g.memoResume(&m)
-	if m.Version != "" || len(m.Retake) != 0 || m.Trace != "" {
+	if m.Version != "" || m.Trace != "" {
 		t.Fatalf("unexpected development metadata: %+v", m)
 	}
 	g.quickMemo("note", "A neutral test note", "human")

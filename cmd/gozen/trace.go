@@ -122,10 +122,10 @@ func (c *command) traceCmd() clihelp.Operation {
 			}
 			k := str(l["t"])
 			count[k]++
-			sec := num(l["tick"]) / 60
+			sec := traceformat.Number(l["tick"]) / 60
 			if sec < *from || (*to > 0 && sec > *to) || (len(kinds) > 0 && !kinds[k]) || (k == "input" && !*input) {
 				if k == "view" {
-					shown = strs(l["pictures"])
+					shown = traceformat.Strings(l["pictures"])
 				}
 				continue
 			}
@@ -133,7 +133,7 @@ func (c *command) traceCmd() clihelp.Operation {
 			var what string
 			switch k {
 			case "start":
-				what = fmt.Sprintf("%v seed %.0f", l["game"], num(l["seed"]))
+				what = fmt.Sprintf("%v seed %.0f", l["game"], traceformat.Number(l["seed"]))
 				if err := useTraceLanguage(l); err != nil {
 					return err
 				}
@@ -142,7 +142,7 @@ func (c *command) traceCmd() clihelp.Operation {
 				if w := str(l["who"]); w != "" {
 					what = w + fmt.Sprintf(lang.T("「%s」"), what)
 				}
-				if c := strs(l["choices"]); len(c) > 0 {
+				if c := traceformat.Strings(l["choices"]); len(c) > 0 {
 					what += " ? " + strings.Join(c, " / ")
 				}
 				if read, ok := l["read"].(bool); ok && !read {
@@ -175,12 +175,12 @@ func (c *command) traceCmd() clihelp.Operation {
 			case "notice":
 				what = "notice: " + str(l["text"])
 			case "answer":
-				what = fmt.Sprintf("choice #%v", num(l["index"])+1)
+				what = fmt.Sprintf("choice #%v", traceformat.Number(l["index"])+1)
 				if l["phone"] == true {
-					what = fmt.Sprintf("phone result %v", num(l["index"]))
+					what = fmt.Sprintf("phone result %v", traceformat.Number(l["index"]))
 				}
 			case "scene":
-				what = strings.Join(strs(l["stack"]), " > ") + "  @" + str(l["location"])
+				what = strings.Join(traceformat.Strings(l["stack"]), " > ") + "  @" + str(l["location"])
 			case "battle":
 				what = str(l["text"])
 				if c := str(l["cutin"]); c != "" {
@@ -189,11 +189,11 @@ func (c *command) traceCmd() clihelp.Operation {
 			case "battle_end":
 				what = str(l["result"])
 			case "menu":
-				items := strs(l["items"])
+				items := traceformat.Strings(l["items"])
 				if len(items) == 0 {
 					what = "(closed)"
 				} else {
-					sel := int(num(l["sel"]))
+					sel := int(traceformat.Number(l["sel"]))
 					for i := range items {
 						if i == sel {
 							items[i] = "[" + items[i] + "]"
@@ -202,7 +202,7 @@ func (c *command) traceCmd() clihelp.Operation {
 					what = strings.Join(items, " | ")
 				}
 			case "view":
-				now := strs(l["pictures"])
+				now := traceformat.Strings(l["pictures"])
 				var add, del []string
 				for _, p := range now {
 					if !slices.Contains(shown, p) {
@@ -216,16 +216,16 @@ func (c *command) traceCmd() clihelp.Operation {
 				}
 				shown = now
 				what = strings.Join(append(add, del...), " ")
-				if m := strs(l["missing"]); len(m) > 0 {
+				if m := traceformat.Strings(l["missing"]); len(m) > 0 {
 					what += "  MISSING " + strings.Join(m, ", ")
 				}
 				if sh := str(l["shot"]); sh != "" {
 					what += "  [" + sh + "]"
 				}
 			case "section":
-				what = fmt.Sprintf("%s (%s): %v frames, %v ticks, %.2f FPS, %.2f TPS, heap %.0f bytes", str(l["name"]), str(l["scope"]), l["frames"], l["ticks"], num(l["fps"]), num(l["tps"]), num(l["heap_inuse_bytes"]))
+				what = fmt.Sprintf("%s (%s): %v frames, %v ticks, %.2f FPS, %.2f TPS, heap %.0f bytes", str(l["name"]), str(l["scope"]), l["frames"], l["ticks"], traceformat.Number(l["fps"]), traceformat.Number(l["tps"]), traceformat.Number(l["heap_inuse_bytes"]))
 				if _, ok := l["slow_frame_share"]; ok {
-					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", num(l["slow_frame_share"]), num(l["allocations_per_frame"]))
+					what += fmt.Sprintf(", slow %.4f, allocations/frame %.2f", traceformat.Number(l["slow_frame_share"]), traceformat.Number(l["allocations_per_frame"]))
 				}
 			case "screen":
 				what = screenText(l)
@@ -369,34 +369,12 @@ func skipText(l map[string]any) string {
 	return what
 }
 
-func num(v any) float64 {
-	f, ok := v.(float64)
-	if !ok {
-		return 0
-	}
-	return f
-}
-
 func str(v any) string {
 	s, ok := v.(string)
 	if !ok {
 		return ""
 	}
 	return s
-}
-
-func strs(v any) []string {
-	a, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(a))
-	for _, s := range a {
-		if s, ok := s.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 func decodeTrace(b []byte) (map[string]any, error) {
@@ -444,7 +422,7 @@ func layoutText(l map[string]any) string {
 	low, lowText := 0.0, ""
 	for _, t := range texts {
 		if m, ok := t.(map[string]any); ok {
-			if r := num(m["ratio"]); lowText == "" || r < low {
+			if r := traceformat.Number(m["ratio"]); lowText == "" || r < low {
 				low, lowText = r, str(m["text"])
 			}
 		}

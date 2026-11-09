@@ -221,3 +221,45 @@ func TestMoodNeedsASongWithIt(t *testing.T) {
 		t.Fatalf("override %q", g.moodOverride)
 	}
 }
+
+// TestShakenFrameIsKeptAndReleased: a shaking screen draws into one off-screen frame
+// while the game keeps its size, a new size replaces it, and closing releases it.
+func TestShakenFrameIsKeptAndReleased(t *testing.T) {
+	g := openGame(t, Options{Location: "camp"})
+	w, h := g.pixels()
+	screen := ebiten.NewImage(int(w)+8, int(h)+8)
+	defer screen.Deallocate()
+	draw := func() *ebiten.Image {
+		g.shake = 10
+		g.Draw(screen)
+		return g.shaken
+	}
+	first := draw()
+	if first == nil || draw() != first {
+		t.Fatal("a shaking screen of the same size made a new off-screen frame")
+	}
+	g.view.w, g.view.h = int(w)+8, int(h)+8
+	if resized := draw(); resized == first || resized.Bounds().Dx() != int(w)+8 {
+		t.Fatal("a new screen size kept the old off-screen frame")
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if g.shaken != nil {
+		t.Fatal("closing the game kept the off-screen frame")
+	}
+}
+
+// BenchmarkShakenDraw measures the CPU side of a frame drawn while the screen shakes
+// (a battle hit), which draws the frame into an off-screen image first.
+func BenchmarkShakenDraw(b *testing.B) {
+	g := openGame(b, Options{Location: "camp"})
+	w, h := g.pixels()
+	screen := ebiten.NewImage(int(w), int(h))
+	defer screen.Deallocate()
+	b.ReportAllocs()
+	for b.Loop() {
+		g.shake = 10
+		g.Draw(screen)
+	}
+}
