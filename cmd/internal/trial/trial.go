@@ -136,7 +136,7 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 		}
 	}
 	for _, id := range sourceEvents {
-		if match(cfg.Cut, id) && !contains(res.Removed["events"], id) {
+		if match(cfg.Cut, id) && !slices.Contains(res.Removed["events"], id) {
 			res.Removed["events"] = append(res.Removed["events"], id)
 		}
 	}
@@ -192,10 +192,6 @@ func Build(src fs.FS, cfg *Config) (*Result, error) {
 		return nil, fmt.Errorf("trial: forbidden content remains: %s; narrow the range or cut its references", strings.Join(forbidden, ", "))
 	}
 	return res, nil
-}
-
-func contains(l []string, s string) bool {
-	return slices.Contains(l, s)
 }
 
 func pruneList(a *analysis, d domains, l []yaml.MapSlice) []yaml.MapSlice {
