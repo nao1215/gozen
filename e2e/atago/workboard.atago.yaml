@@ -331,3 +331,23 @@ scenarios:
       file:
         path: pick.jsonl
         contains: ['"vars":{"floor":1}']
+- name: a script picks a shop's product row by its label, as a tap would, and the page keeps its id
+  steps:
+  - fixture:
+      file: shop.txt
+      content: |
+        wait 30
+        press ok
+        wait 30
+        look
+        pick Denim jacket
+        wait 10
+        snapshot
+  - run:
+      command: gozen sim script "${specdir}/../../examples/office/game" --event phone_shop --save-dir saves --script shop.txt --trace shop.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: shop.jsonl
+        contains: ['"controls":["Team hoodie","Denim jacket"]', '"on":"phone:page"', '"team_wear":"jacket"', 'Six denim jackets.']

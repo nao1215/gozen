@@ -338,7 +338,7 @@ PhoneRow:
   pictures: "Paths of pictures under assets/ in a grid."
   columns: "Pictures a line in the grid: 2 or 3 (0 is 3)."
   item: "A list row: icon, title, text and a value on the right."
-  button: "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down."
+  button: "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down. With an item, or a page's picture, the item or the picture itself is tapped and the label names it."
   qr: "Interpolated text drawn as a QR code (a link, a contact), black on white and crisp, with the caption under it."
   id: "What the phone's var receives for the button (its label when empty)."
   set: "Assignments made when the button is pressed, written as the set command's."

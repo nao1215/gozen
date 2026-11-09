@@ -450,11 +450,15 @@ func (c *checker) phoneRowShape(at, app string, r PhoneRow) {
 		c.ref(at+".event", "event", r.Event, exists)
 	}
 	n := btoi(r.Text != "") + btoi(r.Picture != "") + btoi(len(r.Pictures) > 0) + btoi(r.Item != nil) + btoi(r.Button != "") + btoi(r.QR != "")
-	if (app == "home" || app == "contacts") && r.Item != nil && r.Button != "" {
-		n-- // A contact/home item may also be an actionable button.
+	// A list item, and on a page a single picture, may itself be the button: a
+	// phone app chooses by a tap on the product, the person or the photo rather
+	// than on a separate Yes or No under it.
+	tappable := r.Button != "" && (r.Item != nil && app != "reply" || r.Picture != "" && app == "page")
+	if tappable {
+		n--
 	}
 	if n != 1 {
-		c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them)")
+		c.errorf(diag.Shape, at, "a row needs text, picture, pictures, item, button or qr (one of them; an item, or a page's picture, may also have a button)")
 	}
 	if app == "home" && r.Button == "" {
 		c.errorf(diag.Shape, at, "a home row needs a button")

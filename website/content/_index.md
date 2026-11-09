@@ -72,13 +72,13 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Video on its side: footage | Chat: a dance practice clip (a puppet) |
 | ![a video app: the phone turns on its side, nearly as wide as the screen, and plays footage of a battle from the Go Zen sample](/images/phone-video.mp4) | ![Mia says in the chat that she is practicing the launch party dance and sends the clip; it plays on the phone on its side, her puppet breathing, swaying and jiggling](/images/phone-puppet.mp4) |
 | Page: a shop site with a picture grid | Page: a bank transfer to confirm |
-| ![a browser page of a clothing shop: a grid of pictures, two list items with prices and a button pressed with the keys](/images/phone-shop.mp4) | ![a bank app: the balance, a transfer to confirm and recent items; the keys ring the buttons and press Confirm](/images/phone-bank.mp4) |
+| ![a browser page of a clothing shop: a grid of pictures and two product rows with prices; a tap on the denim jacket row picks it](/images/phone-shop.mp4) | ![a bank app: the balance, a transfer to confirm and recent items; the keys ring the buttons and press Confirm](/images/phone-bank.mp4) |
 | Lock screen: notices arriving | Lock screen: an incoming call answered |
 | ![the lock screen at 7:12: a bank notice, a chat preview and a calendar reminder arrive one a press](/images/phone-lock.mp4) | ![a night on-call: two monitoring notices, an incoming call from the on-call app declined, ringing again and answered](/images/phone-call.mp4) |
 | Page: a sign-in approval | Feed: a timeline of text posts |
 | ![a sign-in check asks to approve a sign-in to the production console; the keys ring Approve and Deny and press Approve](/images/phone-sso.mp4) | ![a timeline of text posts with avatars and times about the booking app being down, with likes, replies and reposts, scrolled](/images/phone-timeline.mp4) |
 | Banner: a push notification over a scene | Page: a supporter site with locked posts |
-| ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](/images/phone-banner.mp4) | ![an illustrator's supporter page: tiers with prices, a Support button and locked posts that open when the page is shown again](/images/phone-support.mp4) |
+| ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](/images/phone-banner.mp4) | ![an illustrator's supporter page: a tap on a tier row supports her, and the locked posts open when the page is shown again](/images/phone-support.mp4) |
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](/images/phone-contact.mp4) |  |
 

@@ -28,14 +28,17 @@ type pickable struct {
 	focus    int // keyboard stop for an authored surface; independent of auxiliary controls
 }
 
-// scriptPickables lists the controls of what is on top: a confirmation, the
-// choices of a question, an open popup, a screen's actions and seats, or a list
+// scriptPickables lists the controls of what is on top: a phone page's
+// buttons on the screen, a confirmation, the choices of a question, an open popup, a screen's actions and seats, or a list
 // menu. kind names which of them it is.
 func (g *Game) scriptPickables() (kind string, items []pickable) {
 	if g.phone != nil && g.phone.child != nil {
 		child := g.phone.child.game
 		defer child.activatePresentation()()
 		return child.scriptPickables()
+	}
+	if p := g.phone; p != nil && p.ready() && p.watch == nil && p.viewPic == "" && slices.Contains([]string{"page", "home", "contacts"}, p.cue.App) {
+		return "phone:" + p.cue.App, g.pagePickables(p)
 	}
 	if len(g.stack) == 0 {
 		return "", nil
