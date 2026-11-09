@@ -6332,7 +6332,7 @@
         },
         "phone": {
           "$ref": "#/$defs/PhoneCue",
-          "description": "Shows a phone over the scene until the player puts it down, without changing any state (ADR 0057): app chat (messages), feed (posts) or video (video), held upright or with hold landscape on its side.",
+          "description": "Shows a phone over the scene until the player puts it down (ADR 0057): one of the apps listed under app, held upright or with hold landscape on its side. Buttons, calls and liked posts may set state, and var keeps the outcome.",
           "x-contract": {
             "default": "nil; nothing is defined",
             "legacy_default": "nil; nothing is defined",
