@@ -88,7 +88,7 @@ events:
 			t.Fatalf("%s: %v", p.Log(), p.Errs)
 		}
 		st := p.St
-		seen["pick="+st.Vars["pick"].(string)] = true
+		seen[fmt.Sprint("pick=", st.Vars["pick"])] = true
 		if st.Vars["ok"] != nil {
 			seen["ok"] = true
 		}
@@ -98,7 +98,7 @@ events:
 		if st.Vars["secret"] != nil {
 			t.Fatalf("a hidden button was taken: %s", p.Log())
 		}
-		if n, _ := st.Vars["opened"].(float64); n > 1 {
+		if n, ok := st.Vars["opened"].(float64); ok && n > 1 {
 			t.Fatalf("a home app was opened %v times on one path: %s", n, p.Log())
 		}
 	}
