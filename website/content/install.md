@@ -4,7 +4,7 @@ description: Install the Gozen binary without a programming toolchain, and prepa
 weight: 10
 ---
 
-To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine .
+To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.10 or later is needed only when building the engine.
 
 ## The gozen command
 
