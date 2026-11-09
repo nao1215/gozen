@@ -1224,7 +1224,7 @@ enemies:
 
 List picture thresholds from high to low. An enemy names image files; an actor names faces in its face directory. Temporary hit reactions still take priority.
 
-![A damaged monster shows its low HP picture](/images/go-zen-hp-pictures.jpg)
+![Maren and the Drip Slime drop to low HP and their pictures switch](/images/go-zen-hp-pictures.mp4)
 
 <!-- verify: parse The fragment names pictures supplied by the game. -->
 ```yaml

@@ -1,6 +1,43 @@
 battle-log off
-# Capture the damaged Drip Slime and Maren's low-HP face together.
+# Full HP first, then the Drip Slime and Maren drop to low HP and their
+# pictures switch (hpa### before, hp_b### after, a frame every 5 ticks).
 wait 40
+shot hpa000
+wait 5
+shot hpa001
+wait 5
+shot hpa002
+wait 5
+shot hpa003
+wait 5
+shot hpa004
+wait 5
+shot hpa005
+wait 5
+shot hpa006
+wait 5
+shot hpa007
+wait 5
+shot hpa008
+wait 5
+shot hpa009
+wait 5
+shot hpa010
+wait 5
+shot hpa011
+wait 5
+shot hpa012
+wait 5
+shot hpa013
+wait 5
+shot hpa014
+wait 5
+shot hpa015
+wait 5
+shot hpa016
+wait 5
+shot hpa017
+wait 5
 battle-hp enemy 0 35
 battle-hp party 0 15
 play hp 5

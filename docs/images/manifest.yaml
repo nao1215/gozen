@@ -317,6 +317,22 @@ images:
     frames:
       - {from: -290, near: cutin, shots: fight_b*, to: -110}
     mp4: {fps: 12, width: 1280, height: 720}
+  phone-navigation.mp4:
+    run: phone-archive
+    frames:
+      - {shots: "pn*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-history.mp4:
+    run: phone-archive
+    frames:
+      - {shots: "pr*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-hp-pictures.mp4:
+    run: battle-hp-pictures
+    frames:
+      - {shots: "hpa*"}
+      - {shots: "hp_b*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   go-zen-transform.mp4:
     run: battle-transform
     frames:
@@ -614,10 +630,12 @@ images:
     frames:
       - {shots: "feature_*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
-  go-zen-hp-pictures.jpg:
+  go-zen-hp-pictures.gif:
     run: battle-hp-pictures
-    pick: {shots: "s-hurt"}
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "hpa*"}
+      - {shots: "hp_b*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-motion.gif:
     run: battle-motion
     # The sway is a spring that runs on its own clock, so frames shift a little between runs.
@@ -887,5 +905,5 @@ static:
     source: the dark logo alone, centered on a dark 1280x640 card (the social preview), rendered from SVG
     license: MIT; the word mark is set in Quicksand (SIL Open Font License 1.1), see ASSETS.md
   dungeon-themes.jpg:
-    source: one corridor of the Go Zen sample (floor B1) shown in each of the five dungeon themes, taken one by one with the game binary under Xvfb after gozen theme add and a theme key in the dungeon, joined into one sheet of 640x360 cells
+    source: one corridor of the Go Zen sample (floor B1) shown in each of the thirteen dungeon themes, taken one by one with the game binary under Xvfb after gozen theme add and a theme key in the dungeon, joined into one sheet of 480x270 cells
     license: no copyright claimed (CC0 1.0) for the theme pictures and the Go Zen interface drawn in it, see ASSETS.md

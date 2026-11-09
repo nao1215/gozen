@@ -3,9 +3,11 @@ package docs
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -123,5 +125,63 @@ func TestCheckMarkdownLinksFindsBrokenOnes(t *testing.T) {
 	}
 	if githubSlug("CI time estimates (Linux)") != "ci-time-estimates-linux" {
 		t.Error(githubSlug("CI time estimates (Linux)"))
+	}
+}
+
+// codeCitation is a Go file named in backticks, with an optional line.
+var codeCitation = regexp.MustCompile("`(?:\\./)?([A-Za-z0-9][A-Za-z0-9_./-]*\\.go)(:[0-9]+)?`")
+
+// TestCodeCitations: a current document names Go files that exist, by a path
+// from the root, a path's tail or a bare file name, and never by line, since
+// a line drifts with every edit while the function it names does not. The
+// decision records and reviews are history and keep what they cited.
+func TestCodeCitations(t *testing.T) {
+	t.Parallel()
+	fsys := os.DirFS("../../..")
+	var files []string
+	docs := map[string]string{}
+	err := fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch p {
+			case ".git", "bin", "build", "dist", "node_modules", "website/public", "docs/decisions", "docs/reviews":
+				return fs.SkipDir
+			}
+			return nil
+		}
+		switch {
+		case strings.HasSuffix(p, ".go"):
+			files = append(files, p)
+		case strings.HasSuffix(p, ".md") && (p == "README.md" || p == "CONTRIBUTING.md" || strings.HasPrefix(p, "docs/") || strings.HasPrefix(p, "website/content/")):
+			b, err := fs.ReadFile(fsys, p)
+			if err != nil {
+				return err
+			}
+			docs[p] = codeFence.ReplaceAllString(string(b), "")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	exists := func(name string) bool {
+		for _, f := range files {
+			if f == name || strings.HasSuffix(f, "/"+name) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, p := range slices.Sorted(maps.Keys(docs)) {
+		for _, m := range codeCitation.FindAllStringSubmatch(docs[p], -1) {
+			switch {
+			case m[2] != "":
+				t.Errorf("%s: %s cites a line; name the function or test instead", p, m[0])
+			case !exists(m[1]):
+				t.Errorf("%s: %s names no Go file of the repository", p, m[0])
+			}
+		}
 	}
 }

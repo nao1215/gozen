@@ -60,6 +60,12 @@ Dango also checks generated schemas against the Go types and translation keys ag
 - CI scope tests use isolated Git histories to keep runtime documentation checks
   enabled unless a pull request changes only the changelog. Missing history and
   other uncertain cases retain those checks.
+- `TestCodeCitations` reads README.md, CONTRIBUTING.md, `docs/` and the site's
+  pages (not the decision records and reviews, which are history) and requires
+  every Go file named in backticks to exist, by a path from the root, a path's
+  tail or a bare name, and no citation of a line: lines drift with every edit,
+  so a document names the function or test instead. It does not check that the
+  named function still does what the sentence says.
 - `TestDocImageInputs` and `TestImageManifest` retain the existing visual evidence
   checks. Pixel regeneration/comparison still requires `make docs-images-check`
   in a graphics environment; passing dango does not prove rendering.
