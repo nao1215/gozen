@@ -502,7 +502,9 @@ func (s *Session) next() Request {
 
 // Answer answers the choice (the option's index) or the battle (Auto, Won, Lost or
 // Fled) that Next returned. For an authored open, n is the visible entry index;
-// -1 closes the screen. Invalid indices leave it open. Selection rechecks the
+// -1 closes the screen. Invalid indices leave it open, and an index outside a
+// choice's answers leaves the choice asked: the runner would pass over it, and
+// a save would record an answer no restore accepts. Selection rechecks the
 // displayed entry's condition without retargeting a stale row. Other requests
 // need no answer. A second answer before the next request does nothing.
 func (s *Session) Answer(n int) {
@@ -517,11 +519,11 @@ func (s *Session) Answer(n int) {
 		s.answerScreen(n)
 		return
 	}
+	if q.Kind == "choice" && (n < 0 || n >= event.ReplayView(*q).Answers()) {
+		return
+	}
 	s.pending = nil
 	if q.Kind == "choice" {
-		if n < 0 || n >= event.ReplayView(*q).Answers() {
-			s.replayBlocked = true
-		}
 		s.recordInput(rpg.ReplayInput{Answer: &n})
 		s.at.answers = append(s.at.answers, n)
 		s.runner.Answer(n)
@@ -751,12 +753,7 @@ func (s *Session) autoBattle(b *battle.Battle, maxTurns int) {
 			sub.Extra = b.Env(nil)
 			sub.Start(st.Commands)
 			for sub.Running() {
-				switch sub.Next().(type) {
-				case event.Choice:
-					sub.Answer(0)
-				case event.Battle:
-					sub.Answer(event.BattleWon) // there is no battle inside a battle
-				}
+				sub.Unattended(sub.Next()) // there is no battle inside a battle
 			}
 		}
 	}

@@ -465,11 +465,8 @@ func (r *runner) run(st *rpg.State, cmds []data.Command) {
 		if !ev.Running() {
 			return
 		}
-		switch ev.Next().(type) {
-		case event.Choice:
-			ev.Answer(0)
-		case event.Battle:
-			ev.Answer(event.BattleWon)
+		if ev.Unattended(ev.Next()) {
+			ev.Won() // as on screen, battle.after_win runs afterwards
 		}
 	}
 	r.err = errors.Join(r.err, errors.New("balance: event step limit exceeded"))

@@ -426,14 +426,19 @@ func (s *State) PartyHPRatio() float64 {
 }
 
 // PartyMPRatio is the party's current MP over its maximum MP, from 0 to 1, as
-// PartyHPRatio is for HP.
+// PartyHPRatio is for HP. A party with no MP to spend (a game without magic)
+// is 1, never worn: the balance runner and the bot would otherwise turn back
+// on every floor and never face a boss.
 func (s *State) PartyMPRatio() float64 {
 	mp, mmp := 0, 0
 	for _, a := range s.Members() {
 		mp += max(0, a.MP)
 		mmp += a.Stat("mmp")
 	}
-	return float64(mp) / float64(max(1, mmp))
+	if mmp <= 0 {
+		return 1
+	}
+	return float64(mp) / float64(mmp)
 }
 
 // AverageLevel is the members' mean level rounded down, 0 for an empty party.

@@ -1182,6 +1182,18 @@ func TestResumeRejectsDamagedAnswers(t *testing.T) {
 	if q := s.Next(); q.Kind != "choice" {
 		t.Fatal(q)
 	}
+	// An answer outside the choice leaves it asked, so no save records an
+	// answer that a restore would refuse.
+	s.Answer(7)
+	s.Answer(-1)
+	if q := s.Next(); q.Kind != "choice" {
+		t.Fatalf("an out-of-range answer passed the choice: %+v", q)
+	}
+	if blocked, err := s.Save(); err != nil {
+		t.Fatal(err)
+	} else if _, err := gozen.Restore(g, blocked, cfg); err != nil {
+		t.Fatalf("a save after an out-of-range answer does not restore: %v", err)
+	}
 	s.Answer(0)
 	// Preserve the supported boundary between Answer and Next, including re-save.
 	answered, err := s.Save()
