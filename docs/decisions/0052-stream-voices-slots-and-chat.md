@@ -1,6 +1,6 @@
 # ADR 0052: Stream voices, slots and the chat's memory
 
-Status: Accepted (2026-10-27). Home: `internal/layer2/gamedata` (the voices folder, the voice key and its check), `internal/react` (the lines as written, the lines said lately), `internal/layer3/broadcast` (the slot, the episodes seen) and `internal/rpg` (the visits), `internal/play` (the voices, the replies and the record of unanswered comments).
+Status: Accepted (2026-10-27). Home: `internal/model/gamedata` (the voices folder, the voice key and its check), `internal/react` (the lines as written, the lines said lately), `internal/rules/broadcast` (the slot, the episodes seen) and `internal/rpg` (the visits), `internal/play` (the voices, the replies and the record of unanswered comments).
 
 ## Context
 

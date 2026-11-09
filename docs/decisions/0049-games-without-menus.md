@@ -1,6 +1,6 @@
 # ADR 0049: Games without menus
 
-Status: Accepted (2026-10-27). Home: `internal/layer2/gamedata` (the key and its check), `internal/layer3/field` (a place's entries), `internal/play` (the opening and the menu inputs).
+Status: Accepted (2026-10-27). Home: `internal/model/gamedata` (the key and its check), `internal/rules/field` (a place's entries), `internal/play` (the opening and the menu inputs).
 
 ## Context
 

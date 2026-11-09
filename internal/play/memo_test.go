@@ -8,8 +8,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/layer1/memo"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/base/memo"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // sysMemoFiles are the notes written under dir, sorted by name.

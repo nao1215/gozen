@@ -18,12 +18,12 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/base/geom"
 	"github.com/nao1215/gozen/internal/dev/perf"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/atlas"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/atlas"
 )
 
 func TestAtlasLabelGeometryDoesNotFollowFocus(t *testing.T) {

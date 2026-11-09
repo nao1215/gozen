@@ -8,7 +8,7 @@ The entry points for game authors are `runner.Run` and `play.Run`. For authors e
 
 The many screen and production settings stay in `internal/play.Options`, and the public surface is narrowed to a small `play.Config` and an optional `play.Development`. Production features that have a write destination require explicit specification. Normal saving uses Gozen's directory under `savefile`, and trial runs such as scripts use a temporary save location unless one is explicitly specified.
 
-The shared implementations of presentation are `internal/layer5/gfx` and `internal/layer5/sound`, and file recording of memos is `internal/layer1/memo`. Memos take the standard library's image and byte strings, and know nothing of the screen or game rules. dungeon uses `internal/layer3/dungeon` from T2. No sideways dependency between public packages is added.
+The shared implementations of presentation are `internal/screen/gfx` and `internal/screen/sound`, and file recording of memos is `internal/base/memo`. Memos take the standard library's image and byte strings, and know nothing of the screen or game rules. dungeon uses `internal/rules/dungeon` from T2. No sideways dependency between public packages is added.
 
 `event.Runner.BlockAside` is a callback that suppresses inserted events depending on the screen state. Combined with `event.HostFunc`, it keeps suppression during recollections and image display without passing the upper Game type down to the lower event layer. The existing `AsideBlocker` is kept for backward compatibility.
 

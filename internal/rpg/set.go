@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/safeint"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // setOther handles the left-hand sides of set other than flag and var (spec version 2, ADR 0021). It returns false for an unhandled left-hand side.

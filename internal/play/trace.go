@@ -25,13 +25,13 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/base/memo"
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/memo"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer2/gamepackage"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamepackage"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 	"github.com/nao1215/gozen/internal/savefile"
 	lang "github.com/nao1215/gozen/internal/text"
 )

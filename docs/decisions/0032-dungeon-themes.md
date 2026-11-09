@@ -1,6 +1,6 @@
 # ADR 0032: Dungeon themes
 
-Status: Accepted (2026-10-21). Home: `internal/layer2/gamedata` (the field, the filling and the check), `cmd/internal/themes` (the embedded pictures), `cmd/gozen` (`gozen theme`).
+Status: Accepted (2026-10-21). Home: `internal/model/gamedata` (the field, the filling and the check), `cmd/internal/themes` (the embedded pictures), `cmd/gozen` (`gozen theme`).
 
 ## Users and problem
 

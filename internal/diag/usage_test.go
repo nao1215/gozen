@@ -29,7 +29,7 @@ var familyOf = map[string][]int{
 	"internal/cliio":                {2},
 	"cmd/internal/checkdata":        {0, 1},
 	"cmd/internal/trial":            {1},
-	"internal/layer2/gamedata":      {0, 1},
+	"internal/model/gamedata":       {0, 1},
 	"internal/mosaic/command":       {0, 1, 2},
 	"internal/promptgen/command":    {1, 2},
 	"internal/clihelp":              {2},

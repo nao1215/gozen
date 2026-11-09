@@ -7,7 +7,7 @@ import (
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/testgame"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // sfxHost remembers the sound effects it played.

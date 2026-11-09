@@ -3,7 +3,7 @@ package play
 import (
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 func (g *Game) walkStep(char string) (button, bool) {

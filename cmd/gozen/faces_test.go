@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer5/doll"
+	"github.com/nao1215/gozen/internal/screen/doll"
 
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 	"github.com/nao1215/gozen/internal/testgame"

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/cliio"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
 
 	"github.com/nao1215/gozen/internal/diag"
 

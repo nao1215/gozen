@@ -198,7 +198,7 @@ func repositoryTexts(t *testing.T, visit func(name string, contents []byte)) {
 // their history. Returning one needs a new ADR, which also deletes its line here.
 var removedFeatures = []string{
 	// The casual-game runner: runners in game.yaml, the run_game command and schema 12.
-	"run_game", "RunnerDefinition", "SchemaVersion12", "layer3/casual", "0064-casual-game-runtime", "casual-activities",
+	"run_game", "RunnerDefinition", "SchemaVersion12", "rules/casual", "0064-casual-game-runtime", "casual-activities",
 	// The gozen migrate command; YAML and saves have no migration tools before v1.0.0.
 	"gozen migrate",
 }
@@ -228,7 +228,7 @@ func TestRemovedFeatures(t *testing.T) {
 				}
 			}
 		}
-		if strings.HasPrefix(name, "internal/layer2/gamedata/") && strings.HasSuffix(name, ".go") {
+		if strings.HasPrefix(name, "internal/model/gamedata/") && strings.HasSuffix(name, ".go") {
 			for _, word := range removedYAMLWords {
 				if bytes.Contains(contents, []byte(`yaml:"`+word+`"`)) || bytes.Contains(contents, []byte(`yaml:"`+word+`,`)) {
 					t.Errorf("%s: game data still reads the removed YAML key %q", name, word)
@@ -242,15 +242,12 @@ func TestRemovedFeatures(t *testing.T) {
 // debt to consolidate into the file named after their implementation. The list may only
 // shrink: delete a line when its file is merged or renamed.
 const testFileBaseline = `
+internal/base/geom/more_test.go
+internal/base/memo/more_test.go
 internal/battle/states_more_test.go
 internal/event/more_test.go
-internal/layer1/geom/more_test.go
-internal/layer1/memo/more_test.go
-internal/layer2/gamedata/check_scenes_more_test.go
-internal/layer2/gamedata/shapes_more_test.go
-internal/layer3/atlas/more_test.go
-internal/layer3/dungeon/host_more_test.go
-internal/layer5/puppet/more_test.go
+internal/model/gamedata/check_scenes_more_test.go
+internal/model/gamedata/shapes_more_test.go
 internal/play/autopilot_cov2_test.go
 internal/play/battle_cov2_test.go
 internal/play/battle_cov3_test.go
@@ -311,6 +308,9 @@ internal/play/unicode_cov_test.go
 internal/play/walk_cov_test.go
 internal/play/world_cov_test.go
 internal/play/world_fixture_cov_test.go
+internal/rules/atlas/more_test.go
+internal/rules/dungeon/host_more_test.go
+internal/screen/puppet/more_test.go
 `
 
 // vagueTest matches coverage-driven test file names: more, extra, cov and coverage

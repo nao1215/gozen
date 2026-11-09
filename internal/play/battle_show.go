@@ -11,8 +11,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"github.com/nao1215/gozen/internal/battle"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

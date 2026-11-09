@@ -25,10 +25,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/spf13/pflag"
 
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer2/gamepackage"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamepackage"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -892,7 +892,7 @@ func TestReplayRejectsWindowChangeThroughTarget(t *testing.T) {
 // rejection cases without adding a runtime API used only by tests.
 func traceClassifications(t *testing.T) map[string]bool {
 	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), "../layer1/traceformat/trace.go", nil, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), "../base/traceformat/trace.go", nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

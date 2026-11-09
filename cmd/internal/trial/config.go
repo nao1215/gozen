@@ -10,8 +10,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

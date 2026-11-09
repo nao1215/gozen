@@ -5,8 +5,8 @@ import (
 	"math"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/sound"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/sound"
 )
 
 // Voices (ADR 0028): a line's voice plays when the line opens, unless the line is passed

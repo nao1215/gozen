@@ -12,11 +12,11 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/nao1215/gozen/internal/base/optional"
 	"github.com/nao1215/gozen/internal/headless"
-	"github.com/nao1215/gozen/internal/layer1/optional"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/campaign"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/campaign"
 )
 
 // Strategies are the player's strategies: greedy marches when the odds (the clash's

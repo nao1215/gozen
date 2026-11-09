@@ -10,7 +10,7 @@ import (
 	"github.com/nao1215/gozen/internal/diag"
 
 	"github.com/nao1215/gozen/cmd/internal/checkdata"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // diagnoseCheck collects structured errors and warnings for the selected scope.

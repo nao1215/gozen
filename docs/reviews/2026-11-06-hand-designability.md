@@ -98,7 +98,7 @@ Membership freezes before the calls; other arguments evaluate before each call.
 Order, pauses and partial failure still matter. This is bounded iteration, not
 one transaction. Dynamic state destinations are incompatible with strict literal
 state declarations; typed entity attributes are preferable for a new design.
-Source: `internal/layer2/gamedata/arguments.go:91`,
+Source: `internal/model/gamedata/arguments.go:91`,
 `internal/event/event.go:1240`, and
 [the argument contract](../development/event-arguments.md#repeating-a-call-over-a-collection).
 
@@ -106,8 +106,8 @@ Text interpolation and `say.text_expr` can select per-entity definition data
 instead of duplicating a conversation to change one greeting. They are text
 facilities, not a general YAML template engine. Selected source text affects
 translation extraction and scene-read analysis; preserve authored source strings
-when consolidating an existing story. See `internal/layer2/gamedata/command.go:249`
-and `internal/layer2/gamedata/planning.go:76`.
+when consolidating an existing story. See `internal/model/gamedata/command.go:249`
+and `internal/model/gamedata/planning.go:76`.
 
 ### Long expressions: collections instead of enumerating identities
 
@@ -172,8 +172,8 @@ This changes the saved state representation. An existing game needs an explicit
 old-key-to-attribute migration and save/reload checks; gozen does not
 do that mapping (and gozen has no YAML upgrader before v1.0.0). `state.names` gives types, initial values and strict name
 checking for deliberately retained flags; it does not compress twenty flags into
-one fact. See `internal/layer2/gamedata/state_names.go:20`,
-`internal/layer2/gamedata/planning.go:109` and `:174`.
+one fact. See `internal/model/gamedata/state_names.go:20`,
+`internal/model/gamedata/planning.go:109` and `:174`.
 
 ### Flags written but never read: remove bookkeeping or name its consumer
 
@@ -199,7 +199,7 @@ First inspect expressions, gallery conditions, carried state and external script
 If the fact controls a later scene, retain it, declare it and write the actual
 consumer. A write-only warning is a question for the designer, not permission to
 delete a save field. Static checks cannot establish every external use. The flag
-usage contracts are tested in `internal/layer2/gamedata/flags_test.go:1`.
+usage contracts are tested in `internal/model/gamedata/flags_test.go:1`.
 
 ### Mutation-heavy screens: screens select intentions, rules own mutations
 
@@ -233,12 +233,12 @@ a planning rule contains planning operations, not arbitrary dialogue commands.
 Plain screen parameters and `entries[].each` already remove repeated lists and
 per-person detail screens. A planning rule's error handling differs from a
 sequence of independent event commands: preserve successful behavior and review
-failure atomicity before migrating. See `internal/layer2/gamedata/planning.go:193`
-and `:578`, `internal/layer3/planning/planning.go:18`, and
+failure atomicity before migrating. See `internal/model/gamedata/planning.go:193`
+and `:578`, `internal/rules/planning/planning.go:18`, and
 `internal/event/event.go:355`.
 
 Positioned workspace cards are a remaining problem: repeating an entry repeats
-its fixed bounds too (`internal/layer2/gamedata/types.go:2004`). Collection
+its fixed bounds too (`internal/model/gamedata/types.go:2004`). Collection
 iteration alone does not lay out a grid.
 For a small deliberately composed screen, explicit coordinates remain useful.
 YAML anchors can reuse a static mapping within one file, but do not provide

@@ -4,7 +4,7 @@ import (
 	"math"
 	"slices"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // transform changes a living foe in place. Its final form alone pays rewards.

@@ -9,9 +9,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

@@ -320,7 +320,7 @@ func (g *Catalog) validate() error {
 func decode(data []byte, into any) (err error) {
 	// Catalogs, rule files and plans are untrusted input (SECURITY.md), and the YAML decoder
 	// panics on some shapes (a tagged scalar where a list is wanted): report those as errors.
-	// This is the guard of internal/layer1/decodeguard; the promptgen component may not import layer 1.
+	// This is the guard of internal/base/decodeguard; the promptgen component may not import layer 1.
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("yaml: the decoder rejected the input: %v", r)

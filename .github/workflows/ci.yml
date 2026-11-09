@@ -57,7 +57,7 @@ jobs:
     # A pull request that changes only documentation skips the jobs above. The checks
     # that read the documentation run here instead: the README, links, code blocks and
     # pictures list (internal/dev/docs), the generated errors page (internal/diag) and
-    # the pages that the schema tests read (internal/layer2/gamedata).
+    # the pages that the schema tests read (internal/model/gamedata).
     needs: changes
     if: ${{ needs.changes.outputs.code == 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - run: go test -count=1 ./internal/dev/docs/... ./internal/diag/... ./internal/layer2/gamedata/...
+      - run: go test -count=1 ./internal/dev/docs/... ./internal/diag/... ./internal/model/gamedata/...
 
   docs-images-fresh:
     # The fast staleness check of the documentation pictures, on every push and pull
@@ -270,7 +270,7 @@ jobs:
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
         if: runner.os != 'Linux'
-        run: go test -tags=graphics -timeout=20m -parallel=4 ./internal/play ./internal/layer5/puppet -run TestGraphics -count=1
+        run: go test -tags=graphics -timeout=20m -parallel=4 ./internal/play ./internal/screen/puppet -run TestGraphics -count=1
 
   capture:
     # Run the CLI capture pipeline independently of the rendered screen tests.

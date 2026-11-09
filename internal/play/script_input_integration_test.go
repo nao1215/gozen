@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/base/geom"
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 // TestScriptReceiverGates drives the actual receiver while a command is pending,

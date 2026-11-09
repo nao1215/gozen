@@ -1,6 +1,6 @@
 # ADR 0036: Collect, raise and breed monsters
 
-Status: Accepted (2026-10-22; picture lineage view revised 2026-10-22). Home: `internal/layer2/gamedata` for definitions and reachability, `internal/rpg` for saved instances and reserve, `internal/event` for transitions, `internal/play` for staging and ranch, and `cmd/gozen` for author checks.
+Status: Accepted (2026-10-22; picture lineage view revised 2026-10-22). Home: `internal/model/gamedata` for definitions and reachability, `internal/rpg` for saved instances and reserve, `internal/event` for transitions, `internal/play` for staging and ranch, and `cmd/gozen` for author checks.
 
 ## Users and problem
 

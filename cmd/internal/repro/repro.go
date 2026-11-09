@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
 )
 
 // Bundle describes generated replay artifacts for both command adapters.

@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 type standFrame struct {

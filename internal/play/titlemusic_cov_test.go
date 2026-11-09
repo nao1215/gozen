@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer5/sound"
+	"github.com/nao1215/gozen/internal/screen/sound"
 )
 
 // TestTitleMusicPlaysOnTheTitle: the song game.yaml names for the title plays when the title opens

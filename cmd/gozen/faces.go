@@ -23,9 +23,9 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/doll"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
+	"github.com/nao1215/gozen/internal/screen/doll"
 )
 
 // faces finds the face of each standing picture a painted scene cuts a balloon face from,

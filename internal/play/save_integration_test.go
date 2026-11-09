@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/internal/event"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
 	"github.com/nao1215/gozen/internal/rpg"
 	"github.com/nao1215/gozen/internal/savefile"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	"github.com/nao1215/gozen/internal/testgame"
 )
 

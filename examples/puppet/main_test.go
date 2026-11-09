@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
 func TestHelpAndOptions(t *testing.T) {

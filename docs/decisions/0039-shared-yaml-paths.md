@@ -8,11 +8,11 @@ Status: Accepted.
 
 ## Decision
 
-Own the common selector in `internal/layer1/yamlpath`. It accepts source bytes and a logical path and returns ordered YAML or an error wrapping `fs.ErrNotExist`. It has no knowledge of characters, messages, game definitions, state or rendering. Both public entry points call it directly.
+Own the common selector in `internal/base/yamlpath`. It accepts source bytes and a logical path and returns ordered YAML or an error wrapping `fs.ErrNotExist`. It has no knowledge of characters, messages, game definitions, state or rendering. Both public entry points call it directly.
 
 Allow the existing YAML vendor in the shared foundation layer. This is the only new dependency permission; no lateral dependency, reverse dependency, excluded source file or public identifier is added. The module already depends on this parser, so no dependency version changes.
 
-Remove the unused `internal/dungeon` relay and move its contract tests to `internal/layer3/dungeon`, which already owns the rules. This completes the internal ownership described by ADR 0021 without growing the public API.
+Remove the unused `internal/dungeon` relay and move its contract tests to `internal/rules/dungeon`, which already owns the rules. This completes the internal ownership described by ADR 0021 without growing the public API.
 
 ## Alternatives
 

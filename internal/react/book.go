@@ -7,12 +7,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+	"github.com/nao1215/gozen/internal/base/yamlpath"
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/decodeguard"
 )
 
 // Built-in tags that the analyzers attach besides the lexicon tags.

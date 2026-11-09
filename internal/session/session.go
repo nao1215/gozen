@@ -11,14 +11,14 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/battle"
+	"github.com/nao1215/gozen/internal/drive/itemuse"
 	"github.com/nao1215/gozen/internal/event"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
-	"github.com/nao1215/gozen/internal/layer3/field"
-	"github.com/nao1215/gozen/internal/layer3/scope"
-	"github.com/nao1215/gozen/internal/layer4/itemuse"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
+	"github.com/nao1215/gozen/internal/rules/field"
+	"github.com/nao1215/gozen/internal/rules/scope"
 	"github.com/nao1215/gozen/internal/world"
 )
 

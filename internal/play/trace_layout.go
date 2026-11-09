@@ -12,7 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 // The layout record of a trace says where the standing pictures and the texts of a

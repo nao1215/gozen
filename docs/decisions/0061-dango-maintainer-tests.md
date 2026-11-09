@@ -37,7 +37,7 @@ Following the ADR 0042 clarification, `dango repro` calls the same typed
 `cmd/internal/repro.Generate` operation as `gozen trace --repro`. The operation
 is command support, below both entry points, and has no dependency on the player or its rendering packages.
 The record schema and exact-replay validator live in the foundation package
-`internal/layer1/traceformat`, shared by the player and bundle generator. This
+`internal/base/traceformat`, shared by the player and bundle generator. This
 keeps replay acceptance identical without importing presentation or development
 tooling into the other consumer. The support component depends only on this
 foundation protocol and diagnostics.

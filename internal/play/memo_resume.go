@@ -5,9 +5,9 @@ import (
 	"log"
 	"math/rand/v2"
 
-	"github.com/nao1215/gozen/internal/layer1/memo"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/base/memo"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 type fastTo struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 func TestPhoneStoreSelectionDoesNotAnswerStory(t *testing.T) {

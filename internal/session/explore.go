@@ -9,8 +9,8 @@ import (
 	"github.com/nao1215/gozen/internal/rpg"
 
 	"github.com/nao1215/gozen/internal/headless"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 // ExploreOptions limit Explore. The zero value tries 300 paths of 20000 requests each,

@@ -14,7 +14,7 @@ import (
 	"testing/fstest"
 
 	"github.com/nao1215/gozen/cmd/internal/repro"
-	"github.com/nao1215/gozen/internal/layer1/traceformat"
+	"github.com/nao1215/gozen/internal/base/traceformat"
 	"github.com/nao1215/gozen/internal/play"
 	"github.com/nao1215/gozen/internal/savefile"
 	"github.com/nao1215/gozen/internal/testgame"

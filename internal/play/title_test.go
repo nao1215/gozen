@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	world "github.com/nao1215/gozen/internal/layer3/field"
+	world "github.com/nao1215/gozen/internal/rules/field"
 )
 
 // The title's menu keeps clear of the key hint under it however many entries it has, and

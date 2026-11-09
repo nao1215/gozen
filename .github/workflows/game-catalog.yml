@@ -7,7 +7,7 @@ on:
     paths:
       - docs/registry/**
       - cmd/internal/gamecatalog/**
-      - internal/layer2/gamepackage/**
+      - internal/model/gamepackage/**
       - scripts/update-game-catalog.py
       - .github/workflows/game-catalog.yml
   schedule:
@@ -48,7 +48,7 @@ jobs:
           fi
           go run ./cmd/internal/gamecatalog check docs/registry/catalog.json docs/registry/sources.json "${args[@]}"
       - name: Verify installer and metadata updater contracts
-        run: go test -race ./internal/layer2/gamepackage ./cmd/internal/gamecatalog
+        run: go test -race ./internal/model/gamepackage ./cmd/internal/gamecatalog
 
   update:
     if: github.event_name == 'schedule' || inputs.operation == 'update'

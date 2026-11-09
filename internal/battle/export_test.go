@@ -1,6 +1,6 @@
 package battle
 
-import "github.com/nao1215/gozen/internal/layer2/gamedata"
+import "github.com/nao1215/gozen/internal/model/gamedata"
 
 // The entry point for the external test (battle_test) to check the contents of decisions made
 // unexported (unexported at ADR 0021 stage 1).

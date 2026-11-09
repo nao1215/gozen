@@ -16,8 +16,8 @@ import (
 	"rsc.io/qr"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	"github.com/nao1215/gozen/internal/testgame"
 	lang "github.com/nao1215/gozen/internal/text"
 )

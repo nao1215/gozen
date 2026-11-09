@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/testgame"
 
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
 // TestPanelEditsAndJumps: under --dev, F8 opens the panel and holds the game; flipping a

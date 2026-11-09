@@ -63,7 +63,7 @@ between events rather than resuming the rest of a suspended battle event.
 
 `meters[].max_value` is an expression that refers to the ordinary field state. A limit that evaluates successfully is rounded up to at least 1, and the value is clamped between 0 and the limit. When it is given, the current value and the limit are shown, and the `full` display when full still takes priority. If the expression is omitted, the fixed `max` is used, and if `max` is 0 the existing 100 is used. If evaluation fails, it also falls back to the fixed limit.
 
-The names and syntax of the expression are checked at load time. Basis: `internal/layer2/gamedata/check.go:262`, `internal/play/meters.go:15`. Neutral usage examples are at `data/battle_hooks_test.go:10` and `internal/play/battle_hooks_test.go:44`.
+The names and syntax of the expression are checked at load time. Basis: `internal/model/gamedata/check.go:262`, `internal/play/meters.go:15`. Neutral usage examples are at `data/battle_hooks_test.go:10` and `internal/play/battle_hooks_test.go:44`.
 
 ## Authoring CLI
 

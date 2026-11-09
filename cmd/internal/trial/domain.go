@@ -10,7 +10,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/battle"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 func pathMatch(p, name string) (bool, error) { return path.Match(p, name) }

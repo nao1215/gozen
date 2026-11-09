@@ -24,7 +24,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
 // The streamer's pictures and puppet.yaml (no copyright claimed, CC0 1.0; see assets/LICENSE).

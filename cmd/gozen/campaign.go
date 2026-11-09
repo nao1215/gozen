@@ -12,7 +12,7 @@ import (
 	"github.com/nao1215/gozen/cmd/gozen/internal/campaignsim"
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/diag"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // campaignCmd is gozen sim campaign: many campaigns played headless with a strategy, and

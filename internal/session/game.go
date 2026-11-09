@@ -8,9 +8,9 @@ import (
 
 	"github.com/goccy/go-yaml"
 
-	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+	"github.com/nao1215/gozen/internal/base/yamlpath"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // Diagnostic is one problem of a game: file, line, column, logical path, message and

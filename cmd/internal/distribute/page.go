@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // shareImage is the name of the link card's picture beside the page, before its extension.

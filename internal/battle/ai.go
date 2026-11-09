@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/nao1215/gozen/internal/expr"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // rules returns the AUTO rules in order: the enemy itself, the tactic set at battle start, the ally itself, then the job.

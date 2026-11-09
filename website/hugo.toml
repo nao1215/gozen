@@ -88,7 +88,7 @@ source = "data"
 target = "data"
 
 # The YAML contract, generated from the Go types by a test in
-# internal/layer2/gamedata (GOZEN_UPDATE_SCHEMA=1). The Schema page is built from
+# internal/model/gamedata (GOZEN_UPDATE_SCHEMA=1). The Schema page is built from
 # it by content/_content.gotmpl, with the English wording in data/schema_en.yaml
 # and the descriptions in data/schema_fields/.
 [[module.mounts]]

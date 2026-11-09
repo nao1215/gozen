@@ -3,7 +3,7 @@ package play
 import (
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
 const sysCorridor = `locations:

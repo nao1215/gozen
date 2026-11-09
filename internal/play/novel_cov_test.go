@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // The novel window (ui.message: novel) and its stage (ADR 0028, ADR 0026): portraits stand

@@ -12,22 +12,22 @@ flowchart TD
   Adapters --> Domain[internal/promptgen and internal/mosaic]
   Adapters --> IO[clihelp and cliio]
   IO --> Diag[diag]
-  Play --> Display[layer5: graphics, sound, portraits]
-  Play --> Progress[headless and layer4]
+  Play --> Display[screen: graphics, sound, portraits]
+  Play --> Progress[headless and drive]
   Session[internal/session: first-party integration tests] --> Progress
-  Progress --> Rules[battle, event, world and layer3]
-  Rules --> Model[rpg and layer2: gamedata]
+  Progress --> Rules[battle, event, world and rules]
+  Rules --> Model[rpg and model: gamedata]
   Model --> React[react: conversation rules]
   Rules --> React
   React --> Base
-  Model --> Base[expr, text, savefile and layer1]
+  Model --> Base[expr, text, savefile and base]
 ```
 
-The dependency order has six named levels, ordered once in `internal/dev/hygiene/levels.go` ([ADR 0064](../decisions/0064-named-dependency-levels.md)): `base` (values, expressions, texts, save bytes, chat, conversation rules, diagnostics and shared CLI and browser I/O), `model` (definitions and state), `rules`, `drive` (running without a screen), `screen` (drawing, sound and the player) and `app` (commands and tools). `.go-arch-lint.yml` is the dependency authority between components; `go tool dango lint` checks that every component has one level and depends on no higher level. The level components `base`, `model`, `rules`, `drive` and `screen` map to `internal/layer1/**` to `internal/layer5/**`. Named components (`expr`, `text`, `savefile`, `chat`, `rpg`, `battle`, `event`, `world`, `react`, `headless`, `session`, `play`, `webfs`, `clihelp`, `cliio`, `diag`) map to their internal directories. Sibling implementation packages share code through an owning lower level.
+The dependency order has six named levels, ordered once in `internal/dev/hygiene/levels.go` ([ADR 0064](../decisions/0064-named-dependency-levels.md)): `base` (values, expressions, texts, save bytes, chat, conversation rules, diagnostics and shared CLI and browser I/O), `model` (definitions and state), `rules`, `drive` (running without a screen), `screen` (drawing, sound and the player) and `app` (commands and tools). `.go-arch-lint.yml` is the dependency authority between components; `go tool dango lint` checks that every component has one level and depends on no higher level. The level components `base`, `model`, `rules`, `drive` and `screen` map to `internal/base/**` to `internal/screen/**`. Named components (`expr`, `text`, `savefile`, `chat`, `rpg`, `battle`, `event`, `world`, `react`, `headless`, `session`, `play`, `webfs`, `clihelp`, `cliio`, `diag`) map to their internal directories. Sibling implementation packages share code through an owning lower level.
 
-`commands` covers `cmd/gozen` and its authoring support packages. `repro` owns the shared reproduction-bundle operation; `dango` is a separate maintainer entry point. Both consume the foundation trace protocol in `internal/layer1/traceformat`, which the player also uses for exact-replay validation. `player` is the private desktop/browser startup. `promptcmd` and `mosaiccmd` are CLI adapters, separate from their domain components. Domain code cannot import command parsing or reporting. `dev` owns repository tooling; `testgame` owns neutral fixtures. The standalone portrait example is a maintainer inspection tool. Tests may assemble layers; production code may not use that exception.
+`commands` covers `cmd/gozen` and its authoring support packages. `repro` owns the shared reproduction-bundle operation; `dango` is a separate maintainer entry point. Both consume the foundation trace protocol in `internal/base/traceformat`, which the player also uses for exact-replay validation. `player` is the private desktop/browser startup. `promptcmd` and `mosaiccmd` are CLI adapters, separate from their domain components. Domain code cannot import command parsing or reporting. `dev` owns repository tooling; `testgame` owns neutral fixtures. The standalone portrait example is a maintainer inspection tool. Tests may assemble layers; production code may not use that exception.
 
-`internal/layer2/gamedata` owns YAML types, validation and the directory loader. `internal/rpg` owns state and save serialization. `internal/savefile` owns save locations and byte stores. `internal/session` retains non-rendering sessions for first-party integration tests; its former public wrappers and the session-to-screen bridge are removed. See [session contracts](core-api.md) and [presentation](presentation-api.md).
+`internal/model/gamedata` owns YAML types, validation and the directory loader. `internal/rpg` owns state and save serialization. `internal/savefile` owns save locations and byte stores. `internal/session` retains non-rendering sessions for first-party integration tests; its former public wrappers and the session-to-screen bridge are removed. See [session contracts](core-api.md) and [presentation](presentation-api.md).
 
 `gozen run GAME` and `cmd/gozen-player` use the same internal runtime. Desktop exports locate `game/` beside the player. Browser exports fetch the page-relative manifest through `internal/webfs`; saves use origin-local storage. Export selects files and validates matching runtime metadata in `cmd/internal/distribute`. Authors do not compile game-specific code.
 

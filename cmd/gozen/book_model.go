@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // bookReport is a detached synopsis, shared by Markdown and structured output.

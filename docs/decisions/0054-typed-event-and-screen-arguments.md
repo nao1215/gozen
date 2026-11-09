@@ -14,10 +14,10 @@ global variable containing the last selection.
 
 Current evidence (before implementation):
 
-- `internal/layer2/gamedata/types.go:1493` defines events without parameters;
+- `internal/model/gamedata/types.go:1493` defines events without parameters;
   `types.go:1707` defines author screens without parameters and `types.go:1719`
   binds an entry to a literal entity ID.
-- `internal/layer2/gamedata/command.go:98` and `:125` store literal `call` and
+- `internal/model/gamedata/command.go:98` and `:125` store literal `call` and
   `open` names. `internal/event/event.go:1022` pushes the named command list;
   `event.go:313` has no argument environment per frame.
 - `internal/play/author_screen.go:48` renders screen entries against state alone.

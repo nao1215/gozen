@@ -1,6 +1,6 @@
 # ADR 0035: The monster book
 
-Status: Accepted (2026-10-22). Home: `internal/layer2/gamedata` (enemy lore and checks), `internal/event` and `internal/rpg` (saved discovery state and query), `internal/play` (screen), `cmd/gozen` (book output).
+Status: Accepted (2026-10-22). Home: `internal/model/gamedata` (enemy lore and checks), `internal/event` and `internal/rpg` (saved discovery state and query), `internal/play` (screen), `cmd/gozen` (book output).
 
 ## Users and problem
 

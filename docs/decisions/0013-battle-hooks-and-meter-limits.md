@@ -8,7 +8,7 @@ A game author wants to consume exploration resources just before a battle, and d
 
 ## Decision
 
-Only the following 3 fields are added to the existing public definition types. The owner remains `internal/layer2/gamedata`, and the user-facing names are the type aliases in `data`.
+Only the following 3 fields are added to the existing public definition types. The owner remains `internal/model/gamedata`, and the user-facing names are the type aliases in `data`.
 
 | Field | Who uses it and for what | When omitted |
 | --- | --- | --- |
@@ -16,7 +16,7 @@ Only the following 3 fields are added to the existing public definition types. T
 | `data.BattleCfg.After` | A game author specifies a common event, after the result is applied, for returning or cleanup | Not run |
 | `data.Meter.MaxValue` | A game author shows a limit computed from state, together with the current value, on the screen | The fixed `Max` and the existing display are used |
 
-The types and contract are in `BattleCfg` at `internal/layer2/gamedata/types.go:243` and `internal/layer2/gamedata/types.go:325`, and the source of truth for the public surface check is `api/public.txt`. No new public types, functions, or interfaces are created. Events run with the existing `event.Runner`, and runs without a screen or drawing use the existing upper layers, so no layer exception is added.
+The types and contract are in `BattleCfg` at `internal/model/gamedata/types.go:243` and `internal/model/gamedata/types.go:325`, and the source of truth for the public surface check is `api/public.txt`. No new public types, functions, or interfaces are created. Events run with the existing `event.Runner`, and runs without a screen or drawing use the existing upper layers, so no layer exception is added.
 
 The order of execution, abort by movement, ordinary defeat, retry, and the lower bound of meters are described in [Battle events and meters](../architecture/battle-hooks.md). The CLI's trial and demo reachability analysis handle the same settings.
 

@@ -18,7 +18,7 @@ import (
 // guardYAML runs a YAML decode and turns a panic of the decoder into an error. Fix files and
 // the YAML files that name pictures are untrusted input (SECURITY.md), and the decoder panics
 // on some shapes, such as a list of five numbers where a rectangle of four is wanted. This
-// is the guard of internal/layer1/decodeguard; the mosaic component may not import layer 1.
+// is the guard of internal/base/decodeguard; the mosaic component may not import layer 1.
 func guardYAML(decode func() error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {

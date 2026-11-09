@@ -6,7 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- Add named dependency levels (base, model, rules, drive, screen, app) ordered once in `internal/dev/hygiene/levels.go`; dango rejects a component without a level or one that depends on a higher level (ADR 0064).
+- Add named dependency levels (base, model, rules, drive, screen, app) ordered once in `internal/dev/hygiene/levels.go`; dango rejects a component without a level or one that depends on a higher level (ADR 0064). The packages of `internal/layer1` to `internal/layer5` now live in `internal/base`, `internal/model`, `internal/rules`, `internal/drive` and `internal/screen`.
 - Add dango checks that keep removed features from returning through leftover references, reject new vaguely named test files, and require every E2E fixture, script and bench file to be referenced.
 
 ### Fixed

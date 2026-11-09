@@ -1,0 +1,554 @@
+package gamedata
+
+import (
+	"errors"
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
+
+	"github.com/nao1215/gozen/internal/base/optional"
+	"github.com/nao1215/gozen/internal/expr"
+)
+
+// CampaignState is what a campaign's names read of a play: its variables (by name,
+// without var.) and the actors who have joined. The zero value is the start of a game.
+type CampaignState struct {
+	Vars      map[string]any
+	JoinedIDs []string
+}
+
+// Var is a variable of the play.
+func (s CampaignState) Var(name string) (any, bool) {
+	v, ok := s.Vars[name]
+	return v, ok
+}
+
+// Joined reports whether the actor has joined.
+func (s CampaignState) Joined(id string) bool { return slices.Contains(s.JoinedIDs, id) }
+
+// CampaignEnv is the campaign's names on a play: region, faction, campaign, generals,
+// general, target and next_to (ADR 0030).
+func CampaignEnv(db *DB, st CampaignState) expr.Env { return campaignEnv{db: db, st: st} }
+
+type campaignEnv struct {
+	db *DB
+	st CampaignState
+	// inActions: campaign.actions is being worked out, so campaign.actions and
+	// campaign.actions_left are not there to read (they would read themselves)
+	inActions bool
+}
+
+// errActionsSelf is campaign.actions reading the actions it works out.
+var errActionsSelf = errors.New("campaign.actions cannot read campaign.actions or campaign.actions_left (they are what it works out)")
+
+func (e campaignEnv) Lookup(name string) (any, bool) {
+	switch name {
+	case "region":
+		return regionsView(e), true
+	case "faction":
+		return factionsView(e), true
+	case "campaign":
+		return e.campaign(), true
+	case "generals":
+		return generalsView(e), true
+	case "general":
+		if id := e.str(VarGeneral); id != "" {
+			return e.general(id), true
+		}
+		return nil, true
+	case "target":
+		if id := e.str(VarTarget); id != "" && e.db.Regions[id] != nil {
+			return e.region(id), true
+		}
+		return nil, true
+	case "next_to":
+		return expr.Func(e.nextTo), true
+	case "orders":
+		return ordersView(e), true
+	}
+	return nil, false
+}
+
+func (e campaignEnv) str(name string) string {
+	v, _ := e.st.Var(name)
+	return optional.Value[string](v)
+}
+
+// Owner is the faction holding the region now ("" for none).
+func RegionOwner(db *DB, st CampaignState, id string) string {
+	if v, ok := st.Var(RegionVar(id, "owner")); ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	if r := db.Regions[id]; r != nil {
+		return r.Owner
+	}
+	return ""
+}
+
+// Troops is the region's garrison now.
+func Garrison(db *DB, st CampaignState, id string) float64 {
+	return RegionValue(db, st, id, "troops")
+}
+
+// Fought is the turn a march last came on the region (0: never).
+func Fought(st CampaignState, id string) float64 {
+	if v, ok := st.Var(RegionVar(id, "fought")); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return f
+		}
+	}
+	return 0
+}
+
+// Value is the region's troops or one of its values now.
+func RegionValue(db *DB, st CampaignState, id, name string) float64 {
+	if v, ok := st.Var(RegionVar(id, name)); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return f
+		}
+	}
+	r := db.Regions[id]
+	if r == nil {
+		return 0
+	}
+	if name == "troops" {
+		return float64(r.Troops)
+	}
+	return r.Values[name]
+}
+
+// HasRegionValue reports whether the region holds the value: it declares it, or the play has set it.
+func HasRegionValue(db *DB, st CampaignState, id, name string) bool {
+	if _, ok := st.Var(RegionVar(id, name)); ok {
+		return true
+	}
+	r := db.Regions[id]
+	if r == nil {
+		return false
+	}
+	_, ok := r.Values[name]
+	return ok
+}
+
+// GeneralTroops is the troops a general leads now.
+func GeneralTroops(db *DB, st CampaignState, id string) float64 {
+	if v, ok := st.Var(GeneralVar(id, "troops")); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return f
+		}
+	}
+	if c := db.Game.Campaign; c != nil {
+		return float64(c.Generals[id].Troops)
+	}
+	return 0
+}
+
+// Acted reports whether the general has marched this turn.
+func Acted(_ *DB, st CampaignState, id string) bool {
+	v, _ := st.Var(GeneralVar(id, "acted"))
+	return expr.Truthy(v)
+}
+
+// Out is the turns a beaten general is still away for (0: here).
+func Out(st CampaignState, id string) int {
+	v, _ := st.Var(GeneralVar(id, "out"))
+	f, _ := expr.ToNumber(v)
+	return int(f)
+}
+
+// Ready reports whether the general can march: joined, here, not marched this turn, with
+// troops.
+func Ready(db *DB, st CampaignState, id string) bool {
+	return st.Joined(id) && Out(st, id) == 0 && !Acted(db, st, id) && GeneralTroops(db, st, id) > 0
+}
+
+// Used is how many times the order was given this turn.
+func Used(st CampaignState, id string) int {
+	v, _ := st.Var(OrderVar(id, "used"))
+	f, _ := expr.ToNumber(v)
+	return int(f)
+}
+
+// Taken is how many regions the player took this turn.
+func Taken(st CampaignState) int {
+	v, _ := st.Var(VarTaken)
+	f, _ := expr.ToNumber(v)
+	return int(f)
+}
+
+// Turn is the campaign's turn (1 at the start).
+func Turn(_ *DB, st CampaignState) int {
+	if v, ok := st.Var(VarTurn); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return int(f)
+		}
+	}
+	return 1
+}
+
+// TurnActions is how many actions a turn has now (campaign.actions; 1 when unset or when
+// it cannot be worked out).
+func TurnActions(db *DB, st CampaignState) float64 {
+	n, err := turnActions(db, st)
+	if err != nil {
+		return 1
+	}
+	return n
+}
+
+// turnActions works campaign.actions out; it may read every name but the actions.
+func turnActions(db *DB, st CampaignState) (float64, error) {
+	c := db.Game.Campaign
+	if c == nil || !c.Actions.Set() {
+		return 1, nil
+	}
+	n, err := c.Actions.Number(campaignEnv{db: db, st: st, inActions: true})
+	if err != nil {
+		return 1, err
+	}
+	return max(0, float64(int(n))), nil
+}
+
+// ActionsLeft is the actions left in the turn.
+func ActionsLeft(db *DB, st CampaignState) float64 {
+	if v, ok := st.Var(VarActions); ok {
+		if f, ok := expr.ToNumber(v); ok {
+			return f
+		}
+	}
+	return TurnActions(db, st)
+}
+
+// RegionsOf are the regions a faction holds now, in the written order.
+func RegionsOf(db *DB, st CampaignState, faction string) []string {
+	var out []string
+	for _, id := range RegionIDs(db) {
+		if RegionOwner(db, st, id) == faction {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// Borders reports whether region id borders a region the faction holds.
+func Borders(db *DB, st CampaignState, id, faction string) bool {
+	r := db.Regions[id]
+	if r == nil {
+		return false
+	}
+	for _, n := range r.Next {
+		if db.Regions[n] != nil && RegionOwner(db, st, n) == faction {
+			return true
+		}
+	}
+	return false
+}
+
+func (e campaignEnv) region(id string) expr.Map {
+	db, st := e.db, e.st
+	r := db.Regions[id]
+	next := make([]any, len(r.Next))
+	for i, n := range r.Next {
+		next[i] = n
+	}
+	owner := RegionOwner(db, st, id)
+	capital := false
+	if f := db.Factions[owner]; f != nil {
+		capital = f.Capital == id
+	}
+	player := ""
+	if c := db.Game.Campaign; c != nil {
+		player = c.Player
+	}
+	m := expr.Map{
+		"id": id, "name": RegionName(db, id), "owner": owner, "troops": Garrison(db, st, id),
+		"next": next, "capital": capital, "border": owner != player && Borders(db, st, id, player),
+		"fought": Fought(st, id),
+	}
+	for _, v := range ValueNames(db) {
+		m[v] = RegionValue(db, st, id, v)
+	}
+	return m
+}
+
+// regionsView is region.<id>.
+type regionsView campaignEnv
+
+func (v regionsView) Field(id string) (any, bool) {
+	if v.db.Regions[id] == nil {
+		return nil, true
+	}
+	return campaignEnv(v).region(id), true
+}
+
+func (v regionsView) Keys() []string { return RegionIDs(v.db) }
+
+// factionsView is faction.<id>.
+type factionsView campaignEnv
+
+func (v factionsView) Field(id string) (any, bool) {
+	if v.db.Factions[id] == nil {
+		return nil, true
+	}
+	return factionView{campaignEnv(v), id}, true
+}
+
+func (v factionsView) Keys() []string { return FactionIDs(v.db) }
+
+// factionView is one faction: name, color, capital, regions (how many it holds), troops
+// (its garrisons), alive (holds a region), player, and sum_<value> of its regions.
+type factionView struct {
+	e  campaignEnv
+	id string
+}
+
+func (v factionView) Field(name string) (any, bool) {
+	db, st := v.e.db, v.e.st
+	f := db.Factions[v.id]
+	held := RegionsOf(db, st, v.id)
+	sum := func(field string) float64 {
+		t := 0.0
+		for _, r := range held {
+			t += RegionValue(db, st, r, field)
+		}
+		return t
+	}
+	switch name {
+	case "id":
+		return v.id, true
+	case "name":
+		if f.Name != "" {
+			return f.Name, true
+		}
+		return v.id, true
+	case "color":
+		if f.Color.Valid {
+			c := f.Color.NRGBA
+			return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B), true
+		}
+		return "", true
+	case "capital":
+		return f.Capital, true
+	case "regions":
+		return float64(len(held)), true
+	case "troops":
+		return sum("troops"), true
+	case "alive":
+		return len(held) > 0, true
+	case "player":
+		c := db.Game.Campaign
+		return c != nil && c.Player == v.id, true
+	}
+	if value, ok := strings.CutPrefix(name, "sum_"); ok && slices.Contains(ValueNames(db), value) {
+		return sum(value), true
+	}
+	return nil, false
+}
+
+func (v factionView) Keys() []string {
+	keys := []string{"id", "name", "color", "capital", "regions", "troops", "alive", "player"}
+	for _, n := range ValueNames(v.e.db) {
+		keys = append(keys, "sum_"+n)
+	}
+	return keys
+}
+
+// campaignView is campaign.<field>: each field worked out when it is read, so that
+// campaign.actions may read campaign.turn without working itself out.
+type campaignView struct{ e campaignEnv }
+
+func (e campaignEnv) campaign() campaignView { return campaignView{e} }
+
+// Field implements expr.Object.
+func (v campaignView) Field(name string) (any, bool) {
+	e, c := v.e, v.e.db.Game.Campaign
+	week := func() int { return Turn(e.db, e.st) - 1 }
+	switch name {
+	case "turn":
+		return float64(Turn(e.db, e.st)), true
+	case "actions", "actions_left":
+		if e.inActions {
+			return nil, false
+		}
+		if name == "actions" {
+			return TurnActions(e.db, e.st), true
+		}
+		return ActionsLeft(e.db, e.st), true
+	case "target":
+		return e.str(VarTarget), true
+	case "general":
+		return e.str(VarGeneral), true
+	case "result":
+		return e.str(VarResult), true
+	case "clash":
+		return e.str(VarClash), true
+	case "taken":
+		return float64(Taken(e.st)), true
+	case "turns":
+		if c == nil {
+			return 0.0, true
+		}
+		return float64(c.Turns), true
+	case "player":
+		if c == nil {
+			return "", true
+		}
+		return c.Player, true
+	case "week", "year":
+		if c == nil || c.Calendar != "week" {
+			return 0.0, true
+		}
+		if name == "week" {
+			return float64(week()%52 + 1), true
+		}
+		return float64(week()/52 + 1), true
+	}
+	return nil, false
+}
+
+// Keys lists the fields of campaign.
+func (v campaignView) Keys() []string {
+	return []string{"actions", "actions_left", "clash", "general", "player", "result", "taken", "target", "turn", "turns", "week", "year"}
+}
+
+// generalsView is generals.<actor id>.
+type generalsView campaignEnv
+
+func (v generalsView) Field(id string) (any, bool) {
+	c := v.db.Game.Campaign
+	if c == nil {
+		return nil, true
+	}
+	if _, ok := c.Generals[id]; !ok {
+		return nil, true
+	}
+	return campaignEnv(v).general(id), true
+}
+
+func (v generalsView) Keys() []string {
+	if c := v.db.Game.Campaign; c != nil {
+		return slices.Sorted(maps.Keys(c.Generals))
+	}
+	return nil
+}
+
+func (e campaignEnv) general(id string) expr.Map {
+	db, st := e.db, e.st
+	name := id
+	if a := db.Actors[id]; a != nil && a.Name != "" {
+		name = a.Name
+	}
+	might := 0.0
+	if c := db.Game.Campaign; c != nil {
+		might = c.Generals[id].Might
+	}
+	return expr.Map{
+		"id": id, "name": name, "troops": GeneralTroops(db, st, id), "might": might,
+		"acted": Acted(db, st, id), "joined": st.Joined(id), "ready": Ready(db, st, id), "out": float64(Out(st, id)),
+	}
+}
+
+// nextTo is next_to(region, faction): the region borders a region the faction holds.
+func (e campaignEnv) nextTo(args []any) (any, error) {
+	if len(args) != 2 {
+		return nil, errors.New("next_to takes a region and a faction")
+	}
+	id, ok1 := args[0].(string)
+	f, ok2 := args[1].(string)
+	if !ok1 || !ok2 {
+		return nil, errors.New("next_to takes the ids of a region and a faction")
+	}
+	return Borders(e.db, e.st, id, f), nil
+}
+
+// The types of the campaign's names for the checks.
+var (
+	tRegion = objType("a region", map[string]*vtype{
+		"id": tStr, "name": tStr, "owner": tStr, "troops": tNum, "capital": tBool, "border": tBool, "fought": tNum,
+		"next": {kind: vList, desc: "next", elem: tStr},
+	}, func(c *checker, name string) (*vtype, string) {
+		if slices.Contains(ValueNames(c.db), name) {
+			return tNum, ""
+		}
+		return nil, ""
+	})
+	tFaction = objType("a faction", map[string]*vtype{
+		"id": tStr, "name": tStr, "color": tStr, "capital": tStr, "regions": tNum, "troops": tNum, "alive": tBool, "player": tBool,
+	}, func(c *checker, name string) (*vtype, string) {
+		if v, ok := strings.CutPrefix(name, "sum_"); ok {
+			if !slices.Contains(ValueNames(c.db), v) {
+				return nil, fmt.Sprintf("no region has the value %q", v)
+			}
+			return tNum, ""
+		}
+		return nil, ""
+	})
+	tGeneral = objType("a general", map[string]*vtype{
+		"id": tStr, "name": tStr, "troops": tNum, "might": tNum, "acted": tBool, "joined": tBool, "ready": tBool, "out": tNum,
+	}, nil)
+	tCampaign = objType("campaign", map[string]*vtype{
+		"turn": tNum, "turns": tNum, "actions": tNum, "actions_left": tNum, "player": tStr, "target": tStr, "general": tStr, "result": tStr,
+		"taken": tNum, "week": tNum, "year": tNum, "clash": tStr,
+	}, nil)
+)
+
+// regionOver and clashOver are the types of s, t, a, b, power and defense where they are
+// names of a campaign (a faction's rule, an order's where, the clash).
+var (
+	regionOver = map[string]*vtype{"s": tRegion, "t": tRegion}
+	clashOver  = map[string]*vtype{
+		"a": objType("the side marching", statsFields(map[string]*vtype{"troops": tNum, "might": tNum, "faction": tStr, "general": tStr, "from": tStr, "level": tNum}), nil),
+		"b": tRegion, "power": tNum, "defense": tNum,
+	}
+)
+
+// OrderOpen reports whether the turn's count lets the order be given now: in count:
+// orders, given fewer than per_turn times (or an until_taken march before a region is
+// taken); in count: actions, the actions it costs are left (and an until_taken march has
+// taken no region yet). Its when is the caller's.
+func OrderOpen(db *DB, st CampaignState, id string) bool {
+	c := db.Game.Campaign
+	if c == nil || c.Orders[id] == nil {
+		return false
+	}
+	o := c.Orders[id]
+	if o.UntilTaken && Taken(st) > 0 {
+		return false
+	}
+	if c.Count == "orders" {
+		return o.UntilTaken || Used(st, id) < max(1, o.PerTurn)
+	}
+	return ActionsLeft(db, st) >= float64(o.CostOf())
+}
+
+// ordersView is orders.<id>: open (the count lets it be given now) and used.
+type ordersView campaignEnv
+
+func (v ordersView) Field(id string) (any, bool) {
+	c := v.db.Game.Campaign
+	if c == nil || c.Orders[id] == nil {
+		return nil, true
+	}
+	return expr.Map{"open": OrderOpen(v.db, v.st, id), "used": float64(Used(v.st, id))}, true
+}
+
+func (v ordersView) Keys() []string {
+	if c := v.db.Game.Campaign; c != nil {
+		return c.OrderIDs()
+	}
+	return nil
+}
+
+var tOrder = objType("an order", map[string]*vtype{"open": tBool, "used": tNum}, nil)
+
+// tacticOver are the types of a and t in a tactic (the unit striking and a foe).
+var tacticOver = map[string]*vtype{"a": hitOver["a"], "t": hitOver["a"], "round": tNum}
+
+// hitOver are the types of a and b in a clash shown as units (two units).
+var hitOver = func() map[string]*vtype {
+	unit := objType("a unit", statsFields(map[string]*vtype{"troops": tNum, "max": tNum, "might": tNum, "hp": tNum, "mhp": tNum, "player": tBool, "level": tNum}), nil)
+	return map[string]*vtype{"a": unit, "b": unit, "round": tNum}
+}()

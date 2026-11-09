@@ -67,7 +67,7 @@ reformatting a long expression into one line does not resolve their structure.
 
 ```sh
 gozen check examples/workshop/game --only structure --format json
-go test ./internal/layer2/gamedata -run TestComplexity -count=1 -v
+go test ./internal/model/gamedata -run TestComplexity -count=1 -v
 ```
 
 `make test` runs the budget contracts and loads every `examples/**/game.yaml`,

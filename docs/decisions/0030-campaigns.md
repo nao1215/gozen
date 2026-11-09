@@ -1,6 +1,6 @@
 # ADR 0030: Campaigns — regions held by factions over turns
 
-Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) and 7 (the rules in the manner of Kichikuou Rance) are done; the rest is under "Plan" below. Home: `internal/layer2/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/layer3/campaign` (the rules).
+Status: Accepted (2026-10-21). Stages 1 (the YAML words, their checks, the expression names and the generated state names), 2 (the rules, the random numbers in a save, the prototype rewritten) 3 (the screen), 4 (`gozen sim campaign`) and 5 (battles) and 7 (the rules in the manner of Kichikuou Rance) are done; the rest is under "Plan" below. Home: `internal/model/gamedata` (YAML types, checks and the expression names), `internal/rpg` (the names on a play, `set`), `internal/rules/campaign` (the rules).
 
 ## Users and problem
 
@@ -137,14 +137,14 @@ For same-seed strategy and tactic comparisons with per-region ownership measures
 
 ### No new public API
 
-`api/public.txt` does not change. `api/schema.txt` gains `Game.Campaign`, `DB.Regions`, `DB.Factions` and the commands `Command.Order`, `Command.EndTurn` and `Command.GameOver`. It also gains the fields `Clash.Armies`, `Clash.Layout`, `General.Army` and `Enemy.Army`. The new types have no alias in `schema`; the helpers that read a campaign's state are functions of `internal/layer2/gamedata`, not methods of `DB`.
+`api/public.txt` does not change. `api/schema.txt` gains `Game.Campaign`, `DB.Regions`, `DB.Factions` and the commands `Command.Order`, `Command.EndTurn` and `Command.GameOver`. It also gains the fields `Clash.Armies`, `Clash.Layout`, `General.Army` and `Enemy.Army`. The new types have no alias in `schema`; the helpers that read a campaign's state are functions of `internal/model/gamedata`, not methods of `DB`.
 
 ## Plan
 
 | Stage | Content | Status |
 | --- | --- | --- |
 | 1 | The words, `schema_version: 5`, the checks, the names, the generated state names, `set` | Done |
-| 2 | The rules (`internal/layer3/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | Done |
+| 2 | The rules (`internal/rules/campaign`): the commands `order`, `end_turn` and `game_over`, the actions of a turn, the numeric clash, the factions' rules, winning and losing, the random numbers in a save; the prototype rewritten | Done |
 | 3 | The screen: the flags in the owners' colours, the band, the meters, the region's window, the generals, orders from a region, the script and the trace | Done |
 | 4 | `gozen sim campaign` (`-n`, `--seed`, `--as greedy|random|ai`, `--format json`): the win rate, the turns, the regions by turn, the factions' falls, the orders; the CLI's E2E | Done |
 | 5 | The bridge to battles: `fight: battle`, `defend`, `self.troops`, the troops written back | Done |

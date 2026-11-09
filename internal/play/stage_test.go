@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/nao1215/gozen/internal/layer1/geom"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	"github.com/nao1215/gozen/internal/base/geom"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 func TestStageFastWalkChecksNarrowAreas(t *testing.T) {

@@ -14,10 +14,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/layer1/pace"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer5/doll"
-	"github.com/nao1215/gozen/internal/layer5/stage"
+	"github.com/nao1215/gozen/internal/base/pace"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/screen/doll"
+	"github.com/nao1215/gozen/internal/screen/stage"
 )
 
 // sceneCache keeps what the painted scenes make once: the dolls baked from the standing

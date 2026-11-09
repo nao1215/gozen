@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
 	"github.com/nao1215/gozen/internal/expr"
-	"github.com/nao1215/gozen/internal/layer1/safeint"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // State is a game in progress.
@@ -72,7 +72,7 @@ type State struct {
 	// Moved is whether the last step forward in a dungeon moved the party (false: it
 	// bumped into something). Not saved: the expression name moved.
 	Moved bool `json:"-"`
-	// Bumped is the last walking into a tile that set it off (internal/layer3/dungeon): the same
+	// Bumped is the last walking into a tile that set it off (internal/rules/dungeon): the same
 	// one is not set off again until the party moves. Not saved.
 	Bumped string `json:"-"`
 	// LoadReport lists the migrations and corrections made at load time. It is not part of the saved game state.

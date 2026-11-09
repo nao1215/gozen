@@ -1,6 +1,6 @@
 # ADR 0051: Smaller and faster web exports
 
-Status: Accepted (2026-10-27). Home: `cmd/internal/distribute` (what a web export serves), `internal/webfs` (how the player downloads it), `internal/expr` and `internal/layer5/puppet` (the startup's work), `internal/layer5/picdecode` (WebP).
+Status: Accepted (2026-10-27). Home: `cmd/internal/distribute` (what a web export serves), `internal/webfs` (how the player downloads it), `internal/expr` and `internal/screen/puppet` (the startup's work), `internal/screen/picdecode` (WebP).
 
 ## Context
 

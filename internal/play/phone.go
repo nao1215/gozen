@@ -12,10 +12,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer2/puppetdef"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
-	"github.com/nao1215/gozen/internal/layer5/puppet"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/puppetdef"
+	"github.com/nao1215/gozen/internal/screen/gfx"
+	"github.com/nao1215/gozen/internal/screen/puppet"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

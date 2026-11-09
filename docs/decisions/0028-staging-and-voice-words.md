@@ -1,6 +1,6 @@
 # ADR 0028: The words of staging and voice
 
-Status: Accepted (2026-10-21). Staging (stage 3) and voice (stage 4) are done. Home: `internal/layer2/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/layer5/sound` (the screen and the sound).
+Status: Accepted (2026-10-21). Staging (stage 3) and voice (stage 4) are done. Home: `internal/model/gamedata` (the words and the checks), `internal/event` (the effects), `internal/play` and `internal/screen/sound` (the screen and the sound).
 
 ## Users and problem
 
@@ -23,7 +23,7 @@ Lines get no inline tags (`{w=0.5}` and the like): `{}` is already the expressio
 
 - `say.voice` names a sound: for an actor with `voices` (a folder under `assets/`), the name of a file in it; for anyone else, a path under `assets/`. Ogg Vorbis or WAV.
 - The screen stops the previous voice when a line starts and plays the new one; skip mode, scene skip and the quiet replay play none (a roll back plays only the line it lands on). `ui.voice.cut` (stop at the next line) and `ui.voice.auto_wait` (auto waits for the voice) shape it, and the settings gain a voice volume and a volume per actor (`config.json`, added fields).
-- `internal/layer5/sound` gains `PlayVoice` and `StopVoice`: decoded on demand with a small cache, for the browser's memory.
+- `internal/screen/sound` gains `PlayVoice` and `StopVoice`: decoded on demand with a small cache, for the browser's memory.
 - The examples do not ship voices (the author's decision); the tests use short generated sounds.
 
 ### Effects are what the rules see

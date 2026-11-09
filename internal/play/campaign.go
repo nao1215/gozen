@@ -9,16 +9,16 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
-	"github.com/nao1215/gozen/internal/layer1/geom"
+	"github.com/nao1215/gozen/internal/base/geom"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"github.com/nao1215/gozen/internal/expr"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/atlas"
-	"github.com/nao1215/gozen/internal/layer3/campaign"
-	"github.com/nao1215/gozen/internal/layer5/gfx"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/atlas"
+	"github.com/nao1215/gozen/internal/rules/campaign"
+	"github.com/nao1215/gozen/internal/screen/gfx"
 	lang "github.com/nao1215/gozen/internal/text"
 )
 

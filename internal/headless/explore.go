@@ -14,11 +14,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/drive/itemuse"
 	"github.com/nao1215/gozen/internal/event"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
-	"github.com/nao1215/gozen/internal/layer3/dungeon"
-	"github.com/nao1215/gozen/internal/layer4/itemuse"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rpg"
+	"github.com/nao1215/gozen/internal/rules/dungeon"
 	"github.com/nao1215/gozen/internal/world"
 )
 

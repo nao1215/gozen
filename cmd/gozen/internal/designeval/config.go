@@ -8,11 +8,11 @@ import (
 	"regexp"
 
 	"github.com/nao1215/gozen/cmd/internal/cli"
-	"github.com/nao1215/gozen/internal/layer1/decodeguard"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 
 	"github.com/goccy/go-yaml"
 
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 type Config struct {

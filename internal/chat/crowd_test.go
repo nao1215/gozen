@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nao1215/gozen/internal/layer1/yamlpath"
+	"github.com/nao1215/gozen/internal/base/yamlpath"
 )
 
 const script = `

@@ -18,7 +18,7 @@ import (
 	"github.com/nao1215/gozen/internal/clihelp"
 	"github.com/nao1215/gozen/internal/cliio"
 	"github.com/nao1215/gozen/internal/diag"
-	data "github.com/nao1215/gozen/internal/layer2/gamedata"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // batchCase is one line of gozen sim batch's input: the arguments of one gozen sim script

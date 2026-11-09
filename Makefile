@@ -122,7 +122,7 @@ campaign-graphics:
 # Requires a display; Linux CI wraps this target with xvfb-run.
 graphics:
 	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/play -run 'TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout' -count=1
-	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/layer5/puppet -run TestGraphics -count=1
+	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/screen/puppet -run TestGraphics -count=1
 
 cli-build:
 	mkdir -p bin

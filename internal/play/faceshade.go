@@ -6,11 +6,11 @@ import (
 	"log"
 	"strings"
 
-	"github.com/nao1215/gozen/internal/layer1/picturelimit"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/nao1215/gozen/internal/layer5/picdecode"
+	"github.com/nao1215/gozen/internal/screen/picdecode"
 )
 
 func (p *pictures) shadedFace(path string, r image.Rectangle) *ebiten.Image {
