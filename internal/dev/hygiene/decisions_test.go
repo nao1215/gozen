@@ -140,7 +140,8 @@ func componentOf(name string, components map[string]archComponent) string {
 	return ""
 }
 
-func TestDependencyDirection(t *testing.T) {
+func loadPolicy(t *testing.T) archPolicy {
+	t.Helper()
 	b, err := os.ReadFile("../../../.go-arch-lint.yml")
 	if err != nil {
 		t.Fatal(err)
@@ -149,6 +150,11 @@ func TestDependencyDirection(t *testing.T) {
 	if err := yaml.Unmarshal(b, &policy); err != nil {
 		t.Fatal(err)
 	}
+	return policy
+}
+
+func TestDependencyDirection(t *testing.T) {
+	policy := loadPolicy(t)
 	sourceFiles(t, func(name string, b []byte) {
 		if strings.HasSuffix(name, "_test.go") || strings.Contains(name, "/testdata/") {
 			return
@@ -179,6 +185,65 @@ func TestDependencyDirection(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestLevelOrder keeps the architecture policy in the order of hygiene.Levels
+// (ADR 0064): every component has exactly one level, and none may depend on a
+// component of a higher level.
+func TestLevelOrder(t *testing.T) {
+	for _, v := range levelViolations(loadPolicy(t), hygiene.Levels()) {
+		t.Error(v)
+	}
+}
+
+func levelViolations(policy archPolicy, levels []hygiene.Level) []string {
+	var out []string
+	rank := map[string]int{}
+	for i, l := range levels {
+		for _, c := range l.Components {
+			if _, dup := rank[c]; dup {
+				out = append(out, fmt.Sprintf("component %s is in two levels; give it one", c))
+			}
+			rank[c] = i
+			if _, ok := policy.Components[c]; !ok {
+				out = append(out, fmt.Sprintf("level %s names %s, which .go-arch-lint.yml does not define", l.Name, c))
+			}
+		}
+	}
+	for _, c := range slices.Sorted(maps.Keys(policy.Components)) {
+		if _, ok := rank[c]; !ok {
+			out = append(out, fmt.Sprintf("component %s has no level; add it to internal/dev/hygiene/levels.go", c))
+		}
+	}
+	for _, owner := range slices.Sorted(maps.Keys(policy.Deps)) {
+		for _, dep := range policy.Deps[owner].May {
+			if rank[dep] > rank[owner] {
+				out = append(out, fmt.Sprintf("%s (%s) may depend on %s (%s), a higher level; move the shared code down", owner, levels[rank[owner]].Name, dep, levels[rank[dep]].Name))
+			}
+		}
+	}
+	return out
+}
+
+func TestLevelOrderRejectsUpwardAndMissing(t *testing.T) {
+	policy := archPolicy{
+		Components: map[string]archComponent{"low": {}, "high": {}, "stray": {}},
+		Deps:       map[string]archDeps{"low": {May: []string{"high"}}},
+	}
+	levels := []hygiene.Level{{Name: "one", Components: []string{"low", "ghost"}}, {Name: "two", Components: []string{"high", "low"}}}
+	got := levelViolations(policy, levels)
+	for _, want := range []string{"component low is in two levels", "names ghost", "component stray has no level"} {
+		if !slices.ContainsFunc(got, func(e string) bool { return strings.Contains(e, want) }) {
+			t.Errorf("missing report %q in %q", want, got)
+		}
+	}
+	got = levelViolations(archPolicy{
+		Components: map[string]archComponent{"low": {}, "high": {}},
+		Deps:       map[string]archDeps{"low": {May: []string{"high"}}},
+	}, []hygiene.Level{{Name: "one", Components: []string{"low"}}, {Name: "two", Components: []string{"high"}}})
+	if len(got) != 1 || !strings.Contains(got[0], "low (one) may depend on high (two), a higher level") {
+		t.Errorf("upward dependency reports = %q", got)
+	}
 }
 
 func exprText(t *testing.T, n ast.Node) string {
