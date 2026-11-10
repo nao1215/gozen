@@ -86,7 +86,7 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 | Counter in portrait | Trail in landscape |
 |:--|:--|
-| ![Counter collects four tokens inside the office phone](/images/phone-game-counter.jpg) | ![Trail reaches the hill marker inside a landscape phone](/images/phone-game-trail.jpg) |
+| ![Counter collects four tokens inside the office phone](/images/phone-game-counter.mp4) | ![Trail reaches the hill marker inside a landscape phone](/images/phone-game-trail.mp4) |
 
 ### Management workspaces
 
@@ -100,7 +100,7 @@ Workspace, call, calendar and timeline screens with a day `flow` (schema 10) mak
 | A message asks for a decision | Video call |
 | ![Elena's message is opened and a choice appears](/images/workboard-message.mp4) | ![the team call: the speaker on the stage, the others in the side column](/images/workboard-call.mp4) |
 | Screen sharing | First-visit guide |
-| ![Elena shares the booking form in the call](/images/workboard-share.jpg) | ![Martin's guide line over the veiled standup](/images/workboard-guide.jpg) |
+| ![Elena shares the booking form in the call](/images/workboard-share.jpg) | ![Martin's guide over the veiled standup advances a step](/images/workboard-guide.mp4) |
 | Calendar with scheduled events | Plan timeline |
 | ![the sprint calendar with the review and the demo](/images/workboard-calendar.jpg) | ![the sprint plan with five activities](/images/workboard-timeline.jpg) |
 | Character grid | Glass panels |
@@ -112,7 +112,7 @@ Workspace, call, calendar and timeline screens with a day `flow` (schema 10) mak
 
 | The war map | A clash of armies |
 |:--|:--|
-| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](/images/campaign-clash.jpg) |
+| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](/images/campaign-clash.mp4) |
 
 ### Monster collection
 
@@ -120,7 +120,7 @@ Monsters ask to join after a battle, wait at the ranch, and two raised monsters,
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
-| ![a Drip Slime rises after the battle and asks to join, with Yes and No](/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.mp4) |
+| ![the party wins, and a Drip Slime rises and asks to join, with Yes and No](/images/go-zen-recruit.mp4) | ![Yorn talks in the center, the parents turn into light, then the Succubus is born](/images/go-zen-breeding.mp4) |
 | The monster book | The family tree, two generations up |
 | ![the Succubus page of the monster book](/images/go-zen-bestiary.jpg) | ![the Succubus family tree with its parents and grandparents](/images/go-zen-lineage.jpg) |
 

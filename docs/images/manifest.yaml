@@ -272,9 +272,8 @@ images:
   workboard-carousel.mp4:
     run: workboard
     frames:
-      - {shots: workboard-tickets}
-      - {shots: workboard-carousel}
-    mp4: {fps: 1, width: 1280, height: 720}
+      - {shots: "carousel*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   space-stairs.mp4:
     run: space
     frames:
@@ -557,21 +556,27 @@ images:
   workboard-carousel.gif:
     run: workboard
     frames:
-      - {shots: workboard-tickets}
-      - {shots: workboard-carousel}
-    gif: {fps: 1, width: 720, height: 405, colors: 256}
-  workboard-guide.jpg:
+      - {shots: "carousel*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  workboard-guide.gif:
     run: workboard
-    shot: workboard-guide
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "guide*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  workboard-guide.mp4:
+    run: workboard
+    frames:
+      - {shots: "guide*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   workboard-cards.jpg:
     run: workboard
     shot: workboard-cards
     jpeg: {width: 720, height: 405, quality: 3}
-  workboard-flow.jpg:
+  workboard-flow.mp4:
     run: workboard
-    shot: workboard-flow
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "flow*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   workboard-peek.jpg:
     run: workboard
     shot: workboard-peek
@@ -666,10 +671,16 @@ images:
     frames:
       - {shots: "b0*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
-  go-zen-recruit.jpg:
+  go-zen-recruit.gif:
     run: recruit
-    shot: s-rise
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "join*", every: 2}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  go-zen-recruit.mp4:
+    run: recruit
+    frames:
+      - {shots: "join*", every: 2}
+    mp4: {fps: 12, width: 1280, height: 720}
   go-zen-title.jpg:
     run: opening
     shot: s-title
@@ -695,10 +706,16 @@ images:
     run: campaign
     shot: s-map
     jpeg: {width: 720, height: 405, quality: 3}
-  campaign-clash.jpg:
+  campaign-clash.gif:
     run: campaign
-    shot: s-clash
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "cb*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  campaign-clash.mp4:
+    run: campaign
+    frames:
+      - {shots: "cb*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   # The README's novel picture, beside the first one: a line, a choice, Back over the
   # choice, the same option again and Skip to the first line not read, about 10 seconds.
   novel.gif:
@@ -733,14 +750,26 @@ images:
     run: phone-games
     shot: game-home
     jpeg: {width: 960, height: 540, quality: 3}
-  phone-game-counter.jpg:
+  phone-game-counter.gif:
     run: phone-games
-    shot: game-counter
-    jpeg: {width: 960, height: 540, quality: 3}
-  phone-game-trail.jpg:
+    frames:
+      - {shots: "pgc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-game-counter.mp4:
     run: phone-games
-    shot: game-trail
-    jpeg: {width: 960, height: 540, quality: 3}
+    frames:
+      - {shots: "pgc*"}
+    mp4: {fps: 12, width: 1280, height: 720}
+  phone-game-trail.gif:
+    run: phone-games
+    frames:
+      - {shots: "pgt*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-game-trail.mp4:
+    run: phone-games
+    frames:
+      - {shots: "pgt*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   phone-navigation.gif:
     run: phone-archive
     frames:

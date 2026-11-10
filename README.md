@@ -104,7 +104,7 @@ A phone home screen opens contacts, chats, feeds and games. Messages and fixed r
 
 | Counter in portrait | Trail in landscape |
 |:--|:--|
-| ![Counter collects four tokens inside the office phone](docs/images/phone-game-counter.jpg) | ![Trail reaches the hill marker inside a landscape phone](docs/images/phone-game-trail.jpg) |
+| ![Counter collects four tokens inside the office phone](docs/images/phone-game-counter.gif) | ![Trail reaches the hill marker inside a landscape phone](docs/images/phone-game-trail.gif) |
 
 ### Management workspaces
 
@@ -118,7 +118,7 @@ Run a team through workspaces, calls, calendars and timelines. From [Harbor app 
 | A message asks for a decision | Video call |
 | ![Elena's message is opened and a choice appears](docs/images/workboard-message.gif) | ![the team call: the speaker on the stage, the others in the side column](docs/images/workboard-call.gif) |
 | Screen sharing | First-visit guide |
-| ![Elena shares the booking form in the call](docs/images/workboard-share.jpg) | ![Martin's guide line over the veiled standup](docs/images/workboard-guide.jpg) |
+| ![Elena shares the booking form in the call](docs/images/workboard-share.jpg) | ![Martin's guide over the veiled standup advances a step](docs/images/workboard-guide.gif) |
 | Calendar with scheduled events | Plan timeline |
 | ![the sprint calendar with the review and the demo](docs/images/workboard-calendar.jpg) | ![the sprint plan with five activities](docs/images/workboard-timeline.jpg) |
 | Character grid | Glass panels |
@@ -130,7 +130,7 @@ Lead armies and compete for regions in [Five Banners](examples/campaign). See th
 
 | The war map | A clash of armies |
 |:--|:--|
-| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](docs/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](docs/images/campaign-clash.jpg) |
+| ![the picture map of the land with the regions in the owners' colours, the band with the week, the window of a region and the generals](docs/images/campaign-map.jpg) | ![two armies of soldiers lined up on the terrain, with the leaders' cards in a row below](docs/images/campaign-clash.gif) |
 
 ### Monster collection
 
@@ -138,7 +138,7 @@ Recruit, raise and breed monsters, with a bestiary and family trees. See the [mo
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
-| ![a Drip Slime rises after the battle and asks to join, with Yes and No](docs/images/go-zen-recruit.jpg) | ![Yorn talks in the center, the father on the left and the mother on the right turn into light, then the Succubus is born](docs/images/go-zen-breeding.gif) |
+| ![the party wins, and a Drip Slime rises and asks to join, with Yes and No](docs/images/go-zen-recruit.gif) | ![Yorn talks in the center, the father on the left and the mother on the right turn into light, then the Succubus is born](docs/images/go-zen-breeding.gif) |
 | The monster book | The family tree, two generations up |
 | ![the Succubus page of the monster book with its picture, lore and record](docs/images/go-zen-bestiary.jpg) | ![Ghoul and Night Bat make the Vampire, Incense Bloom and Pale Sylph make the Whisper Imp, and the two make the Succubus](docs/images/go-zen-lineage.jpg) |
 
