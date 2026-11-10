@@ -8,6 +8,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -178,7 +179,7 @@ func (c *command) design() clihelp.Operation {
 				}
 			}
 			prevName, prev := previousRun(*root, filepath.Base(*out))
-			report := designReport(cfg, runs, sums, filepath.Base(*out), hash, prevName, prev)
+			report := designReport(cfg, runs, sums, filepath.Base(*out), hash, *root, prevName, prev)
 			if len(notes) > 0 {
 				report = reportMarkdown(md.NewMarkdown(nil, md.WithBlockSpacing()).PlainText(strings.TrimSpace(report)).H2(lang.T("メモ")).PlainTextf(lang.T("通信簿で目立った所を、テストプレイのメモ（source bot）として %d 件残した（%s。gozen notes で一覧）。"), len(notes), *memos).BulletList(notes...))
 			}
@@ -224,7 +225,7 @@ func (c *command) design() clihelp.Operation {
 		if *out != "" {
 			c.out.Println(filepath.Join(*out, "report.md"))
 		} else {
-			c.out.Print(designReport(cfg, runs, sums, "", hash, "", nil))
+			c.out.Print(designReport(cfg, runs, sums, "", hash, *root, "", nil))
 		}
 		if failed {
 			return errors.New("design reported simulation errors; see report.md or the printed report")
@@ -331,7 +332,7 @@ func kindName(cfg *designeval.Config, k string) string {
 	return k
 }
 
-func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designeval.Summary, name, hash, prevName string, prev map[string]designeval.Summary) string {
+func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designeval.Summary, name, hash, root, prevName string, prev map[string]designeval.Summary) string {
 	w := md.NewMarkdown(nil, md.WithBlockSpacing())
 	w.H1f(lang.T("流れの通信簿（%s）"), name)
 
@@ -359,18 +360,20 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 	t := cfg.Targets
 	if a, ok := byID[t.Persona]; ok {
 		if b, ok := byID[t.CloseTo]; ok && a.Cleared && b.Cleared {
-			d := (b.ClearMin - a.ClearMin) / a.ClearMin
-			mark := "○"
-			if d > t.Within || d < -t.Within {
-				mark = "×"
+			// A ratio that cannot be formed (an ending reached in no time) is not
+			// within the target.
+			within := func(d float64) string {
+				if math.IsNaN(d) || math.IsInf(d, 0) || d > t.Within || d < -t.Within {
+					return "×"
+				}
+				return "○"
 			}
+			d := (b.ClearMin - a.ClearMin) / a.ClearMin
+			mark := within(d)
 			reportBullet(w, "", lang.T("%s と %s の結末までの差: %s と %s（%+.0f%%、目安 %.0f%% 以内）%s"), b.Name, a.Name, minutes(b.ClearMin), minutes(a.ClearMin), 100*d, 100*t.Within, mark)
 			an, bn := a.ClearMin-a.ReleaseMin, b.ClearMin-b.ReleaseMin
 			dn := (bn - an) / an
-			mark = "○"
-			if dn > t.Within || dn < -t.Within {
-				mark = "×"
-			}
+			mark = within(dn)
 			reportBullet(w, "", lang.T("報酬の場面を読む時間を除くと: %s と %s（%+.0f%%）%s。報酬の場面に %s と %s。"), minutes(bn), minutes(an), 100*dn, mark, minutes(b.ReleaseMin), minutes(a.ReleaseMin))
 		} else if ok {
 			reportBullet(w, "", lang.T("%s と %s の差: どちらかが結末に届かなかった"), b.Name, a.Name)
@@ -507,7 +510,7 @@ func designReport(cfg *designeval.Config, runs []*designeval.Run, sums []designe
 	w.H2(lang.T("前の回との差"))
 
 	if prev == nil {
-		w.PlainTextf(lang.T("前の回が無い（%s に summary.json のある回が無い）。"), "build/designeval")
+		w.PlainTextf(lang.T("前の回が無い（%s に summary.json のある回が無い）。"), filepath.ToSlash(root))
 	} else {
 		w.PlainTextf(lang.T("前の回: %s"), prevName)
 

@@ -44,7 +44,7 @@ type scriptConfig struct {
 func scriptFlags(cfg *scriptConfig) *pflag.FlagSet {
 	fs := clihelp.NewFlagSet("gozen sim script")
 	fs.StringVar(&cfg.script, "script", "", "the script `FILE` (the commands of run --script); - reads it line by line from the standard input; required")
-	fs.StringVar(&cfg.trace, "trace", "", "write the trace as JSON Lines to this `FILE`; - is the standard output (the default with --script -)")
+	fs.StringVar(&cfg.trace, "trace", "", "write the trace as JSON Lines to this `FILE`, replacing an existing one; - is the standard output (the default with --script -)")
 	fs.Uint64Var(&cfg.seed, "seed", 1, "the random seed; the same seed gives the same result")
 	fs.StringVar(&cfg.saveDir, "save-dir", "", "keep the saves in this `DIR` (default: in memory, gone at the end)")
 	fs.StringVar(&cfg.start, "start", "", "start a new game at this `LOCATION`")
@@ -118,6 +118,12 @@ func (c *command) executeScript(parent context.Context, cfg scriptConfig) (err e
 	case "-":
 		opts.Trace = c.out.Writer
 	default:
+		// The trace replaces its file, so it must not be the script just read.
+		if script, err := os.Stat(cfg.script); err == nil {
+			if trace, err := os.Stat(cfg.trace); err == nil && os.SameFile(script, trace) {
+				return cliio.Invalid(diag.OptionConflict, "--trace would overwrite the --script file %s", cfg.script)
+			}
+		}
 		if d := filepath.Dir(cfg.trace); d != "." {
 			if err := os.MkdirAll(d, 0o700); err != nil {
 				return err

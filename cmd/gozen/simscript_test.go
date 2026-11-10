@@ -112,3 +112,18 @@ func simTraceWithoutClocks(t *testing.T, trace string) string {
 	}
 	return out.String()
 }
+
+// The trace replaces its file, so naming the script as the trace is refused
+// before the script is lost.
+func TestSimScriptRefusesToOverwriteItsScript(t *testing.T) {
+	dir := fixture(t)
+	script := filepath.Join(t.TempDir(), "script.txt")
+	write(t, script, "wait 2\nquit\n")
+	_, stderr := invoke(t, 2, "sim", "script", dir, "--start", "camp", "--script", script, "--trace", script)
+	if !strings.Contains(stderr, "--trace would overwrite") {
+		t.Errorf("stderr: %q", stderr)
+	}
+	if got := string(read(t, script)); got != "wait 2\nquit\n" {
+		t.Errorf("the script changed: %q", got)
+	}
+}

@@ -45,10 +45,19 @@ func (c *command) faces() clihelp.Operation {
 			*lib = detect.LibraryPath()
 		}
 		dir := f.Arg(0)
-		fsys := os.DirFS(dir)
+		fsys, err := gameFS(dir)
+		if err != nil {
+			return err
+		}
 		db, err := gamedata.LoadDir(fsys, ".")
 		if err != nil {
 			return err
+		}
+		// Refuse a preview that cannot be written before the game's faces.json changes.
+		if *preview != "" {
+			if err := cli.Destination(*preview, dir); err != nil {
+				return err
+			}
 		}
 		pics := db.ScenePictures()
 		if len(pics) == 0 {
@@ -106,6 +115,9 @@ func (c *command) faces() clihelp.Operation {
 			out.Pictures[p] = fb
 			if *preview != "" {
 				name := strings.ReplaceAll(strings.TrimSuffix(p, path.Ext(p)), "/", "_")
+				if _, taken := previews[name+".check.png"]; taken {
+					return fmt.Errorf("assets/%s: another picture already has the preview name %s; rename one of them", p, name)
+				}
 				if previews[name+".check.png"], err = encodePNG(faceCheck(img, fb.Box)); err != nil {
 					return err
 				}
@@ -128,7 +140,7 @@ func (c *command) faces() clihelp.Operation {
 		if *preview == "" {
 			return nil
 		}
-		return cli.Publish(*preview, nil, func(stage string) error {
+		return cli.Publish(*preview, []string{dir}, func(stage string) error {
 			for n, b := range previews {
 				if err := cli.WriteNew(filepath.Join(stage, n), b); err != nil {
 					return err
