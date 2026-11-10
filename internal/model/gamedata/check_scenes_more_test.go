@@ -29,6 +29,8 @@ func TestMoreSceneMistakes(t *testing.T) {
 		{"        - {id: board, name: Notice board, area: [[10, 30], [16, 30], [16, 36], [10, 36]], do: [{say: \"Water, five the bucket.\"}], once: true}", "        - {id: board, area: [[10, 30], [16, 30], [16, 36], [10, 36]], do: [{say: hi}]}", "a thing needs a name"},
 		{"        - {id: board, name: Notice board, area: [[10, 30], [16, 30], [16, 36], [10, 36]], do: [{say: \"Water, five the bucket.\"}], once: true}", "        - {id: board, name: Notice board, area: [[10, 30], [16, 30], [16, 36], [10, 36]]}", "a thing needs do"},
 		{"        - {id: board, name: Notice board, area: [[10, 30], [16, 30], [16, 36], [10, 36]], do: [{say: \"Water, five the bucket.\"}], once: true}", "        - {id: board, name: B, area: [[10, 30], [16, 30], [16, 36], [10, 36]], do: [{say: hi}]}\n        - {id: board, name: C, area: [[20, 30], [26, 30], [26, 36], [20, 36]], do: [{say: hi}]}", "duplicate thing id"},
+		// a once thing and a once spot keep one record for an id of the location
+		{"{id: board, name: Notice board,", "{id: bench, name: Notice board,", "is a spot's id too"},
 	} {
 		src, files := scenesWith(c.old, c.new)
 		if src == testgame.ScenesData {
@@ -90,6 +92,12 @@ func TestDungeonMistakes(t *testing.T) {
 		{"roamer with count and appear", made("      generate:", "      roamers: [{picture: x.png, count: '2', appear: 'true', troops: [{troop: one}]}]\n      generate:"), "no count"},
 		{"roamer without a picture", made("      generate:", "      roamers: [{troops: [{troop: one}]}]\n      generate:"), "needs a picture or an icon"},
 		{"roamer without a troop", made("      generate:", "      roamers: [{picture: x.png}]\n      generate:"), "needs a troop"},
+		{"roamer placed farther than a floor has cells", made("      generate:", "      roamers: [{picture: x.png, far: 4000000, troops: [{troop: one}]}]\n      generate:"), "far and sight are at most"},
+		{"roamer that sees farther than a floor has cells", made("      generate:", "      roamers: [{picture: x.png, sight: 65026, troops: [{troop: one}]}]\n      generate:"), "far and sight are at most"},
+		{"place count of the state", made("far: true}", "count: var.keys}"), `unknown name "var" (known here: floor)`},
+		{"place count drawn at random", made("far: true}", "count: 1 + rand(3)}"), `unknown name "rand" (known here: floor)`},
+		{"place count by chance", made("far: true}", "count: 'chance(0.5) ? 1 : 0'}"), `unknown name "chance" (known here: floor)`},
+		{"floor size of the state", made("rooms: 2", "rooms: 2\n        size: 9 + var.deepest"), `unknown name "var" (known here: floor)`},
 		{"roamer that moves strangely", made("      generate:", "      roamers: [{picture: x.png, move: fly, troops: [{troop: one}]}]\n      generate:"), "want chase, wander, guard or hunt"},
 	}
 	for _, c := range cases {
@@ -102,6 +110,11 @@ func TestDungeonMistakes(t *testing.T) {
 	}
 	if _, err := testgame.TryLoad(map[string]string{"data/z.yaml": staticDungeon}); err != nil {
 		t.Fatalf("the plain dungeon is sound: %v", err)
+	}
+	sound := strings.Replace(strings.Replace(madeDungeon, "far: true}", "far: true}, {char: S, count: 'max(0, floor(floor / 2) - 1)'}", 1), "rooms: 2", "rooms: 2\n        size: 9 + 2 * floor", 1)
+	sound = strings.Replace(sound, "      generate:", "      roamers: [{picture: x.png, far: 65025, sight: 65025, count: 1 + var.keys + rand(2), troops: [{troop: one}]}]\n      generate:", 1)
+	if _, err := testgame.TryLoad(map[string]string{"data/z.yaml": sound}); err != nil {
+		t.Fatalf("a count and a size of the floor's number, and a roamer's count of the state, are sound: %v", err)
 	}
 }
 

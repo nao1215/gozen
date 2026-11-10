@@ -18,7 +18,7 @@ func TestInvalidGridSizeDoesNotAllocatePaths(t *testing.T) {
 	if got := walkDistances(d, nil, 0, 0); got != nil {
 		t.Fatalf("distances for oversized map: %d", len(got))
 	}
-	if walkable(d.Grid, [2]int{0, 0}, func(rune) Kind { return Kind{} }) {
+	if ways(d.Grid, [2]int{0, 0}, func(rune) Kind { return Kind{} }) != nil {
 		t.Fatal("oversized map reported walkable")
 	}
 }

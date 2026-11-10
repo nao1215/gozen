@@ -17,7 +17,11 @@ func freeFixture(t testing.TB, rows, config, tiles string, extra ...string) (*da
 	t.Helper()
 	prefix, _, _ := strings.Cut(testgame.Data, "    name: Camp")
 	_, suffix, _ := strings.Cut(testgame.Data, "  field:\n")
-	spec := fmt.Sprintf("\n    dungeon:\n      tiles: {S: {start: true, facing: east}%s}\n      space:\n        free_move: {%s}\n        levels: [%q]\n", tiles, config, rows)
+	levels := strings.Split(rows, "\n\n") // a blank row parts the levels
+	for i, level := range levels {
+		levels[i] = strconv.Quote(level)
+	}
+	spec := fmt.Sprintf("\n    dungeon:\n      tiles: {S: {start: true, facing: east}%s}\n      space:\n        free_move: {%s}\n        levels: [%s]\n", tiles, config, strings.Join(levels, ", "))
 	spec = strings.Replace(spec, "        levels:", strings.Join(extra, "")+"        levels:", 1)
 	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 8\nid: continuous-test\n" + testgame.Game, "data/main.yaml": prefix + "    name: Camp" + spec + "  field:\n" + suffix})
 	st := testgame.State(db, 17)
@@ -434,5 +438,37 @@ func TestRoofOverhangBlocksSweptMovement(t *testing.T) {
 				t.Fatalf("footprint entered roof: %+v", st.SpacePose)
 			}
 		})
+	}
+}
+
+// A solid thing of the level above stands in the way of a body part-way up the stairs: its
+// once is kept for its own level, not for the level the party is still on.
+func TestFreeBumpIntoAnotherLevelSpendsItsOwnOnce(t *testing.T) {
+	db, st := freeFixture(t, "#######\n#S....#\n#.....#\n#######\n\n_______\n_____._\n__T____\n_______", "speed: 2, acceleration: 0",
+		", T: {solid: true, once: true, after: O, do: [{set: {var.opened: var.opened + 1}}]}, O: {solid: true}",
+		"        stairs: [{level: 1, x: 2, y: 1, facing: east, length: 3}]\n")
+	d := db.Locations[st.Location].Dungeon
+	// the far end of the first tread, facing the chest that stands on the level above beside it
+	st.Pos.X, st.Pos.Y, st.Pos.Facing = 2, 1, 2
+	st.SpacePose = &rpg.SpacePose{In: st.Location, X: 2.95, Z: 1.5, Yaw: math.Pi}
+	var c FreeController
+	opened := 0
+	for range 40 {
+		c.Update(db, st, FreeInput{Forward: 1}, func([]data.Command) bool {
+			opened++
+			return true
+		})
+	}
+	if st.Pos.Level != 0 || opened != 1 {
+		t.Fatalf("the chest above was bumped %d times from %+v, want once from the stairs", opened, st.Pos)
+	}
+	if got := freeCell(d, st, 1, 2, 2).Char; got != 'O' {
+		t.Errorf("the chest on the level above is %q after it was opened, want O (its once kept for its level)", got)
+	}
+	if got := freeCell(d, st, 0, 2, 2).Char; got != '.' {
+		t.Errorf("the floor under the chest is %q", got)
+	}
+	if Spent(st, st.Location, 2, 2) {
+		t.Error("the cell under the chest, on the party's level, was spent instead")
 	}
 }

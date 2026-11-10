@@ -39,9 +39,12 @@ var (
 	// TargetNames are known to a target's where and by: t is the candidate.
 	TargetNames = append(slices.Clone(BattleNames), "t")
 	// FloorNames are known where floor is the number of a generated floor (it hides the
-	// built-in function floor): generate's size, generate.place's count and a roamer's
-	// count, appear, wait and every.
+	// built-in function floor): a roamer's count, appear, wait and every.
 	FloorNames = append(slices.Clone(FieldNames), "floor")
+	// MapNames are known to what shapes a generated floor's map: generate's size and
+	// generate.place's count. The map is made again from its seed when a save is loaded, so
+	// they read the floor's number only: nothing of the state, and no rand or chance.
+	MapNames = []string{"floor"}
 	// LevelNames are known to a class's growth: the level.
 	LevelNames = []string{"level"}
 )

@@ -666,7 +666,7 @@ locations:
 
 ## Generate dungeon floors
 
-With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there.
+With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there. The `size` of `generate` and the `count` of `place` read `floor` and nothing else (no `var`, `flag`, `rand` or `chance`), because a loaded save builds the same floor again from its seed; a roamer's `count` may read the rest.
 
 <!-- verify: load group=generate -->
 ```yaml
