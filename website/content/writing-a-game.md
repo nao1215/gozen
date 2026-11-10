@@ -445,6 +445,8 @@ A line counts as read by its source: the speaker and the text as written, before
 
 Gozen 0.23.0 can open another Gozen game inside the phone, in portrait or landscape. The host supplies a Back control; closing the app resumes the host. Each game has its own icon, progress and saves.
 
+![Counter collects four tokens inside the office phone](/images/phone-game-counter.mp4)
+
 Authors choose bundled games or optional downloads from an approved catalog. Players choose when to install or update. The public catalog includes Counter, a small example game. See the [phone game recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) for setup, package metadata, browser limits and replay behavior.
 
 To share your game, [submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submissions are reviewed before publication; submitting does not install or publish a game automatically.
@@ -452,6 +454,8 @@ To share your game, [submit it for registration](https://github.com/nao1215/goze
 #### Chats, feeds and other apps
 
 A home screen opens contacts, chats and feeds. Authors define history and replies in YAML; flags reveal contacts, messages and posts. Players choose fixed replies without typing, and read-only apps need no reply handling. See the [flag-based phone recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-flags.md).
+
+![Opening Contacts and a chat, then returning to the phone home](/images/phone-navigation.mp4)
 
 The other apps below display authored information and handle fixed choices.
 

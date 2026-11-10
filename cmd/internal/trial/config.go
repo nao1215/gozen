@@ -44,7 +44,7 @@ func Load(fsys fs.FS, name string) (*Config, error) {
 
 func Parse(b []byte) (*Config, error) {
 	var c Config
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict(), yaml.UseOrderedMap()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict(), yaml.UseOrderedMap()) }); err != nil {
 		return nil, fmt.Errorf("trial: %s", yaml.FormatError(err, false, true))
 	}
 	for k, v := range c.Assume {

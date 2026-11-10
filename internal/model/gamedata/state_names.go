@@ -33,7 +33,7 @@ type StateName struct {
 func (d *StateName) UnmarshalYAML(b []byte) error {
 	type raw StateName
 	var value raw
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &value, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &value, yaml.Strict()) }); err != nil {
 		return err
 	}
 	v := reflect.ValueOf(value.Initial)

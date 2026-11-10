@@ -327,7 +327,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 		}
 	} else {
 		resolveMerges(doc.root, map[string]ast.Node{})
-		if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()) }); err != nil {
+		if err := decodeguard.RunNode(doc.root, func() error { return yaml.NodeToValue(doc.root, &raw, yaml.UseOrderedMap()) }); err != nil {
 			return nil, doc.yamlError(err)
 		}
 	}
@@ -338,7 +338,7 @@ func (doc *sourceDocument) decodeDefinitions(into any) (yaml.MapSlice, error) {
 	if errs := doc.definitionShape(raw, typ, where); len(errs) > 0 {
 		return nil, joinDiagnostics(errs)
 	}
-	if err := decodeguard.Run(func() error { return yaml.NodeToValue(doc.root, into, yaml.Strict()) }); err != nil {
+	if err := decodeguard.RunNode(doc.root, func() error { return yaml.NodeToValue(doc.root, into, yaml.Strict()) }); err != nil {
 		return nil, doc.definitionDecodeError(doc.root, typ, where, err)
 	}
 	// Keep only positions, so the parse tree is not held while the game runs.
@@ -363,7 +363,7 @@ func (doc *sourceDocument) definitionDecodeError(node ast.Node, typ reflect.Type
 		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
-		if e := decodeguard.Run(func() error { return yaml.NodeToValue(n, reflect.New(t).Interface(), yaml.Strict()) }); e != nil && e.Error() == err.Error() {
+		if e := decodeguard.RunNode(n, func() error { return yaml.NodeToValue(n, reflect.New(t).Interface(), yaml.Strict()) }); e != nil && e.Error() == err.Error() {
 			return doc.definitionDecodeError(n, t, w, e)
 		}
 		return nil
