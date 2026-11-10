@@ -760,3 +760,96 @@ func TestSessionCloseJoinsBorrowedAudioReads(t *testing.T) {
 		t.Fatal("Close did not join completed read")
 	}
 }
+
+// A track's loop_start is an author's number: one before the start (or NaN)
+// loops from the first frame and one past the end from the last, and the audio
+// thread never indexes outside the track.
+func TestTrackLoopStartOutOfRange(t *testing.T) {
+	ramp := []int16{3277, 3277, 6554, 6554, 9830, 9830, 13107, 13107} // 0.1 to 0.4
+	for _, tc := range []struct {
+		name  string
+		start float64
+		want  []float32
+	}{
+		{"negative", -1, []float32{0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3, 0.4}},
+		{"not a number", math.NaN(), []float32{0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3, 0.4}},
+		{"minus infinity", math.Inf(-1), []float32{0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3, 0.4}},
+		{"inside", 2.0 / SampleRate, []float32{0.1, 0.2, 0.3, 0.4, 0.3, 0.4, 0.3, 0.4}},
+		{"past the end", 1e300, []float32{0.1, 0.2, 0.3, 0.4, 0.4, 0.4, 0.4, 0.4}},
+		{"infinity", math.Inf(1), []float32{0.1, 0.2, 0.3, 0.4, 0.4, 0.4, 0.4, 0.4}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewModular("s", nil)
+			m.AddSong(Song{Name: "s", File: "s.ogg", LoopStart: tc.start}, map[string][]int16{Neutral: ramp})
+			m.PlaySong("s", Neutral)
+			got := lefts(t, m, len(tc.want))
+			for i := range got {
+				if math.Abs(float64(got[i]-tc.want[i])) > 1e-3 {
+					t.Fatalf("frames %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// music.yaml's bars and beats are authors' numbers too: no value gives a module
+// a negative, zero or wrapped length, and the player reads such a song.
+func TestModuleFramesOutOfRange(t *testing.T) {
+	const eightBarsOfFour = SampleRate * 60 * 8 * 4 / 120
+	for _, tc := range []struct {
+		name             string
+		bpm, bars, beats int
+		want             int
+	}{
+		{"defaults", 120, 0, 0, eightBarsOfFour},
+		{"negative bars", 120, -1, 4, eightBarsOfFour},
+		{"negative beats", 120, 8, -4, eightBarsOfFour},
+		{"negative tempo", -120, 1, 1, SampleRate * 60},
+		{"a long module in 32 bits", 120, 64, 16, SampleRate * 60 * 64 * 16 / 120},
+		{"huge bars and beats", 1, math.MaxInt, math.MaxInt, math.MaxInt32},
+		{"huge tempo", math.MaxInt, 1, 1, 1},
+	} {
+		s := Song{Name: "s", Dir: "bgm", BPM: tc.bpm, Bars: tc.bars, Beats: tc.beats, Moods: map[string]string{Neutral: "n"}}
+		if got := s.ModuleFrames(); got != tc.want {
+			t.Errorf("%s: %d frames, want %d", tc.name, got, tc.want)
+		}
+	}
+	m := NewModular("s", nil)
+	m.AddSong(Song{Name: "s", Dir: "bgm", BPM: 120, Bars: -1, Beats: 4, Moods: map[string]string{Neutral: "n"}}, map[string][]int16{Neutral: constPCM(1000, 4)})
+	m.PlaySong("s", Neutral)
+	lefts(t, m, 16)
+}
+
+// toneClaiming is the test tone with the length its last page claims (the
+// granule position, in frames) replaced and the page's checksum made right.
+func toneClaiming(t *testing.T, frames uint64) []byte {
+	t.Helper()
+	b := slices.Clone(readTone(t))
+	page := b[bytes.LastIndex(b, []byte("OggS")):]
+	binary.LittleEndian.PutUint64(page[6:], frames)
+	clear(page[22:26])
+	var crc uint32 // polynomial 0x04c11db7, not reflected
+	for _, v := range page {
+		crc ^= uint32(v) << 24
+		for range 8 {
+			if crc&0x80000000 != 0 {
+				crc = crc<<1 ^ 0x04c11db7
+			} else {
+				crc <<= 1
+			}
+		}
+	}
+	binary.LittleEndian.PutUint32(page[22:], crc)
+	return b
+}
+
+// The decoded buffer is sized from the length the file claims: a few kilobytes
+// that claim more than maxTrackBytes are refused before anything is allocated,
+// and the largest claim (past what make accepts) does not panic.
+func TestDecodeRefusesClaimedLengthPastLimit(t *testing.T) {
+	for _, frames := range []uint64{maxTrackBytes/4 + 1, 1 << 47, 1<<63 - 1} {
+		if pcm, err := decode(toneClaiming(t, frames)); err == nil {
+			t.Errorf("a file claiming %d frames decoded to %d samples", frames, len(pcm))
+		}
+	}
+}

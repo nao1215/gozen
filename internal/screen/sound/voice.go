@@ -31,7 +31,7 @@ func (session *Session) VoiceClip(fsys fs.FS, file string) ([]byte, error) {
 		}
 	}
 	session.mu.Unlock()
-	b, err := fs.ReadFile(fsys, file)
+	b, err := readSound(fsys, file)
 	if err != nil {
 		return nil, err
 	}
