@@ -427,7 +427,7 @@ func orphanTests(files []string) []string {
 }
 
 // testStemBaselineLimit is the size of testStemBaseline when the rule was added.
-const testStemBaselineLimit = 205
+const testStemBaselineLimit = 187
 
 // testStemBaseline lists the test files under cmd/ and internal/ that had no
 // implementation file of their name when the rule was added, apart from those already
@@ -463,24 +463,6 @@ internal/base/react/react_test.go
 internal/base/react/yamlpath_test.go
 internal/base/savefile/contracts_test.go
 internal/base/savefile/errors_test.go
-internal/dev/docs/adr_links_test.go
-internal/dev/docs/blocks_test.go
-internal/dev/docs/compare_test.go
-internal/dev/docs/gifjoin_test.go
-internal/dev/docs/gifscene_test.go
-internal/dev/docs/gifslim_test.go
-internal/dev/docs/image_inputs_test.go
-internal/dev/docs/image_selection_test.go
-internal/dev/docs/images_test.go
-internal/dev/docs/language_test.go
-internal/dev/docs/manifest_test.go
-internal/dev/docs/mdlinks_test.go
-internal/dev/docs/schema_test.go
-internal/dev/docs/site_test.go
-internal/dev/docs/steps_test.go
-internal/dev/hygiene/comments_language_test.go
-internal/dev/hygiene/fitlines_test.go
-internal/dev/hygiene/hygiene_test.go
 internal/drive/headless/balance/battle_hooks_test.go
 internal/drive/headless/balance/hard_test.go
 internal/drive/headless/balance/run_test.go
@@ -642,6 +624,13 @@ internal/screen/sound/fade_test.go
 internal/screen/stage/stage_test.go
 `
 
+// repositoryTestPackages are the packages whose tests check the repository rather
+// than code of their own, so a test file there is named after the rule it enforces.
+var repositoryTestPackages = map[string]string{
+	"internal/dev/docs":    "checks README.md, docs/ and the site; the package has no code but its package comment",
+	"internal/dev/hygiene": "checks the whole checkout against the decision table; its Go files only hold that table",
+}
+
 // TestTestFileStems applies the other half of the AGENTS.md naming rule to cmd/ and
 // internal/: a unit test file has an implementation file of its name beside it. The
 // sample games under examples/ are YAML and assets with tests but no Go implementation,
@@ -657,7 +646,7 @@ func TestTestFileStems(t *testing.T) {
 	}
 	var files []string
 	repositoryFiles(t, func(name string) {
-		if (strings.HasPrefix(name, "cmd/") || strings.HasPrefix(name, "internal/")) && !strings.Contains(name, "/testdata/") {
+		if (strings.HasPrefix(name, "cmd/") || strings.HasPrefix(name, "internal/")) && !strings.Contains(name, "/testdata/") && repositoryTestPackages[path.Dir(name)] == "" {
 			files = append(files, name)
 		}
 	})

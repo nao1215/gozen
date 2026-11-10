@@ -93,7 +93,9 @@ Dango also checks generated schemas against the Go types and translation keys ag
   belongs to no single file. Three names are conventions of Go itself and need no
   implementation file: `fuzz_test.go` (the Fuzz targets the fuzz workflow
   discovers), `export_test.go` (internals exposed to external tests) and
-  `example_test.go` (Example functions). The test files that had no such
+  `example_test.go` (Example functions). `internal/dev/docs` and
+  `internal/dev/hygiene` are left out: their tests check the repository, not code
+  of their own, and are named after the rule they enforce. The test files that had no such
   implementation file when the rule was added are a second baseline, one path a
   line, that may only shrink; a file already in the vague-name baseline is listed
   there alone. The check is by name: it cannot tell whether the tests in a file
