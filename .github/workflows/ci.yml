@@ -219,12 +219,19 @@ jobs:
     # limited Actions budget, so pushes there run only the quick job below.
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    # Two shards a system: the first runs the tests GRAPHICS_SPLIT names (the
+    # slowest serial ones, measured locally) and puppet, the second every other
+    # graphics test, so the job takes about half as long and no test is left out.
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        shard: [1, 2]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      GRAPHICS_SHARD: ${{ matrix.shard }}
+      GRAPHICS_SPLIT: ^TestGraphics(ScreensRepro|SpaceBuildings|ScreensStreams|Campaign|Wild|Novel.*|Toasts.*|TraceLayout|Call.*|Stage)$
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -265,19 +272,25 @@ jobs:
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
       # The Go Zen sample's screens take minutes; they run only when started by hand.
       - name: Render the Go Zen sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 1
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make go-zen-graphics
       - name: Render the novel sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 1
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make novel-graphics
       - name: Render the campaign sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch'
+        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 2
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make campaign-graphics
       # Native desktop execution is required on Windows/macOS; failures remain fatal.
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
         if: runner.os != 'Linux'
-        run: go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play ./internal/screen/puppet -run TestGraphics -count=1
+        shell: bash
+        run: |
+          if [ "$GRAPHICS_SHARD" = 1 ]; then
+            go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play ./internal/screen/puppet -run "$GRAPHICS_SPLIT" -count=1
+          else
+            go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play -run TestGraphics -skip "$GRAPHICS_SPLIT" -count=1
+          fi
 
   capture:
     # Run the CLI capture pipeline independently of the rendered screen tests.
@@ -448,8 +461,54 @@ jobs:
           key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
           restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
       # -short skips the heavy tests (covSlow); the full run without -race is in the test job.
+      # internal/screen/play, two thirds of the time, runs in race-play beside this job.
       - name: Check non-graphics contracts for races
-        run: go test -race -short ./...
+        shell: bash
+        run: |
+          mapfile -t pkgs < <(go list ./... | grep -v '/internal/screen/play$')
+          go test -race -short "${pkgs[@]}"
+        env:
+          CGO_ENABLED: "1"
+      - name: Save the Go caches of this job
+        if: ${{ github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.go-cache.outputs.cache-primary-key }}
+
+  race-play:
+    # Full matrix while public, or on manual dispatch. Private repositories have a
+    # limited Actions budget, so pushes there run only the quick job below.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      # This job's own Go caches. setup-go keeps one cache per Go version and go.sum for
+      # every job, saved by whichever job ends first (often a short cross-build), so the
+      # builds of this job would not be in it. Saved from main per revision, restoring the latest matching dependency cache.
+      - name: Restore the Go caches of this job
+        id: go-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ github.job }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
+      # The play package alone takes most of the race time; it runs beside race.
+      - name: Check the play package for races
+        run: go test -race -short ./internal/screen/play
         env:
           CGO_ENABLED: "1"
       - name: Save the Go caches of this job
