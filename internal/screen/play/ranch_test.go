@@ -1,13 +1,13 @@
 package play
 
 import (
-	"fmt"
 	"math"
 	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/testgame"
 )
@@ -72,15 +72,18 @@ func TestRanchPreviewAndFusionCommand(t *testing.T) {
 		t.Fatalf("chosen skills = %v", r.skills)
 	}
 	r.list.sel = len(r.options) - 1
+	// The fusion's row names the child (hidden until the book has seen it)
+	// and what is lost; choosing it is the one answer the ranch asks for.
+	if row := r.list.items[len(r.list.items)-1].label; !strings.Contains(row, "?") || !strings.Contains(row, "parents leave") {
+		t.Fatalf("the fusion's row = %q", row)
+	}
+	depth := len(g.stack)
 	g.in.pressed[btnOK] = true
 	r.update(g)
 	g.in.pressed[btnOK] = false
-	c, ok := g.stack[len(g.stack)-1].(*confirm)
-	if !ok || !strings.Contains(c.msg, "?") {
-		t.Fatalf("hidden preview = %T %+v", g.stack[len(g.stack)-1], c)
+	if len(g.stack) != depth-1 || !g.events.Running() {
+		t.Fatalf("choosing the fusion asked again: top %T", g.stack[len(g.stack)-1])
 	}
-	g.pop()
-	c.yes()
 	var birthWait bool
 	var birthLines []string
 	for i := 0; g.events.Running() && i < 20; i++ {
@@ -112,7 +115,7 @@ func TestRanchLayoutLeavesAltarVisible(t *testing.T) {
 		}
 		faceLeft := actions.figureX - sh*0.05
 		if actions.panelX+actions.panelW >= faceLeft || selection.panelX+selection.panelW >= faceLeft {
-			t.Fatalf("ranch panel hides Yorn's face at %.0fx%.0f: actions=%+v selection=%+v", sw, sh, actions, selection)
+			t.Fatalf("ranch panel hides the keeper's face at %.0fx%.0f: actions=%+v selection=%+v", sw, sh, actions, selection)
 		}
 		// Yorn is shown from the waist up: his feet fall below the screen, his head stays on it.
 		if actions.figureH < sh || actions.figureBottom <= sh || actions.figureBottom-actions.figureH < 0 {
@@ -130,12 +133,17 @@ func TestRanchActionsUseTalkWindow(t *testing.T) {
 	if len(r.options) != 4 || r.options[3] != "leave" {
 		t.Fatalf("actions = %v", r.options)
 	}
-	if r.talk.say.Name != "Yorn" || !strings.Contains(r.talk.say.Text, "two monsters") {
+	// The engine names nobody: without breeding.keeper the line is neutral.
+	if r.talk.say.Name != "" || !strings.Contains(r.talk.say.Text, "two monsters") {
 		t.Fatalf("ranch speaker = %+v", r.talk.say)
+	}
+	g.db.Breeding.Keeper = data.BreedKeeper{Name: "Mara", Text: "Welcome back."}
+	if say := newRanch(g, nil).talk.say; say.Name != "Mara" || say.Text != "Welcome back." {
+		t.Fatalf("the game's keeper = %+v", say)
 	}
 	_, by, _, _ := g.talkBox()
 	if r.list.y+r.list.height() >= by || r.list.x+r.list.w >= ranchScreenLayout(1280, 720, "actions", 4).figureX-720*0.05 || by <= 720*0.3 {
-		t.Fatalf("choice box hides the talk or Yorn: %+v", r.list)
+		t.Fatalf("choice box hides the talk or the keeper: %+v", r.list)
 	}
 }
 
@@ -178,68 +186,94 @@ func TestScriptedEventBattleReachesRecruitChoice(t *testing.T) {
 	t.Fatal("script never reached the recruit choice")
 }
 
-func TestRanchSwapAndReleaseRequireConfirmation(t *testing.T) {
-	for _, release := range []bool{false, true} {
-		t.Run(fmt.Sprintf("release=%t", release), func(t *testing.T) {
-			g := ranchGame(t)
-			g.db.Game.MaxParty = len(g.st.Party)
-			id, ok := g.st.Recruit("mote", 2, 0, nil)
-			if !ok || !slices.Contains(g.st.ReserveIDs(), id) {
-				t.Fatal("fixture did not recruit into reserve")
-			}
-			out := g.st.Party[0]
-			closed := 0
-			r := newRanch(g, func() { closed++ })
-			g.push(r)
-			depth := len(g.stack)
-			r.draw(g, covScreen())
-			g.in = input{pressed: [numButtons]bool{btnOK: true}}
-			if release {
-				r.list.sel = 2
-			}
-			r.update(g)
-			if release && r.step != "release_id" || !release && r.step != "swap_in" {
-				t.Fatal("wrong action selected", r.step)
-			}
-			r.draw(g, covScreen())
-			r.update(g)
-			if !release {
-				if r.step != "swap_out" || r.first != id {
-					t.Fatal("reserve selection lost")
-				}
-				r.draw(g, covScreen())
-				r.update(g)
-			}
-			c, ok := g.stack[len(g.stack)-1].(*confirm)
-			if !ok || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
-				t.Fatal("selection applied before confirmation")
-			}
-			g.in = input{pressed: [numButtons]bool{btnCancel: true}}
-			for range 6 {
-				c.update(g)
-			}
-			if len(g.stack) != depth || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
-				t.Fatal("cancel changed roster")
-			}
-			g.in = input{pressed: [numButtons]bool{btnOK: true}}
-			r.update(g)
-			c = sysAs[*confirm](t, g.stack[len(g.stack)-1])
-			for range 6 {
-				c.update(g)
-			}
-			if len(g.stack) != depth-1 || closed != 1 {
-				t.Fatal("confirmation did not close the ranch once")
-			}
-			for i := 0; g.events.Running() && i < 10; i++ {
-				g.events.Next()
-			}
-			if release {
-				if g.st.Actors[id] != nil || g.st.Party[0] != out {
-					t.Fatal("release changed the wrong actor")
-				}
-			} else if g.st.Party[0] != id || !slices.Contains(g.st.ReserveIDs(), out) {
-				t.Fatal("swap did not exchange party and reserve")
-			}
-		})
+// TestRanchReleaseRequiresConfirmation: a release cannot be taken back, so it
+// asks first; No leaves the roster and Yes closes the ranch once.
+func TestRanchReleaseRequiresConfirmation(t *testing.T) {
+	g := ranchGame(t)
+	g.db.Game.MaxParty = len(g.st.Party)
+	id, ok := g.st.Recruit("mote", 2, 0, nil)
+	if !ok || !slices.Contains(g.st.ReserveIDs(), id) {
+		t.Fatal("fixture did not recruit into reserve")
+	}
+	out := g.st.Party[0]
+	closed := 0
+	r := newRanch(g, func() { closed++ })
+	g.push(r)
+	depth := len(g.stack)
+	r.draw(g, covScreen())
+	g.in = input{pressed: [numButtons]bool{btnOK: true}}
+	r.list.sel = 2
+	r.update(g)
+	if r.step != "release_id" {
+		t.Fatal("wrong action selected", r.step)
+	}
+	r.draw(g, covScreen())
+	r.update(g)
+	c, ok := g.stack[len(g.stack)-1].(*confirm)
+	if !ok || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
+		t.Fatal("selection applied before confirmation")
+	}
+	g.in = input{pressed: [numButtons]bool{btnCancel: true}}
+	for range 6 {
+		c.update(g)
+	}
+	if len(g.stack) != depth || closed != 0 || g.st.Actors[id] == nil || g.st.Party[0] != out {
+		t.Fatal("cancel changed roster")
+	}
+	g.in = input{pressed: [numButtons]bool{btnOK: true}}
+	r.update(g)
+	c = sysAs[*confirm](t, g.stack[len(g.stack)-1])
+	for range 6 {
+		c.update(g)
+	}
+	if len(g.stack) != depth-1 || closed != 1 {
+		t.Fatal("confirmation did not close the ranch once")
+	}
+	for i := 0; g.events.Running() && i < 10; i++ {
+		g.events.Next()
+	}
+	if g.st.Actors[id] != nil || g.st.Party[0] != out {
+		t.Fatal("release changed the wrong actor")
+	}
+}
+
+// TestRanchSwapsAtOnce: choosing the party member to send out swaps without a
+// question, and the notice it leaves puts the two back when pressed.
+func TestRanchSwapsAtOnce(t *testing.T) {
+	g := ranchGame(t)
+	g.db.Game.MaxParty = len(g.st.Party)
+	id, ok := g.st.Recruit("mote", 2, 0, nil)
+	if !ok || !slices.Contains(g.st.ReserveIDs(), id) {
+		t.Fatal("fixture did not recruit into reserve")
+	}
+	out := g.st.Party[0]
+	closed := 0
+	r := newRanch(g, func() { closed++ })
+	g.push(r)
+	depth := len(g.stack)
+	g.in = input{pressed: [numButtons]bool{btnOK: true}}
+	r.update(g) // swap
+	r.update(g) // the reserve monster
+	if r.step != "swap_out" || r.first != id {
+		t.Fatalf("reserve selection lost: step %s first %s", r.step, r.first)
+	}
+	r.update(g) // the party member: the swap itself
+	if len(g.stack) != depth-1 || closed != 1 {
+		t.Fatalf("the second monster did not swap at once: top %T, closed %d", g.stack[len(g.stack)-1], closed)
+	}
+	for i := 0; g.events.Running() && i < 10; i++ {
+		g.events.Next()
+	}
+	if g.st.Party[0] != id || !slices.Contains(g.st.ReserveIDs(), out) {
+		t.Fatal("swap did not exchange party and reserve")
+	}
+	g.in = input{}
+	undo := noticeOffer(t, g)
+	undo.act()
+	for i := 0; g.events.Running() && i < 10; i++ {
+		g.events.Next()
+	}
+	if g.st.Party[0] != out || !slices.Contains(g.st.ReserveIDs(), id) {
+		t.Fatal("the notice did not put the two back")
 	}
 }

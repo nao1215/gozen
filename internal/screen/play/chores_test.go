@@ -6,8 +6,9 @@ import (
 	"testing"
 )
 
-// gearOffer is the notice on the screen that offers the strongest equipment.
-func gearOffer(t *testing.T, g *Game) notice {
+// gearOffer is the notice on the screen that can be pressed (the offer of the
+// strongest equipment, a swap's undo).
+func noticeOffer(t *testing.T, g *Game) notice {
 	t.Helper()
 	for _, n := range g.notices.list {
 		if n.act != nil {
@@ -34,7 +35,7 @@ func TestOfferGearDoesNotStopThePlay(t *testing.T) {
 func TestOfferGearIsATappableNotice(t *testing.T) {
 	g := sysOpen(t, Options{Location: "camp", Items: []string{"blade"}, SaveDir: t.TempDir()}, nil)
 	sysFrames(t, g, 12)
-	offer := gearOffer(t, g)
+	offer := noticeOffer(t, g)
 	if offer.at[2] == 0 {
 		t.Fatalf("the offer was not drawn: %+v", offer)
 	}
@@ -64,7 +65,7 @@ func TestOfferGearIsATappableNotice(t *testing.T) {
 func TestOfferGearPassesByItself(t *testing.T) {
 	g := sysOpen(t, Options{Location: "camp", Items: []string{"blade"}, SaveDir: t.TempDir()}, nil)
 	sysFrames(t, g, 12)
-	offer := gearOffer(t, g)
+	offer := noticeOffer(t, g)
 	sysFrames(t, g, offer.total+40)
 	if len(g.notices.list) != 0 {
 		t.Fatalf("the offer stays: %+v", g.notices.list)

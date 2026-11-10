@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/screen/gfx"
@@ -50,13 +51,45 @@ func ranchScreenLayout(sw, sh float64, step string, items int) ranchLayout {
 
 func newRanch(g *Game, done func()) *ranch {
 	r := &ranch{done: done}
-	r.talk = talk{say: event.Say{Name: "Yorn", Text: "Bring me two monsters and I will join them."}, active: true}
+	r.talk = talk{say: ranchGreeting(g), active: true}
 	r.talk.layout(g)
 	r.talk.shown = r.talk.total
 	r.show(g, "actions")
 	return r
 }
 func (r *ranch) modal() bool { return true }
+
+// ranchGreeting is the line in the ranch's message window: the game's own
+// keeper (breeding.keeper) or, without one, a neutral line under no name.
+func ranchGreeting(g *Game) event.Say {
+	say := event.Say{Text: lang.T("モンスターを 2ひき つれて くれば、はいごう できます。")}
+	if b := g.db.Breeding; b != nil {
+		say.Name = g.db.Tr(b.Keeper.Name)
+		if b.Keeper.Text != "" {
+			say.Text = g.db.Tr(b.Keeper.Text)
+		}
+	}
+	return say
+}
+
+// ranchStepTitle names what the player is choosing at a step.
+func ranchStepTitle(step string) string {
+	switch step {
+	case "swap_in":
+		return lang.T("なかまに いれる モンスター")
+	case "swap_out":
+		return lang.T("あずける モンスター")
+	case "breed_first":
+		return lang.T("1ぴきめの おや")
+	case "breed_second":
+		return lang.T("2ひきめの おや")
+	case "release_id":
+		return lang.T("にがす モンスター")
+	case "skills":
+		return lang.T("うけつぐ とくぎ")
+	}
+	return ""
+}
 
 func (r *ranch) show(g *Game, step string) {
 	r.step = step
@@ -68,10 +101,10 @@ func (r *ranch) show(g *Game, step string) {
 	}
 	switch step {
 	case "actions":
-		add("swap", "Swap party / reserve")
-		add("breed", "Breed monsters")
-		add("release", "Release monster")
-		add("leave", "Leave")
+		add("swap", lang.T("いれかえ（なかま / あずかり）"))
+		add("breed", lang.T("はいごう"))
+		add("release", lang.T("にがす"))
+		add("leave", lang.T("たちさる"))
 	case "swap_in":
 		for _, id := range g.st.ReserveIDs() {
 			add(id, r.label(g, id))
@@ -113,7 +146,12 @@ func (r *ranch) show(g *Game, step string) {
 				add(id, name)
 			}
 		}
-		add("confirm", "Confirm fusion")
+		// The one question of a fusion is this row: it says what is made and
+		// what is lost, and choosing it fuses.
+		if a != nil && b != nil {
+			child := g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
+			add("confirm", fmt.Sprintf(lang.T("%s に はいごうする（おやは いなくなる）"), g.childName(child)))
+		}
 	}
 	sw, sh := g.screen()
 	l := ranchScreenLayout(sw, sh, step, len(items))
@@ -160,9 +198,9 @@ func (r *ranch) label(g *Game, id string) string {
 	if a == nil {
 		return id
 	}
-	place := "reserve"
+	place := lang.T("あずかり")
 	if slices.Contains(g.st.Party, id) {
-		place = "party"
+		place = lang.T("なかま")
 	}
 	return fmt.Sprintf("%s%s  Lv %d  +%d  (%s, %s)", a.Name(), sexSign(a.Sex), a.Level, a.Plus, id, place)
 }
@@ -212,10 +250,9 @@ func (r *ranch) update(g *Game) {
 		r.first = id
 		r.show(g, "swap_out")
 	case "swap_out":
-		in, out := r.first, id
-		g.push(newConfirm("Swap "+r.label(g, in)+" with "+r.label(g, out)+"?", func() { r.queue(g, data.Command{Reserve: &data.ReserveSwap{In: in, Out: out}}) }))
+		r.swap(g, r.first, id)
 	case "release_id":
-		g.push(newConfirm("Release "+r.label(g, id)+" permanently?", func() { r.queue(g, data.Command{Release: id}) }))
+		g.push(newConfirm(fmt.Sprintf(lang.T("%s を にがしますか？（もどって きません）"), r.label(g, id)), func() { r.queue(g, data.Command{Release: id}) }))
 	case "breed_first":
 		r.first = id
 		r.show(g, "breed_second")
@@ -229,11 +266,7 @@ func (r *ranch) update(g *Game) {
 		r.show(g, "skills")
 	case "skills":
 		if id == "confirm" {
-			a, b := g.st.Actors[r.first], g.st.Actors[r.second]
-			child := g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
-			preview := g.childName(child)
-			parents, skills := []string{r.first, r.second}, slices.Clone(r.skills)
-			g.push(newConfirm("Fuse the parents into "+preview+"? They will leave the ranch.", func() { r.queue(g, data.Command{Breed: &data.BreedCmd{Parents: parents, Skills: skills}}) }))
+			r.queue(g, data.Command{Breed: &data.BreedCmd{Parents: []string{r.first, r.second}, Skills: slices.Clone(r.skills)}})
 			return
 		}
 		if slices.Contains(r.skills, id) {
@@ -249,6 +282,19 @@ func (r *ranch) update(g *Game) {
 		r.show(g, "skills")
 		r.list.sel = min(sel, len(r.list.items)-1)
 	}
+}
+
+// swap exchanges a reserve monster with a party member at once: choosing the
+// second monster is the answer, and nothing is lost by it. A notice says what
+// was done and, pressed, puts the two back.
+func (r *ranch) swap(g *Game, in, out string) {
+	text := fmt.Sprintf(lang.T("%s と %s を いれかえた。ここを おすと もとに もどす。"), g.st.Actors[in].Name(), g.st.Actors[out].Name())
+	r.queue(g, data.Command{Reserve: &data.ReserveSwap{In: in, Out: out}})
+	g.notices.offer(text, func() {
+		if g.st != nil && !g.busy() && slices.Contains(g.st.Party, in) && slices.Contains(g.st.ReserveIDs(), out) {
+			g.events.Start([]data.Command{{Reserve: &data.ReserveSwap{In: out, Out: in}}})
+		}
+	})
 }
 
 // childName is the species name, or "?" until the monster book has seen it.
@@ -318,26 +364,26 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 	fill(dst, color.NRGBA{0, 0, 0, 0x30})
 	g.window(dst, l.panelX, l.panelY, l.panelW, l.panelH)
 	r.drawParents(g, dst)
-	g.text(dst, "Monster Ranch", l.panelX+20, l.panelY+18, sizeL, g.th.accent)
-	g.text(dst, fmt.Sprintf("Party %d/%d   Reserve %d", len(g.st.Party), g.db.Game.MaxParty, len(g.st.ReserveIDs())), l.panelX+20, l.panelY+60, sizeS*0.8, g.th.dim)
+	g.text(dst, lang.T("モンスターぼくじょう"), l.panelX+20, l.panelY+18, sizeL, g.th.accent)
+	g.text(dst, fmt.Sprintf(lang.T("なかま %d/%d   あずかり %d"), len(g.st.Party), g.db.Game.MaxParty, len(g.st.ReserveIDs())), l.panelX+20, l.panelY+60, sizeS*0.8, g.th.dim)
 	g.traceList(r.list)
 	r.list.drawRows(g, dst, true)
 	x := l.panelX + 20
 	y := l.detailY
 	lines := []string{}
 	if a := g.st.Actors[r.first]; a != nil {
-		lines = append(lines, "First: "+r.label(g, r.first))
+		lines = append(lines, fmt.Sprintf(lang.T("1ぴきめ: %s"), r.label(g, r.first)))
 	}
 	if b := g.st.Actors[r.second]; b != nil {
-		lines = append(lines, "Second: "+r.label(g, r.second))
+		lines = append(lines, fmt.Sprintf(lang.T("2ひきめ: %s"), r.label(g, r.second)))
 	}
 	if r.step == "skills" {
 		a, b := g.st.Actors[r.first], g.st.Actors[r.second]
 		child := g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)
-		lines = append(lines, "Child: "+g.childName(child), fmt.Sprintf("Inherited skills: %d / %d", len(r.skills), g.db.Breeding.SkillSlots))
+		lines = append(lines, fmt.Sprintf(lang.T("こども: %s"), g.childName(child)), fmt.Sprintf(lang.T("うけつぐ とくぎ: %d / %d"), len(r.skills), g.db.Breeding.SkillSlots))
 	}
 	if (r.step == "breed_first" || r.step == "breed_second") && len(r.options) == 0 {
-		lines = append(lines, "No pair can breed. A pair needs one male and one female,", "the minimum level and a recipe for their species.")
+		lines = append(lines, lang.T("はいごう できる くみあわせが ない。オスと メスが 1ぴきずつ、さいていレベルと しゅぞくの レシピが ひつよう。"))
 	} else if r.step == "breed_first" || r.step == "breed_second" {
 		hidden := 0
 		for id, a := range g.st.Actors {
@@ -346,11 +392,11 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 			}
 		}
 		if hidden > 0 {
-			lines = append(lines, fmt.Sprintf("%d hidden: no partner of the opposite sex with a recipe.", hidden))
+			lines = append(lines, fmt.Sprintf(lang.T("%d ぴきは ひょうじ しない: レシピの ある いせいの あいてが いない。"), hidden))
 		}
 		if r.step == "breed_second" && r.list.sel < len(r.options) {
 			if a, b := g.st.Actors[r.first], g.st.Actors[r.options[r.list.sel]]; a != nil && b != nil {
-				lines = append(lines, "Child: "+g.childName(g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus)))
+				lines = append(lines, fmt.Sprintf(lang.T("こども: %s"), g.childName(g.db.BreedResult(a.Monster, b.Monster, a.Level, b.Level, a.Plus, b.Plus))))
 			}
 		}
 	}
@@ -361,10 +407,10 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 				family = e.Family
 			}
 			lines = append(lines,
-				"Family: "+family+"  Class: "+a.Def().Class,
-				fmt.Sprintf("HP %d/%d  MP %d/%d", a.HP, a.Stat("mhp"), a.MP, a.Stat("mmp")),
-				fmt.Sprintf("ATK %d  DEF %d  AGI %d", a.Stat("atk"), a.Stat("def"), a.Stat("agi")),
-				"Skills: "+strings.Join(a.Skills(), ", "))
+				fmt.Sprintf(lang.T("けいとう: %s  クラス: %s"), family, a.Def().Class),
+				fmt.Sprintf(lang.T("HP %d/%d  MP %d/%d"), a.HP, a.Stat("mhp"), a.MP, a.Stat("mmp")),
+				fmt.Sprintf(lang.T("こうげき %d  ぼうぎょ %d  すばやさ %d"), a.Stat("atk"), a.Stat("def"), a.Stat("agi")),
+				fmt.Sprintf(lang.T("とくぎ: %s"), strings.Join(a.Skills(), ", ")))
 		}
 	}
 	for _, line := range lines {
@@ -378,7 +424,7 @@ func (r *ranch) draw(g *Game, dst *ebiten.Image) {
 		}
 		y += 5
 	}
-	g.text(dst, strings.ToUpper(strings.ReplaceAll(r.step, "_", " "))+"   Z: choose   X: back", x, l.panelY+l.panelH-28, sizeS*0.8, g.th.dim)
+	g.text(dst, ranchStepTitle(r.step)+"   "+lang.T("Z: えらぶ　X: もどる"), x, l.panelY+l.panelH-28, sizeS*0.8, g.th.dim)
 }
 
 var (

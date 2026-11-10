@@ -13,6 +13,7 @@ breeding:
   min_level: 5
   skill_slots: 2
   staging: {rare_rank: 4, legend_rank: 7}
+  keeper: {name: Yorn, text: "Bring me two monsters and I will join them."}
   pairs:
     - {parents: [drip_slime, drip_slime], child: king_slime}
     - {parents: [drip_slime, pipe_rat], child: steam_slime}
