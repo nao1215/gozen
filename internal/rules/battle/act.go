@@ -423,12 +423,13 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if err != nil {
 			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
 		}
+		// a state can lower the maximum below what the unit has: the room is then none
 		n := max(0, safeint.From(math.Round(vary(v))))
 		if stat == "mp" {
-			n = min(n, t.MMP()-t.MP)
+			n = min(n, max(0, t.MMP()-t.MP))
 			t.MP += n
 		} else {
-			n = min(n, t.MHP()-t.HP)
+			n = min(n, max(0, t.MHP()-t.HP))
 			t.HP += n
 		}
 		text := e.Message

@@ -27,6 +27,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `breed` with a parent that is not a monster logs the refusal instead of crashing.
 - `gozen check` refuses a state's `stats_by` multiplier that reads the stat it scales (`mhp` from `a.mhp` or `a.hp_rate`, `mmp` from `a.mp_rate`), which crashed the battle; states that read each other's stats now settle.
 - `gozen sim routes` records a battle it decides as play and the driver do: `last_battle` holds the outcome, `recover: false` keeps a fallen fighter at 0 HP, the entrance arrived at is put on the map and strong foes whose `appear` holds come.
+- Campaign: no troops take no region. A general with 0 troops leads no march, a unit of 0 troops in a clash shown as units is routed before the first round, and a faction whose share to send is 0 troops does not march. The troops left of a faction's march that does not take the region go back to the region they left instead of vanishing, and the troops after a region is taken in a clash shown as units add up to those left of it. A `clash` or `draft` formula that overflows or is not a number no longer makes the save fail, `clash.lost` after a lost `fight: battle` reads the general's level and stats, and `clash.units` refuses the generals beyond it instead of leaving them out. `gozen check` rejects `clash.rounds` above 100 and `generals` above 1 on an order with `fight: battle` (the others were left out of the battle without a word).
+- A battle heal on a unit whose HP or MP is above a maximum lowered by a state heals 0 instead of taking the difference away.
+- Planning: work given to a split activity no longer reaches its cancelled children or those waiting on an `after` that is not done, and the dispatch marks of past days are no longer kept in the save.
+- A map point with a `once` `do` is offered while the party stands on it after a `move` with `at` (or at the start) put it there; before, the party had to leave and come back.
 
 ## v0.23.2 - 2026-11-09
 

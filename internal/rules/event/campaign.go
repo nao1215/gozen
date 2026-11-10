@@ -45,7 +45,7 @@ func (r *Runner) order(c *data.Command) Request {
 			}
 		})
 	}
-	if o.Generals > 1 && oc.General != "" && !oc.Asked() && len(oc.With) < o.Generals-1 {
+	if oc.General != "" && !oc.Asked() && len(oc.With) < campaign.Cap(r.db, o)-1 {
 		var ids []string
 		for _, g := range campaign.Generals(r.db, r.st, o) {
 			if g != oc.General && !slices.Contains(oc.With, g) {

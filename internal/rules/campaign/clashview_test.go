@@ -157,3 +157,148 @@ func TestFightViewArmies(t *testing.T) {
 		}
 	}
 }
+
+// TestFightViewEmptyArmy: a general with no troops leads no march (Generals, Check), and
+// a clash it is sent into all the same is lost before a strike: 0 troops take no region.
+func TestFightViewEmptyArmy(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: any, target: border, march: true, fight: clash_view}",
+	).Replace(testgame.CampaignGame)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game})
+	st := testgame.State(db, 1)
+	st.Vars[data.GeneralVar("scout", "troops")] = 0.0
+	st.Vars[data.RegionVar("field", "troops")] = 1.0
+	o := campaign.Order(db, "attack")
+	if gs := campaign.Generals(db, st, o); len(gs) != 0 {
+		t.Fatalf("generals who can march: %v, want none (scout has no troops)", gs)
+	}
+	if why := campaign.Check(db, st, o, "scout", nil, "field"); why == "" {
+		t.Fatal("check let a general with no troops march")
+	}
+	// the draft is no march: the general without troops can still be given it
+	if gs := campaign.Generals(db, st, campaign.Order(db, "draft")); len(gs) != 1 {
+		t.Fatalf("generals who can draft: %v, want scout", gs)
+	}
+	cl := campaign.FightView(db, st, "attack", "scout", nil, "field", nil)
+	if cl.Result != "lost" || len(cl.Hits) != 0 || data.RegionOwner(db, st.Campaign(), "field") == "blue" {
+		t.Fatalf("an army of 0 troops: result %q, hits %+v, owner now %q", cl.Result, cl.Hits, data.RegionOwner(db, st.Campaign(), "field"))
+	}
+}
+
+// TestFightViewEmptyFoeUnit: a garrison smaller than its defend troop leaves units of 0
+// troops, which are routed from the start and strike nobody.
+func TestFightViewEmptyFoeUnit(t *testing.T) {
+	db := clashGame(t, `rounds: 1`, "")
+	st := testgame.State(db, 1)
+	st.Vars[data.RegionVar("field", "troops")] = 1.0 // two motes share 1: 0 and 1
+	cl := campaign.FightView(db, st, "attack", "scout", nil, "field", nil)
+	if !cl.Sides[1][0].Routed {
+		t.Fatalf("the foe unit of 0 troops stands: %+v", cl.Sides[1][0])
+	}
+	for _, h := range cl.Hits {
+		if h.Side == 1 && h.At == 0 || h.Side == 0 && h.To == 0 {
+			t.Fatalf("a strike by or at the foe unit of 0 troops: %+v", h)
+		}
+	}
+}
+
+// TestFightViewWonKeepsTroopCount: the generals' troops and the garrison after a region
+// is taken add up to the troops left of the clash (the garrison's shares are whole).
+func TestFightViewWonKeepsTroopCount(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view, generals: 2}",
+		"generals: {scout: {troops: 400, might: 2}}",
+		"generals: {scout: {troops: 3, might: 2}, porter: {troops: 2}}",
+	).Replace(testgame.CampaignGame)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/porter.yaml": "actors: {porter: {name: Porter, class: ranger}}"})
+	won := 0
+	for seed := uint64(1); seed <= 5; seed++ {
+		st := testgame.State(db, seed)
+		st.Vars[data.RegionVar("field", "troops")] = 1.0
+		cl := campaign.FightView(db, st, "attack", "scout", []string{"porter"}, "field", nil)
+		if cl.Result != "won" {
+			continue
+		}
+		won++
+		left := cl.Sides[0][0].Troops + cl.Sides[0][1].Troops
+		cs := st.Campaign()
+		after := data.GeneralTroops(db, cs, "scout") + data.GeneralTroops(db, cs, "porter") + data.Garrison(db, cs, "field")
+		if after != left {
+			t.Fatalf("seed %d: %g troops left of the clash, %g after it (generals %g and %g, garrison %g)", seed, left, after,
+				data.GeneralTroops(db, cs, "scout"), data.GeneralTroops(db, cs, "porter"), data.Garrison(db, cs, "field"))
+		}
+	}
+	if won == 0 {
+		t.Fatal("no seed won: nothing was compared")
+	}
+}
+
+// TestCheckCapsGeneralsAtClashUnits: clash.units caps the generals of an order shown as
+// units, so Check refuses those beyond it instead of leaving them out of the clash.
+func TestCheckCapsGeneralsAtClashUnits(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view, generals: 2}",
+		"generals: {scout: {troops: 400, might: 2}}",
+		"generals: {scout: {troops: 400, might: 2}, porter: {troops: 400}}\n  clash: {units: 1}",
+	).Replace(testgame.CampaignGame)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/porter.yaml": "actors: {porter: {name: Porter, class: ranger}}"})
+	st := testgame.State(db, 1)
+	st.Join("porter")
+	o := campaign.Order(db, "attack")
+	if why := campaign.Check(db, st, o, "scout", []string{"porter"}, "field"); why == "" {
+		t.Fatalf("check let two generals into a clash of %d unit a side", campaign.Cap(db, o))
+	}
+	if why := campaign.Check(db, st, o, "porter", nil, "field"); why != "" {
+		t.Fatalf("check refused one general: %s", why)
+	}
+}
+
+// TestFactionClashWithNoTroops: a faction whose march would send 0 troops (floor(1 * 0.6))
+// does not march: units of 0 troops take no region.
+func TestFactionClashWithNoTroops(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view}",
+	).Replace(testgame.CampaignGame)
+	fields := strings.NewReplacer(
+		"capital: keep\n", "capital: keep\n    generals: [mote]\n",
+		"      - {draft: \"50\"}\n", "",
+		"{march: true, keep: 300, where: \"s.troops * 0.6 > t.troops * 1.25\", pick: min, by: t.troops}", "{march: true}",
+	).Replace(testgame.CampaignData)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/campaign.yaml": fields})
+	st := testgame.State(db, 1)
+	st.Vars[data.RegionVar("keep", "troops")] = 1.0
+	st.Vars[data.RegionVar("field", "troops")] = 1.0
+	lines := campaign.FactionTurn(db, st, "red")
+	cs := st.Campaign()
+	if len(lines) != 0 || data.RegionOwner(db, cs, "field") == "red" || data.Garrison(db, cs, "keep") != 1 {
+		t.Fatalf("red sending floor(1*0.6)=0 troops: %v (field held by %q, keep %g, field %g)", lines, data.RegionOwner(db, cs, "field"), data.Garrison(db, cs, "keep"), data.Garrison(db, cs, "field"))
+	}
+}
+
+// TestFactionClashDrawReturnsSurvivors: the troops left of a faction's march fought as a
+// clash of units that does not take the region go back to the region they left.
+func TestFactionClashDrawReturnsSurvivors(t *testing.T) {
+	game := strings.NewReplacer(
+		"attack: {label: Attack, general: ready, target: border, march: true}",
+		"attack: {label: Attack, general: ready, target: border, march: true, fight: clash_view}",
+		"generals: {scout: {troops: 400, might: 2}}",
+		"generals: {scout: {troops: 400, might: 2}}\n  clash: {rounds: 1, hit: '10'}",
+	).Replace(testgame.CampaignGame)
+	fields := strings.NewReplacer(
+		"capital: keep\n", "capital: keep\n    generals: [mote]\n",
+		"      - {draft: \"50\"}\n", "",
+		"{march: true, keep: 300, where: \"s.troops * 0.6 > t.troops * 1.25\", pick: min, by: t.troops}", "{march: true, send: 0.5, pick: min, by: t.troops}",
+	).Replace(testgame.CampaignData)
+	db := testgame.LoadCampaign(t, map[string]string{"game.yaml": game, "data/campaign.yaml": fields})
+	st := testgame.State(db, 1)
+	campaign.FactionTurn(db, st, "red")
+	cs := st.Campaign()
+	// one round of one strike a side for 10: 250 marched on field (100), 240 come back
+	if data.Garrison(db, cs, "keep") != 490 || data.Garrison(db, cs, "field") != 90 || data.RegionOwner(db, cs, "field") == "red" {
+		t.Fatalf("after a drawn clash: keep %g, field %g held by %q, want 490 and 90", data.Garrison(db, cs, "keep"), data.Garrison(db, cs, "field"), data.RegionOwner(db, cs, "field"))
+	}
+}

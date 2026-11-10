@@ -4485,7 +4485,7 @@
           "x-type": "boolean"
         },
         "rounds": {
-          "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5.",
+          "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5, at most 100.",
           "type": "integer",
           "x-contract": {
             "default": "0",
@@ -14735,7 +14735,7 @@
           "x-type": "string"
         },
         "generals": {
-          "description": "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken.",
+          "description": "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken. A clash shown as units takes clash.units of them at most; fight: battle is one general's, so generals stays 1.",
           "type": "integer",
           "x-contract": {
             "default": "0",
