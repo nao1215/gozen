@@ -90,6 +90,15 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 	}
 	in := &g.in
 	x, y := float64(in.mouse.X), float64(in.mouse.Y)
+	// What the panel showed when the pointer went down: a press on that point
+	// travels, one on another point only shows its advice. A finger's touch
+	// moves the pointer before it lifts, so the focus alone cannot tell.
+	if in.inspect(in.pdown) {
+		s.pressed = ""
+		if s.panelVisible(g) {
+			s.pressed = s.choices[s.sel].Point
+		}
+	}
 	if s.panelVisible(g) {
 		if in.cancel() {
 			s.panelHidden = true

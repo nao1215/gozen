@@ -62,20 +62,23 @@ type atlasScene struct {
 	cameraZoom   float64
 	cameraPan    bool
 	panelHidden  bool
-	loc          string
-	pic          string
-	age          int
-	banner       int
-	sel          int
-	choices      []atlas.Choice
-	points       []mapPoint
-	roads        []mapRoad
-	here         string
-	dirty        bool     // the state may have changed: find the points again when idle
-	leader       dollSpec // the token's doll when the map has no token picture
-	spot         string   // the spot last written to the trace
-	boxes        []plateBox
-	targets      []pointTarget
+	// pressed is the point whose advice the selection panel showed when the
+	// pointer went down ("" for none).
+	pressed string
+	loc     string
+	pic     string
+	age     int
+	banner  int
+	sel     int
+	choices []atlas.Choice
+	points  []mapPoint
+	roads   []mapRoad
+	here    string
+	dirty   bool     // the state may have changed: find the points again when idle
+	leader  dollSpec // the token's doll when the map has no token picture
+	spot    string   // the spot last written to the trace
+	boxes   []plateBox
+	targets []pointTarget
 
 	pointLayer      *ebiten.Image
 	pointLayerKey   pointLayerKey
@@ -559,7 +562,7 @@ func (s *atlasScene) update(g *Game) {
 	if in.inspect(in.click) {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
 			in.query(true)
-			if s.location(g).Map.SelectionPanel != nil {
+			if s.location(g).Map.SelectionPanel != nil && c.Point != s.pressed {
 				s.focusPoint(c.Point)
 				return
 			}
