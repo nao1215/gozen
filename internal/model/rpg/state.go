@@ -279,15 +279,15 @@ func (s *State) createMonster(species string, level, plus int, skills []string, 
 	if !ok {
 		seq = 0
 	}
-	id := fmt.Sprintf("monster_%d", int(seq)+1)
+	id := fmt.Sprintf("monster_%d", safeint.From(seq)+1)
 	for s.Actors[id] != nil || s.DB.Actors[id] != nil {
 		seq++
-		id = fmt.Sprintf("monster_%d", int(seq)+1)
+		id = fmt.Sprintf("monster_%d", safeint.From(seq)+1)
 	}
 	if !s.DB.AddInstance(id, &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}) {
 		return "", false
 	}
-	s.Vars["monster.next"] = float64(int(seq) + 1)
+	s.Vars["monster.next"] = float64(safeint.From(seq) + 1)
 	a := NewActor(s.DB, id)
 	a.Monster, a.Plus = species, plus
 	if sex == "" {

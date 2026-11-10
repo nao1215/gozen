@@ -177,3 +177,13 @@ func TestBreedingCheckKeepsTheWrittenParentOrder(t *testing.T) {
 		t.Errorf("the same pair written in the other order = %v, want a duplicate", err)
 	}
 }
+
+// TestClassMaxLevelIsBounded: the monster check works exp_for out once per level, so a
+// max_level above MaxClassLevel is refused instead of keeping the loader busy.
+func TestClassMaxLevelIsBounded(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "    name: Ranger\n", "    name: Ranger\n    max_level: 2000000000\n", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "max_level: want at most 9999") {
+		t.Fatalf("max_level: 2000000000 = %v, want the bound reported", err)
+	}
+}

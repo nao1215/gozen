@@ -362,7 +362,7 @@ func (c *checker) tacticRow(row TacticRow) Rule {
 	// Copy without evaluating expressions. UnmarshalYAML on the return value cannot overwrite the catalog's expressions.
 	r.When, r.Chance = copyTacticExpr(r.When), copyTacticExpr(r.Chance)
 	r.Target.Where, r.Target.By = copyTacticExpr(r.Target.Where), copyTacticExpr(r.Target.By)
-	c.numericValues([]Rule{r}, "tactic.rule")
+	c.numericValues([]Rule{r}, "tactic.rule", false)
 	c.rules("tactic.rule", []Rule{r})
 	return r
 }

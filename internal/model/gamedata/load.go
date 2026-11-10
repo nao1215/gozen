@@ -461,8 +461,14 @@ func (db *DB) FacePicture(a *Actor, face, outfit string) string {
 }
 
 // Exists reports whether the game has the file (a path under the game's directory).
+// A name under assets/ that climbs out of it (assets/../game.yaml) names no asset, even
+// when the file it reaches is there: an export of the assets would lack it.
 func (db *DB) Exists(p string) bool {
-	_, err := fs.Stat(db.FS, path.Clean(p))
+	clean := path.Clean(p)
+	if strings.HasPrefix(p, "assets/") && !strings.HasPrefix(clean, "assets/") {
+		return false
+	}
+	_, err := fs.Stat(db.FS, clean)
 	return err == nil
 }
 

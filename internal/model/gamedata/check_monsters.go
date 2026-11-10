@@ -54,7 +54,7 @@ func (c *checker) monsters() {
 			if cl := db.Classes[classID]; cl != nil && !checkedClasses[classID] {
 				checkedClasses[classID] = true
 				prev := float64(0)
-				for level := 2; level <= cl.Max; level++ {
+				for level := 2; level <= min(cl.Max, MaxClassLevel); level++ {
 					n, err := cl.ExpFor.Number(expr.Map{"level": float64(level)})
 					if err == nil && (math.IsNaN(n) || math.IsInf(n, 0) || n <= prev) {
 						c.errorf(diag.MonsterGrowth, "classes."+classID+".exp_for", "experience must increase at level %d", level)
@@ -149,6 +149,9 @@ func (c *checker) monsters() {
 		}
 		if p.MinLevel < 0 || p.MinPlus < 0 {
 			c.errorf(diag.MonsterRules, w, "min_level and min_plus cannot be negative")
+		}
+		if p.MinPlus > MaxBreedingPlus {
+			c.errorf(diag.OutOfRange, w+".min_plus", "want at most %d, got %d", MaxBreedingPlus, p.MinPlus)
 		}
 	}
 	seenFamilies := map[string]string{}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"slices"
 	"strings"
 
@@ -242,7 +243,7 @@ func (b *Book) validate() error {
 			return fmt.Errorf("lexicon: tag %q is empty or reserved", tag)
 		}
 		for _, w := range words {
-			if Normalize(w.Text) == "" || w.Weight <= 0 || w.Weight > 1 {
+			if Normalize(w.Text) == "" || !(w.Weight > 0 && w.Weight <= 1) { // also refuses NaN
 				return fmt.Errorf("lexicon.%s: word %q needs text and a weight in (0, 1]", tag, w.Text)
 			}
 		}
@@ -286,6 +287,9 @@ func (b *Book) knownTag(tag string) bool {
 }
 
 func (b *Book) checkPerson(p *personDef) error {
+	if !finite(p.Mood, p.MoodMin, p.MoodMax) {
+		return errors.New("mood, mood_min and mood_max must be finite numbers")
+	}
 	if lo, hi := p.bounds(); lo >= hi {
 		return errors.New("mood_min must be below mood_max")
 	}
@@ -295,9 +299,12 @@ func (b *Book) checkPerson(p *personDef) error {
 		}
 		return nil
 	}
-	for tag := range p.Likes {
+	for tag, weight := range p.Likes {
 		if !b.knownTag(tag) {
 			return fmt.Errorf("likes: unknown tag %q", tag)
+		}
+		if !finite(weight) {
+			return fmt.Errorf("likes: the weight of %q must be a finite number", tag)
 		}
 	}
 	asks := map[string]bool{}
@@ -352,14 +359,17 @@ func (b *Book) checkRule(r ruleDef, asks map[string]bool) error {
 	if r.Cooldown < 0 {
 		return errors.New("cooldown is negative")
 	}
+	if !finite(r.Delta) {
+		return errors.New("delta must be a finite number")
+	}
 	for _, ref := range r.When.Refs() {
 		if err := b.checkRef(ref); err != nil {
 			return err
 		}
 	}
 	for _, m := range r.Remember {
-		if m.Key == "" || (m.Set != "" && m.Add != 0) || m.Turns < 0 || m.Time < 0 {
-			return fmt.Errorf("remember %q: needs a key, set or add (not both), and no negative limits", m.Key)
+		if m.Key == "" || (m.Set != "" && m.Add != 0) || m.Turns < 0 || m.Time < 0 || !finite(m.Add, m.Time) {
+			return fmt.Errorf("remember %q: needs a key, set or add (not both), finite numbers and no negative limits", m.Key)
 		}
 		if err := checkLines([]string{m.Set}); err != nil {
 			return fmt.Errorf("remember %q: %w", m.Key, err)
@@ -446,6 +456,17 @@ func checkLines(lines []string) error {
 		}
 	}
 	return nil
+}
+
+// finite reports whether no number is NaN or an infinity: YAML writes them as .nan and
+// .inf, a mood made of one is NaN, and a mind with such a mood cannot be saved.
+func finite(vs ...float64) bool {
+	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
+	}
+	return true
 }
 
 // bounds is the mood range (0..100 when both limits are 0).
