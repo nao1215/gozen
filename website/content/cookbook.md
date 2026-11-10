@@ -545,7 +545,7 @@ locations:
 
 ## Send the party home instead of game over
 
-`game_over.event` runs instead of the game over screen; `battle.retry` offers to fight a lost battle again.
+`game_over.event` runs after the game over screen, in place of the return to the title: the screen shows, and on the next press the party is recovered and the event runs. `battle.retry` offers to fight a lost battle again.
 
 <!-- verify: load group=gameover as=game.yaml -->
 ```yaml
