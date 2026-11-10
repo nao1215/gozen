@@ -406,8 +406,7 @@ type Game struct {
 	// the end of the events (ADR 0026).
 	skipping bool
 	// sceneLines caches the lines of each event for scene skip and the read rate.
-	sceneLines   map[string][]uint64
-	sceneLinesDB *data.DB
+	sceneLines derived[map[string][]uint64]
 
 	// Rolling back and the cursor of a save (ADR 0025, rollback.go): the commands of the
 	// running event, the backlog when it began, whether it passed a boundary, whether it is
@@ -428,10 +427,9 @@ type Game struct {
 	// event places them only as written), the shaken portraits, a long shake of the
 	// screen, and a fade through a color.
 	// panel is the development panel (F8 under --dev, devpanel.go); uses is the index of
-	// names it shows, made for usesDB.
-	panel  *devPanel
-	uses   map[string]*data.NameUse
-	usesDB *data.DB
+	// names it shows.
+	panel *devPanel
+	uses  derived[map[string]*data.NameUse]
 
 	cast      []castFigure
 	castOn    bool

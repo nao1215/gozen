@@ -460,10 +460,7 @@ func (g *Game) scenesTable() [][]string {
 
 // panelUses is the index of names, made once for the data (DB.StateUses).
 func (g *Game) panelUses() map[string]*data.NameUse {
-	if g.usesDB != g.db {
-		g.uses, g.usesDB = g.db.StateUses(), g.db
-	}
-	return g.uses
+	return g.uses.of(g.db, g.db.StateUses)
 }
 
 // drawFlagTable draws the events against the flags: S for set, R for read.

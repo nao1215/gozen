@@ -80,14 +80,12 @@ func (g *Game) skipBefore(r event.Request) {
 // text are left out (skipping passes them anyway), and so are the lines said instead of a
 // fallen member in battle.
 func (g *Game) eventLines(name string) []uint64 {
-	if g.sceneLinesDB != g.db {
-		g.sceneLines, g.sceneLinesDB = map[string][]uint64{}, g.db
-	}
-	if keys, ok := g.sceneLines[name]; ok {
+	lines := g.sceneLines.of(g.db, func() map[string][]uint64 { return map[string][]uint64{} })
+	if keys, ok := lines[name]; ok {
 		return keys
 	}
 	keys := commandLines(g.db, g.commandsNamed(name))
-	g.sceneLines[name] = keys
+	lines[name] = keys
 	return keys
 }
 
