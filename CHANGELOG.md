@@ -22,6 +22,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
 - An authored screen's entry whose `destination` is the screen that opened it closes back to that screen in sessions and in save replay, as it already did in play: the opener's action goes on and one copy of it shows. Before, a session stacked a second copy and the opener's remaining commands waited until it was closed.
 - A save Store supplied by the host (the browser player, an embedding) is called one call at a time, since the phone store installs package archives into it from a goroutine while the game writes saves. A replaced package archive that fails to close after the new selection was saved is logged instead of shown as a failed installation.
+- An automatic battle no longer hangs on a troop event's phone whose button opens an app (a `home` or `contacts` row with `event`): runs without a player leave such buttons and rows hidden by `when` alone and take the first result the screen offers, or put the phone down. A battle event that still does not end is stopped after 10000 requests and reported by sessions and the headless driver.
+- A session's save made after a phone that keeps a result, before the next line, restores; before, it recorded the phone after the last line and `Restore` refused the save. A save made after an authored screen's entry left the location with `set` also restores, with the screen closed as in play.
+- `breed` with a parent that is not a monster logs the refusal instead of crashing.
+- `gozen check` refuses a state's `stats_by` multiplier that reads the stat it scales (`mhp` from `a.mhp` or `a.hp_rate`, `mmp` from `a.mp_rate`), which crashed the battle; states that read each other's stats now settle.
+- `gozen sim routes` records a battle it decides as play and the driver do: `last_battle` holds the outcome, `recover: false` keeps a fallen fighter at 0 HP, the entrance arrived at is put on the map and strong foes whose `appear` holds come.
 
 ## v0.23.2 - 2026-11-09
 

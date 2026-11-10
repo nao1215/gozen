@@ -275,6 +275,25 @@ type Battle struct {
 	NoRecovery bool
 }
 
+// Decide applies a result given without a fight (BattleWon, BattleLost or
+// BattleFled from a driver, a policy or an explored branch) as a fought battle
+// leaves it: the outcome is recorded for last_battle with the HP of those who
+// would have fought, and a loss the event catches (CanLose) leaves them at 1
+// HP unless the battle keeps the defeat (NoRecovery). The headless driver, the
+// session and Explore share it, so the same event reads the same state in each.
+func (b Battle) Decide(st *rpg.State, result int) {
+	fighters := st.Fighters
+	st.Fighters = b.Fighters
+	members := st.BattleMembers()
+	st.Fighters = fighters
+	st.RecordBattle(scope.ResultName(result), members)
+	if result == BattleLost && b.CanLose && !b.NoRecovery {
+		for _, m := range members {
+			m.HP = max(1, m.HP)
+		}
+	}
+}
+
 // Shop opens a shop.
 type Shop struct{ ID string }
 
@@ -548,7 +567,10 @@ type Runner struct {
 	phoneWait bool
 	// phoneReturn marks app navigation options that redisplay their owning phone.
 	phoneReturn []bool
-	battle      *data.Command
+	// phoneUnshown marks the results whose row a when hides: the screen does
+	// not offer them, so an unattended run does not take them either.
+	phoneUnshown []bool
+	battle       *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
 	battleBefore *rpg.BattleOutcome
@@ -653,7 +675,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes, r.phoneWait, r.phoneReturn = nil, false, nil
+	r.likes, r.phoneWait, r.phoneReturn, r.phoneUnshown = nil, false, nil, nil
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -664,24 +686,64 @@ func (r *Runner) runLater(cmds []data.Command) {
 }
 
 // Unattended answers q as a run without a player does: a choice with its
-// first option, a phone that keeps a result with its first one (a feed with
-// nothing liked), a battle as won. It reports whether q was a battle, for a
-// caller that schedules battle.after_win with Won. A battle's own events, the
-// balance runner and the session's auto battle share it, so a phone in a
-// troop's event keeps a result there as it does on the screen.
+// first option, a phone that keeps a result with the first one the screen
+// offers (a feed with nothing liked), a battle as won. A result hidden by its
+// row's when is passed over, and so is one that opens an app: its event comes
+// back to the phone, which would open it again without end. A phone left with
+// no such result is put down with nothing kept. It reports whether q was a
+// battle, for a caller that schedules battle.after_win with Won. A battle's
+// own events, the balance runner and the session's auto battle share it, so a
+// phone in a troop's event keeps a result there as it does on the screen.
 func (r *Runner) Unattended(q Request) (battle bool) {
 	switch q := q.(type) {
 	case Choice:
 		r.Answer(0)
 	case Tap:
 		if q.Results > 0 {
-			r.Answer(0)
+			r.Answer(r.unattendedResult())
 		}
 	case Battle:
 		r.Answer(BattleWon)
 		return true
 	}
 	return false
+}
+
+// unattendedResult is the phone result Unattended takes: nothing liked for a
+// feed, else the first result that is offered and does not return to the
+// phone, or -1 (put down unread) when there is none.
+func (r *Runner) unattendedResult() int {
+	if r.likes != nil {
+		return 0
+	}
+	for i := range r.options {
+		hidden := i < len(r.phoneUnshown) && r.phoneUnshown[i]
+		returns := i < len(r.phoneReturn) && r.phoneReturn[i]
+		if !hidden && !returns {
+			return i
+		}
+	}
+	return -1
+}
+
+// maxUnattended bounds RunUnattended: no event a game writes needs as many
+// requests, so reaching it means the events do not end.
+const maxUnattended = 10000
+
+// RunUnattended runs what is started to its end, answering every request as
+// Unattended does (a battle counts as won and schedules no battle.after_win:
+// it is for a battle's own events, where no battle is fought). Events that
+// have not ended after maxUnattended requests are reported to Log and
+// stopped, so a caller without a screen cannot hang on them.
+func (r *Runner) RunUnattended() {
+	for range maxUnattended {
+		if !r.Running() {
+			return
+		}
+		r.Unattended(r.Next())
+	}
+	r.logf(fmt.Errorf("the events do not end: stopped after %d requests of an unattended run", maxUnattended))
+	r.Stop()
 }
 
 // Won is called when a battle is won. It schedules the game.yaml battle.after_win event
@@ -716,7 +778,7 @@ func (r *Runner) Answer(n int) {
 		// entering the parent event or growing the stack on each app visit.
 		r.stack[len(r.stack)-1].pc--
 	}
-	r.phoneReturn = nil
+	r.phoneReturn, r.phoneUnshown = nil, nil
 	r.phoneWait = false
 	switch {
 	case r.likes != nil:
@@ -920,7 +982,7 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // over).
 func (r *Runner) Next() Request {
 	if r.phoneWait {
-		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn = false, nil, nil, nil, nil
+		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn, r.phoneUnshown = false, nil, nil, nil, nil, nil
 	}
 	if r.gameOver {
 		r.gameOver = false
@@ -1198,7 +1260,10 @@ func (r *Runner) run(c *data.Command) Request {
 			} else {
 				nameB += " ♀"
 			}
-			faceA, faceB = r.db.Enemies[first.Monster].Image.File, r.db.Enemies[second.Monster].Image.File
+			// A parent that is no monster has no picture; Breed below refuses the pair.
+			if ea, eb := r.db.Enemies[first.Monster], r.db.Enemies[second.Monster]; ea != nil && eb != nil {
+				faceA, faceB = ea.Image.File, eb.Image.File
+			}
 			if first.Sex == "female" {
 				nameA, nameB = nameB, nameA
 				faceA, faceB = faceB, faceA
@@ -1388,8 +1453,10 @@ func (r *Runner) run(c *data.Command) Request {
 		if len(results) > 0 {
 			r.asked, r.optionAt, r.pick = nil, nil, nil
 			r.options = make([]data.ChoiceOption, len(results))
+			r.phoneUnshown = make([]bool, len(results))
 			for i, res := range results {
 				if phoneResultHidden(shown, res) {
+					r.phoneUnshown[i] = true
 					continue
 				}
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}

@@ -1410,3 +1410,55 @@ func TestStopDiscardsSlideshowPages(t *testing.T) {
 		t.Fatalf("cancelled page leaked: request=%+v image=%s", q, h.image)
 	}
 }
+
+// TestBreedRefusesNonMonsterParent: a parent that is no monster has no enemy
+// definition; breed logs State.Breed's refusal instead of reading its picture.
+func TestBreedRefusesNonMonsterParent(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/z.yaml"] = `
+events:
+  e:
+    do: [{breed: {parents: [scout, guide]}}]
+`
+	db := testgame.Load(t, files)
+	st := testgame.State(db, 1)
+	st.Join("guide")
+	var logged []error
+	r := event.New(db, st, nil)
+	r.Log = func(err error) { logged = append(logged, err) }
+	r.Start(db.Events["e"].Do)
+	for range 10 {
+		if !r.Running() {
+			break
+		}
+		r.Next()
+	}
+	if r.Running() || len(logged) != 1 {
+		t.Fatalf("running %v, logged %v: want the event over with one refusal", r.Running(), logged)
+	}
+	if len(st.Party) != 2 {
+		t.Fatalf("party %v: the refused parents stay", st.Party)
+	}
+}
+
+// TestRunUnattendedStopsEventsThatDoNotEnd: an unattended run reads on to the
+// end of what is started, and stops with a report once it has taken more
+// requests than any event needs, so a caller without a screen cannot hang.
+func TestRunUnattendedStopsEventsThatDoNotEnd(t *testing.T) {
+	db := testgame.Load(t, nil)
+	st := testgame.State(db, 1)
+	line := data.Command{Say: &data.Say{Text: "again"}}
+	for _, tc := range []struct {
+		lines  int
+		logged int
+	}{{100, 0}, {10001, 1}} {
+		var logged []error
+		r := event.New(db, st, nil)
+		r.Log = func(err error) { logged = append(logged, err) }
+		r.Start(slices.Repeat([]data.Command{line}, tc.lines))
+		r.RunUnattended()
+		if r.Running() || len(logged) != tc.logged {
+			t.Fatalf("%d lines: running %v, logged %v, want %d report(s) and nothing left", tc.lines, r.Running(), logged, tc.logged)
+		}
+	}
+}
