@@ -161,7 +161,7 @@ web-runtime:
 
 e2e-web: cli-build web-runtime
 	mkdir -p build/atago
-	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_WEB_RUNTIME="$(CURDIR)/build/runtime/web" $(ATAGO) run --ci --parallel 1 --tag web ../../e2e/atago
+	cd build/atago && PATH="$(CURDIR)/bin:$$PATH" GOZEN_WEB_RUNTIME="$(CURDIR)/build/runtime/web" $(ATAGO) run --ci --parallel 4 --tag web ../../e2e/atago
 
 e2e-graphics: cli-build desktop-runtime
 	$(GO) build -trimpath -buildvcs=false -ldflags=-compressdwarf=false -o bin/gozen-game ./internal/screen/play/testdata/host

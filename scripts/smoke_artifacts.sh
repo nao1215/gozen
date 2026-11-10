@@ -109,7 +109,7 @@ case "$(uname -s)" in
         mkdir -p "$work/web-runtime"
         tar -xzf "$(ls "$dist"/gozen-runtime_*_js_wasm.tar.gz)" -C "$work/web-runtime"
         PATH="$work:$PATH" GOZEN_WEB_RUNTIME="$work/web-runtime" \
-            atago run --ci --parallel 1 --tag web e2e/atago/web.atago.yaml
+            atago run --ci --parallel 4 --tag web e2e/atago/web.atago.yaml
         ;;
     Darwin)
         tar -xzf "$(ls "$dist"/gozen_*_darwin_"$arch".tar.gz)" -C "$work"
