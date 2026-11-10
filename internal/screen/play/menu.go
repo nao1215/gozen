@@ -153,13 +153,20 @@ func (m *menu) update(g *Game) {
 		m.updateEquip(g)
 	case m.mode == "status":
 		ms := m.members(g)
-		if g.in.left() || g.in.up() || g.in.tab() < 0 {
+		step := 0
+		if len(ms) > 1 {
+			step = g.stepTapped(m.statusSteps())
+		}
+		if g.in.left() || g.in.up() || g.in.tab() < 0 || step < 0 {
 			m.member = (m.member - 1 + len(ms)) % len(ms)
 			g.sfx("cursor")
 		}
-		if g.in.right() || g.in.down() || g.in.tab() > 0 {
+		if g.in.right() || g.in.down() || g.in.tab() > 0 || step > 0 {
 			m.member = (m.member + 1) % len(ms)
 			g.sfx("cursor")
+		}
+		if step != 0 {
+			break // the tap turned the page; it does not close it too
 		}
 		if g.in.cancel() || g.in.ok() || g.in.clicked() {
 			g.sfx("cancel")
@@ -426,14 +433,32 @@ func (m *menu) openSkills(g *Game) {
 	m.items.sel = sel
 }
 
+// statusSteps is where the status page's previous and next buttons stand.
+func (m *menu) statusSteps() (x, y float64) { return 300 + 680 - 20, 36 + 16 }
+
+// cardTapped is the member whose card a tap landed on, other than the one
+// shown: the skill and equipment pages change member by it, as Tab does.
+func (m *menu) cardTapped(g *Game) (int, bool) {
+	for i := range m.members(g) {
+		if i != m.member && g.tapped(m.cardRect(g, i)) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 func (m *menu) updateSkills(g *Game) {
-	if g.in.tab() != 0 {
+	tapped, byTap := m.cardTapped(g)
+	if g.in.tab() != 0 || byTap {
 		ms := m.members(g)
 		d := 1
 		if g.in.tab() < 0 {
 			d = len(ms) - 1
 		}
 		m.member = (m.member + d) % len(ms)
+		if byTap {
+			m.member = tapped
+		}
 		g.sfx("cursor")
 		m.items.sel = 0
 		m.openSkills(g)
@@ -493,14 +518,18 @@ func (m *menu) candidates(g *Game) {
 }
 
 func (m *menu) updateEquip(g *Game) {
+	tapped, byTap := m.cardTapped(g)
 	if m.cands != nil {
-		if g.in.tab() != 0 {
+		if g.in.tab() != 0 || byTap {
 			ms := m.members(g)
 			d := 1
 			if g.in.tab() < 0 {
 				d = len(ms) - 1
 			}
 			m.member = (m.member + d) % len(ms)
+			if byTap {
+				m.member = tapped
+			}
 			g.sfx("cursor")
 			m.openEquip(g)
 			m.candidates(g)
@@ -529,13 +558,16 @@ func (m *menu) updateEquip(g *Game) {
 		m.picker = true
 		return
 	}
-	if g.in.left() || g.in.right() || g.in.tab() != 0 {
+	if g.in.left() || g.in.right() || g.in.tab() != 0 || byTap {
 		ms := m.members(g)
 		d := 1
 		if g.in.left() || g.in.tab() < 0 {
 			d = len(ms) - 1
 		}
 		m.member = (m.member + d) % len(ms)
+		if byTap {
+			m.member = tapped
+		}
 		g.sfx("cursor")
 		m.openEquip(g)
 		return
@@ -630,11 +662,11 @@ func (m *menu) draw(g *Game, dst *ebiten.Image) {
 	case m.picker:
 		gfx.DrawTextOutlineColor(dst, lang.T("だれの？"), hx, hy, sizeM, g.th.text, g.th.window, 1)
 	case m.mode == "skill" && m.items != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	case m.mode == "equip" && m.cands != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	case m.mode == "equip" && m.slots != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("← → / Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("← → / Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	}
 	if m.msgT > 0 {
 		h := float64(len(m.msgs))*36 + 40
@@ -687,6 +719,10 @@ func (m *menu) drawStatus(g *Game, dst *ebiten.Image, a *rpg.Actor) {
 	}
 	x, y, w := 300.0, 36.0, 680.0
 	g.window(dst, x, y, w, sh-72)
+	if len(m.members(g)) > 1 {
+		sx, sy := m.statusSteps()
+		g.drawStepButtons(dst, sx, sy)
+	}
 	t := g.db.Game.Terms
 	g.text(dst, a.Name()+sexSign(a.Sex), x+30, y+20, sizeXL*0.8, d.Color.Or(g.th.text))
 	g.text(dst, fmt.Sprintf("%s  %s %d", a.Class().Name, t.Level, a.Level), x+30, y+74, sizeM, g.th.border)

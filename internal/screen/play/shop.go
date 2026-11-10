@@ -217,14 +217,7 @@ func (s *shop) drawCount(g *Game, dst *ebiten.Image) {
 		{b.accept, trade, sizeM, true},
 		{b.cancel, lang.T("やめる"), sizeM, true},
 	} {
-		r, ink := button.r, g.th.text
-		if !button.enabled {
-			ink = g.th.dim
-		}
-		gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x40))
-		gfx.StrokeRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, 2, g.th.border)
-		gfx.DrawText(dst, button.label, float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y)+(float64(r.Dy())-button.size*1.3)/2, button.size, ink)
-		g.traceControl(button.label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), button.enabled, false, "limit")
+		g.drawTapButton(dst, button.r, button.label, button.size, button.enabled)
 	}
 }
 

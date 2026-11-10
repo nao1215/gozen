@@ -896,3 +896,55 @@ func TestChoiceNamesBothWays(t *testing.T) {
 		t.Fatalf("a tap on the first way: retried %d", retried)
 	}
 }
+
+// mnuTap runs one tick of the top scene with a click at the middle of r.
+func mnuTap(g *Game, r image.Rectangle) {
+	g.in = input{click: true, pdown: true, mouse: r.Min.Add(image.Pt(r.Dx()/2, r.Dy()/2))}
+	mnuTop(g).update(g)
+	g.in = input{}
+}
+
+// TestMenuMemberByTap: the skill and equipment pages change member by a tap on
+// another member's card, and the status page by its previous and next
+// buttons, without closing; a tap elsewhere on the status page still closes it.
+func TestMenuMemberByTap(t *testing.T) {
+	g, m := mnuMenu(t)
+	mnuTab(t, g, lang.T("スキル"))
+	mnuPress(g, btnOK) // the first member's skills
+	if m.picker || m.items == nil || m.member != 0 {
+		t.Fatalf("skills not open: picker %v member %d", m.picker, m.member)
+	}
+	mnuTap(g, m.cardRect(g, 1))
+	if m.member != 1 || m.mode != "skill" || m.picker {
+		t.Fatalf("a tap on the second card in skills: member %d mode %q picker %v", m.member, m.mode, m.picker)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("そうび"))
+	mnuPress(g, btnOK)
+	if m.slots == nil || m.picker {
+		t.Fatal("equipment not open")
+	}
+	shown := m.member
+	mnuTap(g, m.cardRect(g, 1-shown))
+	if m.member != 1-shown || m.mode != "equip" {
+		t.Fatalf("a tap on the other card in equipment: member %d mode %q", m.member, m.mode)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("ステータス"))
+	m.member = 0
+	prev, next := stepButtons(m.statusSteps())
+	mnuTap(g, next)
+	if m.mode != "status" || m.member != 1 {
+		t.Fatalf("the next button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, prev)
+	if m.mode != "status" || m.member != 0 {
+		t.Fatalf("the previous button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, image.Rect(prev.Min.X-200, prev.Max.Y+100, prev.Min.X-100, prev.Max.Y+200))
+	if m.mode != "" {
+		t.Fatalf("a tap on the page did not close it: %q", m.mode)
+	}
+}

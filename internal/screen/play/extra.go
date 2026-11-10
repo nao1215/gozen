@@ -284,7 +284,13 @@ func (t *treeView) update(g *Game) {
 		}
 		if !click && g.in.mouse.Y < 110 {
 			g.in.query(true)
-			t.member = (t.member + 1) % len(t.ids)
+			// The band over the tree: its previous button steps back, the
+			// rest of it (the next button and the member's name) forward.
+			d := 1
+			if prev, _ := stepButtons(t.steps(g)); g.in.mouse.In(prev) {
+				d = len(t.ids) - 1
+			}
+			t.member = (t.member + d) % len(t.ids)
 			t.sel, t.msgT = 0, 0
 			g.sfx("cursor")
 			return
@@ -315,6 +321,12 @@ func (t *treeView) update(g *Game) {
 	case g.in.ok():
 		t.raise(g, a, cur)
 	}
+}
+
+// steps is where the tree's previous and next member buttons stand.
+func (t *treeView) steps(g *Game) (x, y float64) {
+	sw, _ := g.screen()
+	return sw - 40, 24
 }
 
 func (t *treeView) raise(g *Game, a *rpg.Actor, cur gamedata.TreeNode) {
@@ -357,6 +369,10 @@ func (t *treeView) draw(g *Game, dst *ebiten.Image) {
 		g.drawStanding(dst, p, sw*0.8, sh, sh-headRoom, 1, false, cs)
 	}
 	g.text(dst, fmt.Sprintf(lang.T("スキルツリー　%s（%s）"), a.Name(), a.Class().Name), 40, 28, sizeL, g.th.text)
+	if len(t.ids) > 1 {
+		sx, sy := t.steps(g)
+		g.drawStepButtons(dst, sx, sy)
+	}
 	perLv := max(1, a.Class().SP)
 	if g.db.Game.SchemaVersion >= gamedata.SchemaVersion1 {
 		perLv = a.Class().SP

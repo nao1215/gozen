@@ -305,7 +305,28 @@ func (s *profileScreen) pick(g *Game, i int) bool {
 	return true
 }
 
+// chartButton is where the button that turns to the relation chart and back
+// stands, on every page of the book.
+func (s *profileScreen) chartButton(g *Game) image.Rectangle {
+	sw, sh := g.screen()
+	return image.Rect(int(sw)-176, int(sh)-112, int(sw)-16, int(sh)-72)
+}
+
+// drawChartButton names the page the button turns to.
+func (s *profileScreen) drawChartButton(g *Game, dst *ebiten.Image) {
+	label := lang.T("相関図")
+	if s.chart {
+		label = lang.T("プロフィール")
+	}
+	g.drawTapButton(dst, s.chartButton(g), label, sizeS, true)
+}
+
 func (s *profileScreen) update(g *Game) {
+	if g.tapped(s.chartButton(g)) {
+		s.chart = !s.chart
+		g.sfx("cursor")
+		return // the tap turned the page; the page it shows takes the next one
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.in.pressedKey(btnNext) {
 		s.chart = !s.chart
 		g.sfx("cursor")
@@ -442,6 +463,7 @@ func (s *profileScreen) puppet(g *Game) *puppet.Puppet {
 }
 
 func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
+	defer s.drawChartButton(g, dst)
 	if s.chart {
 		s.drawChart(g, dst)
 		return
