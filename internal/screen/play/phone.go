@@ -31,8 +31,6 @@ type phoneView struct {
 	gameOpened  bool
 	gameError   string
 	store       *phoneStore
-	// backTap tells that the pointer that pressed the home bar is still down.
-	backTap bool
 
 	cue data.PhoneCue
 	// age counts ticks since the phone came up; closing counts down the ticks
@@ -382,10 +380,12 @@ func (g *Game) updatePhone() bool {
 		return false
 	}
 	// The finger that pressed the home bar is still down: its lift is no tap.
-	if p.backTap {
+	if p.grab == phoneGrabBack {
 		lifted := in.inspect(in.pup)
-		p.backTap = in.inspect(in.pheld) && !lifted
-		if p.backTap || lifted {
+		if held := in.inspect(in.pheld) && !lifted; !held {
+			p.grab = -1
+		}
+		if p.grab == phoneGrabBack || lifted {
 			return false
 		}
 	}
@@ -611,6 +611,10 @@ func sized(img *ebiten.Image, w, h int) *ebiten.Image {
 // that holds the home bar, in UI units.
 const phoneHomeBar = 22
 
+// phoneGrabBack in a phone's grab tells that the pointer went down on the home
+// bar (or the back chevron) and has not lifted yet: it drags nothing.
+const phoneGrabBack = -2.0
+
 // hasHomeBar tells that the phone's screen shows the home bar. A game on
 // the phone keeps its whole screen and has its own way back; a game that did
 // not open leaves only its error, and the bar to put the phone down.
@@ -633,7 +637,7 @@ func (g *Game) phoneBackTapped(p *phoneView) bool {
 	if !bar && !chevron {
 		return false
 	}
-	p.backTap = true
+	p.grab = phoneGrabBack
 	return in.query(true)
 }
 

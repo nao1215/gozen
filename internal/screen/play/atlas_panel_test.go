@@ -75,13 +75,13 @@ func TestAtlasSelectionPanel(t *testing.T) {
 	g.in = input{}
 	g.in.pressed[btnCancel] = true
 	s.update(g)
-	if !s.panelHidden {
+	if !s.panel.hidden {
 		t.Fatal("cancel did not hide panel")
 	}
 	g.in = input{}
 	g.in.pressed[btnOK] = true
 	s.update(g)
-	if s.panelHidden || s.walking() {
+	if s.panel.hidden || s.walking() {
 		t.Fatal("confirm after cancel should first reopen advice")
 	}
 	// Random templates and conditions are evaluated against an isolated RNG.
