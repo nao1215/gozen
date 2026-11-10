@@ -593,7 +593,6 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 			return x / k, y / k
 		})
 	}
-
 }
 
 func sized(img *ebiten.Image, w, h int) *ebiten.Image {
