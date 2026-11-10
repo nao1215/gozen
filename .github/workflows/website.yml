@@ -128,7 +128,10 @@ jobs:
     if: ${{ github.event_name != 'pull_request' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Pages took about nine minutes to sync the site and sometimes more, which
+    # canceled the deploy at the ten-minute defaults of this job and of the action
+    # (docs/development/ci.md). The action gives up first, with its own error.
+    timeout-minutes: 20
     permissions:
       pages: write
       id-token: write
@@ -139,6 +142,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          timeout: 1080000 # 18 minutes, in milliseconds
 
   # A green deploy step means the artifact was accepted, not that the site a
   # reader loads is the one just built. This fetches the live site and checks
