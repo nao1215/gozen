@@ -341,8 +341,9 @@ func TestLoadFixesEdges(t *testing.T) {
 	if fx, err := LoadFixes(""); err != nil || len(fx) != 0 {
 		t.Fatalf("no path: %v %v", fx, err)
 	}
-	if fx, err := LoadFixes(filepath.Join(dir, "none.yaml")); err != nil || len(fx) != 0 {
-		t.Fatalf("a file that does not exist is an empty set: %v %v", fx, err)
+	// A file that does not exist is not an empty set: the caller named it.
+	if _, err := LoadFixes(filepath.Join(dir, "none.yaml")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("a file that does not exist: %v", err)
 	}
 	write := func(s string) string {
 		p := filepath.Join(dir, "f.yaml")
@@ -524,6 +525,87 @@ func TestBlockOneLeavesThePixelsUnchanged(t *testing.T) {
 	out := ApplyShapesAt(img, []Shape{Box(img.Bounds())}, 1, image.Point{})
 	if !reflect.DeepEqual(out.Pix, img.Pix) {
 		t.Fatal("block 1 changed the picture")
+	}
+}
+
+// reads counts the pixels read from a picture.
+type reads struct {
+	image.Image
+	n int
+}
+
+func (r *reads) At(x, y int) color.Color {
+	r.n++
+	return r.Image.At(x, y)
+}
+
+// TestFindReportsTheLargestBlock: Find names the cell size of the mosaic, not a divisor of
+// it. A 16 pixel mosaic is also flat in 4 and 8 pixel cells, and reporting 4 made
+// inspect call a correct picture too fine.
+func TestFindReportsTheLargestBlock(t *testing.T) {
+	for _, block := range []int{4, 6, 16, 24} {
+		for _, off := range []image.Point{{}, {X: 3, Y: 1}} {
+			img := cellsPicture(10*block, 10*block, block, off)
+			if got := Find(img, img.Bounds()); !got.Mosaic || got.Block != block {
+				t.Errorf("a %d pixel mosaic at %v was found as %+v", block, off, got)
+			}
+		}
+	}
+	// A region too small for nine whole 16 pixel cells still reports the largest divisor
+	// that fits nine cells.
+	img := cellsPicture(160, 160, 16, image.Point{})
+	if got := Find(img, image.Rect(0, 0, 40, 40)); !got.Mosaic || got.Block != 8 {
+		t.Errorf("a 40 pixel region of a 16 pixel mosaic was found as %+v, want block 8", got)
+	}
+	// One pixel off the grid inside the region is not a mosaic.
+	img.SetRGBA(70, 70, color.RGBA{1, 2, 3, 255})
+	if got := Find(img, img.Bounds()); got.Mosaic {
+		t.Errorf("a broken cell was accepted: %+v", got)
+	}
+}
+
+// TestFindReadsEachPixelOnce: the work is bounded by the region, whatever it shows. A flat
+// region used to be read once per block size and offset, which did not end in practice.
+func TestFindReadsEachPixelOnce(t *testing.T) {
+	for name, img := range map[string]image.Image{
+		"flat":   image.NewRGBA(image.Rect(0, 0, 128, 128)),
+		"mosaic": cellsPicture(128, 128, 16, image.Point{}),
+		"smooth": pattern(),
+	} {
+		counted := &reads{Image: img}
+		Find(counted, img.Bounds())
+		if area := img.Bounds().Dx() * img.Bounds().Dy(); counted.n > area {
+			t.Errorf("%s: %d reads of %d pixels", name, counted.n, area)
+		}
+	}
+}
+
+// TestReferencesKeepNamesWithSpaces: a picture whose file name holds a space is listed, so
+// gozen mosaic auto processes it. A missing one is reported when it is written as a path;
+// a sentence that merely ends in an extension is not a picture.
+func TestReferencesKeepNamesWithSpaces(t *testing.T) {
+	base := fstest.MapFS{
+		"scenes.yaml": {Data: []byte(`pics:
+  - "my pic.png"
+  - other.png
+  - "cg/night *.png"
+  - "cg/lost one.png"
+  - "the file is called lost.png"
+  - "two\nlines.png"
+`)},
+		"assets/my pic.png":       {Data: []byte("x")},
+		"assets/other.png":        {Data: []byte("x")},
+		"assets/cg/night sky.png": {Data: []byte("x")},
+	}
+	pics, missing, err := references(base, "assets", []string{".png"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"cg/night sky.png", "my pic.png", "other.png"}; !reflect.DeepEqual(pics, want) {
+		t.Errorf("pics = %v, want %v", pics, want)
+	}
+	if want := []string{"cg/lost one.png"}; !reflect.DeepEqual(missing, want) {
+		t.Errorf("missing = %v, want %v", missing, want)
 	}
 }
 

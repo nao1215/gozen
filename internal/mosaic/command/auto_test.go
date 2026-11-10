@@ -435,3 +435,23 @@ func TestRunExitCodesAndOutputFailures(t *testing.T) {
 		t.Fatalf("a failing diagnostics writer gave %d", code)
 	}
 }
+
+// TestMissingFixFileIsAnError: a --fix file that does not exist is a mistyped name. It used
+// to be read as "no fixes", so auto pixelated nothing by hand and exited 0. A --manual
+// file may be absent: the manual commands create it.
+func TestMissingFixFileIsAnError(t *testing.T) {
+	game, out := fixture(t)
+	missing := filepath.Join(filepath.Dir(game), "does-not-exist.yaml")
+	for _, sub := range []string{"auto", "list", "inspect"} {
+		code, stdout, diag := invoke(t, sub, "--fix", missing, "-o", out, game)
+		if code != 1 || stdout != "" || !strings.Contains(diag, "--fix") || !strings.Contains(diag, "does-not-exist.yaml") {
+			t.Errorf("%s --fix with a missing file: code %d, %q, %s", sub, code, stdout, diag)
+		}
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatal("a run with a missing fix file wrote the output directory")
+	}
+	if code, _, diag := invoke(t, "list", "--manual", missing, "-o", out, game); code != 0 {
+		t.Fatalf("a manual file that is not there yet: code %d, %s", code, diag)
+	}
+}

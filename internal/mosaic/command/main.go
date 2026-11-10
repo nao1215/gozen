@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -161,10 +162,14 @@ func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
 	}
 	human, err := mosaic.LoadFixes(o.fixFile)
 	if err != nil {
-		return c, err
+		return c, fmt.Errorf("--fix: %w", err)
 	}
-	if c.manual, err = mosaic.LoadFixes(o.manualFile); err != nil {
-		return c, err
+	// The manual file is written by the manual commands, so it may not exist yet. The fix
+	// file is written by hand: a missing one is a mistyped name, not "no fixes".
+	if c.manual, err = mosaic.LoadFixes(o.manualFile); errors.Is(err, fs.ErrNotExist) {
+		c.manual = mosaic.Fixes{}
+	} else if err != nil {
+		return c, fmt.Errorf("--manual: %w", err)
 	}
 	c.fixes = mosaic.Fixes{}
 	maps.Copy(c.fixes, human)
