@@ -17,6 +17,23 @@
       "url": "https://github.com/nao1215/gozen/releases/download/phone-counter-v1.0.0/counter-1.0.0.zip",
       "version": "1.0.0",
       "browser_url": "https://raw.githubusercontent.com/nao1215/gozen/6fc9d3df8721c01e94f8184f82873b0f008b65ce/examples/office/game/apps/counter.zip"
+    },
+    {
+      "author": "Gozen contributors",
+      "description": "An example game: collect four tokens and save your progress.",
+      "engine": ">=0.23.0 <0.25.0",
+      "icon": "assets/icon.png",
+      "icon_data": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAY0lEQVR4nGMwb9pJU8QwasGoBU07/9+No4kFQHMxEdUswGo6eXYMSwvwmE6GHcMyiOhhAS47sCoj0wL8RhDvOXLKIpICcARaQGo2HHw+GBYW4LIDq0pK62Qq5GQK0agFI8ACAAIiRuv3qV+vAAAAAElFTkSuQmCC",
+      "id": "gozen/counter",
+      "license": "MIT",
+      "orientation": "portrait",
+      "sha256": "92dbd935714a59f28df2abb6531282adefb47afc9d5c864f680a59894c284c9a",
+      "size": 1465,
+      "title": "Counter",
+      "unpacked_size": 1603,
+      "url": "https://github.com/nao1215/gozen/releases/download/phone-counter-v1.0.1/counter-1.0.1.zip",
+      "version": "1.0.1",
+      "browser_url": "https://raw.githubusercontent.com/nao1215/gozen/21f5db4fa51a54a053f416c20e9566018746193d/examples/office/game/apps/counter.zip"
     }
   ]
 }
