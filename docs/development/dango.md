@@ -76,6 +76,14 @@ Dango also checks generated schemas against the Go types and translation keys ag
   list and its maximum live beside the test; remove entries as coverage improves.
   Never grow or replace the allowlist to admit a new word.
 
+- Rule checks (`gamerules_test.go`) type-check `internal/rules` and `internal/drive`
+  and reject a float value converted to an integer without `safeint.From`, whose
+  result for NaN, an infinity or a value out of range depends on the platform.
+  They reject `for x.Running() {` outside tests, a loop that hangs on events
+  that do not end, and in `internal/rules` the process-wide functions of
+  `math/rand` and `time.Now`, `time.Since` and `time.Until`. They do not prove
+  that a counted loop's limit is large enough, nor follow randomness or time
+  passed in through another package.
 - Removed-feature tombstones reject names of deliberately removed features (the
   casual-game runner, its schema version and the migrate command, listed in
   `internal/dev/hygiene/hygiene_test.go`) anywhere outside the changelog, decision

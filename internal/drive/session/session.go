@@ -17,7 +17,6 @@ import (
 	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/dungeon"
 	"github.com/nao1215/gozen/internal/rules/event"
-	"github.com/nao1215/gozen/internal/rules/field"
 	"github.com/nao1215/gozen/internal/rules/scope"
 	"github.com/nao1215/gozen/internal/rules/world"
 )
@@ -500,7 +499,7 @@ func (s *Session) next() Request {
 			s.quiet = false
 			continue
 		}
-		if cmds := field.Auto(s.db, s.st); cmds != nil {
+		if cmds := world.Auto(s.db, s.st); cmds != nil {
 			s.runner.Start(cmds)
 			continue
 		}
