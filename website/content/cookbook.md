@@ -1788,7 +1788,7 @@ locations:
     exits: [{to: snow_town, label: Back outside}]
 ```
 
-A `passives` state is put on the member at the start of each battle while its `when` holds, and does not last after the battle. An enemy aims at one front-row member with weight 4 and at one back-row member with weight 1 unless `front_weight` and `back_weight` say otherwise. `hide_gold` takes `field`, `dungeon`, `map` and `stage`. With `talk_on_enter`, people who have something new to say come first. Reference: [BattleCfg](/schema/#battlecfg), [Passive](/schema/#passive), [UI](/schema/#ui), [Location](/schema/#location).
+A `passives` state is put on the member at the start of each battle while its `when` holds, and does not last after the battle. An enemy aims at one front-row member with weight 4 and at one back-row member with weight 1 unless `front_weight` and `back_weight` say otherwise. `hide_gold` takes `field`, `dungeon`, `map` and `stage`. With `talk_on_enter`, people who have something new to say come first. Reference: [BattleCfg](/schema/#battlecfg), [Passive](/schema/#passive), [UIStyle](/schema/#uistyle), [Location](/schema/#location).
 
 ## Change states, duels and skill points from an event
 
