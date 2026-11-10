@@ -1429,7 +1429,9 @@ inspection: {file: file, source: source, required: required, approved: approved}
 records: {file: file, source: source, required: required, approved: approved, output: output}
 ```
 
-The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release).
+A trial built without `--overlay` keeps the game's `asset-policy.yaml`, so `gozen export` refuses it until its assets are approved; with `--overlay` and `--inspect` the trial is an approved tree. Either way it holds the game's translations whole and its license notices.
+
+The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release), [Commands](/commands/#trial).
 
 ## Commands used by the recipes
 

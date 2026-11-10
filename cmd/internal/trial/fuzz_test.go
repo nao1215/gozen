@@ -15,7 +15,7 @@ func FuzzTrialConfig(f *testing.F) {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, config string) {
-		cfg, err := Parse([]byte(config))
+		cfg, err := parse([]byte(config))
 		if err != nil {
 			return
 		}
