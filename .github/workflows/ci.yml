@@ -260,14 +260,19 @@ jobs:
           fi
       - name: Install recording tools on Windows
         if: runner.os == 'Windows'
-        # The Chocolatey mirror answers 504 now and then; try three times.
+        # A pinned ffmpeg build checked by its SHA256 (Chocolatey installs
+        # whatever version is current and checks nothing we chose).
         shell: bash
+        env:
+          FFMPEG_URL: https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-essentials_build.zip
+          FFMPEG_SHA256: 04861d3339c5ebe38b56c19a15cf2c0cc97f5de4fa8910e4d47e5e6404e4a2d4
         run: |
-          for i in 1 2 3; do
-            choco install ffmpeg -y --no-progress && exit 0
-            sleep $((i * 20))
-          done
-          exit 1
+          set -euo pipefail
+          zip="$RUNNER_TEMP/ffmpeg.zip"
+          curl -fsSL --retry 3 --retry-all-errors -o "$zip" "$FFMPEG_URL"
+          echo "$FFMPEG_SHA256  $zip" | sha256sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/ffmpeg"
+          cygpath -w "$RUNNER_TEMP/ffmpeg/ffmpeg-7.1.1-essentials_build/bin" >> "$GITHUB_PATH"
       - name: Verify recording tools
         run: |
           ffmpeg -version
