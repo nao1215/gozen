@@ -26,6 +26,8 @@ type dungeonScene struct {
 	transT     int
 	holdT      int
 	upHeld     bool
+	// freeHold is how many ticks the pointer has been held on a free-move space.
+	freeHold int
 
 	keep       map[string]bool
 	age        int
@@ -109,7 +111,7 @@ func (s *dungeonScene) update(g *Game) {
 		g.events.Start(cmds)
 		return
 	}
-	if g.menuKey() {
+	if !g.db.Game.NoMenus() && g.in.openList() {
 		g.sfx("decide")
 		g.push(newMenu(g))
 		return

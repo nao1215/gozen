@@ -212,3 +212,56 @@ func profilesF6(t *testing.T, dev bool) {
 		}
 	}
 }
+
+// A finger swiped left over the standing picture goes to the next character. A touch's
+// click comes when the finger lifts, so the swipe is read from the pointer, not the click.
+func TestProfilesTouchSwipe(t *testing.T) {
+	g := bookGame(t, Options{Location: "camp"}, "")
+	s := newProfiles(g, nil)
+	g.push(s)
+	sw, sh := g.screen()
+	at := image.Pt(int(sw*0.45), int(sh/2))
+	tick := func(in input) {
+		in.mouse, in.moved = at, true
+		g.in = in
+		s.update(g)
+	}
+	tick(input{pdown: true, pheld: true, began: true})
+	for range 6 {
+		at.X -= 40
+		tick(input{pheld: true, swiped: true})
+	}
+	tick(input{pup: true, click: true, swiped: true})
+	g.in = input{}
+	s.update(g)
+	if s.sel != 1 {
+		t.Fatalf("a swipe left stayed on profile %d, want the next (1)", s.sel)
+	}
+}
+
+// The list layout's rows scroll with a finger and with a tap on the arrow under them; the
+// profile selected stays one of the rows shown.
+func TestProfilesListScrollsByTouch(t *testing.T) {
+	g := mnuBookGame(t, Options{})
+	s := newProfiles(g, nil)
+	g.push(s)
+	l := s.rowList(g)
+	if len(s.ids) <= l.rows {
+		t.Fatalf("%d profiles in %d rows: nothing to scroll", len(s.ids), l.rows)
+	}
+	last := l.rowRect(l.rows - 1)
+	for _, in := range uiSwipe(image.Pt(last.Min.X+30, last.Min.Y+20), -2*int(profileRow)-6, 6) {
+		g.in = in
+		s.update(g)
+	}
+	if l.top != 2 || s.sel != 2 {
+		t.Fatalf("a finger dragged up two rows: first row %d, selected %d; want 2 and 2", l.top, s.sel)
+	}
+	cx, _, down := l.markPlaces()
+	g.in = input{click: true, pdown: true, pup: true, moved: true, mouse: image.Pt(int(cx), int(down+sizeS/2))}
+	s.update(g)
+	g.in = input{}
+	if l.top <= 2 || s.sel < l.top || s.sel >= l.top+l.rows {
+		t.Fatalf("a tap on ▼: first row %d, selected %d", l.top, s.sel)
+	}
+}

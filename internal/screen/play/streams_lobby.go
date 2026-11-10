@@ -123,6 +123,9 @@ func nameBox(g *Game) (x, y, w float64) {
 	return sw/2 - w/2, sh/2 - 120, w
 }
 
+// takesText reports whether the viewer's name is being typed: the letters are no hotkeys.
+func (l *streamLobby) takesText() bool { return l.name != nil }
+
 // updateName reads the viewer's name, asked over the lobby on the first opening, and keeps
 // it with the streams' progress.
 func (l *streamLobby) updateName(g *Game) {

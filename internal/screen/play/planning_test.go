@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"image"
 	"math"
 	"math/rand/v2"
@@ -146,5 +147,33 @@ func TestEnsembleRegionsKeepFacesAboveSummary(t *testing.T) {
 		if face != h-28 || summary != 0 {
 			t.Fatal("empty summary reserves portrait space")
 		}
+	}
+}
+
+// A resident without a value for the detail shows an empty detail, not the word for
+// nothing.
+func TestEntityDetailWithoutAValue(t *testing.T) {
+	db := testgame.Load(t, nil)
+	if err := LoadFonts(db, gameFiles(t)); err != nil {
+		t.Fatal(err)
+	}
+	db.Game.Planning = &data.Planning{Entities: map[string]data.Entity{"potter": {Name: "Potter"}}, Activities: map[string]data.Activity{}}
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "ensemble", View: data.PlanningView{Detail: "record"}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	g.loadTheme()
+	g.tr = newTracer(&bytes.Buffer{})
+	g.tr.layout = &layoutFrame{}
+	s := newAuthorScreen(g, "roster", nil, nil)
+	s.target = "potter"
+	s.drawEntityDetail(g, covScreen(), 0, 0, 600, 300)
+	name := false
+	for _, text := range g.tr.layout.texts {
+		name = name || text.Text == "Potter"
+		if text.Text == "<nil>" {
+			t.Fatal("the detail says <nil> for a resident without a value")
+		}
+	}
+	if !name {
+		t.Fatalf("the detail was not drawn: %+v", g.tr.layout.texts)
 	}
 }

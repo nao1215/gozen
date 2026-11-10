@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/nao1215/gozen/internal/base/expr"
 	lang "github.com/nao1215/gozen/internal/base/text"
@@ -110,10 +109,16 @@ func (g *Game) profileEnv() expr.Env {
 }
 
 type profileScreen struct {
-	ids        []string
-	sel        int
-	top        int
-	scroll     float64 // the grid's scroll, in the screen's units
+	ids []string
+	sel int
+	// list is the list layout's rows: the rows shown and the pointer over them (the
+	// screen draws the rows itself, and sel is the cursor of all three layouts).
+	list   *list
+	scroll float64 // the grid's scroll, in the screen's units
+	// drag is the finger that scrolls the grid, and free tells that it scrolled it last:
+	// the grid then stays until the selection moves.
+	drag       swipe
+	free       bool
 	face       int
 	env        expr.Env
 	done       func()
@@ -147,7 +152,7 @@ func (s *profileScreen) modal() bool { return true }
 func (s *profileScreen) liveKeep(g *Game) scene {
 	n := newProfiles(g, s.done)
 	n.sel = min(s.sel, max(0, len(n.ids)-1))
-	n.top = min(s.top, n.sel)
+	n.rowList(g).top = min(s.rowList(g).top, n.sel)
 	n.chart, n.zoom, n.camX, n.camY = s.chart, s.zoom, s.camX, s.camY
 	n.focus, n.focusFrame = s.focus, s.focusFrame
 	n.focusBack = s.focusBack
@@ -242,10 +247,30 @@ func (s *profileScreen) rows(g *Game) int {
 	return max(1, int((sh-profileTop-50)/profileRow))
 }
 
-func (s *profileScreen) rowRect(g *Game, i int) image.Rectangle {
+// rowList is the list of the list layout, fitted to the screen and set on the profile
+// selected.
+func (s *profileScreen) rowList(g *Game) *list {
+	if s.list == nil || len(s.list.items) != len(s.ids) {
+		items := make([]listItem, len(s.ids))
+		for i, id := range s.ids {
+			items[i].label = id
+		}
+		s.list = &list{items: items, x: 20, y: profileTop - 12, rowH: profileRow, size: sizeS, press: true}
+	}
 	sw, _ := g.screen()
-	y := profileTop + float64(i-s.top)*profileRow
-	return image.Rect(20, int(y), int(sw*0.17), int(y+profileRow-6))
+	l := s.list
+	l.w, l.rows = sw*0.17-20, s.rows(g)
+	if l.sel != s.sel {
+		l.sel, l.free = s.sel, false
+	}
+	l.scroll()
+	return l
+}
+
+func (s *profileScreen) rowRect(g *Game, i int) image.Rectangle {
+	r := s.rowList(g).rowRect(i)
+	r.Max.Y -= 6
+	return r
 }
 
 // arrows are the band's buttons to the previous and the next character.
@@ -306,7 +331,7 @@ func (s *profileScreen) pick(g *Game, i int) bool {
 }
 
 func (s *profileScreen) update(g *Game) {
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) || g.in.pressedKey(btnNext) {
+	if g.in.pressedKey(btnNext) {
 		s.chart = !s.chart
 		g.sfx("cursor")
 	}
@@ -332,28 +357,30 @@ func (s *profileScreen) update(g *Game) {
 	if n == 0 {
 		return
 	}
+	swipe := s.swipe(g)
+	// The list moves the cursor up and down (keys, wheel, a click on a row) and scrolls
+	// with a finger or its arrows.
+	l := s.rowList(g)
+	l.browse(g)
+	if l.sel != s.sel {
+		s.sel, s.face = l.sel, 0
+	}
 	id := s.current()
 	faces := s.shownFaces(g, id)
 	prev, next := s.arrows(g)
-	swipe := s.swipe(g)
 	// L and R of a pad are the buttons of the log and auto; A on a keyboard is both left
 	// and auto, so auto counts only without left.
 	back := g.in.inspect(g.in.pressed[btnLeft]) || g.in.inspect(g.in.pressed[btnLog]) || swipe > 0 || g.in.mouse.In(prev) && g.in.inspect(g.in.click)
 	fwd := g.in.inspect(g.in.pressed[btnRight]) || !g.in.pressed[btnLeft] && g.in.inspect(g.in.pressed[btnAuto]) || swipe < 0 || g.in.mouse.In(next) && g.in.inspect(g.in.click)
 	switch {
-	case back || g.in.inspect(g.in.pressed[btnUp]) || g.in.wheel > 0:
+	case back:
 		g.in.query(s.pick(g, (s.sel+n-1)%n))
-	case fwd || g.in.inspect(g.in.pressed[btnDown]) || g.in.wheel < 0:
+	case fwd:
 		g.in.query(s.pick(g, (s.sel+1)%n))
 	case len(faces) > 1 && s.opened(g, id) && g.in.ok():
 		s.face = (s.face + 1) % len(faces)
 		g.sfx("cursor")
 	case g.in.inspect(g.in.click):
-		for i := s.top; i < min(n, s.top+s.rows(g)); i++ {
-			if g.in.mouse.In(s.rowRect(g, i)) {
-				g.in.query(s.pick(g, i))
-			}
-		}
 		if s.opened(g, id) {
 			for i, r := range s.listFaceButtons(g, id) {
 				if g.in.mouse.In(r) && i != s.face {
@@ -364,12 +391,6 @@ func (s *profileScreen) update(g *Game) {
 			}
 		}
 	}
-	if s.sel < s.top {
-		s.top = s.sel
-	}
-	if r := s.rows(g); s.sel >= s.top+r {
-		s.top = s.sel - r + 1
-	}
 	if p := s.puppet(g); p != nil {
 		p.Motion.Step()
 	}
@@ -377,19 +398,25 @@ func (s *profileScreen) update(g *Game) {
 }
 
 // swipe is +1 for a swipe to the right (the previous character), -1 for one to the
-// left (the next), 0 for none: a press over the picture that moved more than 120 pixels
-// sideways, and twice as far sideways as up or down.
+// left (the next), 0 for none: a press over the picture (a finger or the mouse's button)
+// let go more than 120 units to the side, and twice as far sideways as up or down. The
+// pointer is read from the game's input, so a script and a recorded run swipe as well; the
+// lift of a finger that swiped is no click.
 func (s *profileScreen) swipe(g *Game) int {
+	in := &g.in
 	sw, _ := g.screen()
-	if float64(g.in.mouse.X) > sw*0.17 && float64(g.in.mouse.X) < sw*0.55 && g.in.clicked() {
-		s.press, s.last, s.pressed = g.in.mouse, g.in.mouse, true
+	if in.inspect(in.pdown) {
+		s.press, s.last = in.mouse, in.mouse
+		s.pressed = float64(in.mouse.X) > sw*0.17 && float64(in.mouse.X) < sw*0.55
 		return 0
 	}
 	if !s.pressed {
 		return 0
 	}
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) || len(ebiten.AppendTouchIDs(nil)) > 0 {
-		s.last = g.in.mouse
+	if in.inspect(in.pheld) || in.pup {
+		s.last = in.mouse // the pointer may move on the tick it lets go
+	}
+	if in.pheld {
 		return 0
 	}
 	s.pressed = false
@@ -397,6 +424,8 @@ func (s *profileScreen) swipe(g *Game) int {
 	if absInt(dx) < 120 || absInt(dx) < 2*absInt(dy) {
 		return 0
 	}
+	in.query(true)
+	in.click = false
 	if dx > 0 {
 		return 1
 	}
@@ -453,15 +482,11 @@ func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
 	gfx.FillRect(dst, 0, 0, float32(sw), profileBand, withAlpha(g.th.window, 0xe0), false)
 	gfx.FillRect(dst, 0, profileBand-1, float32(sw), 2, withAlpha(g.th.border, 0xa0), false)
 	gfx.DrawTextOutlineColor(dst, g.profileTitle(), 20+sw*0.075, 12, sizeL, g.th.text, g.th.window, 1)
-	for i := s.top; i < min(len(s.ids), s.top+s.rows(g)); i++ {
+	l := s.rowList(g)
+	for _, i := range l.shown() {
 		s.drawRow(g, dst, i)
 	}
-	if s.top > 0 {
-		gfx.DrawText(dst, "▲", 20+sw*0.075, profileTop-18, sizeS*0.8, g.th.cursor)
-	}
-	if s.top+s.rows(g) < len(s.ids) {
-		gfx.DrawText(dst, "▼", 20+sw*0.075, profileTop+float64(s.rows(g))*profileRow-8, sizeS*0.8, g.th.cursor)
-	}
+	l.drawMarks(g, dst)
 	if id := s.current(); id != "" {
 		s.drawBand(g, dst, id)
 		s.drawFigure(g, dst, id)

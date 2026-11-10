@@ -149,6 +149,17 @@ func (g *Game) panelRows() int {
 	return 0
 }
 
+// panelShownRows is how many rows of the tab fit: the Flags tab keeps a row for the
+// flags' numbers and two for their names.
+func (g *Game) panelShownRows() int {
+	_, sh := g.screen()
+	rows := int((sh - 130) / (panelSize * 1.4))
+	if g.panel.tab == tabFlags {
+		rows -= 2
+	}
+	return max(1, rows)
+}
+
 // updatePanel moves in the panel and acts on its rows.
 func (g *Game) updatePanel() {
 	p := g.panel
@@ -169,9 +180,7 @@ func (g *Game) updatePanel() {
 		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 			g.closePanel()
 		}
-		if in.pressedKey(btnLeft) || in.pressedKey(btnRight) {
-			g.panelTab(in.pressedKey(btnRight))
-		}
+		g.commandTabKeys(lettersDown(btnLeft, btnRight))
 		return
 	}
 	switch {
@@ -186,6 +195,26 @@ func (g *Game) updatePanel() {
 	case in.inspect(in.pressed[btnOK]):
 		in.query(g.panelAct(1))
 	}
+}
+
+// commandTabKeys leaves the Command tab with left and right, unless a letter that stands
+// for them elsewhere is down (typed): it is text of the command there.
+func (g *Game) commandTabKeys(typed bool) {
+	if in := &g.in; !typed && (in.pressedKey(btnLeft) || in.pressedKey(btnRight)) {
+		g.panelTab(in.pressedKey(btnRight))
+	}
+}
+
+// lettersDown reports whether a letter key of one of the buttons is down.
+func lettersDown(buttons ...button) bool {
+	for _, b := range buttons {
+		for _, k := range keys[b] {
+			if k >= ebiten.KeyA && k <= ebiten.KeyZ && ebiten.IsKeyPressed(k) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *Game) panelTab(next bool) {
@@ -334,7 +363,7 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 	}
 	_, sh := g.screen()
 	fill(screen, color.NRGBA{0x10, 0x14, 0x1c, 0xe8})
-	const size = 18.0
+	const size = panelSize
 	x := 24.0
 	for i, n := range tabNames {
 		c := g.th.dim
@@ -350,7 +379,7 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 		gfx.DrawTextLeft(screen, p.msg, 24, sh-60, 14, g.th.cursor)
 	}
 	rowH := size * 1.4
-	rows := int((sh - 130) / rowH)
+	rows := g.panelShownRows()
 	if p.sel < p.top {
 		p.top = p.sel
 	}
@@ -389,8 +418,9 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 	}
 }
 
-// panelGap is the room between two columns of the panel's tables.
-const panelGap = 24.0
+// panelGap is the room between two columns of the panel's tables, and panelSize the size
+// of its text.
+const panelGap, panelSize = 24.0, 18.0
 
 // panelColumns are the left edges of the columns of a table of cells drawn from x in the
 // panel's font at size: each column starts where the widest cell of the one before it
@@ -495,7 +525,7 @@ func (g *Game) drawFlagTable(screen *ebiten.Image, y float64, rows int, rowH, si
 	}
 	y += rowH
 	for i, id := range g.panelEvents() {
-		if i < p.top || i >= p.top+rows-2 {
+		if i < p.top || i >= p.top+rows {
 			continue
 		}
 		c := g.th.text

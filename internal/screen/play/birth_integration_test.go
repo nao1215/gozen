@@ -130,3 +130,20 @@ func TestBirthTimelineSkipAndPositions(t *testing.T) {
 		t.Fatal("fresh result confirm did not continue")
 	}
 }
+
+// A click (a tap on a touch screen) passes the result of a birth as OK does: nothing else
+// on the screen can be pressed while it waits.
+func TestBirthResultPassesOnClick(t *testing.T) {
+	g := ranchGame(t)
+	g.Handle(event.BreedEffect{ParentNames: [2]string{"Mote ♂", "Mote ♀"}, ChildName: "Sentinel", ParentFaces: [2]string{"x.png", "x.png"}, ChildFace: "x.png", Summary: "A new companion.", Result: "Lv 1"})
+	g.req = event.Wait{Seconds: 1}
+	g.birth.age = g.birth.duration()
+	g.in = input{}
+	g.pump() // nothing held: the result is ready for a press
+	g.in = input{click: true, moved: true}
+	g.pump()
+	g.in = input{}
+	if g.req != nil {
+		t.Fatalf("a click left the birth's result waiting (%T): only the OK key passes it", g.req)
+	}
+}

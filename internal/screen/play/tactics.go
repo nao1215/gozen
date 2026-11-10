@@ -174,11 +174,21 @@ func (s *tacticsScreen) act(g *Game) {
 	id := s.actorID()
 	switch s.actions.sel {
 	case tacticAccept:
+		// All the drafts are taken or none: one refused puts back those taken before it.
+		before := map[string]*rpg.ActorTactics{}
 		for _, id := range s.ids {
-			if s.dirty[id] {
-				if err := g.st.Actors[id].SetTactics(s.drafts[id]); err != nil {
-					return
+			if !s.dirty[id] {
+				continue
+			}
+			a := g.st.Actors[id]
+			before[id] = a.Tactics
+			if err := a.SetTactics(s.drafts[id]); err != nil {
+				for done, old := range before {
+					g.st.Actors[done].Tactics = old
 				}
+				g.events.Log(fmt.Errorf("tactics: %s: %w", id, err))
+				g.sfx("buzzer")
+				return
 			}
 		}
 		s.close(g)

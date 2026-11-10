@@ -565,7 +565,9 @@ func (s *authorScreen) drawEntityDetail(g *Game, dst *ebiten.Image, x, y, w, h f
 		g.drawPlanningText(dst, fmt.Sprintf("%s  %.0f%%", d.Name, 100*a.Observed/g.st.ActivityEffort(id)), x+16, yy, textWidth, 16, 1, g.th.text)
 		yy += 24
 	}
-	g.drawPlanningText(dst, fmt.Sprint(g.st.EntityValues(s.target, false)[v.Detail]), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
+	if value := g.st.EntityValues(s.target, false)[v.Detail]; value != nil {
+		g.drawPlanningText(dst, fmt.Sprint(value), x+16, yy+16, w-44, 16, max(1, int((y+h-yy-24)/24)), g.th.text)
+	}
 }
 
 // timelineRows keeps task names and quantities on distinct, readable rows.

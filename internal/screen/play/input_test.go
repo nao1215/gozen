@@ -897,3 +897,35 @@ func TestScriptWindowBounds(t *testing.T) {
 		}
 	}
 }
+
+// The mute key is a letter: while a text is typed (a stream's comment, the viewer's name)
+// it is text, not the hotkey. An embedded game never takes it.
+func TestMuteKeyIsTextWhileTyping(t *testing.T) {
+	g := openGame(t, Options{Location: "camp", Seed: 3})
+	muted := func() bool {
+		now := g.audioSession().ToggleMute()
+		g.audioSession().ToggleMute()
+		return !now
+	}
+	depth := len(g.stack)
+	for name, top := range map[string]scene{"comment": &streamWatch{typing: true}, "name": &streamLobby{name: &textField{}}} {
+		g.stack = append(g.stack, top)
+		g.muteKey(true)
+		g.stack = g.stack[:depth]
+		if muted() {
+			t.Fatalf("%s: the letter typed muted the sound", name)
+		}
+	}
+	g.muteKey(false)
+	g.embedded = true
+	g.muteKey(true)
+	g.embedded = false
+	if muted() {
+		t.Fatal("no key, or an embedded game, muted the sound")
+	}
+	g.muteKey(true)
+	if !muted() {
+		t.Fatal("the mute key did not mute the sound")
+	}
+	g.muteKey(true)
+}

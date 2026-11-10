@@ -305,6 +305,24 @@ func (in *input) touch() {
 	}
 }
 
+// takesText reports whether the screen on top reads the keyboard as text now: its letters
+// are no hotkeys then.
+func (g *Game) takesText() bool {
+	if len(g.stack) == 0 {
+		return false
+	}
+	t, ok := g.stack[len(g.stack)-1].(interface{ takesText() bool })
+	return ok && t.takesText()
+}
+
+// muteKey turns the sound off or on with the mute key (pressed), unless the game is
+// embedded or the key is a letter of a text being typed.
+func (g *Game) muteKey(pressed bool) {
+	if pressed && !g.embedded && !g.takesText() {
+		g.audioSession().ToggleMute()
+	}
+}
+
 // menuKey reports whether the menu key opens the game menu now (never with menus: none).
 func (g *Game) menuKey() bool {
 	return !g.db.Game.NoMenus() && !g.in.held[btnOK] && g.in.pressedKey(btnMenu)

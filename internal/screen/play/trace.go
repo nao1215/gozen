@@ -1456,12 +1456,7 @@ func (g *Game) act(name string, args traceLine) bool {
 		return ok
 	case "battle_auto":
 		if b := g.currentBattle(); b != nil && b.phase == bpInput {
-			b.auto = true
-			for _, m := range b.b.Party {
-				m.Auto = true
-			}
-			b.b.StartTurn(b.actions)
-			b.phase = bpPlay
+			b.startAuto(g, false)
 			return true
 		}
 	case "run":

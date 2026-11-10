@@ -372,3 +372,34 @@ func TestChartEdgesIgnoreMissingAndSelfRelations(t *testing.T) {
 		t.Fatalf("resolved edges: %v", got)
 	}
 }
+
+// The wheel zooms the chart and moves the selection nowhere (the arrows do that).
+func TestChartWheelZoomsOnly(t *testing.T) {
+	g := mnuBookGame(t, Options{Development: true})
+	s := newProfiles(g, nil)
+	s.chart = true
+	// a profile the up or the down key moves away from: the wheel turned that way stays on it
+	from, wheel := -1, 0.0
+	for i := range s.ids {
+		for key, turn := range map[button]float64{btnUp: 1, btnDown: -1} {
+			s.sel = i
+			g.in = input{}
+			g.in.pressed[key] = true
+			s.updateChart(g)
+			if s.sel != i {
+				from, wheel = i, turn
+			}
+		}
+	}
+	if from < 0 {
+		t.Fatal("the keys move from no profile of the chart")
+	}
+	s.sel = from
+	zoom := s.zoom
+	g.in = input{wheel: wheel}
+	s.updateChart(g)
+	g.in = input{}
+	if s.sel != from || s.zoom == zoom {
+		t.Fatalf("the wheel: selection %d -> %d, zoom %v -> %v; want the selection kept and the chart zoomed", from, s.sel, zoom, s.zoom)
+	}
+}

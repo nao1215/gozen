@@ -235,3 +235,34 @@ func TestProfileMetByALine(t *testing.T) {
 		t.Fatal("the next run forgot the meeting")
 	}
 }
+
+// A finger dragged up the grid scrolls it by its rows and picks no card; the grid stays
+// where the finger left it until the selection moves.
+func TestProfileGridScrollsByTouchDrag(t *testing.T) {
+	g := gridBookGame(t, t.TempDir())
+	s := newProfiles(g, nil)
+	g.push(s)
+	x, y, w, h := s.gridArea(g)
+	for _, in := range uiSwipe(image.Pt(int(x+w/2), int(y+h-30)), -2*int(gridCardH+gridGap)-6, 8) {
+		g.in = in
+		s.update(g)
+	}
+	g.in = input{}
+	s.update(g)
+	if s.scroll <= 0 || s.sel != 0 {
+		t.Fatalf("a finger dragged up two rows: scroll %v, selection %d; want the grid scrolled and the first card kept", s.scroll, s.sel)
+	}
+	cells, _ := s.gridCells(g)
+	begins := false
+	for _, c := range cells {
+		begins = begins || c.y == s.scroll
+	}
+	if !begins {
+		t.Fatalf("the grid stopped at %v, between its rows", s.scroll)
+	}
+	was := s.scroll
+	mnuPress(g, btnRight) // the selection moves: the grid shows it again
+	if s.scroll >= was {
+		t.Fatalf("the selection moved to the second card, the grid stayed at %v", s.scroll)
+	}
+}

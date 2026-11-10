@@ -59,7 +59,6 @@ func (g *Game) drawRecruit(dst *ebiten.Image) {
 		return
 	}
 	if v.leave != 0 && g.tick-v.leave >= recruitLeaveTicks {
-		g.recruit = nil
 		return
 	}
 	sw, sh := g.screen()

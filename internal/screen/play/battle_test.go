@@ -701,3 +701,53 @@ func TestBattleEventBattleMatchesHeadless(t *testing.T) {
 		t.Fatalf("on the screen (phase %d) the battle of the troop's event was dropped: on_win never ran, without a screen it does", s.phase)
 	}
 }
+
+// TestBattleAutoStopsWithATap: AUTO lasts over the battles that follow, so a player with a
+// touch screen only must be able to stop it where the screen says it is on.
+func TestBattleAutoStopsWithATap(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "doom"}, "", "")
+	s := btlAsk(t, g)
+	btlChoose(g, s, 4) // AUTO
+	if !s.auto || !g.autoBattle {
+		t.Fatalf("AUTO did not start: scene %v game %v", s.auto, g.autoBattle)
+	}
+	sw, _ := g.screen()
+	// the middle of the "AUTO" label the battle draws (battleScene.draw)
+	g.in = input{click: true, moved: true, mouse: image.Pt(int(sw-150), 164+int(sizeS/2))}
+	g.tick++
+	s.update(g)
+	g.in = input{}
+	if s.auto || g.autoBattle {
+		t.Fatal("a tap on the AUTO label left AUTO on: only the cancel key or a second finger stops it")
+	}
+}
+
+// AUTO is turned on by one code: the player's own AUTO lasts over the battles that follow,
+// a script's act is for the battle it is given in, and both begin the turn that waited.
+func TestBattleStartAutoPaths(t *testing.T) {
+	for name, tc := range map[string]struct {
+		start   func(g *Game, s *battleScene)
+		lasting bool
+	}{
+		"command": {func(g *Game, s *battleScene) { btlChoose(g, s, 4) }, true},
+		"act": {func(g *Game, _ *battleScene) {
+			if !g.act("battle_auto", nil) {
+				t.Fatal("battle_auto was refused while the battle asked for a command")
+			}
+		}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			g, _ := btlOpen(t, Options{Battle: "doom"}, "", "")
+			s := btlAsk(t, g)
+			tc.start(g, s)
+			if !s.auto || s.phase != bpPlay || g.autoBattle != tc.lasting {
+				t.Fatalf("auto %v phase %v lasting %v, want auto in play and lasting %v", s.auto, s.phase, g.autoBattle, tc.lasting)
+			}
+			for _, m := range s.b.Party {
+				if !m.Auto {
+					t.Fatalf("%s does not act by itself", m.Name)
+				}
+			}
+		})
+	}
+}

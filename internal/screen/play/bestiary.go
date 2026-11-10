@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"math"
 	"slices"
@@ -60,8 +61,10 @@ func (g *Game) bestiaryCaught(id string) float64 {
 }
 
 type bestiaryScreen struct {
-	ids  []string
-	sel  int
+	ids []string
+	// list is the species' list: its cursor, the rows shown and the pointer over them.
+	// The screen draws the rows itself (a picture and a name).
+	list *list
 	done func()
 
 	// The lineage panel (ADR 0036): the family tree of the selected species.
@@ -79,7 +82,75 @@ type lineageView struct {
 }
 
 func newBestiary(g *Game, done func()) *bestiaryScreen {
-	return &bestiaryScreen{ids: g.db.Order["enemies"], done: done, lineage: data.BuildLineage(g.db), choice: map[string]int{}}
+	s := &bestiaryScreen{ids: g.db.Order["enemies"], done: done, lineage: data.BuildLineage(g.db), choice: map[string]int{}}
+	items := make([]listItem, len(s.ids))
+	for i, id := range s.ids {
+		items[i].label = id
+	}
+	s.list = &list{items: items, x: 42, y: 88, w: 252, rowH: 48, size: sizeS, press: true}
+	s.layout(g)
+	return s
+}
+
+// layout fits the list's rows to the screen.
+func (s *bestiaryScreen) layout(g *Game) {
+	_, sh := g.screen()
+	s.list.rows = max(1, int((sh-100-88)/s.list.rowH))
+}
+
+// keyHint is a part of the line of keys under a screen: what it says and, when tap is set,
+// the button a press on it stands for.
+type keyHint struct {
+	text string
+	key  button
+	tap  bool
+}
+
+// hints is the line of keys under the book, for the list or for the lineage.
+func (s *bestiaryScreen) hints() []keyHint {
+	if s.inTree {
+		return []keyHint{
+			{text: lang.T("やじるし: えを えらぶ")},
+			{lang.T("Z: せんぞを みる"), btnOK, true},
+			{lang.T("Q: ページを ひらく"), btnBack, true},
+			{lang.T("Tab: べつの くみあわせ"), btnNext, true},
+			{lang.T("X: もどる"), btnCancel, true},
+		}
+	}
+	return []keyHint{
+		{text: lang.T("↑↓: えらぶ")},
+		{lang.T("Z: けいず"), btnOK, true},
+		{lang.T("X / F4: とじる"), btnCancel, true},
+	}
+}
+
+// hintGap is written between two hints of the line.
+const hintGap = "    "
+
+// hintRects are the places of the hints in the line written on the screen's foot.
+func (s *bestiaryScreen) hintRects(g *Game) []image.Rectangle {
+	_, sh := g.screen()
+	before := ""
+	var out []image.Rectangle
+	for _, h := range s.hints() {
+		x := 48 + gfx.TextWidth(before, sizeS*0.8)
+		out = append(out, image.Rect(int(x-8), int(sh-56), int(x+gfx.TextWidth(h.text, sizeS*0.8)+8), int(sh-20)))
+		before += h.text + hintGap
+	}
+	return out
+}
+
+// tapHints turns a click on a hint into a press of its button.
+func (s *bestiaryScreen) tapHints(g *Game) {
+	if !g.in.inspect(g.in.click) {
+		return
+	}
+	hints := s.hints()
+	for i, r := range s.hintRects(g) {
+		if hints[i].tap && g.in.mouse.In(r) {
+			g.in.pressed[hints[i].key], g.in.click = true, false
+		}
+	}
 }
 func (s *bestiaryScreen) modal() bool { return true }
 
@@ -150,6 +221,20 @@ func (s *bestiaryScreen) updateTree(g *Game) {
 		return
 	}
 	s.cur = min(s.cur, len(tiles)-1)
+	// A click on a picture chooses it; one on the picture chosen views its ancestry.
+	enter := false
+	if g.in.inspect(g.in.click) {
+		for i, t := range tiles {
+			if !inBox(float64(g.in.mouse.X), float64(g.in.mouse.Y), t.x, t.y, t.w, t.h) {
+				continue
+			}
+			g.in.query(true)
+			if enter = i == s.cur; !enter {
+				s.cur = i
+				g.sfx("cursor")
+			}
+		}
+	}
 	switch {
 	case g.in.cancel():
 		g.sfx("cancel")
@@ -165,13 +250,13 @@ func (s *bestiaryScreen) updateTree(g *Game) {
 			s.cur = next
 			g.sfx("cursor")
 		}
-	case g.in.ok():
+	case enter || g.in.ok():
 		s.history = append(s.history, lineageView{s.root, s.cur})
 		s.root, s.cur = tiles[s.cur].node.Species, 0
 		g.sfx("decide")
 	case g.in.pressedKey(btnBack):
 		if i := slices.Index(s.ids, tiles[s.cur].node.Species); i >= 0 && g.bestiarySeen(tiles[s.cur].node.Species) {
-			s.sel, s.inTree = i, false
+			s.list.sel, s.inTree = i, false
 			s.history = nil
 			g.sfx("decide")
 		} else {
@@ -218,6 +303,8 @@ func lineageNeighbor(tiles []lineageTile, current int, left, right, up, down boo
 }
 
 func (s *bestiaryScreen) update(g *Game) {
+	s.layout(g)
+	s.tapHints(g)
 	if s.inTree && !g.in.inspect(g.in.pressed[btnBestiary]) {
 		s.updateTree(g)
 		return
@@ -230,25 +317,21 @@ func (s *bestiaryScreen) update(g *Game) {
 	if len(s.ids) == 0 {
 		return
 	}
-	if g.in.down() {
-		s.sel = (s.sel + 1) % len(s.ids)
-		g.sfx("cursor")
-	}
-	if g.in.up() {
-		s.sel = (s.sel + len(s.ids) - 1) % len(s.ids)
-		g.sfx("cursor")
-	}
-	if g.in.inspect(g.in.pressed[btnRight] || g.in.pressed[btnOK]) {
+	// A click on a row chooses it; one on the row chosen opens its lineage, as OK does.
+	was := s.list.sel
+	hit := s.list.browse(g)
+	if g.in.inspect(g.in.pressed[btnRight] || g.in.pressed[btnOK]) || hit >= 0 && hit == was && g.in.inspect(g.in.click) {
 		g.in.query(s.openLineage(g))
 	}
 }
 
 // openLineage reports whether the selected, seen species has an ancestry view.
 func (s *bestiaryScreen) openLineage(g *Game) bool {
-	if !g.bestiarySeen(s.ids[s.sel]) || s.lineage.Tree(s.ids[s.sel], s.choice) == nil {
+	id := s.ids[s.list.sel]
+	if !g.bestiarySeen(id) || s.lineage.Tree(id, s.choice) == nil {
 		return false
 	}
-	s.inTree, s.cur, s.root = true, 0, s.ids[s.sel]
+	s.inTree, s.cur, s.root = true, 0, id
 	s.history = nil
 	g.sfx("decide")
 	return true
@@ -260,15 +343,14 @@ func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	fill(dst, withAlpha(colorBlack, 0xb8))
 	bestiaryPanel(g, dst, 20, 20, sw-40, sh-40)
 	g.text(dst, lang.T("まもののほん"), 48, 40, sizeL, g.th.text)
-	listX, listW, top, rowH := 42.0, 252.0, 100.0, 48.0
-	rows := max(1, int((sh-top-88)/rowH))
-	first := max(0, s.sel-rows/2)
-	first = min(first, max(0, len(s.ids)-rows))
-	bestiaryPanel(g, dst, listX, top-8, listW, float64(rows)*rowH+16)
-	for i := first; i < min(len(s.ids), first+rows); i++ {
+	s.layout(g)
+	l := s.list
+	listX, listW, rowH := l.x, l.w, l.rowH
+	bestiaryPanel(g, dst, listX, l.y+4, listW, float64(l.rows)*rowH+16)
+	for _, i := range l.shown() {
 		id := s.ids[i]
-		y := top + float64(i-first)*rowH
-		if i == s.sel {
+		y := float64(l.rowRect(i).Min.Y)
+		if i == l.sel {
 			gfx.FillRoundRect(dst, float32(listX+6), float32(y), float32(listW-12), float32(rowH-2), 8, withAlpha(g.th.accent, 0x70))
 		}
 		e := g.db.Enemies[id]
@@ -279,18 +361,25 @@ func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 		}
 		g.text(dst, gfx.Ellipsis(name, sizeS*0.9, listW-68), listX+56, y+11, sizeS*0.9, g.th.text)
 	}
+	l.drawMarks(g, dst)
 	if len(s.ids) > 0 {
 		if s.inTree {
 			s.drawLineage(g, dst, 322, 104, sw-350, sh-185)
 		} else {
-			s.drawPage(g, dst, s.ids[s.sel], 322, 100, sw-350, sh-175)
+			s.drawPage(g, dst, s.ids[l.sel], 322, 100, sw-350, sh-175)
 		}
 	}
-	hint := "Up / Down: choose    Z: lineage    X / F4: close"
-	if s.inTree {
-		hint = "Arrows: choose picture    Z: view ancestry    Q: open page    Tab: other recipe    X: back"
+	hints := s.hints()
+	var line []string
+	for _, h := range hints {
+		line = append(line, h.text)
 	}
-	g.text(dst, gfx.Ellipsis(hint, sizeS*0.8, sw-100), 48, sh-48, sizeS*0.8, g.th.dim)
+	g.text(dst, gfx.Ellipsis(strings.Join(line, hintGap), sizeS*0.8, sw-100), 48, sh-48, sizeS*0.8, g.th.dim)
+	for i, r := range s.hintRects(g) {
+		if hints[i].tap {
+			g.traceControl(hints[i].text, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), true, false, "")
+		}
+	}
 }
 
 func bestiaryPanel(g *Game, dst *ebiten.Image, x, y, w, h float64) {
