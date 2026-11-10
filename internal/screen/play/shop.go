@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"strings"
 
 	lang "github.com/nao1215/gozen/internal/base/text"
 
@@ -111,44 +110,63 @@ func (s *shop) price(g *Game) int {
 	return p
 }
 
-func (s *shop) updateCount(g *Game) {
-	var most int
-	if s.mode == "buy" {
-		most = min(99, g.st.Gold/max(1, s.price(g)))
-	} else {
-		most = g.st.Items[s.pick]
+// countMost is how many of the picked item can be bought or sold now: what the
+// purse pays for (a free item costs nothing, so the purse does not limit it),
+// or what the bag holds.
+func (s *shop) countMost(g *Game) int {
+	if s.mode != "buy" {
+		return g.st.Items[s.pick]
 	}
+	if price := s.price(g); price > 0 {
+		return min(99, g.st.Gold/price)
+	}
+	return 99
+}
+
+func (s *shop) updateCount(g *Game) {
+	most := s.countMost(g)
 	old := s.count
 
-	minus, plus, box := s.countRects(g)
-	click := g.in.mouse.In(box) && g.in.clicked()
-	if g.in.up() || g.in.right() || (click && g.in.mouse.In(plus)) {
-		s.count = min(most, s.count+1)
+	b := s.countRects(g)
+	in := &g.in
+	click := in.inspect(in.click)
+	on := func(r image.Rectangle) bool { return click && in.mouse.In(r) }
+	if click {
+		in.query(true)
 	}
-	if g.in.down() || g.in.left() || (click && g.in.mouse.In(minus)) {
+	if in.up() || in.right() || on(b.plus) {
+		s.count = max(1, min(most, s.count+1))
+	}
+	if in.down() || in.left() || on(b.minus) {
 		s.count = max(1, s.count-1)
-	}
-	if click && (g.in.mouse.In(plus) || g.in.mouse.In(minus)) {
-		click = false
 	}
 	if s.count != old {
 		g.sfx("cursor")
+		g.sfx("cursor")
 	}
-	if g.in.cancel() {
+	// A tap beside the box takes the question back, as Cancel does.
+	if in.cancel() || on(b.cancel) || click && !in.mouse.In(b.box) {
 		s.pick = ""
 		g.sfx("cancel")
 		return
 	}
-	if g.in.ok() || click {
+	if in.ok() || on(b.accept) {
 		name := g.db.Items[s.pick].Name
+		var done bool
 		if s.mode == "buy" {
-			g.st.Buy(s.id, s.pick, s.count)
+			done = g.st.Buy(s.id, s.pick, s.count)
 			s.msg = fmt.Sprintf(lang.T("%sを %dこ かった！"), name, s.count)
 		} else {
-			g.st.Sell(s.id, s.pick, s.count)
+			done = g.st.Sell(s.id, s.pick, s.count)
 			s.msg = fmt.Sprintf(lang.T("%sを %dこ うった！"), name, s.count)
 		}
-		g.sfx("item")
+		if done {
+			g.sfx("item")
+		} else {
+			// The rules refused (the purse, the bag or the shop changed): say so.
+			s.msg = fmt.Sprintf(lang.T("%sは とりひき できなかった。"), name)
+			g.sfx("buzzer")
+		}
 		s.msgT = 90
 		s.pick = ""
 		s.open(g)
@@ -156,23 +174,58 @@ func (s *shop) updateCount(g *Game) {
 }
 
 func (s *shop) countLine(g *Game) string {
-	return fmt.Sprintf(lang.T("◀  %d こ  ▶     %d %s"), s.count, s.count*s.price(g), g.db.Game.Terms.Currency)
+	return fmt.Sprintf(lang.T("%d こ     %d %s"), s.count, s.count*s.price(g), g.db.Game.Terms.Currency)
 }
 
-func (s *shop) countRects(g *Game) (minus, plus, box image.Rectangle) {
+// countButtons are the quantity box and what a tap presses in it: one less,
+// one more, the trade itself and the way back.
+type countButtons struct{ box, minus, plus, accept, cancel image.Rectangle }
+
+func (s *shop) countRects(g *Game) countButtons {
 	cx, cw, sh := s.countBox(g)
-	line := s.countLine(g)
-	x0 := cx - gfx.TextWidth(line, sizeL)/2
-	y0, y1 := int(sh/2-24), int(sh/2+30)
-	at := func(prefix string) image.Rectangle {
-		before, _, ok := strings.Cut(line, prefix)
-		if !ok {
-			return image.Rectangle{}
-		}
-		x := x0 + gfx.TextWidth(before, sizeL)
-		return image.Rect(int(x-18), y0, int(x+gfx.TextWidth(prefix, sizeL)+18), y1)
+	left, right, mid := int(cx-cw/2), int(cx+cw/2), int(sh/2)
+	half := (right - left - 72) / 2
+	return countButtons{
+		box:    image.Rect(left, mid-90, right, mid+100),
+		minus:  image.Rect(left+24, mid-30, left+72, mid+18),
+		plus:   image.Rect(right-72, mid-30, right-24, mid+18),
+		accept: image.Rect(left+24, mid+38, left+24+half, mid+82),
+		cancel: image.Rect(right-24-half, mid+38, right-24, mid+82),
 	}
-	return at("◀"), at("▶"), image.Rect(int(cx-cw/2), int(sh/2-80), int(cx+cw/2), int(sh/2+80))
+}
+
+// drawCount draws the quantity box with its buttons.
+func (s *shop) drawCount(g *Game, dst *ebiten.Image) {
+	cx, _, sh := s.countBox(g)
+	b := s.countRects(g)
+	g.window(dst, float64(b.box.Min.X), float64(b.box.Min.Y), float64(b.box.Dx()), float64(b.box.Dy()))
+	gfx.DrawText(dst, g.db.Items[s.pick].Name, cx, sh/2-74, sizeM, g.th.text)
+	gfx.DrawText(dst, s.countLine(g), cx, sh/2-22, sizeL, g.th.cursor)
+	trade := lang.T("かう")
+	if s.mode == "sell" {
+		trade = lang.T("うる")
+	}
+	most := s.countMost(g)
+	for _, button := range []struct {
+		r       image.Rectangle
+		label   string
+		size    float64
+		enabled bool
+	}{
+		{b.minus, "−", sizeL, s.count > 1},
+		{b.plus, "+", sizeL, s.count < most},
+		{b.accept, trade, sizeM, true},
+		{b.cancel, lang.T("やめる"), sizeM, true},
+	} {
+		r, ink := button.r, g.th.text
+		if !button.enabled {
+			ink = g.th.dim
+		}
+		gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x40))
+		gfx.StrokeRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, 2, g.th.border)
+		gfx.DrawText(dst, button.label, float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y)+(float64(r.Dy())-button.size*1.3)/2, button.size, ink)
+		g.traceControl(button.label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), button.enabled, false, "limit")
+	}
 }
 
 func (s *shop) countBox(g *Game) (cx, w, sh float64) {
@@ -239,11 +292,7 @@ func (s *shop) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	if s.pick != "" {
-		cx, cw, _ := s.countBox(g)
-		g.window(dst, cx-cw/2, sh/2-80, cw, 160)
-		gfx.DrawText(dst, g.db.Items[s.pick].Name, cx, sh/2-60, sizeM, g.th.text)
-		gfx.DrawText(dst, s.countLine(g), cx, sh/2-14, sizeL, g.th.cursor)
-		gfx.DrawText(dst, lang.T("Z: けってい  X: やめる"), cx, sh/2+36, sizeS*0.85, g.th.border)
+		s.drawCount(g, dst)
 	}
 	if s.msg != "" {
 
