@@ -1659,7 +1659,6 @@ func (c *checker) flagRead(name, where string) {
 // flagWarnings warn of a flag set but never read, and of one read but never set (by set,
 // gallery.scenes.set; --flags is for tests). They are kept apart from the scene warnings.
 func (c *checker) flagWarnings() {
-	c.db.unusedFlags = nil
 	for i, s := range c.db.Game.Gallery.Scenes {
 		if s.Flag != "" {
 			c.flagRead(s.Flag, fmt.Sprintf("game.yaml gallery.scenes[%d].flag", i))
@@ -1667,12 +1666,13 @@ func (c *checker) flagWarnings() {
 	}
 	declared := func(name string) bool { _, ok := c.db.Game.State.Names["flag."+name]; return ok }
 	var out []error
+	var unused []string
 	warn := func(code diag.Code, where, format string, args ...any) {
 		out = append(out, coded(c.db.diagnostic(where, fmt.Sprintf(format, args...)), code))
 	}
 	for _, name := range slices.Sorted(maps.Keys(c.flagSets)) {
 		if _, ok := c.flagReads[name]; !ok && !declared(name) {
-			c.db.unusedFlags = append(c.db.unusedFlags, name)
+			unused = append(unused, name)
 			warn(diag.UnusedFlag, c.flagSets[name], "flag.%s is set but nothing reads it (declare it in state.names if it is kept on purpose)", name)
 		}
 	}
@@ -1681,16 +1681,23 @@ func (c *checker) flagWarnings() {
 			warn(diag.UnsetFlag, c.flagReads[name], "flag.%s is read but nothing sets it", name)
 		}
 	}
-	c.db.flagWarns = sortedDiagnostics(out)
+	c.db.flags = flagFindings{warns: sortedDiagnostics(out), unused: unused}
 }
 
 // FlagWarnings are the flags set but never read and read but never set, which Check found
 // (ADR 0029). A flag declared in state.names is not warned of.
-func (db *DB) FlagWarnings() []error { return slices.Clone(db.flagWarns) }
+func (db *DB) FlagWarnings() []error { return slices.Clone(db.flags.warns) }
 
 // UnusedFlags are the names, sorted, of the flags FlagWarnings reports as set but
 // never read. gozen sim routes lists them without reading the messages.
-func (db *DB) UnusedFlags() []string { return slices.Clone(db.unusedFlags) }
+func (db *DB) UnusedFlags() []string { return slices.Clone(db.flags.unused) }
+
+// flagFindings is the result of the flag check: the warnings, and the names of
+// the flags set but never read, in the order of the names.
+type flagFindings struct {
+	warns  []error
+	unused []string
+}
 
 // choseReferences checks that every chose.<id> read has a choice with that id.
 func (c *checker) choseReferences() {

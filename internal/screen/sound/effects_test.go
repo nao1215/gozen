@@ -190,3 +190,21 @@ func TestVaryOnlyChangesQuickRepeats(t *testing.T) {
 		t.Fatal("negative variation is clamped to zero")
 	}
 }
+
+// effectNames are the built-in effects the synthesizer must make.
+var effectNames = []string{
+	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
+
+	"cutin", "encounter", "boss", "stairs", "chest",
+
+	"blast", "miss",
+
+	"switch", "solve", "push", "thud", "unlock", "door", "punch", "tink", "break", "throw", "lift", "hurt",
+	"gameover", "pop", "boom", "charge", "shoot", "key", "heart", "fanfare",
+
+	"levelup",
+
+	"treasure",
+
+	"tip",
+}
