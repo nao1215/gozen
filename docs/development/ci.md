@@ -36,7 +36,7 @@ The `docs-checks` job of the CI workflow runs on these pull requests only, with 
 
 ## Time
 
-CI, Docs, Coverage, Benchmark and Release Smoke cancel superseded runs for the same pull request. Pushes to main and manual runs keep distinct groups and finish independently. The sample job saves its build cache after all three sample modules, including campaign, have passed.
+CI, Docs, Coverage, Benchmark, Release Smoke, licenses, reviewdog, Security and gitleaks cancel superseded runs for the same pull request. Downloads that a mirror sometimes answers with a 504 (Hugo and Pagefind with curl, ffmpeg from Chocolatey on Windows) are retried before the job fails, and every setup-atago pins the atago version (v0.25.2). Pushes to main and manual runs keep distinct groups and finish independently. The sample job saves its build cache after all three sample modules, including campaign, have passed.
 
 The longest jobs are the pictures of the Docs workflow and graphics; most of their time is the samples playing in real time and writing 1920x1080 frames. The game writes a screenshot off its loop (PNG at BestSpeed, by background workers), the docs pictures' runs play side by side, and graphics runs its scenarios side by side.
 
@@ -56,7 +56,7 @@ The longest jobs are the pictures of the Docs workflow and graphics; most of the
 | [Scorecard](../../.github/workflows/scorecard.yml) | push to main, every Saturday and manually. Does not run while private | publishes the OpenSSF Scorecard score and shows it in the README badge |
 | [Benchmark](../../.github/workflows/bench.yml) | pull request and manual. Manual only while private | measures `bench/himorime.yaml` with himorime and, on pull requests with unchanged benchmark definitions, compares base and head ([bench/README.md](../../bench/README.md)) |
 | [Docs](../../.github/workflows/docs.yml) | push, pull request, every night at 03:17 UTC and manual. Manual only while private | images retakes every image of `docs/images/manifest.yaml` in Xvfb and compares them with the committed ones (`make docs-images-check`; if stale, the generated images are kept as an artifact). steps runs the steps of the README and site (`make docs-steps`). See [README and site pictures and steps](docs.md) |
-| [Release Smoke](../../.github/workflows/release-smoke.yml) | pull request, push to main, manual, and called by Release | builds the release artifacts with GoReleaser in snapshot mode (nothing published), checks their contents and checksums on Linux, and runs `gozen --version`, `gozen help`, `gozen version` and `gozen check` on Linux, macOS and Windows |
+| [Release Smoke](../../.github/workflows/release-smoke.yml) | pull request, push to main, manual, and called by Release | builds the release artifacts with GoReleaser in snapshot mode (nothing published), checks their contents and checksums on Linux, and runs `gozen --version`, `gozen help`, `gozen version` and `gozen check` on Linux, macOS and Windows. On Linux it also runs the browser export E2E (`e2e/atago/web.atago.yaml`) against the packaged WASM runtime; the Website workflow does not run it a second time |
 | [Release](../../.github/workflows/release.yml) | push of a tag `v*` | runs Release Smoke, then publishes ([How releases work](release-checklist.md#how-releases-work)) |
 
 ## ONNX

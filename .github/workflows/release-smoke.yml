@@ -83,6 +83,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm xvfb xauth libgl1 libegl1 libasound2t64
 
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
 
       - name: Install go-licenses
         run: go install github.com/google/go-licenses/v2@v2.0.1
@@ -145,6 +147,8 @@ jobs:
           path: dist
 
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
+        with:
+          version: v0.25.2
 
       - name: Smoke-test the macOS artifacts
         if: runner.os == 'macOS'
