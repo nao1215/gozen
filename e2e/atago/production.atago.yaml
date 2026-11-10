@@ -132,6 +132,74 @@ scenarios:
       stderr:
         contains: 'Requirements:'
       changes: {created: [], modified: [], deleted: []}
+- name: gozen mosaic hand edits add, show, view, drop and mark one image without a model
+  steps:
+  - fixture:
+      file: game/assets/pattern.png
+      from: ../../docs/examples/production/pattern.png
+  - fixture:
+      file: original.png
+      from: ../../docs/examples/production/pattern.png
+  - run:
+      command: gozen mosaic skip --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+  - assert:
+      exit_code: 0
+      file: {path: edits.yaml, contains: 'skip: true'}
+  - run:
+      command: gozen mosaic add --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --rect 8,8,6,6 --note hand game pattern.png
+  - assert:
+      exit_code: 0
+      file: {path: edits.yaml, contains: 'pattern.png: {add: [[8, 8, 6, 6]], skip: true, note: hand}'}
+  - assert:
+      dir:
+        path: processed
+        recursive: true
+        contains: [pattern.png, report.json, masks/pattern.png.png, review.md, manual/pattern.png.masked.png]
+  # list, show and view only read: the instructions and the outputs stay as they are
+  - run:
+      command: gozen mosaic list --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --format json game
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.version, equals: 1}
+        - {path: $.command, equals: mosaic list}
+        - {path: $.status, equals: ok}
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen mosaic show --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed game pattern.png
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.file, equals: pattern.png}
+        - {path: '$.manual.add[0]', equals: [8, 8, 6, 6]}
+        - {path: $.manual.note, equals: hand}
+        - {path: '$.report.adds[0]', equals: [8, 8, 6, 6]}
+        - {path: $.report.size, equals: [24, 24]}
+      changes: {created: [], modified: [], deleted: []}
+  - run:
+      command: gozen mosaic view --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --src masked --view-out view.png game pattern.png
+  - assert:
+      exit_code: 0
+      image: {path: view.png, format: png}
+      changes: {created: [view.png], modified: [], deleted: []}
+  - run:
+      command: gozen mosaic drop --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --rect 8,8,6,6 game pattern.png
+  - assert:
+      exit_code: 0
+      file: {path: edits.yaml, contains: 'drop: [[8, 8, 6, 6]]'}
+  - run:
+      command: gozen mosaic mark --fix '' --tags '' --shape box --passes default --manual edits.yaml --out processed --checked game pattern.png
+  - assert:
+      exit_code: 0
+      file: {path: edits.yaml, contains: 'checked: true'}
+  - assert:
+      file:
+        path: game/assets/pattern.png
+        equals_file: original.png
 - name: gozen mosaic rejects empty regions without changing the fix file
   steps:
   - fixture:
