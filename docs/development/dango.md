@@ -86,6 +86,17 @@ Dango also checks generated schemas against the Go types and translation keys ag
   files that no other file names. The existing misnamed test files form a fixed
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
+- `TestBoundedPictureDecode` reads every Go file outside tests and rejects a
+  reference to `image.Decode`, `png.Decode`, `jpeg.Decode`, `gif.Decode`,
+  `gif.DecodeAll` or a `webp` package's `Decode` that no `picturelimit.Header`
+  or `picturelimit.Dimensions` precedes in the same function: a picture's header
+  decides how much memory its decode takes. `picturelimit.Read` bounds only the
+  encoded bytes and does not count. `internal/screen/picdecode` is the checked
+  decoder itself. A function bounded another way is listed by file and name with
+  its reason in `pictureDecodeAllowlist` of `decisions_test.go`, and an entry
+  that excuses nothing fails. The check is lexical: it sees that a limit call
+  comes first in the source, not that its error is obeyed, and it does not follow
+  a decoder passed in from another package.
 
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal

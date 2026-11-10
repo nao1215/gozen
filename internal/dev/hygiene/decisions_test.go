@@ -758,6 +758,165 @@ func TestCommandExecutionGuard(t *testing.T) {
 	}
 }
 
+// pictureDecodeAllowlist names the functions that decode a picture without a
+// picturelimit check of their own, by file and function, each with the bound that
+// holds there instead. An entry that no longer excuses a decode fails the test.
+var pictureDecodeAllowlist = map[string]string{
+	"cmd/internal/distribute/webfiles.go:toWebP":              "its only caller, shrinker.webP, checks DecodeConfig against the memory budget and takes that memory first",
+	"internal/mosaic/command/main.go:decode":                  "checks image.DecodeConfig against the same limits itself: the architecture policy keeps the mosaic tool from importing internal/base",
+	"internal/model/gamepackage/archive.go:validatePNG":       "checks png.DecodeConfig for a square of at most 1024 pixels before the decode",
+	"internal/screen/play/phone_packages.go:phonePackageIcon": "decodes Release.IconBytes: at most 64 KiB that validatePNG accepted, a square of at most 1024 pixels",
+}
+
+// pictureDecoders are the standard decoders of whole pictures, by import path.
+// Any package named webp is treated as one too.
+var pictureDecoders = map[string][]string{
+	"image":      {"Decode"},
+	"image/png":  {"Decode"},
+	"image/jpeg": {"Decode"},
+	"image/gif":  {"Decode", "DecodeAll"},
+}
+
+// unboundedPictureDecodes lists the references to a picture decoder in f that no
+// picturelimit.Header or picturelimit.Dimensions precedes in the same top-level
+// function. A reference counts, not only a call, so a decoder kept in a variable
+// is found. picturelimit.Read bounds the encoded bytes only, so it does not make
+// a decode bounded. internal/screen/picdecode is the checked decoder itself.
+func unboundedPictureDecodes(f *ast.File, name string) []string {
+	if strings.HasPrefix(name, "internal/screen/picdecode/") {
+		return nil
+	}
+	var violations []string
+	decoders := map[string][]string{}
+	limit := ""
+	for _, imp := range f.Imports {
+		imported, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			violations = append(violations, "invalid import path")
+			continue
+		}
+		funcs := pictureDecoders[imported]
+		if path.Base(imported) == "webp" {
+			funcs = []string{"Decode"}
+		}
+		alias := path.Base(imported)
+		if imp.Name != nil {
+			alias = imp.Name.Name
+		}
+		switch {
+		case imported == module+"internal/base/picturelimit":
+			limit = alias
+		case funcs == nil || alias == "_":
+		case alias == ".":
+			violations = append(violations, "a dot import of "+imported+" hides its decoder from this check")
+		default:
+			decoders[alias] = funcs
+		}
+	}
+	scan := func(owner string, body ast.Node) {
+		guard := token.NoPos
+		found := map[token.Pos]string{}
+		ast.Inspect(body, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if limit != "" && pkg.Name == limit && (sel.Sel.Name == "Header" || sel.Sel.Name == "Dimensions") && (guard == token.NoPos || sel.Pos() < guard) {
+				guard = sel.Pos()
+			}
+			if slices.Contains(decoders[pkg.Name], sel.Sel.Name) {
+				found[sel.Pos()] = pkg.Name + "." + sel.Sel.Name
+			}
+			return true
+		})
+		for _, pos := range slices.Sorted(maps.Keys(found)) {
+			if guard == token.NoPos || pos < guard {
+				violations = append(violations, owner+" uses "+found[pos]+" before picturelimit.Header or picturelimit.Dimensions")
+			}
+		}
+	}
+	for _, decl := range f.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			if fn.Body != nil {
+				scan(fn.Name.Name, fn.Body)
+			}
+			continue
+		}
+		scan("a package-level declaration", decl)
+	}
+	return violations
+}
+
+// TestBoundedPictureDecode requires every decode of a whole picture outside
+// tests to follow a picturelimit check in the same function: a picture's header
+// decides how much memory its decode takes, and a small file may claim a huge one.
+func TestBoundedPictureDecode(t *testing.T) {
+	used := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || strings.Contains(name, "/testdata/") {
+			return
+		}
+		for _, violation := range unboundedPictureDecodes(parsed(t, name, b), name) {
+			owner, _, _ := strings.Cut(violation, " uses ")
+			if _, ok := pictureDecodeAllowlist[name+":"+owner]; ok {
+				used[name+":"+owner] = true
+				continue
+			}
+			t.Errorf("%s: %s; check the header first (picturelimit.Header) or decode through picdecode", name, violation)
+		}
+	})
+	for entry, reason := range pictureDecodeAllowlist {
+		if !used[entry] {
+			t.Errorf("%s no longer decodes a picture unchecked; remove it from pictureDecodeAllowlist", entry)
+		}
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("%s needs the reason its decode is bounded", entry)
+		}
+	}
+}
+
+func TestBoundedPictureDecodeGuard(t *testing.T) {
+	const limit = `import "github.com/nao1215/gozen/internal/base/picturelimit"; `
+	for _, tc := range []struct {
+		name, source string
+		bad          bool
+	}{
+		{"unchecked png", `package p; import "image/png"; func f() { png.Decode(nil) }`, true},
+		{"unchecked image", `package p; import "image"; func f() { image.Decode(nil) }`, true},
+		{"unchecked jpeg alias", `package p; import j "image/jpeg"; func f() { j.Decode(nil) }`, true},
+		{"unchecked gif frames", `package p; import "image/gif"; func f() { gif.DecodeAll(nil) }`, true},
+		{"unchecked webp", `package p; import "golang.org/x/image/webp"; func f() { webp.Decode(nil) }`, true},
+		{"decoder kept in a variable", `package p; import "image/png"; func f() { d := png.Decode; d(nil) }`, true},
+		{"decoder in a closure", `package p; import "image/png"; func f() { func() { png.Decode(nil) }() }`, true},
+		{"decoder of a package variable", `package p; import "image/png"; var d = png.Decode`, true},
+		{"dot import", `package p; import . "image/png"; func f() { Decode(nil) }`, true},
+		{"encoded size alone", `package p; ` + limit + `import "image/png"; func f() { picturelimit.Read(nil, ""); png.Decode(nil) }`, true},
+		{"checked after the decode", `package p; ` + limit + `import "image/png"; func f() { png.Decode(nil); picturelimit.Header(nil) }`, true},
+		{"checked in another function", `package p; ` + limit + `import "image/png"; func g() { picturelimit.Header(nil) }; func f() { png.Decode(nil) }`, true},
+		{"header checked", `package p; ` + limit + `import "image/png"; func f() { if picturelimit.Header(nil) != nil { return }; png.Decode(nil) }`, false},
+		{"dimensions checked", `package p; ` + limit + `import "image"; func f() { picturelimit.Dimensions(1, 1); image.Decode(nil) }`, false},
+		{"limit alias", `package p; import lim "github.com/nao1215/gozen/internal/base/picturelimit"; import "image/gif"; func f() { lim.Header(nil); gif.DecodeAll(nil) }`, false},
+		{"header only", `package p; import "image/png"; func f() { png.DecodeConfig(nil); png.Encode(nil, nil) }`, false},
+		{"registered decoder", `package p; import _ "image/png"; func f() {}`, false},
+		{"another Decode", `package p; import "encoding/json"; func f() { json.NewDecoder(nil).Decode(nil) }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := unboundedPictureDecodes(parsed(t, tc.name, []byte(tc.source)), "cmd/gozen/sample.go")
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+	sample := `package p; import "image"; func f() { image.Decode(nil) }`
+	if got := unboundedPictureDecodes(parsed(t, "decode.go", []byte(sample)), "internal/screen/picdecode/decode.go"); len(got) != 0 {
+		t.Fatalf("picdecode is the checked decoder: %v", got)
+	}
+}
+
 // TestDeadcodeGate rejects tool/filter failures while allowing only explicitly
 // exempted findings. Diagnostics must remain on stderr, outside the filter.
 func TestDeadcodeGate(t *testing.T) {
