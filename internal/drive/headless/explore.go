@@ -168,6 +168,7 @@ func (e *explorer) move(loc string) {
 	}
 	e.st.Location = loc
 	e.st.Steps++
+	dungeon.Reveal(e.db, e.st) // as the screen and the driver do on a move
 	e.moved = true
 	e.p.Moves = append(e.p.Moves, loc)
 	e.p.Steps = append(e.p.Steps, Step{Kind: "move", Loc: loc})
@@ -299,12 +300,14 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 					p.Errs = append(p.Errs, fmt.Errorf("battle with a troop that does not exist: %q", q.Troop))
 				}
 				res := -1
+				before := st.LastBattle
 				if opt.Fight != nil {
 					st.Fighters = q.Fighters
 					res = opt.Fight(st, q)
 					st.Fighters = nil
 				}
-				if res >= 0 {
+				given := res >= 0
+				if given {
 					p.Taken = append(p.Taken, "battle "+q.Troop+" "+resultName(res))
 				} else {
 					outs := []int{event.BattleWon, event.BattleLost}
@@ -323,21 +326,11 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 						return p, branches
 					}
 					res = outs[a]
-					if res == event.BattleLost && q.CanLose {
-						// The event that catches a defeat continues with only the members who fought at HP 1, same as the screen.
-						fought := st.Members()
-						if len(q.Fighters) > 0 {
-							fought = nil
-							for _, id := range q.Fighters {
-								if a := st.Actors[id]; a != nil {
-									fought = append(fought, a)
-								}
-							}
-						}
-						for _, m := range fought {
-							m.HP = max(1, m.HP)
-						}
-					}
+				}
+				if !given || st.LastBattle == before {
+					// A result given without a fight (a branch, or a Fight that only
+					// names one) is recorded as the driver and the session record it.
+					q.Decide(st, res)
 				}
 				p.Battles = append(p.Battles, q.Troop+":"+resultName(res))
 				p.Steps = append(p.Steps, Step{Kind: "battle", Text: q.Troop + ":" + resultName(res)})
@@ -410,6 +403,10 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 				p.Errs = append(p.Errs, errors.New("an auto event keeps starting (its when stays true)"))
 				break
 			}
+			r.Start(c)
+			continue
+		}
+		if c := dungeon.Hunters(db, st); c != nil { // as the screen and the driver: the strong foes that appear
 			r.Start(c)
 			continue
 		}

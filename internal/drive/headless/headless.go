@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -194,13 +195,7 @@ func (d *Driver) answer(r event.Request) error {
 		if !ok {
 			res = d.fight(r.Troop, !r.NoRecovery)
 		} else {
-			members := d.St.BattleMembers()
-			d.St.RecordBattle(battle.Result(res).String(), members)
-			if res == event.BattleLost && r.CanLose && !r.NoRecovery {
-				for _, m := range members {
-					m.HP = max(1, m.HP)
-				}
-			}
+			r.Decide(d.St, res)
 		}
 		d.St.Fighters = nil
 		d.record(Step{Kind: "battle", Text: r.Troop + ":" + resultName(res)})
@@ -235,7 +230,7 @@ func (d *Driver) fight(troop string, recoverHP bool) int {
 	d.Battles++
 	b := battle.New(d.DB, d.St, troop)
 	b.OnDecision = d.OnDecision
-	AutoBattle(d.DB, d.St, b, event.HostFunc(d.handle), d.MaxTurns, nil)
+	autoBattle(d.DB, d.St, b, event.HostFunc(d.handle), d.MaxTurns, nil, func(err error) { d.errs = append(d.errs, err) })
 	if b.Result == battle.Ongoing {
 		b.Result = battle.Lost
 	}
@@ -261,7 +256,13 @@ func (d *Driver) fight(troop string, recoverHP bool) int {
 // Fight, gozen sim battle and balance (gozen sim dive) use the same path. If host is nil, location moves, sounds and pictures are ignored.
 // The record of decision reasons is passed to b.OnDecision.
 // If seen is not nil, each emitted Step is passed to it in order. The result is left in b.Result (a draw if Ongoing).
+// A troop event that does not end is stopped (event.Runner.RunUnattended); only Driver reports it, as its operation's error.
 func AutoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, maxTurns int, seen func([]battle.Step)) {
+	autoBattle(db, st, b, host, maxTurns, seen, nil)
+}
+
+// autoBattle is AutoBattle with the problems of the troop's events passed to log (nil: they are dropped).
+func autoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, maxTurns int, seen func([]battle.Step), log func(error)) {
 	for _, u := range b.Party {
 		u.Auto = true
 	}
@@ -269,6 +270,7 @@ func AutoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, m
 		host = quietHost{}
 	}
 	sub := event.New(db, st, host)
+	sub.Log = log
 	play := func(steps []battle.Step) {
 		if seen != nil {
 			seen(steps)
@@ -277,9 +279,7 @@ func AutoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, m
 			if s.Kind == battle.Event {
 				sub.Extra = b.Env(nil)
 				sub.Start(s.Commands)
-				for sub.Running() {
-					sub.Unattended(sub.Next()) // no battle inside a battle
-				}
+				sub.RunUnattended() // no battle inside a battle
 			}
 		}
 	}
@@ -477,8 +477,8 @@ func (d *Driver) Shop(id string, buy map[string]int) {
 			}
 		}
 	}
-	for it, n := range buy {
-		for d.St.ItemCount(it, false) < n && slices.Contains(sh.Goods, it) && d.St.Buy(id, it, 1) {
+	for _, it := range slices.Sorted(maps.Keys(buy)) { // in id order: the money may run out, and a run must repeat
+		for d.St.ItemCount(it, false) < buy[it] && slices.Contains(sh.Goods, it) && d.St.Buy(id, it, 1) {
 		}
 	}
 }

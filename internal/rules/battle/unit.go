@@ -41,7 +41,10 @@ type Unit struct {
 	tactics *tacticRules // tactics and learned skills at battle start. nil means the legacy AI.
 
 	endured map[string]int // times a state's endure was withstood (per state, during this battle)
-	again   int            // number of consecutive attacks from the state's again
+	// reading are the stats whose stats_by multipliers are being worked out:
+	// one that reads its own stat gets the stat before the states (see Stat).
+	reading map[string]bool
+	again   int // number of consecutive attacks from the state's again
 }
 
 const stateForever = rpg.StateForever
@@ -78,9 +81,19 @@ func newEnemyUnit(b *Battle, id string, i int) *Unit {
 }
 
 // Stat is the stat with the states' multipliers, applied in state ID order so the
-// rounding is the same on every run.
+// rounding is the same on every run. A stats_by multiplier that reads the stat
+// it scales (the checker refuses the plain case; two states can still read
+// each other's) sees the stat before the states, so the reading ends.
 func (u *Unit) Stat(stat string) int {
 	v := float64(u.base[stat])
+	if u.reading[stat] {
+		return max(0, int(math.Round(v)))
+	}
+	if u.reading == nil {
+		u.reading = map[string]bool{}
+	}
+	u.reading[stat] = true
+	defer delete(u.reading, stat)
 	for _, s := range slices.Sorted(maps.Keys(u.States)) {
 		if n := u.States[s]; n <= 0 { // states not in the list do not affect stats either
 			continue
