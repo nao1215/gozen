@@ -1659,6 +1659,7 @@ func (c *checker) flagRead(name, where string) {
 // flagWarnings warn of a flag set but never read, and of one read but never set (by set,
 // gallery.scenes.set; --flags is for tests). They are kept apart from the scene warnings.
 func (c *checker) flagWarnings() {
+	c.db.unusedFlags = nil
 	for i, s := range c.db.Game.Gallery.Scenes {
 		if s.Flag != "" {
 			c.flagRead(s.Flag, fmt.Sprintf("game.yaml gallery.scenes[%d].flag", i))
@@ -1671,6 +1672,7 @@ func (c *checker) flagWarnings() {
 	}
 	for _, name := range slices.Sorted(maps.Keys(c.flagSets)) {
 		if _, ok := c.flagReads[name]; !ok && !declared(name) {
+			c.db.unusedFlags = append(c.db.unusedFlags, name)
 			warn(diag.UnusedFlag, c.flagSets[name], "flag.%s is set but nothing reads it (declare it in state.names if it is kept on purpose)", name)
 		}
 	}
@@ -1685,6 +1687,10 @@ func (c *checker) flagWarnings() {
 // FlagWarnings are the flags set but never read and read but never set, which Check found
 // (ADR 0029). A flag declared in state.names is not warned of.
 func (db *DB) FlagWarnings() []error { return slices.Clone(db.flagWarns) }
+
+// UnusedFlags are the names, sorted, of the flags FlagWarnings reports as set but
+// never read. gozen sim routes lists them without reading the messages.
+func (db *DB) UnusedFlags() []string { return slices.Clone(db.unusedFlags) }
 
 // choseReferences checks that every chose.<id> read has a choice with that id.
 func (c *checker) choseReferences() {
