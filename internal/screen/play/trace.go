@@ -1466,9 +1466,9 @@ func (g *Game) act(name string, args traceLine) bool {
 		}
 	case "run":
 		loc := g.db.Locations[s("location")]
-		if loc != nil && n("action") < len(loc.Actions) {
+		if at := n("action"); loc != nil && at >= 0 && at < len(loc.Actions) {
 			st.Location = s("location")
-			g.events.Start(loc.Actions[n("action")].Do)
+			g.events.Start(loc.Actions[at].Do)
 			return true
 		}
 	case "use_item":

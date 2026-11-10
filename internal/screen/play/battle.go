@@ -731,9 +731,6 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 	if st.Crit && st.Amount > 0 {
 		tags = append(tags, popup{text: lang.T("CRITICAL!"), color: colorGold})
 	}
-	if st.Target.Enemy && st.Element != "" && (st.Weak || st.Resisted) {
-		g.st.Vars["known_"+st.Target.EID+"_"+st.Element] = 1.0
-	}
 	if st.Weak && st.Amount > 0 {
 		tags = append(tags, popup{text: lang.T("WEAK!"), color: color.NRGBA{0xff, 0xd0, 0x50, 0xff}})
 	}
@@ -1152,6 +1149,9 @@ func (s *battleScene) event(g *Game) {
 			g.notices.add(r.Text)
 			s.req = nil
 		default:
+			// What a battle has no screen for is answered as a battle without a screen
+			// answers it (a battle of the event counts as won), so both end in the same state.
+			s.runner.Unattended(r)
 			s.req = nil
 		}
 		return

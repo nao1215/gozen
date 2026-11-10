@@ -183,6 +183,8 @@ func titleHintX(g *Game, tw float64) float64 {
 // opening that takes its place.
 func (g *Game) toTitle() {
 	g.st = nil
+	g.resetPlay(true)
+	g.events, g.autoRead = nil, false
 	if g.db.Game.NoMenus() {
 		g.opening()
 		return

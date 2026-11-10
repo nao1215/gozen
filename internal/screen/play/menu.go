@@ -136,10 +136,7 @@ func (m *menu) update(g *Game) {
 		return
 	}
 	if m.direct != "" && m.mode == "" && !m.picker {
-		g.pop()
-		if m.done != nil {
-			m.done()
-		}
+		g.leave(m.done)
 		return
 	}
 	switch {
@@ -187,7 +184,7 @@ func (m *menu) update(g *Game) {
 			if it.Consumed() {
 				g.st.AddItem(m.cmds[m.tabs.sel], -1)
 			}
-			g.pop()
+			g.leave(m.done)
 			g.events.Start(g.db.Events[it.Event].Do)
 			return
 		}
@@ -320,7 +317,7 @@ func (m *menu) updateItems(g *Game) {
 		if it.Consumed() {
 			g.st.AddItem(id, -1)
 		}
-		g.pop()
+		g.leave(m.done) // the event that opened the item screen goes on after the item's event
 		g.events.Start(g.db.Events[it.Event].Do)
 		return
 	}

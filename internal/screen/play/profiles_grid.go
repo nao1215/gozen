@@ -175,10 +175,7 @@ func (s *profileScreen) keepVisible(g *Game, cells []gridCell, height float64) {
 
 func (s *profileScreen) closeBook(g *Game) {
 	g.sfx("cancel")
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 }
 
 func (s *profileScreen) updateGrid(g *Game) {

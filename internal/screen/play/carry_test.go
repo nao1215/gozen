@@ -60,6 +60,28 @@ func TestCarryAllowlistShrinksOnReload(t *testing.T) {
 	}
 }
 
+// A carry.json whose vars or flags are null (hand-edited, or
+// truncated by another tool) is taken as it is, and the next carry command writes
+// into a nil map.
+func TestCarryRecordWithNullMaps(t *testing.T) {
+	db := testgame.Load(t, nil)
+	db.Game.Carry = []string{"var.runs", "flag.seen_*"}
+	store := savefile.DirStore(t.TempDir())
+	if err := store.Write("carry.json", []byte(`{"game_id":"`+db.Game.ID+`","vars":null,"flags":null}`)); err != nil {
+		t.Fatal(err)
+	}
+	g := &Game{db: db, store: store}
+	st := testgame.State(db, 1)
+	st.Vars["runs"] = 2.0
+	st.Flags["seen_end"] = true
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("carry panicked on a record with null maps: %v", r)
+		}
+	}()
+	g.keepCarry(st)
+}
+
 func TestCarryRejectsStructuredAndMismatchedValues(t *testing.T) {
 	db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: neutral\ncarry: [var.*]\nstate: {names: {var.runs: {type: number, initial: 0}}}\n" + testgame.Game})
 	g := &Game{db: db, carry: &carryRecord{Vars: map[string]any{"runs": "bad", "nested": map[string]any{"x": 1}, "valid": 2.0}}}

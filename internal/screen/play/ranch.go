@@ -168,10 +168,7 @@ func (r *ranch) label(g *Game, id string) string {
 }
 
 func (r *ranch) close(g *Game) {
-	g.pop()
-	if r.done != nil {
-		r.done()
-	}
+	g.leave(r.done)
 }
 
 func (r *ranch) queue(g *Game, cmd data.Command) {

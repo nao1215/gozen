@@ -315,7 +315,7 @@ func (g *Game) reload() {
 	switch {
 	case rp != nil:
 		msg = g.reloadReplay(rp, ri)
-	case g.st == nil:
+	case g.st == nil || len(g.stack) == 0: // no place to make again (reloadWait lets both through)
 		g.keepScenes(g.stack)
 	default:
 		if s, ok := g.stack[0].(*stageScene); ok { // the scene is made again: keep where the leader stood
@@ -464,15 +464,9 @@ func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 }
 
 func (g *Game) dropReplay(r *sceneReplay, at int) {
-	g.closeEnemyPuppets()
 	g.stack = g.stack[:at]
-	g.st, g.events, g.req = r.saved, r.events, nil
-	g.backlog, g.logView = r.log, nil
-	g.replaying = false
-	g.autoRead = r.autoRead
-	g.talk = talk{}
-	g.recruit = nil
-	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
+	r.restore(g)
+	g.resetPlay(false)
 	g.clearStage()
 	g.clearCast()
 }

@@ -82,8 +82,7 @@ func (s *shop) update(g *Game) {
 	if s.mode == "" {
 		chose, cancel := s.top.update(g)
 		if cancel || (chose && s.top.sel == 2) {
-			g.pop()
-			s.done()
+			g.leave(s.done)
 			return
 		}
 		if chose {
@@ -488,15 +487,13 @@ func (s *saveMenu) update(g *Game) {
 		s.msgT--
 		if s.msgT == 0 || g.in.advance() {
 			s.msgT = 0
-			g.pop()
-			s.done()
+			g.leave(s.done)
 		}
 		return
 	}
 	chose, cancel := s.slots.update(g)
 	if cancel {
-		g.pop()
-		s.done()
+		g.leave(s.done)
 		return
 	}
 	if !chose {

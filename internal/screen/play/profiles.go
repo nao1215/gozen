@@ -326,10 +326,7 @@ func (s *profileScreen) update(g *Game) {
 			return
 		}
 		g.sfx("cancel")
-		g.pop()
-		if s.done != nil {
-			s.done()
-		}
+		g.leave(s.done)
 		return
 	}
 	if n == 0 {

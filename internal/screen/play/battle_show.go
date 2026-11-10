@@ -234,7 +234,7 @@ func (s *battleScene) known(g *Game, u *battle.Unit) string {
 	var weak, strong []string
 	for _, el := range g.db.Ordered("elements") {
 		r, ok := u.Def.Resist[el]
-		if !ok || g.st.Vars["known_"+u.EID+"_"+el] == nil {
+		if !ok || g.st.Vars[battle.VarKnown+u.EID+"_"+el] == nil {
 			continue
 		}
 		name := g.db.Elements[el]

@@ -224,10 +224,7 @@ func (s *bestiaryScreen) update(g *Game) {
 	}
 	if g.in.cancel() || g.in.pressedKey(btnBestiary) {
 		g.sfx("cancel")
-		g.pop()
-		if s.done != nil {
-			s.done()
-		}
+		g.leave(s.done)
 		return
 	}
 	if len(s.ids) == 0 {

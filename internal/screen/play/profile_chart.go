@@ -301,10 +301,7 @@ func (s *profileScreen) updateChart(g *Game) {
 			g.sfx("cancel")
 		} else {
 			g.sfx("cancel")
-			g.pop()
-			if s.done != nil {
-				s.done()
-			}
+			g.leave(s.done)
 			return
 		}
 	}

@@ -9,7 +9,9 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"github.com/nao1215/gozen/internal/drive/headless"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -637,5 +639,65 @@ func TestBattleFoeNamesAndFittedMessage(t *testing.T) {
 	}
 	if h := s.messageHeight(g); h != 132 {
 		t.Errorf("the fixed window is %g tall, want 132", h)
+	}
+}
+
+// TestBattleWeaknessIsLearnedWithoutAScreen: var.known_<enemy>_<element> is a name the data
+// may read (gamedata state names), so the same weak hit must leave it in the state whether
+// the battle is shown or not. Only the screen's hit effect writes it now (damageHit).
+func TestBattleWeaknessIsLearnedWithoutAScreen(t *testing.T) {
+	g, _ := btlOpen(t, Options{}, "", "")
+	b := battle.New(g.db, g.st, "one")
+	b.Begin()
+	b.StartTurn([]battle.Action{{User: b.Party[0], Skill: "fire", Target: b.Foes[0]}, {User: b.Party[1], Pass: true}})
+	weak := false
+	for {
+		steps, done := b.Next()
+		for _, st := range steps {
+			weak = weak || st.Kind == battle.Damage && st.Weak && st.Element == "fire" && st.Target == b.Foes[0]
+		}
+		if done {
+			break
+		}
+	}
+	if !weak {
+		t.Fatal("the fire skill did not land a weak hit on the mote")
+	}
+	if g.st.Vars["known_mote_fire"] == nil {
+		t.Fatal("a weak fire hit fought by the rules alone (headless, session, sim) left var.known_mote_fire unset: only the battle screen's hit effect sets it")
+	}
+}
+
+// TestBattleEventBattleMatchesHeadless: a troop's event that asks for a battle is answered as
+// won without a screen (AutoBattle) and runs its on_win; the screen must end in the same state.
+func TestBattleEventBattleMatchesHeadless(t *testing.T) {
+	const troops = `  nested:
+    members: [mote]
+    can_escape: false
+    events:
+      - when: "turn == 1"
+        do:
+          - battle: one
+            on_win: [{set: {flag.nested_won: true}}]
+`
+	g, _ := btlOpen(t, Options{Battle: "nested"}, "", troops)
+	s := btlAsk(t, g)
+	screen := g.st.Flags["nested_won"]
+
+	// the same state, fought without a screen
+	saved, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, saved, g.st.Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	headless.AutoBattle(g.db, st, battle.New(g.db, st, "nested"), nil, 1, nil)
+	if !st.Flags["nested_won"] {
+		t.Fatal("the run without a screen did not take the battle of the event as won")
+	}
+	if !screen {
+		t.Fatalf("on the screen (phase %d) the battle of the troop's event was dropped: on_win never ran, without a screen it does", s.phase)
 	}
 }
