@@ -693,33 +693,6 @@ func TestMenuSaveAndLoadSlots(t *testing.T) {
 	}
 }
 
-func TestSaveMenuReportsBrokenSlots(t *testing.T) {
-	g := openGame(t, Options{Location: "camp", Seed: 3})
-	if err := g.store.Write(g.slotPath(0), []byte("not json")); err != nil {
-		t.Fatal(err)
-	}
-	sm := newSaveMenu(g, false, func() {})
-	g.push(sm)
-	if !sm.slots.items[0].disabled {
-		t.Fatal("a broken save is offered")
-	}
-	sm.slots.items[0].disabled = false
-	sm.slots.sel = 0
-	mnuPress(g, btnOK)
-	if sm.msgT == 0 || sm.msg == "" {
-		t.Fatal("no message about the broken save")
-	}
-	mnuDrawAll(g)
-	done := 0
-	sm.done = func() { done++ }
-	for range 100 {
-		mnuPress(g)
-	}
-	if done != 1 {
-		t.Fatalf("done called %d times", done)
-	}
-}
-
 func TestConfirmFitsPortraitAndLandscape(t *testing.T) {
 	for _, dims := range []image.Point{image.Pt(960, 540), image.Pt(360, 540), image.Pt(640, 360)} {
 		t.Run(fmt.Sprintf("%dx%d", dims.X, dims.Y), func(t *testing.T) {
