@@ -54,8 +54,10 @@ func (b *noticeBoard) offer(text string, act func()) {
 // tapNotice runs the offer under a tap and tells that it took the tap. Only
 // the notices over a scene with nothing on top of it take one.
 func (g *Game) tapNotice() bool {
+	// The raw click is tested first: asking for input marks the game ready
+	// for a script's next command, and only an offer under the click is.
 	in := &g.in
-	if !in.inspect(in.click) || len(g.stack) != 1 || g.phone != nil || !g.noticesShown() {
+	if !in.click || len(g.stack) != 1 || g.phone != nil || !g.noticesShown() {
 		return false
 	}
 	x, y := float64(in.mouse.X), float64(in.mouse.Y)
