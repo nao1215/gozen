@@ -19,11 +19,11 @@ import (
 	"github.com/nao1215/gozen/internal/model/gamepackage"
 )
 
-// CopyGame selects runtime content from a prepared game tree into an empty
+// copyGame selects runtime content from a prepared game tree into an empty
 // staging directory. Approval-controlled inputs must first use release.
 // It returns sorted slash-separated filenames for the browser manifest, and the game
 // loaded from the copy, which it checks.
-func CopyGame(ctx context.Context, src, dst string) ([]string, *gamedata.DB, error) {
+func copyGame(ctx context.Context, src, dst string) ([]string, *gamedata.DB, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const PageShrink = 0.8
+const pageShrink = 0.8
 
 // maxPageParts bounds the quadratic page balancing pass. Longer text uses the
 // linear fallback in paginateWith, preserving all lines.
@@ -30,7 +30,7 @@ func paginateWith(s string, size float64, lines int, wrap func(string, float64) 
 		return ls
 	}
 	sizes := []float64{size}
-	for sz := size * 0.94; sz > 0 && sz < size && sz >= size*PageShrink; sz *= 0.94 {
+	for sz := size * 0.94; sz > 0 && sz < size && sz >= size*pageShrink; sz *= 0.94 {
 		sizes = append(sizes, sz)
 	}
 	for _, sz := range sizes {

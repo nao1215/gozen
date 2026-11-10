@@ -58,7 +58,7 @@ var builtinEffectSeconds = map[string]float64{
 	"fanfare":   1.8,
 }
 
-var Effects = []string{
+var effectNames = []string{
 	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
 
 	"cutin", "encounter", "boss", "stairs", "chest",

@@ -48,7 +48,7 @@ func Desktop(ctx context.Context, src, dst, bundle, target, version string) erro
 		if err := copyLicenses(bundle, stage); err != nil {
 			return err
 		}
-		if _, _, err := CopyGame(ctx, src, filepath.Join(stage, "game")); err != nil {
+		if _, _, err := copyGame(ctx, src, filepath.Join(stage, "game")); err != nil {
 			return err
 		}
 		return nil

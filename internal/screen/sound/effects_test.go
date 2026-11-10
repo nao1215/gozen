@@ -9,7 +9,7 @@ import (
 
 func TestBuiltInEffectsAreAllMadeAndBounded(t *testing.T) {
 	made := testSession.synthEffects()
-	for _, name := range Effects {
+	for _, name := range effectNames {
 		b, ok := made[name]
 		if !ok {
 			t.Errorf("effect %q is listed but not made", name)
@@ -27,14 +27,14 @@ func TestBuiltInEffectsAreAllMadeAndBounded(t *testing.T) {
 			}
 		}
 	}
-	if len(made) != len(Effects) {
-		t.Errorf("made %d effects, listed %d", len(made), len(Effects))
+	if len(made) != len(effectNames) {
+		t.Errorf("made %d effects, listed %d", len(made), len(effectNames))
 	}
 }
 
 func TestBuiltInEffectsAreDeterministic(t *testing.T) {
 	a, b := testSession.synthEffects(), testSession.synthEffects()
-	for _, name := range Effects {
+	for _, name := range effectNames {
 		if !bytes.Equal(a[name], b[name]) {
 			t.Errorf("effect %q differs between runs", name)
 		}

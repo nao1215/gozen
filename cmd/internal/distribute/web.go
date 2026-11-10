@@ -65,7 +65,7 @@ func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 		if err := gzipPlayer(filepath.Join(stage, "gozen-player.wasm")); err != nil {
 			return err
 		}
-		files, db, err := CopyGame(ctx, src, filepath.Join(stage, "game"))
+		files, db, err := copyGame(ctx, src, filepath.Join(stage, "game"))
 		if err != nil {
 			return err
 		}

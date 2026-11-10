@@ -42,8 +42,8 @@ func Relative(name string) bool {
 // ID is a single portable component, suitable for generated file names.
 func ID(name string) bool { return name != "." && Relative(name) && !strings.Contains(name, "/") }
 
-// Canonical resolves symlinks in the existing prefix even for a new destination.
-func Canonical(name string) (string, error) {
+// canonical resolves symlinks in the existing prefix even for a new destination.
+func canonical(name string) (string, error) {
 	if name == "" {
 		return "", errors.New("empty path")
 	}
@@ -101,7 +101,7 @@ func Destination(dst string, protected ...string) error {
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	d, err := Canonical(dst)
+	d, err := canonical(dst)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func Destination(dst string, protected ...string) error {
 		if src == "" {
 			continue
 		}
-		s, err := Canonical(src)
+		s, err := canonical(src)
 		if err != nil {
 			return err
 		}
