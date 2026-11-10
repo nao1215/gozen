@@ -163,3 +163,55 @@ func (m *memStore) Remove(name string) error {
 	delete(m.times, name)
 	return nil
 }
+
+// Serialized lets several goroutines share st, one call at a time, for a Store
+// a host supplies whose own guard is unknown: play writes its saves on the game
+// thread while a phone store installs a package archive into the same Store
+// from a goroutine. ModTime is forwarded when st has it.
+func Serialized(st Store) Store {
+	if s, ok := st.(*serialStore); ok {
+		return s
+	}
+	return &serialStore{st: st}
+}
+
+type serialStore struct {
+	mu sync.Mutex
+	st Store
+}
+
+func (s *serialStore) Read(name string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.st.Read(name)
+}
+
+func (s *serialStore) Write(name string, b []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.st.Write(name, b)
+}
+
+func (s *serialStore) List() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.st.List()
+}
+
+func (s *serialStore) Remove(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.st.Remove(name)
+}
+
+// ModTime reports the inner Store's time of a save, or an error when it keeps none.
+func (s *serialStore) ModTime(name string) (time.Time, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if m, ok := s.st.(interface {
+		ModTime(name string) (time.Time, error)
+	}); ok {
+		return m.ModTime(name)
+	}
+	return time.Time{}, errors.ErrUnsupported
+}

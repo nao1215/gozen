@@ -18,6 +18,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A session's answer outside a choice's answers leaves the choice asked; before, the choice was passed over and a save made then could not be restored.
 - A party without MP (a game without magic) is never counted as worn by MP, so `sim dive --worn-mp`, the balance runner and the design evaluation bot no longer turn back on every floor and never face a boss.
 - `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
+- An authored screen's entry whose `destination` is the screen that opened it closes back to that screen in sessions and in save replay, as it already did in play: the opener's action goes on and one copy of it shows. Before, a session stacked a second copy and the opener's remaining commands waited until it was closed.
+- A save Store supplied by the host (the browser player, an embedding) is called one call at a time, since the phone store installs package archives into it from a goroutine while the game writes saves. A replaced package archive that fails to close after the new selection was saved is logged instead of shown as a failed installation.
 
 ## v0.23.2 - 2026-11-09
 

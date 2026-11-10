@@ -362,6 +362,23 @@ func (row ScreenRow) Available(db *data.DB, source data.ScreenEntry, env expr.En
 	return !blocked && err == nil, err
 }
 
+// ReturnsTo tells that a screen whose entry goes to destination closes back to
+// the screen under it instead of stacking destination over it: the screen
+// under is destination itself without arguments, or the opener whose action
+// opened this screen is still running and destination is that opener or a home
+// screen. Play, the session and save replay share it, so going "to" the opener
+// resumes the opener's action everywhere rather than leaving a second copy.
+func ReturnsTo(db *data.DB, destination, under string, underArgs int, openerRunning bool) bool {
+	if !openerRunning {
+		return under == destination && underArgs == 0
+	}
+	if under == destination {
+		return true
+	}
+	def := db.Game.Screens[destination]
+	return def != nil && def.Home
+}
+
 // ScreenEntries yields visible rows in authored/collection order. The index
 // identifies the source command root; Args distinguishes repeated rows. Guards,
 // targets and labels use current state and frozen row bindings. Errors hide the

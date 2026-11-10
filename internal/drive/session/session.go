@@ -469,6 +469,14 @@ func (s *Session) next() Request {
 				s.screens = s.screens[:len(s.screens)-1]
 				continue
 			}
+			if frame.destination != "" && len(s.screens) > 1 {
+				under := s.screens[len(s.screens)-2]
+				if event.ReturnsTo(s.db, frame.destination, under.name, len(under.args), frame.runner.Running()) {
+					// Back to the opener: its action goes on, then it shows again.
+					s.screens = s.screens[:len(s.screens)-1]
+					continue
+				}
+			}
 			if frame.destination != "" {
 				frame.name, frame.args, frame.destination = frame.destination, nil, ""
 			}

@@ -19,15 +19,20 @@ type Store = savefile.Store
 // (memory that keeps no save).
 func openStore(opts Options, id string, trial bool) (st Store, given bool, err error) {
 	switch {
+	// A host's Store is shared with the phone store's installs, which write
+	// archives from a goroutine, so its calls are made one at a time.
 	case opts.Store != nil:
-		return opts.Store, true, nil
+		return savefile.Serialized(opts.Store), true, nil
 	case opts.SaveDir != "":
 		return savefile.DirStore(opts.SaveDir), true, nil
 	case trial:
 		return savefile.MemStore(), true, nil
 	case opts.StoreFor != nil:
 		st, err = opts.StoreFor(id)
-		return st, false, err
+		if err != nil {
+			return nil, false, err
+		}
+		return savefile.Serialized(st), false, nil
 	}
 	st, err = defaultStore(id)
 	return st, false, err
