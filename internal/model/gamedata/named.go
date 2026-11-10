@@ -12,52 +12,22 @@ import (
 // person (<place>.<name>) and a dungeon tile (<place>.tile.<char>). A note of F9, F5 and a
 // save made in the middle of an event (ADR 0025) name the commands they begin again.
 // Screen entry actions use screen:<id>:<authored index> for the same consumers.
+// The label and the person's name are the text as written, not as shown in the language
+// chosen now, and a second entry of the same name in a place is <name>#2
+// (DB.eachLocationList), so a name finds one list in every language.
 
 // eachNamed passes every named command list to f until it returns true.
-func (db *DB) eachNamed(f func(name string, cmds []Command) bool) {
-	for id, screen := range db.Game.Screens {
-		if screen == nil {
-			continue
-		}
-		for i, entry := range screen.Entries {
-			if f(fmt.Sprintf("screen:%s:%d", id, i), entry.Do) {
-				return
-			}
-		}
-	}
-	for id, ev := range db.Events {
-		if f(id, ev.Do) {
-			return
-		}
-	}
-	for id, loc := range db.Locations {
-		for _, a := range loc.Actions {
-			if f(id+"."+a.Label, a.Do) {
-				return
-			}
-		}
-		for _, p := range loc.People {
-			if f(id+"."+p.Name, p.Talk) {
-				return
-			}
-		}
-		if loc.Dungeon != nil {
-			for c, t := range loc.Dungeon.Tiles {
-				if t != nil && f(id+".tile."+c, t.Do) {
-					return
-				}
-			}
-		}
-	}
+func (db *DB) eachNamed(f func(l commandList) bool) {
+	db.eachCommandList(func(l commandList) bool { return l.name != "" && f(l) })
 }
 
 // CommandsName is the name of a command list of the data ("" when it is none of them, such
 // as the commands of arriving at a place, made on the spot).
 func (db *DB) CommandsName(cmds []Command) string {
 	name := ""
-	db.eachNamed(func(n string, c []Command) bool {
-		if len(c) > 0 && len(cmds) > 0 && &c[0] == &cmds[0] {
-			name = n
+	db.eachNamed(func(l commandList) bool {
+		if len(l.cmds) > 0 && len(cmds) > 0 && &l.cmds[0] == &cmds[0] {
+			name = l.name
 			return true
 		}
 		return false
@@ -65,16 +35,24 @@ func (db *DB) CommandsName(cmds []Command) string {
 	return name
 }
 
-// NamedCommands is the command list of that name (nil when there is none).
+// NamedCommands is the command list of that name (nil when there is none). A name kept
+// before names came from the written text holds the label as it was shown then: it still
+// finds its list while the game is shown in that language and no list has it as its name.
 func (db *DB) NamedCommands(name string) []Command {
-	var out []Command
-	db.eachNamed(func(n string, c []Command) bool {
-		if n == name {
-			out = c
+	var out, old []Command
+	db.eachNamed(func(l commandList) bool {
+		if l.name == name {
+			out = l.cmds
 			return true
+		}
+		if l.shown == name && old == nil {
+			old = l.cmds
 		}
 		return false
 	})
+	if out == nil {
+		return old
+	}
 	return out
 }
 
