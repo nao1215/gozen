@@ -356,7 +356,7 @@ func (g *Game) reloadState(now, save []byte, inEvent bool, name string, lines in
 	start := func(b []byte, fromEvent bool) bool {
 		rng := baseRng
 		if fromEvent && rnd != nil {
-			if p := rand.NewPCG(1, 2); p.UnmarshalBinary(rnd) == nil {
+			if p, err := savedPCG(rnd); err == nil {
 				g.pcg, rng = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
 			}
 		}

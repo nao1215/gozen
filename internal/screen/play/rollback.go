@@ -108,10 +108,7 @@ func (g *Game) rollBack() {
 
 // replayEvent begins an event again from its saved start and reads on to its line.
 func (g *Game) replayEvent(e backEvent) bool {
-	p := rand.NewPCG(1, 2)
-	if p.UnmarshalBinary(e.rnd) != nil {
-		p = g.newPCG()
-	}
+	p := g.pcgFrom(e.rnd)
 	st, err := rpg.Parse(g.db, e.snap, rand.New(p)) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
 	if err != nil {
 		log.Printf("roll back: %v", err)

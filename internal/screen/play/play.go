@@ -916,6 +916,24 @@ func (g *Game) newPCG() *rand.PCG {
 	return rand.NewPCG(rand.Uint64(), rand.Uint64()) //nolint:gosec // Gameplay randomness is not used for security.
 }
 
+// savedPCG reads back a random stream that a save, a memo, a rollback point or
+// a battle record kept with MarshalBinary.
+func savedPCG(b []byte) (*rand.PCG, error) {
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(b); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// pcgFrom is the recorded stream b, or a new one when b holds none.
+func (g *Game) pcgFrom(b []byte) *rand.PCG {
+	if p, err := savedPCG(b); err == nil {
+		return p
+	}
+	return g.newPCG()
+}
+
 func (g *Game) rng() *rand.Rand {
 	if g.opts.Seed != 0 {
 		return rand.New(g.newPCG()) //nolint:gosec // Gameplay randomness is not used for security.
