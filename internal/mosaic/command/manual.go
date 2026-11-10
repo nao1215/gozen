@@ -38,13 +38,13 @@ func (c *coords) Type() string { return "coords" }
 func (c *coords) Set(s string) error {
 	fields := strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
 	if len(fields) == 0 {
-		return errors.New("coordinates cannot be empty")
+		return cliio.Invalid(diag.BadValue, "coordinates cannot be empty")
 	}
 	var v []float64
 	for _, field := range fields {
 		f, err := strconv.ParseFloat(field, 64)
 		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) || math.Abs(f) > 1_000_000 {
-			return fmt.Errorf("invalid coordinate %q", field)
+			return cliio.Invalid(diag.BadValue, "invalid coordinate %q", field)
 		}
 		v = append(v, f)
 	}
@@ -122,13 +122,13 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 			return cliio.Parse(diag.Operands.Errorf("expected a game directory and an image: gozen mosaic %s [OPTIONS] <game-dir> <IMAGE>", sub))
 		}
 		if *size < 1 || *size > 4096 || *step < 0 {
-			return errors.New("view size must be 1..4096 and step >= 0")
+			return cliio.Invalid(diag.BadValue, "view size must be 1..4096 and step >= 0")
 		}
 		if sub != "add" && sub != "drop" && (len(boxes)+len(polys)+len(ellipses) > 0) {
-			return errors.New("box, polygon, and ellipse flags require add or drop")
+			return cliio.Invalid(diag.OptionConflict, "box, polygon, and ellipse flags require add or drop")
 		}
 		if sub == "drop" && (len(polys)+len(ellipses) > 0) {
-			return errors.New("drop requires rectangles")
+			return cliio.Invalid(diag.OptionConflict, "drop requires rectangles")
 		}
 		gameDir := fs.Arg(0)
 		c, err := o.setup(ctx, gameDir)
@@ -174,7 +174,7 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 			for i, f := range v {
 				if *norm {
 					if f < 0 || f > 1 {
-						return nil, errors.New("normalized coordinates must be in [0,1]")
+						return nil, cliio.Invalid(diag.BadValue, "normalized coordinates must be in [0,1]")
 					}
 					if i%2 == 0 {
 						f *= float64(b.Dx())
@@ -187,16 +187,16 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 			return out, nil
 		}
 		if sub != "add" && sub != "drop" && sub != "grow" && len(rects)+len(boxes)+len(polys)+len(ellipses) > 0 {
-			return errors.New("geometry flags require add, drop, or grow")
+			return cliio.Invalid(diag.OptionConflict, "geometry flags require add, drop, or grow")
 		}
 		needsManual := sub == "add" || sub == "drop" || sub == "grow" || sub == "skip" || sub == "check" || sub == "clear"
 		if needsManual && o.manualFile == "" {
-			return errors.New("--manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
+			return cliio.Invalid(diag.OptionRequired, "--manual（または環境変数 MOSAIC_MANUAL）に manual の YAML を指定する")
 		}
 		var geometryErr error
 		clip := func(x []int) [4]int {
 			if x[2] <= 0 || x[3] <= 0 {
-				geometryErr = errors.New("rectangle width and height must be positive")
+				geometryErr = cliio.Invalid(diag.BadValue, "rectangle width and height must be positive")
 				return [4]int{}
 			}
 			r := clipRect(x, b)
@@ -261,13 +261,13 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 					return err
 				}
 				if x[2] <= 0 || x[3] <= 0 {
-					return errors.New("ellipse radii must be positive")
+					return cliio.Invalid(diag.BadValue, "ellipse radii must be positive")
 				}
 				m.Poly = append(m.Poly, ellipse(x[0], x[1], x[2], x[3], 48))
 				n++
 			}
 			if n == 0 {
-				return errors.New("add には --rect・--box・--poly・--ellipse のどれかが要る")
+				return cliio.Invalid(diag.OptionRequired, "add には --rect・--box・--poly・--ellipse のどれかが要る")
 			}
 			m.Checked = false
 		case "drop":
@@ -293,13 +293,13 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 				for id := range strings.SplitSeq(*regionID, ",") {
 					i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
 					if err != nil || i < 1 || i > len(e.autoRegions()) {
-						return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
+						return cliio.Invalid(diag.UnknownName, "--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(e.autoRegions()))
 					}
 					m.Drop = append(m.Drop, e.autoRegions()[i-1])
 				}
 			}
 			if len(m.Drop) == len(c.manual[pic].Drop) {
-				return errors.New("drop には --region-id か --rect・--box が要る")
+				return cliio.Invalid(diag.OptionRequired, "drop には --region-id か --rect・--box が要る")
 			}
 			m.Checked = false
 		case "grow":
@@ -307,14 +307,14 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 			fs.Visit(func(f *pflag.Flag) { set[f.Name] = true })
 			if set["margin"] {
 				if o.margin < 0 {
-					return errors.New("--margin は 0 以上")
+					return cliio.Invalid(diag.BadValue, "--margin は 0 以上")
 				}
 				m.Margin = o.margin
 			}
 			d := [4]int{*left + *by, *top + *by, *right + *by, *bottom + *by}
 			if *regionID != "" {
 				if d == [4]int{} {
-					return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
+					return cliio.Invalid(diag.OptionRequired, "grow には --by か --left・--top・--right・--bottom が要る")
 				}
 				e, ok := reportEntry(c, pic)
 				if !ok {
@@ -330,7 +330,7 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 					for id := range strings.SplitSeq(*regionID, ",") {
 						i, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(id)), "A"))
 						if err != nil || i < 1 || i > len(regs) {
-							return fmt.Errorf("--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
+							return cliio.Invalid(diag.UnknownName, "--region-id %s が無い（自動の範囲は A1〜A%d）", id, len(regs))
 						}
 						ids = append(ids, i-1)
 					}
@@ -342,7 +342,7 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 			} else if len(rects) > 0 {
 
 				if d == [4]int{} {
-					return errors.New("grow には --by か --left・--top・--right・--bottom が要る")
+					return cliio.Invalid(diag.OptionRequired, "grow には --by か --left・--top・--right・--bottom が要る")
 				}
 				for _, v := range rects {
 					x, err := conv(v, 4, "--rect")
@@ -353,7 +353,7 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 					m.Grow = append(m.Grow, [8]int{r[0], r[1], r[2], r[3], d[0], d[1], d[2], d[3]})
 				}
 			} else if !set["margin"] {
-				return errors.New("grow には --region-id か --rect（と広げる px）か --margin が要る")
+				return cliio.Invalid(diag.OptionRequired, "grow には --region-id か --rect（と広げる px）か --margin が要る")
 			}
 			m.Checked = false
 		case "skip":
@@ -472,7 +472,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 			img, err = decode(orig)
 		}
 	default:
-		return "", errors.New("--src は original か masked")
+		return "", cliio.Invalid(diag.BadValue, "--src は original か masked")
 	}
 	if err != nil {
 		return "", err
@@ -483,7 +483,7 @@ func manualView(c config, pic, orig, src string, region image.Rectangle, size, s
 	}
 	region = region.Intersect(b)
 	if region.Empty() {
-		return "", errors.New("--region が絵の外")
+		return "", cliio.Invalid(diag.BadValue, "--region が絵の外")
 	}
 	var ov overlay
 	if ok {

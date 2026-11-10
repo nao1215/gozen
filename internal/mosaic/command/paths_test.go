@@ -343,3 +343,22 @@ func TestPlanGeometryRules(t *testing.T) {
 		t.Fatalf("regions %v", regions)
 	}
 }
+
+// An option value the command line got wrong is a usage error: exit 2 with a
+// pointer to --help, not exit 1 with the inference requirements.
+func TestInvalidOptionValuesAreUsageErrors(t *testing.T) {
+	game, out := fixture(t)
+	for _, flags := range [][]string{
+		{"--quality", "0"},
+		{"--threshold", "7"},
+		{"--shape", "circle"},
+		{"--passes", "bogus"},
+		{"--labels", "nosuch"},
+	} {
+		args := append([]string{"auto", "-n", "-o", out}, flags...)
+		code, _, diag := invoke(t, append(args, game, "pattern.png")...)
+		if code != 2 || strings.Contains(diag, "Requirements:") || !strings.Contains(diag, "--help") {
+			t.Errorf("%v: exit %d, want 2 with a usage hint: %s", flags, code, diag)
+		}
+	}
+}

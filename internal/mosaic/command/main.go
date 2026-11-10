@@ -134,13 +134,13 @@ func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
 	for l := range strings.SplitSeq(labels, ",") {
 		if l = strings.TrimSpace(l); l != "" {
 			if !slices.Contains(classes, l) {
-				return config{}, fmt.Errorf("unknown label %q: --labels must be chosen from the classes %s", l, strings.Join(classes, ","))
+				return config{}, cliio.Invalid(diag.UnknownName, "unknown label %q: --labels must be chosen from the classes %s", l, strings.Join(classes, ","))
 			}
 			p.labels[l] = true
 		}
 	}
 	if len(p.labels) == 0 {
-		return config{}, errors.New("--labels cannot be empty")
+		return config{}, cliio.Invalid(diag.BadValue, "--labels cannot be empty")
 	}
 	out := o.out
 	if out == "" {
@@ -148,16 +148,16 @@ func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
 	}
 	c := config{classes: classes, classSource: source, outw: o.outw, diag: o.diag, gameDir: gameDir, out: out, block: o.block, quality: o.quality, p: p, opts: o}
 	if o.shape != "mask" && o.shape != "box" {
-		return c, fmt.Errorf("--shape は mask か box（%q）", o.shape)
+		return c, cliio.Invalid(diag.BadValue, "--shape は mask か box（%q）", o.shape)
 	}
 	if err = protectPaths(gameDir, out, o.fixFile, o.manualFile, o.tagsFile); err != nil {
 		return c, err
 	}
 	if c.passes, err = detect.PassesByName(o.passes); err != nil {
-		return c, err
+		return c, cliio.Invalid(diag.BadValue, "--passes: %v", err)
 	}
 	if len(c.passes) == 0 {
-		return c, errors.New("--passes cannot be empty")
+		return c, cliio.Invalid(diag.BadValue, "--passes cannot be empty")
 	}
 	human, err := mosaic.LoadFixes(o.fixFile)
 	if err != nil {

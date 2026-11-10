@@ -116,7 +116,7 @@ func Run(ctx context.Context, db *data.DB, cfg Config) (*Result, error) {
 		return nil, errors.New("the game has no campaign (game.yaml campaign)")
 	}
 	if !slices.Contains(Strategies, cfg.As) {
-		return nil, fmt.Errorf("--as is one of %v, not %q", Strategies, cfg.As)
+		return nil, fmt.Errorf("the strategy is one of %v, not %q", Strategies, cfg.As)
 	}
 	if cfg.MaxOrder <= 0 {
 		cfg.MaxOrder = 2000

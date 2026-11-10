@@ -353,15 +353,10 @@ func (c *command) checkCmd() clihelp.Operation {
 	baseline := f.String("baseline", "", "compare warning counts per code and file with baseline `FILE`; only growth fails")
 	writeBaseline := f.String("write-baseline", "", "write warning counts to a new `FILE` (an existing one is not overwritten)")
 	c.reporting(f)
-	clihelp.Choices(f.Lookup("only"), "", "structure", "layout")
+	clihelp.Choices(f.Lookup("only"), "structure", "layout")
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
 		if f.NArg() != 1 {
 			return cliio.Invalid(diag.Operands, "check expects one directory")
-		}
-		switch *only {
-		case "", "structure", "layout":
-		default:
-			return cliio.Invalid(diag.NotAChoice, "--only is structure or layout, not %q", *only)
 		}
 		if *strict || *baseline != "" || *writeBaseline != "" {
 			return c.checkEnforced(f.Arg(0), *only, checkPolicy{*strict, *baseline, *writeBaseline})

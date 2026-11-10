@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	md "github.com/nao1215/markdown"
@@ -28,7 +29,10 @@ var templates embed.FS
 type Config struct{ Template, ID, Title string }
 
 // Has reports whether name is a bundled template.
-func Has(name string) bool { return name == "rpg" || name == "novel" || name == "campaign" }
+func Has(name string) bool { return slices.Contains(Templates(), name) }
+
+// Templates returns the template names in the order the help lists them.
+func Templates() []string { return []string{"rpg", "novel", "campaign"} }
 
 // Write creates and validates a template inside a caller-owned staging directory.
 // The caller publishes it only after success; existing files are never replaced.
