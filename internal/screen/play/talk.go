@@ -225,7 +225,7 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 				text += ln
 			}
 		}
-		lines, sz, _ := PromptLines(&g.db.Game, text, c.Options)
+		lines, sz, _ := PromptLines(&g.db.Game, text)
 		t.pages, t.size = [][]string{lines}, sz
 		t.setPage(0)
 		t.shown = t.total

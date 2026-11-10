@@ -332,7 +332,7 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 	if p == nil || p.tab == tabFrames {
 		return
 	}
-	sw, sh := g.screen()
+	_, sh := g.screen()
 	fill(screen, color.NRGBA{0x10, 0x14, 0x1c, 0xe8})
 	const size = 18.0
 	x := 24.0
@@ -387,7 +387,6 @@ func (g *Game) drawPanel(screen *ebiten.Image) {
 		gfx.DrawTextLeft(screen, "> "+p.text+"_", 24, y+rowH*1.5, size, g.th.text)
 	case tabFrames, numTabs:
 	}
-	_ = sw
 }
 
 // panelGap is the room between two columns of the panel's tables.
