@@ -1,9 +1,14 @@
 package doll
 
 import (
+	"bytes"
 	"image"
 	"image/color"
+	"math"
+	"runtime"
 	"testing"
+
+	xdraw "golang.org/x/image/draw"
 )
 
 func TestOpaqueBounds(t *testing.T) {
@@ -283,6 +288,52 @@ func TestPoseCycle(t *testing.T) {
 	}
 	if len(seen) != 4 {
 		t.Fatalf("walk uses rows %v", seen)
+	}
+}
+
+// A face box comes from a game's file (assets/faces.json) and a face_at from its
+// YAML, and the scaler's time and memory grow with the rectangle it is given, not
+// with the 128x128 result or the picture: only the part inside the picture is
+// read, whatever the numbers, and the rest of the face stays clear.
+func TestFaceCutsReadOnlyThePicture(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 64, 64))
+	for i := range img.Pix {
+		img.Pix[i] = 255
+	}
+	// The cut of this box is 8400 pixels a side: the picture is one pixel of the face.
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	face := asRGBA(t, FaceIn(img, image.Rect(0, 0, 6000, 6000)))
+	runtime.ReadMemStats(&after)
+	if kb := (after.TotalAlloc - before.TotalAlloc) >> 10; kb > 1024 {
+		t.Fatalf("FaceIn allocated %d KiB for a 128x128 face of a 64x64 picture", kb)
+	}
+	if face.RGBAAt(18, 18).A == 0 || face.RGBAAt(17, 18).A != 0 || face.RGBAAt(19, 19).A != 0 || face.RGBAAt(100, 100).A != 0 {
+		t.Fatalf("the picture is not the one pixel at 18,18 of the face: %v", face.RGBAAt(18, 18))
+	}
+	// A box half out of the picture: the half inside is drawn, the other is clear.
+	half := asRGBA(t, FaceIn(img, image.Rect(-32, 0, 32, 64)))
+	if half.RGBAAt(32, 64).A != 0 || half.RGBAAt(96, 64).A != 255 {
+		t.Fatalf("left %v right %v", half.RGBAAt(32, 64), half.RGBAAt(96, 64))
+	}
+	// A box inside the picture is cut as the scaler alone cuts it.
+	inside := image.Rect(8, 8, 40, 40)
+	want := image.NewRGBA(image.Rect(0, 0, 128, 128))
+	xdraw.CatmullRom.Scale(want, want.Bounds(), img, image.Rect(1, 1, 46, 46), xdraw.Src, nil)
+	if got := asRGBA(t, FaceIn(img, inside)); !bytes.Equal(got.Pix, want.Pix) {
+		t.Fatal("a box inside the picture is not cut as before")
+	}
+	// Numbers no picture has: nothing is read and nothing overflows.
+	for name, f := range map[string]image.Image{
+		"FaceIn far away":       FaceIn(img, image.Rect(math.MinInt, math.MinInt, math.MinInt+2, math.MinInt+2)),
+		"FaceIn of everything":  FaceIn(img, image.Rect(math.MinInt, math.MinInt, math.MaxInt, math.MaxInt)),
+		"FaceAt of a huge part": FaceAt(img, 0.5, 0, 1e300),
+		"FaceAt of no number":   FaceAt(img, math.NaN(), math.NaN(), math.NaN()),
+		"FaceAt out of it":      FaceAt(img, 1e9, 1e9, 0.5),
+	} {
+		if f.Bounds() != image.Rect(0, 0, 128, 128) {
+			t.Errorf("%s is %v", name, f.Bounds())
+		}
 	}
 }
 

@@ -525,7 +525,20 @@ func decode(path string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	img, _, err := image.Decode(f)
+	// The header is checked first: a small file may claim a picture of gigabytes.
+	// The limits are those of a game's pictures (8192 a side, 32 Mi pixels), which
+	// also keep the covered pixels mosaic.BestOffset counts within 32 bits.
+	var img image.Image
+	cfg, _, err := image.DecodeConfig(f)
+	if err == nil && (cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > 8192 || cfg.Height > 8192 || cfg.Width > (32<<20)/cfg.Height) {
+		err = fmt.Errorf("picture dimensions %dx%d exceed limits (8192 per side, 33554432 pixels)", cfg.Width, cfg.Height)
+	}
+	if err == nil {
+		_, err = f.Seek(0, io.SeekStart)
+	}
+	if err == nil {
+		img, _, err = image.Decode(f)
+	}
 	return img, errors.Join(err, f.Close())
 }
 

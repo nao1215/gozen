@@ -48,8 +48,9 @@ func resample(b []byte, r float64) []byte {
 		return float64(math.Float32frombits(binary.LittleEndian.Uint32(b[i*8+ch*4:])))
 	}
 	for j := range m {
+		// float64(j)*r can round up to exactly n on the last frame; stay on the clip.
 		x := float64(j) * r
-		i := int(x)
+		i := min(int(x), n-1)
 		f := x - float64(i)
 		for ch := range 2 {
 			v := sample(i, ch)*(1-f) + sample(min(i+1, n-1), ch)*f

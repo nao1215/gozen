@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -56,6 +57,37 @@ func TestArtPuppetOutWritesSmallPicturesThatLoadAgain(t *testing.T) {
 	}
 	// An output is never overwritten.
 	invoke(t, 1, "puppet", filepath.Join(dir, "puppet.yaml"), "--out", packed)
+}
+
+// A face's name is copied into the names of the packed pictures: one with ../
+// is refused when the puppet is read, and nothing is written outside --out.
+func TestPuppetOutStaysInItsDirectory(t *testing.T) {
+	dir := puppetDir(t)
+	write(t, filepath.Join(dir, "evil.yaml"), "base: base.png\nface: \"x/../../../escaped\"\nfaces:\n  \"x/../../../escaped\":\n    eyes: {closed: closed.png}\n")
+	root := t.TempDir()
+	packed := filepath.Join(root, "a", "b", "packed")
+	_, stderr := invoke(t, 1, "puppet", filepath.Join(dir, "evil.yaml"), "--out", packed)
+	if !strings.Contains(stderr, "faces: name") {
+		t.Errorf("stderr: %q", stderr)
+	}
+	for _, p := range []string{filepath.Join(root, "a", "escaped.png"), filepath.Join(root, "a", "eyes-x"), packed} {
+		if _, err := os.Stat(p); err == nil {
+			t.Errorf("gozen puppet --out wrote %s", p)
+		}
+	}
+	if runtime.GOOS == "windows" {
+		return // the file below cannot be made there
+	}
+	// A base picture whose name another system refuses is not packed either.
+	write(t, filepath.Join(dir, "a*b.png"), string(read(t, filepath.Join(dir, "base.png"))))
+	write(t, filepath.Join(dir, "star.yaml"), "base: \"a*b.png\"\n")
+	_, stderr = invoke(t, 1, "puppet", filepath.Join(dir, "star.yaml"), "--out", packed)
+	if !strings.Contains(stderr, "a*b.png") || !strings.Contains(stderr, "portable") {
+		t.Errorf("stderr: %q", stderr)
+	}
+	if _, err := os.Stat(packed); err == nil {
+		t.Error("a refused puppet left its output directory")
+	}
 }
 
 func TestArtPuppetRejectsBadInput(t *testing.T) {

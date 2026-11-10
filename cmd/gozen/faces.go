@@ -9,7 +9,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	"io/fs"
 	"math"
 	"os"
 	"path"
@@ -23,6 +22,7 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 	"github.com/nao1215/gozen/internal/base/clihelp"
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 	"github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 	"github.com/nao1215/gozen/internal/screen/doll"
@@ -87,9 +87,12 @@ func (c *command) faces() clihelp.Operation {
 		previews := map[string][]byte{}
 		found := 0
 		for _, p := range pics {
-			b, err := fs.ReadFile(fsys, "assets/"+p)
+			b, err := picturelimit.Read(fsys, "assets/"+p)
 			if err != nil {
 				return err
+			}
+			if err := picturelimit.Header(b); err != nil {
+				return fmt.Errorf("assets/%s: %w", p, err)
 			}
 			img, _, err := image.Decode(bytes.NewReader(b))
 			if err != nil {

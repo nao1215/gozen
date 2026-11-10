@@ -106,3 +106,53 @@ func TestRuntimeDoesNotCarryTheThemes(t *testing.T) {
 		}
 	}
 }
+
+// Add writes only inside the game: a theme folder that is a link out of the game
+// takes none of the theme's files, and --force replaces a file that is such a
+// link instead of writing to what it names.
+func TestAddStaysInTheGame(t *testing.T) {
+	game, outside := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(game, "assets", "dungeon"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	themes := filepath.Join(game, "assets", "dungeon", "themes")
+	if err := os.Symlink(outside, themes); err != nil {
+		t.Skip(err) // links need a privilege on Windows
+	}
+	for _, force := range []bool{false, true} {
+		r, err := Add("cave", game, force)
+		if err == nil || len(r.Written) != 0 {
+			t.Errorf("force=%v: Add through a link out of the game: %+v %v", force, r, err)
+		}
+		if ents, err := os.ReadDir(outside); err != nil || len(ents) > 0 {
+			t.Fatalf("force=%v: Add wrote %d entries outside the game through a link (%v)", force, len(ents), err)
+		}
+	}
+	if err := os.Remove(themes); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(outside, "target.jpg")
+	if err := os.WriteFile(target, []byte("theirs"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wall := filepath.Join(themes, "cave", "wall.jpg")
+	if err := os.MkdirAll(filepath.Dir(wall), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, wall); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := Add("cave", game, false); err != nil || !slices.Contains(r.Kept, "assets/dungeon/themes/cave/wall.jpg") {
+		t.Fatalf("a link the game has is kept: %+v %v", r, err)
+	}
+	if _, err := Add("cave", game, true); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(target) //nolint:gosec // Test-owned path under t.TempDir.
+	if err != nil || string(b) != "theirs" {
+		t.Fatalf("--force wrote through a link to %q (%v)", b, err)
+	}
+	if info, err := os.Lstat(wall); err != nil || !info.Mode().IsRegular() || info.Size() < 1000 {
+		t.Fatalf("--force did not replace the link by the theme's wall: %v", err)
+	}
+}

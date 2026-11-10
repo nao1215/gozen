@@ -275,7 +275,7 @@ events:
 
 ## Add voices
 
-A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`.
+A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`. A voice or a sound effect lasts at most 60 seconds; a longer file is skipped with a line in the log.
 
 <!-- verify: load group=voices as=game.yaml -->
 ```yaml

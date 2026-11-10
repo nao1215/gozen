@@ -10,6 +10,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
 - Add dango checks that an error about an option is a usage error (`TestUsageErrors`) and that a fixed set of option values is declared with `clihelp.Choices` instead of being checked by hand (`TestDeclaredChoices`).
+- Add a dango check that a whole picture is decoded only after its header was checked against the picture limits (`TestBoundedPictureDecode`), with a short list of the decodes bounded another way and the reason of each.
 
 ### Fixed
 
@@ -37,6 +38,15 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen trial` refuses a game that holds a symlink, as `gozen export` does; before, it copied the target of a linked asset into the trial.
 - `gozen trial` writes YAML that reads back as the source means: a merge key (`<<`) with an overridden key no longer repeats the key (the trial failed its check), and texts such as `? Who goes there`, `.inf`, or one with a tab or a carriage return keep their value. Texts are now always written in double quotes.
 - `gozen trial --list` writes the list after the tree, and a failed trial leaves no list, no tree and no staging directory; before, the list of a failed run made the next run fail with `GZN1501`.
+- A puppet's face name must be one file name part: a name with `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*` or a control character, and `.` or `..`, is now an error of the puppet YAML. Before, `gozen puppet FILE --out DIR` named the packed pictures after the faces and a name such as `x/../../y` wrote a picture outside `DIR`. The command also refuses a packed picture whose name is not portable.
+- `gozen theme add` writes only inside the game directory: a folder or file on the way that is a link out of the game is an error, and `--force` replaces a link by the theme's file instead of overwriting what the link names.
+- A music file whose header claims an absurd length is refused with a log line instead of crashing the game while it allocates; one file may claim at most about 25 minutes (256 MiB decoded) and hold 64 MiB encoded. An Ogg file whose last page understates its length no longer crashes the decoder's caller: the failure is logged as an unreadable sound.
+- A sound effect or a voice lasts at most 60 seconds and its file holds at most 64 MiB; a longer one is skipped with a log line. Before, a small file could decode to any amount of memory, and sixteen voices are kept.
+- A track's `loop_start` that is negative, not a number or past the end of the track loops from the start or the last frame instead of crashing the audio thread after the first loop, and `bars` or `beats` below zero take the defaults instead of crashing it. A long module (`bars` times `beats` above 811) no longer wraps its length in a browser build.
+- A sound effect played with a pitch variation no longer reads one frame past the clip when the resampling position rounds up to its end.
+- `gozen notes --out` checks a note's screenshot against the picture limits before decoding it, and a thumbnail is at most four times as tall as wide (a narrower screenshot shows its top). Before, a 1 by 100000 pixel PNG asked for a thumbnail of about 180 GiB.
+- `gozen faces` and the `gozen mosaic` commands refuse a picture past the picture limits (8192 pixels a side, 33,554,432 pixels) before decoding it; before, a 420 KB PNG of 12000 by 12000 pixels took more than 1 GB.
+- A face box in `assets/faces.json` or a `face_at` far larger than the picture no longer costs seconds and a gigabyte when the balloon's face is cut: only the part inside the picture is read, and the rest of the face stays clear as before.
 
 ## v0.23.2 - 2026-11-09
 

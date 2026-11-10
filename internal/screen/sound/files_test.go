@@ -1,8 +1,11 @@
 package sound
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"strings"
@@ -185,3 +188,99 @@ func TestReloadEffectsDropsRemovedFiles(t *testing.T) {
 		})
 	}
 }
+
+// wavClaiming is an 8-bit 8 kHz mono WAV whose header claims n bytes of data
+// (n/8000 seconds) and that holds only the bytes given.
+func wavClaiming(n uint32, data []byte) []byte {
+	const rate = 8000
+	le := binary.LittleEndian
+	b := []byte("RIFF")
+	b = le.AppendUint32(b, 36+n)
+	b = append(b, "WAVEfmt "...)
+	b = le.AppendUint32(b, 16)
+	b = le.AppendUint16(b, 1) // PCM
+	b = le.AppendUint16(b, 1) // mono
+	b = le.AppendUint32(b, rate)
+	b = le.AppendUint32(b, rate)
+	b = le.AppendUint16(b, 1)
+	b = le.AppendUint16(b, 8)
+	b = append(b, "data"...)
+	b = le.AppendUint32(b, n)
+	return append(b, data...)
+}
+
+// An effect or a voice is decoded whole into memory, so its length is capped:
+// by the header before anything is decoded (a few bytes may claim hours), and by
+// the bytes read when the header understates the data.
+func TestDecodeEffectCapsTheClipLength(t *testing.T) {
+	second := bytes.Repeat([]byte{128}, 8000)
+	if pcm, err := DecodeEffect(wavClaiming(8000, second), ".wav"); err != nil || math.Abs(ClipSeconds(pcm)-1) > 0.01 {
+		t.Fatalf("a one-second clip: %.2f s, %v", ClipSeconds(pcm), err)
+	}
+	for name, clip := range map[string][]byte{
+		"wav of 61 s in 44 bytes":  wavClaiming(8000*(maxClipSeconds+1), nil),
+		"wav of 131 s in 44 bytes": wavClaiming(1<<20, nil),
+		"ogg of 61 s":              toneClaiming(t, SampleRate*(maxClipSeconds+1)),
+		"ogg past any length":      toneClaiming(t, 1<<47),
+	} {
+		ext := "." + name[:3]
+		if pcm, err := DecodeEffect(clip, ext); err == nil || !strings.Contains(err.Error(), "claims") {
+			t.Errorf("%s decoded to %.0f s: %v", name, ClipSeconds(pcm), err)
+		}
+		freshSession(t)
+		captureLog(t)
+		if n, err := testSession.Load(fstest.MapFS{"clips/long" + ext: {Data: clip}}, "clips"); err != nil || n != 0 {
+			t.Errorf("%s gave a muted player %d durations: %v", name, n, err)
+		}
+	}
+	// The claim is not the length of the data: the bytes read are counted too.
+	data := bytes.Repeat([]byte{0, 64}, 8)
+	if pcm, err := readClip(bytes.NewReader(data), 16); err != nil || len(pcm) != 32 {
+		t.Fatalf("a clip at the limit: %d bytes, %v", len(pcm), err)
+	}
+	if _, err := readClip(bytes.NewReader(data), 15); err == nil {
+		t.Fatal("a clip whose data runs past the limit was decoded whole")
+	}
+}
+
+// The Vorbis reader slices below zero when the last page claims fewer frames
+// than its packets hold. That panic of a broken file is an error of the decode,
+// for an effect and for the music.
+func TestDecoderPanicIsAnError(t *testing.T) {
+	short := toneClaiming(t, 1)
+	if _, err := DecodeEffect(short, ".ogg"); err == nil || !strings.Contains(err.Error(), "decoder failed") {
+		t.Fatalf("effect: %v", err)
+	}
+	if _, err := decode(short); err == nil || !strings.Contains(err.Error(), "decoder failed") {
+		t.Fatalf("music: %v", err)
+	}
+}
+
+// A sound file past the encoded limit is refused from its size, unread.
+func TestReadSoundRefusesLargeFiles(t *testing.T) {
+	f := &largeSound{}
+	if _, err := readSound(f, "voice/long.ogg"); !errors.Is(err, errSoundFileTooLarge) || !strings.Contains(err.Error(), "voice/long.ogg") {
+		t.Fatalf("oversized sound file: %v", err)
+	}
+	if f.read || !f.closed {
+		t.Fatalf("read=%v closed=%v", f.read, f.closed)
+	}
+	if b, err := readSound(fstest.MapFS{"a.wav": {Data: []byte("riff")}}, "a.wav"); err != nil || string(b) != "riff" {
+		t.Fatalf("%q %v", b, err)
+	}
+	if _, err := readSound(fstest.MapFS{}, "a.wav"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing file: %v", err)
+	}
+}
+
+// largeSound is a file system of one file that reports a size past the limit.
+type largeSound struct {
+	fs.FileInfo
+	read, closed bool
+}
+
+func (f *largeSound) Open(string) (fs.File, error) { return f, nil }
+func (f *largeSound) Stat() (fs.FileInfo, error)   { return f, nil }
+func (f *largeSound) Size() int64                  { return maxSoundFile + 1 }
+func (f *largeSound) Read([]byte) (int, error)     { f.read = true; return 0, io.EOF }
+func (f *largeSound) Close() error                 { f.closed = true; return nil }
