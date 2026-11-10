@@ -87,6 +87,17 @@ Dango also checks generated schemas against the Go types and translation keys ag
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
 
+- Definition checks keep the loaded game definitions (`gamedata.DB`) read-only outside
+  `internal/model/gamedata`: no assignment to a field of the DB or under one, and no
+  `delete`, `clear` or `maps.Copy` into its maps. A game's own additions (a recruited
+  monster's actor) go on the view `DB.ForState` gives each state, through
+  `AddInstance` and `RemoveInstance`. The check is lexical: it recognizes the definitions
+  by the name every package gives them (`db`, or a field `db` or `DB`), so a write
+  through another alias (`ev := db.Events[id]; ev.Do = ...`) is not seen. The one
+  allowed file, the design evaluation bot, marks events for a play and restores them;
+  the list may only shrink. Two state tests run with it: two games on the same
+  definitions number their monsters alone, and a loaded monster keeps its own species.
+
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.
