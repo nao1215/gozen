@@ -41,7 +41,7 @@ locations:
 			for _, name := range []string{"hook.png", "followup.png", "unused.png"} {
 				src["assets/"+name] = &fstest.MapFile{Data: []byte("synthetic sentinel")}
 			}
-			cfg, err := Parse([]byte("{}"))
+			cfg, err := parse([]byte("{}"))
 			if err != nil {
 				t.Fatal(err)
 			}

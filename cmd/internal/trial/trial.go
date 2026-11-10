@@ -35,24 +35,23 @@ type Result struct {
 	DomainWhy  map[string][]string
 	Why        map[string]string
 	Gallery    struct{ CGs, Scenes int }
-	src        fs.FS
+	// src is the game; carried names the files of it that go into the trial
+	// unchanged, besides the selected Assets.
+	src     fs.FS
+	carried []string
 }
 
 func Build(src fs.FS, cfg *Config) (*Result, error) {
-	base, err := readFiles(src)
+	base, all, carried, err := readGame(src)
 	if err != nil {
 		return nil, err
 	}
 
 	base["game.yaml"] = del(del(base.game(), "cg_review"), "scene_review")
 	expandAliases(base)
-	all, err := listAssets(src)
-	if err != nil {
-		return nil, err
-	}
 	sourceEvents := sortedKeys(defsOf(base)["events"])
 	a := newAnalysis(cfg, base)
-	res := &Result{src: src}
+	res := &Result{src: src, carried: carried}
 	res.Gates = a.gates(base)
 	a = newAnalysis(cfg, base)
 
@@ -477,24 +476,23 @@ func (r *Result) FS() fstest.MapFS {
 			// Omit unreadable assets so the loader diagnoses their missing references.
 			continue
 		}
+		if strings.HasSuffix(a, ".txt") {
+			b = r.text(b)
+		}
 		m["assets/"+a] = &fstest.MapFile{Data: b}
 	}
-
-	for _, a := range r.Assets {
-		if strings.HasSuffix(a, ".txt") {
-			if b, err := r.text(a); err == nil {
-				m["assets/"+a] = &fstest.MapFile{Data: b}
-			}
+	for _, name := range r.carried {
+		// The loader reads the translations and the stream episodes among them.
+		if b, err := fs.ReadFile(r.src, name); err == nil {
+			m[name] = &fstest.MapFile{Data: b}
 		}
 	}
 	return m
 }
 
-func (r *Result) text(a string) ([]byte, error) {
-	b, err := fs.ReadFile(r.src, "assets/"+a)
-	if err != nil {
-		return nil, err
-	}
+// text drops, from a text asset that lists pictures, the lines that name one
+// the trial lacks.
+func (r *Result) text(b []byte) []byte {
 	have := map[string]bool{}
 	for _, x := range r.Assets {
 		have[x] = true
@@ -507,7 +505,7 @@ func (r *Result) text(a string) ([]byte, error) {
 		}
 		out = append(out, line)
 	}
-	return []byte(strings.Join(out, "\n")), nil
+	return []byte(strings.Join(out, "\n"))
 }
 
 func (r *Result) Check() error {
@@ -515,7 +513,11 @@ func (r *Result) Check() error {
 	return err
 }
 
-func (r *Result) Write(srcDir, dir string) error {
+// Write puts the trial into the new or empty directory dir: the pruned YAML,
+// the selected assets, and the files the game ships with whatever its range
+// (translations, stream episodes, license notices). Everything is read from
+// the game Build was given, and only regular files of it are copied.
+func (r *Result) Write(dir string) error {
 	if len(r.Missing) > 0 {
 		return diag.ReferencedAssetMissing.Errorf("trial: missing assets: %v", r.Missing)
 	}
@@ -530,31 +532,30 @@ func (r *Result) Write(srcDir, dir string) error {
 		}
 	}
 	for p, b := range r.Files {
-		if err := writeFile(filepath.Join(dir, p), b); err != nil {
+		if err := cli.WriteNew(filepath.Join(dir, filepath.FromSlash(p)), b); err != nil {
 			return err
 		}
 	}
 	for _, a := range r.Assets {
-		var b []byte
-		var err error
-		if strings.HasSuffix(a, ".txt") {
-			b, err = r.text(a)
-		} else {
-			b, err = fs.ReadFile(os.DirFS(srcDir), "assets/"+a)
+		dst := filepath.Join(dir, "assets", filepath.FromSlash(a))
+		if err := cli.CopyFile(r.src, "assets/"+a, dst, 0o600); err != nil {
+			return err
 		}
+		if !strings.HasSuffix(a, ".txt") {
+			continue
+		}
+		b, err := os.ReadFile(dst) //nolint:gosec // The copy just made in the caller's new directory.
 		if err != nil {
 			return err
 		}
-		if err := writeFile(filepath.Join(dir, "assets", filepath.FromSlash(a)), b); err != nil {
+		if err := os.WriteFile(dst, r.text(b), 0o600); err != nil {
+			return err
+		}
+	}
+	for _, name := range r.carried {
+		if err := cli.CopyFile(r.src, name, filepath.Join(dir, filepath.FromSlash(name)), 0o600); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func writeFile(p string, b []byte) error {
-	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
-		return err
-	}
-	return os.WriteFile(p, b, 0o600)
 }

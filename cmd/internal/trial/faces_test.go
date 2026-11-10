@@ -10,7 +10,7 @@ import (
 // TestTrialKeepsFaceBoxes: assets/faces.json is named by no YAML, yet the painted scenes
 // read it; the trial tree keeps it.
 func TestTrialKeepsFaceBoxes(t *testing.T) {
-	cfg, err := Parse([]byte("{}"))
+	cfg, err := parse([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}
