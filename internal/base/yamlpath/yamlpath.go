@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 )
 
 // At returns, as YAML, the part of src at the YAML logical path ("people.host.rules", "people[0]"; "" is the whole).
@@ -18,7 +19,7 @@ func At(src []byte, path string) ([]byte, error) {
 		return append([]byte(nil), src...), nil
 	}
 	var v any
-	if err := yaml.UnmarshalWithOptions(src, &v, yaml.UseOrderedMap()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(src, &v, yaml.UseOrderedMap()) }); err != nil {
 		return nil, err
 	}
 	missing := func() error { return fmt.Errorf("%s: %w", path, fs.ErrNotExist) }

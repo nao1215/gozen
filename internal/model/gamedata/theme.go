@@ -4,6 +4,7 @@ import (
 	"io/fs"
 
 	"github.com/goccy/go-yaml"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 
 	"github.com/nao1215/gozen/internal/base/diag"
 )
@@ -62,7 +63,7 @@ func (db *DB) readTheme(name string) (themeColors, error) {
 	if err != nil {
 		return tc, err
 	}
-	err = yaml.UnmarshalWithOptions(b, &tc, yaml.Strict())
+	err = decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &tc, yaml.Strict()) })
 	return tc, err
 }
 

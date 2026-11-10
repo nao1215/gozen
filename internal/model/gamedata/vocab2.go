@@ -13,6 +13,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 )
 
 // Vocabulary added in spec version 2 (ADR 0021): commands, the left-hand sides of set, game.yaml's verbs and screens, and the names usable in event expressions.
@@ -605,7 +606,7 @@ func (a *Assignments) UnmarshalYAML(n ast.Node) error {
 func literalText(n ast.Node) (string, error) {
 	if _, ok := n.(*ast.MappingNode); ok {
 		var v any
-		if err := yaml.NodeToValue(n, &v); err != nil {
+		if err := decodeguard.Run(func() error { return yaml.NodeToValue(n, &v) }); err != nil {
 			return "", err
 		}
 		b, err := json.Marshal(v)

@@ -87,6 +87,14 @@ Dango also checks generated schemas against the Go types and translation keys ag
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
 
+- The YAML decode check parses the Go files of `internal/base` and `internal/model`
+  and rejects a call of the YAML library's decoders (`Unmarshal`,
+  `UnmarshalWithOptions`, `UnmarshalContext`, `NodeToValue`, `NewDecoder`) that is
+  not written inside the function given to `decodeguard.Run`. An `UnmarshalYAML`
+  method is exempt: it runs only under the decode that called it. The check is
+  lexical, so a decode reached through a helper outside these two levels is not
+  seen, and it does not prove that the guarded input is validated afterwards.
+
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.

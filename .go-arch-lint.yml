@@ -79,6 +79,7 @@ deps:
   webfs:
     canUse: [js]
   base:
+    mayDependOn: [base]
     canUse: [yaml]
   expr:
     mayDependOn: [expr, base]

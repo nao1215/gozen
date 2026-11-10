@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/nao1215/gozen/internal/base/decodeguard"
 )
 
 // Catalog is a reviewed snapshot consumed by the phone store and export tooling.
@@ -53,7 +54,7 @@ func Parse(b []byte) (Catalog, error) {
 	if len(b) > maxCatalogBytes {
 		return c, errors.New("catalog exceeds size limit")
 	}
-	if err := yaml.UnmarshalWithOptions(b, &c, yaml.Strict()); err != nil {
+	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict()) }); err != nil {
 		return Catalog{}, fmt.Errorf("catalog: %w", err)
 	}
 	if c.Schema != 1 {
