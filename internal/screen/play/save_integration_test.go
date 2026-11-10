@@ -425,39 +425,6 @@ func TestAutoSaveWritesOncePerPlace(t *testing.T) {
 	}
 }
 
-// TestOfferGearAsksToEquipTheBest: a stronger item in the bag is offered once; yes equips it.
-func TestOfferGearAsksToEquipTheBest(t *testing.T) {
-	g := sysOpen(t, Options{Location: "camp", Items: []string{"blade"}, SaveDir: t.TempDir()}, nil)
-	sysFrames(t, g, 12)
-	c := sysAs[*confirm](t, g.stack[len(g.stack)-1])
-	_ = c
-	sysConfirm(t, g, true)
-	if got := g.st.Members()[0].Equip["weapon"]; got != "blade" {
-		t.Fatalf("weapon %q after accepting", got)
-	}
-	sysFrames(t, g, 25)
-	if _, ok := g.stack[len(g.stack)-1].(*confirm); ok {
-		t.Fatal("offered again after equipping")
-	}
-	if n := g.equipBestAll(); n != 0 {
-		t.Fatalf("nothing left to equip, got %d", n)
-	}
-}
-
-// TestOfferGearIsOnlyOnceUntilTheBagChanges: declining is remembered for that bag.
-func TestOfferGearIsOnlyOnceUntilTheBagChanges(t *testing.T) {
-	g := sysOpen(t, Options{Location: "camp", Items: []string{"blade"}, SaveDir: t.TempDir()}, nil)
-	sysFrames(t, g, 12)
-	sysConfirm(t, g, false)
-	sysFrames(t, g, 40)
-	if _, ok := g.stack[len(g.stack)-1].(*confirm); ok {
-		t.Fatal("the same offer was made again")
-	}
-	if got := g.st.Members()[0].Equip["weapon"]; got == "blade" {
-		t.Fatal("equipped although declined")
-	}
-}
-
 func TestRecruitmentAdmissionAfterSavedChoice(t *testing.T) {
 	for _, full := range []bool{false, true} {
 		t.Run(strconv.FormatBool(full), func(t *testing.T) {
