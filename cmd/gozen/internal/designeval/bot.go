@@ -5,6 +5,7 @@ package designeval
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"sort"
@@ -856,8 +857,9 @@ func (b *bot) measureDuels() {
 }
 
 func (b *bot) bossOf(troop string) *Boss {
-	for f, t := range b.c.Game.Bosses {
-		if t == troop {
+	// A troop may guard several floors; the shallowest is the same in every run.
+	for _, f := range slices.Sorted(maps.Keys(b.c.Game.Bosses)) {
+		if b.c.Game.Bosses[f] == troop {
 			return b.boss(f)
 		}
 	}

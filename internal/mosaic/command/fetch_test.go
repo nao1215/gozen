@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/nao1215/gozen/internal/base/cliio"
 )
@@ -293,5 +294,71 @@ func TestCancelledDownloadPreservesCache(t *testing.T) {
 	entries, err := os.ReadDir(cache)
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("partial download remains: %v, %v", entries, err)
+	}
+}
+
+// TestFetchSkipsACachedModel: models fetch makes no request for a model the cache holds
+// with matching checksums, and says so.
+func TestFetchSkipsACachedModel(t *testing.T) {
+	_, hits := fakeHub(t, false)
+	if code, _, diag := invoke(t, "models", "fetch", "censor"); code != 0 {
+		t.Fatalf("fetch: %s", diag)
+	}
+	first := hits.Load()
+	code, out, diag := invoke(t, "models", "fetch", "censor")
+	if code != 0 || !strings.Contains(out, "fetched ") || !strings.Contains(diag, "already in the cache") {
+		t.Fatalf("second fetch: code %d, %q, %s", code, out, diag)
+	}
+	if n := hits.Load() - first; n != 0 {
+		t.Fatalf("the second fetch of a cached model made %d requests, want 0", n)
+	}
+}
+
+// TestCachedModelChecksTheChecksum: a cached file of the right size but other bytes is not
+// the model. The SHA-256 is checked once and recorded, and a file that changed since the
+// record is hashed again.
+func TestCachedModelChecksTheChecksum(t *testing.T) {
+	cache, hits := fakeHub(t, false)
+	if code, _, diag := invoke(t, "models", "fetch", "censor"); code != 0 {
+		t.Fatalf("fetch: %s", diag)
+	}
+	model := filepath.Join(cache, "censor", "model.onnx")
+	record := filepath.Join(cache, "censor", verifiedName)
+	if _, err := os.Stat(record); err != nil {
+		t.Fatalf("the download left no record of the checked files: %v", err)
+	}
+	// A cache of an older gozen has no record: it is hashed and recorded.
+	if err := os.Remove(record); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := models[0].cachedModel(); !ok {
+		t.Fatal("a correct cache without a record was refused")
+	}
+	if _, err := os.Stat(record); err != nil {
+		t.Fatalf("the check was not recorded: %v", err)
+	}
+	// Same size, other bytes, written later.
+	if err := os.WriteFile(model, []byte("XXXXXXXXXXX"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(time.Minute)
+	if err := os.Chtimes(model, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if p, ok := models[0].cachedModel(); ok {
+		t.Fatalf("a cache file with a wrong SHA-256 was accepted: %s", p)
+	}
+	// fetch replaces it.
+	before := hits.Load()
+	if code, _, diag := invoke(t, "models", "fetch", "censor"); code != 0 || hits.Load() == before {
+		t.Fatalf("a damaged cache was not fetched again: code %d, %s", code, diag)
+	}
+	if b := readFile(t, model); string(b) != "model-bytes" {
+		t.Fatalf("model after the second fetch: %q", b)
+	}
+	// A record made for another pinned SHA-256 does not vouch for the file.
+	models[0].Files[0].SHA256, models[0].Files[1].SHA256 = strings.Repeat("0", 64), strings.Repeat("0", 64)
+	if p, ok := models[0].cachedModel(); ok {
+		t.Fatalf("a file was accepted for another pinned SHA-256: %s", p)
 	}
 }

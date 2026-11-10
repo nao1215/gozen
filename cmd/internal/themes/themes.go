@@ -5,6 +5,7 @@ package themes
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -70,18 +71,30 @@ type Files struct{ Written, Kept []string }
 // of the game in gameDir.
 // A file the game already has is kept, unless force replaces it. Paths in the result are
 // relative to gameDir and slash-separated.
-func Add(name, gameDir string, force bool) (Files, error) {
-	var r Files
+// gameDir must exist, and nothing is written outside it: a folder or a file on the
+// way that is a link out of the game is an error, and force replaces a link by the
+// theme's file instead of writing to what the link names.
+func Add(name, gameDir string, force bool) (r Files, err error) {
 	if !Has(name) {
 		return r, fmt.Errorf("no theme %q", name)
 	}
+	root, err := os.OpenRoot(gameDir)
+	if err != nil {
+		return r, err
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
 	for _, f := range append(slices.Clone(data.ThemeFiles), licenseName) {
 		rel := path.Join("assets", data.ThemeDir(name), f)
-		dst := filepath.Join(gameDir, filepath.FromSlash(rel))
-		if !force {
-			if _, err := os.Lstat(dst); err == nil {
+		dst := filepath.FromSlash(rel)
+		if info, err := root.Lstat(dst); err == nil {
+			if !force {
 				r.Kept = append(r.Kept, rel)
 				continue
+			}
+			if info.Mode()&fs.ModeSymlink != 0 {
+				if err := root.Remove(dst); err != nil {
+					return r, err
+				}
 			}
 		}
 		from := path.Join("assets", name, f)
@@ -92,10 +105,10 @@ func Add(name, gameDir string, force bool) (Files, error) {
 		if err != nil {
 			return r, err
 		}
-		if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
+		if err := root.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 			return r, err
 		}
-		if err := os.WriteFile(dst, b, 0o644); err != nil { //nolint:gosec // A game's asset, read by the game and its players.
+		if err := root.WriteFile(dst, b, 0o644); err != nil {
 			return r, err
 		}
 		r.Written = append(r.Written, rel)

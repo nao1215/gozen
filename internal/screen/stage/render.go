@@ -21,7 +21,6 @@ var dollShader []byte
 // SheetW and SheetH are the size of one picture of a baked doll.
 const (
 	SheetW, SheetH = 96, 168
-	unitsH         = 1.12 // a picture's height in the doll's heights
 )
 
 // Figure is someone drawn in the scene.
@@ -134,13 +133,13 @@ func (r *Renderer) ScreenOf(p geom.Pt, w, h float64) (float64, float64, float64)
 // HeadOf is where the top of the head of a doll standing at p shows on a screen of w x h.
 func (r *Renderer) HeadOf(p geom.Pt, w, h float64) (float64, float64) {
 	x, y, k := r.ScreenOf(p, w, h)
-	ph := r.s.Height(p.Y) * k * unitsH / math.Cos(r.s.Camera*math.Pi/180)
+	ph := r.s.Height(p.Y) * k * doll.UnitsH / math.Cos(r.s.Camera*math.Pi/180)
 	return x, y - ph*headTop
 }
 
 // headTop is the top of a doll's head over its feet, in its picture's heights (the head
 // reaches about 1.02 of the doll's height, the picture is 1.12 and stands 0.02 low).
-const headTop = 1.02/unitsH - 0.02
+const headTop = 1.02/doll.UnitsH - 0.02
 
 // PointOf is the point of the background under a point of a screen of w x h.
 func (r *Renderer) PointOf(x, y, w, h float64) geom.Pt {
@@ -188,7 +187,7 @@ func (r *Renderer) drawFigure(dst *ebiten.Image, f Figure, k, ox, oy float64) {
 	s := r.s
 	alpha := float32(1 - f.Fade)
 	hgt := s.Height(f.At.Y) * k // the person's height on dst
-	ph := hgt * unitsH / math.Cos(s.Camera*math.Pi/180)
+	ph := hgt * doll.UnitsH / math.Cos(s.Camera*math.Pi/180)
 	pw := ph * SheetW / SheetH
 	fx, fy := ox+f.At.X*k, oy+f.At.Y*k
 	if !r.behindFront(f.At) { // the shadow on the ground, unless a front stands over it

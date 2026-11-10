@@ -287,7 +287,7 @@ events:
 
 ## Add voices
 
-A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`.
+A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`. A voice or a sound effect lasts at most 60 seconds; a longer file is skipped with a line in the log.
 
 <!-- verify: load group=voices as=game.yaml -->
 ```yaml
@@ -1455,7 +1455,9 @@ inspection: {file: file, source: source, required: required, approved: approved}
 records: {file: file, source: source, required: required, approved: approved, output: output}
 ```
 
-The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release).
+A trial built without `--overlay` keeps the game's `asset-policy.yaml`, so `gozen export` refuses it until its assets are approved; with `--overlay` and `--inspect` the trial is an approved tree. Either way it holds the game's translations whole and its license notices.
+
+The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release), [Commands](/commands/#trial).
 
 ## Commands used by the recipes
 

@@ -58,23 +58,6 @@ var builtinEffectSeconds = map[string]float64{
 	"fanfare":   1.8,
 }
 
-var Effects = []string{
-	"cursor", "decide", "cancel", "buzzer", "hit", "crit", "magic", "heal", "buff", "debuff", "item", "fall", "win", "escape", "step",
-
-	"cutin", "encounter", "boss", "stairs", "chest",
-
-	"blast", "miss",
-
-	"switch", "solve", "push", "thud", "unlock", "door", "punch", "tink", "break", "throw", "lift", "hurt",
-	"gameover", "pop", "boom", "charge", "shoot", "key", "heart", "fanfare",
-
-	"levelup",
-
-	"treasure",
-
-	"tip",
-}
-
 func (session *Session) Play(name string) {
 	session.mu.Lock()
 	b := session.effects[name]

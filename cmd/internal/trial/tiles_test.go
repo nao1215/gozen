@@ -52,7 +52,7 @@ locations:
 
 // A tile drawn into a floor's own map is used, though no place lists it.
 func TestBuildKeepsTilesDrawnInAFloorMap(t *testing.T) {
-	cfg, err := Parse([]byte("{}"))
+	cfg, err := parse([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}

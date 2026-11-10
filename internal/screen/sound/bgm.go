@@ -2,7 +2,6 @@
 package sound
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
-	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 
 	"github.com/nao1215/gozen/internal/base/pace"
 )
@@ -53,7 +51,7 @@ func (s Song) files() map[string]string {
 func (s Song) load(fsys fs.FS) map[string][]int16 {
 	mods := map[string][]int16{}
 	for mood, path := range s.files() {
-		b, err := fs.ReadFile(fsys, path)
+		b, err := readSound(fsys, path)
 		if err != nil {
 			log.Printf("bgm %s: %v", s.Name, err)
 			continue
@@ -68,15 +66,21 @@ func (s Song) load(fsys fs.FS) map[string][]int16 {
 	return mods
 }
 
+// ModuleFrames is the length of one module in frames. Bars and beats that are
+// zero or negative take the defaults (8 and 4), and the length stays between one
+// frame and what a 32-bit int holds (the browser's int), so no value of
+// music.yaml gives the player a negative or wrapped position.
 func (s Song) ModuleFrames() int {
-	bars, beats := s.Bars, s.Beats
-	if bars == 0 {
+	bars, beats := int64(s.Bars), int64(s.Beats)
+	if bars <= 0 {
 		bars = 8
 	}
-	if beats == 0 {
+	if beats <= 0 {
 		beats = 4
 	}
-	return SampleRate * 60 * bars * beats / max(1, s.BPM)
+	// Past 32768 bars or beats the product below would leave 64 bits.
+	bars, beats = min(bars, 1<<15), min(beats, 1<<15)
+	return int(min(math.MaxInt32, max(1, SampleRate*60*bars*beats/int64(max(1, s.BPM)))))
 }
 
 const songFade = SampleRate * 7 / 10
@@ -94,6 +98,11 @@ func (session *Session) Init() error {
 }
 
 const bgmBudget = 64 << 20
+
+// maxTrackBytes is the most decoded 16-bit stereo sound one music file may
+// claim: four times the budget of the kept songs, about 25 minutes. The song
+// that plays is never dropped for the budget, so this bounds what one file costs.
+const maxTrackBytes = 4 * bgmBudget
 
 const startFrames = SampleRate / 4
 
@@ -129,7 +138,7 @@ func (session *Session) LoadBGM(fsys fs.FS, songs []Song, first string, oneShot 
 }
 
 func decode(b []byte) ([]int16, error) {
-	p, st, err := openPCM(bytes.NewReader(b))
+	p, st, err := openPCM(b)
 	if err != nil {
 		return nil, err
 	}
@@ -139,12 +148,14 @@ func decode(b []byte) ([]int16, error) {
 	return p.data[:p.ready()], nil
 }
 
-func openPCM(r io.ReadSeeker) (*pcm, io.Reader, error) {
-	st, err := vorbis.DecodeWithSampleRate(SampleRate, r)
+// openPCM opens a music file. Its buffer is sized from the length the file
+// claims (the last page's granule position), which openSound has checked.
+func openPCM(b []byte) (*pcm, io.Reader, error) {
+	st, err := openSound(b, ".ogg", maxTrackBytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	return &pcm{data: make([]int16, max(0, st.Length()/2))}, st, nil
+	return &pcm{data: make([]int16, st.Length()/2)}, st, nil
 }
 
 type pcm struct {
@@ -503,12 +514,12 @@ func (m *Modular) stream(s Song, first string, fsys fs.FS) {
 		}
 	}
 	for _, mood := range order {
-		b, err := fs.ReadFile(fsys, files[mood])
+		b, err := readSound(fsys, files[mood])
 		if err != nil {
 			log.Printf("bgm %s: %v", s.Name, err)
 			continue
 		}
-		p, st, err := openPCM(bytes.NewReader(b))
+		p, st, err := openPCM(b)
 		if err != nil {
 			log.Printf("bgm %s: %v", s.Name, err)
 			continue
@@ -787,7 +798,12 @@ func (m *Modular) advance(s *loadedSong) {
 	}
 	if s.Track() {
 		m.cur = Neutral
-		m.pos = min(int(s.LoopStart*SampleRate), max(0, frames-1))
+		// loop_start is an author's number: a negative one or NaN starts the
+		// loop at 0, and one past the end at the last frame.
+		m.pos = 0
+		if start := s.LoopStart * SampleRate; start > 0 {
+			m.pos = int(min(start, float64(max(0, frames-1))))
+		}
 		return
 	}
 	if pcm := s.mods[m.mood(s, m.cur)]; pcm != nil && pcm.size() > 2*frames {

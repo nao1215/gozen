@@ -68,7 +68,7 @@ A whole picture is compared at load time with the base (for the eyes or mouth of
 
 ## YAML
 
-All coordinates are pixels of the base picture (origin at the top left). Picture paths are relative to the directory of the YAML. Unknown keys are an error.
+All coordinates are pixels of the base picture (origin at the top left). Picture paths are relative to the directory of the YAML. Unknown keys are an error. A face's name is one file name part: `gozen puppet --out` names the packed pictures after the faces, so a name with `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*` or a control character, and `.` or `..`, is an error.
 
 <!-- verify: parse portrait fragment; pictures and surrounding puppet or game definitions are supplied separately -->
 ```yaml

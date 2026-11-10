@@ -58,9 +58,9 @@ scenarios:
         # The injected runtime source also invalidates recorded picture inputs.
         - {path: '$.data.decisions[2].status', equals: fail}
         - {path: '$.data.decisions[4].status', equals: fail}
-        - {path: '$.data.decisions[8].status', equals: pass}
-        - {path: '$.data.decisions[10].id', equals: yaml}
-        - {path: '$.data.decisions[10].status', equals: fail}
+        - {path: '$.data.decisions[10].status', equals: pass}
+        - {path: '$.data.decisions[12].id', equals: yaml}
+        - {path: '$.data.decisions[12].status', equals: fail}
       stderr: {equals: ''}
       file: {path: checkout/data/schema/types.schema.json, equals: "{}\n"}
 - name: invalid invocation has structured diagnostics and exit two

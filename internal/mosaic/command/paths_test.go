@@ -343,3 +343,106 @@ func TestPlanGeometryRules(t *testing.T) {
 		t.Fatalf("regions %v", regions)
 	}
 }
+
+// TestValidateNamesTheSameOptionEveryTime: with several invalid options, the one named in
+// the error is the first in a fixed order, not whichever a map walk reaches first.
+func TestValidateNamesTheSameOptionEveryTime(t *testing.T) {
+	o := &options{threads: 1, quality: 90, minScore: 7, sure: 9, margin: 5}
+	for range 200 {
+		if got := o.validate().Error(); !strings.Contains(got, "--threshold") {
+			t.Fatalf("the invalid options named %q, want --threshold first", got)
+		}
+	}
+	o.minScore = 0.5
+	if got := o.validate().Error(); !strings.Contains(got, "--sure") {
+		t.Fatalf("after --threshold comes --sure, got %q", got)
+	}
+}
+
+// TestResolveReadsEveryOperandTheSameWay: auto, inspect and the manual commands read an
+// IMAGE operand through resolve. The asset comes before a file of the same name in the
+// working directory, assets/ may lead the name, and a backslash separates directories.
+func TestResolveReadsEveryOperandTheSameWay(t *testing.T) {
+	game, out := fixture(t)
+	assets := filepath.Join(game, "assets")
+	for _, name := range []string{"sub/deep.png", "assets/nested.png", "pattern.webp"} {
+		p := filepath.Join(assets, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The working directory holds a file named like an asset, the outputs, and a stranger.
+	cwd := filepath.Dir(game)
+	t.Chdir(cwd)
+	for _, name := range []string{"pattern.png", "stranger.png", "output/pattern.png", "output/pattern.webp.png"} {
+		if err := os.MkdirAll(filepath.Dir(filepath.FromSlash(name)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.FromSlash(name), []byte("y"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c := config{gameDir: game, out: out}
+	asset := func(rel string) string { return filepath.Join(assets, filepath.FromSlash(rel)) }
+	for _, tc := range []struct {
+		arg, rel, path, orig string
+	}{
+		{"pattern.png", "pattern.png", asset("pattern.png"), asset("pattern.png")},
+		{"assets/pattern.png", "pattern.png", asset("pattern.png"), asset("pattern.png")},
+		{`assets\pattern.png`, "pattern.png", asset("pattern.png"), asset("pattern.png")},
+		{"./pattern.png", "pattern.png", asset("pattern.png"), asset("pattern.png")},
+		{"sub/deep.png", "sub/deep.png", asset("sub/deep.png"), asset("sub/deep.png")},
+		{`sub\deep.png`, "sub/deep.png", asset("sub/deep.png"), asset("sub/deep.png")},
+		{`assets\sub\deep.png`, "sub/deep.png", asset("sub/deep.png"), asset("sub/deep.png")},
+		// A picture that really lies in assets/assets/ keeps its name.
+		{"assets/nested.png", "assets/nested.png", asset("assets/nested.png"), asset("assets/nested.png")},
+		// Paths to files: in the assets, in the output, and elsewhere.
+		{asset("sub/deep.png"), "sub/deep.png", asset("sub/deep.png"), asset("sub/deep.png")},
+		{filepath.Join("output", "pattern.png"), "pattern.png", filepath.Join("output", "pattern.png"), asset("pattern.png")},
+		{filepath.Join(out, "pattern.webp.png"), "pattern.webp", filepath.Join(out, "pattern.webp.png"), asset("pattern.webp")},
+		{"stranger.png", "", "stranger.png", "stranger.png"},
+		// A name that is nowhere is the asset of that name, for the caller to miss.
+		{"gone.png", "gone.png", asset("gone.png"), asset("gone.png")},
+		{`assets\gone.png`, "gone.png", asset("gone.png"), asset("gone.png")},
+		{"../escape.png", "../escape.png", filepath.Join(game, "escape.png"), filepath.Join(game, "escape.png")},
+	} {
+		rel, path, orig := resolve(c, tc.arg)
+		if rel != tc.rel || path != tc.path || orig != tc.orig {
+			t.Errorf("resolve(%q) = %q, %q, %q; want %q, %q, %q", tc.arg, rel, path, orig, tc.rel, tc.path, tc.orig)
+		}
+	}
+	// An output named <name>.webp.png stands for itself when the assets hold that name.
+	if err := os.WriteFile(asset("pattern.webp.png"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if rel, _, _ := resolve(c, filepath.Join(out, "pattern.webp.png")); rel != "pattern.webp.png" {
+		t.Errorf("an asset named pattern.webp.png resolved to %q", rel)
+	}
+	for rel, want := range map[string]string{"a.png": "a.png", "a.jpg": "a.jpg", "d/a.webp": "d/a.webp.png", "A.WEBP": "A.WEBP.png"} {
+		if got := outputRel(rel); got != want {
+			t.Errorf("outputRel(%q) = %q, want %q", rel, got, want)
+		}
+	}
+}
+
+// An option value the command line got wrong is a usage error: exit 2 with a
+// pointer to --help, not exit 1 with the inference requirements.
+func TestInvalidOptionValuesAreUsageErrors(t *testing.T) {
+	game, out := fixture(t)
+	for _, flags := range [][]string{
+		{"--quality", "0"},
+		{"--threshold", "7"},
+		{"--shape", "circle"},
+		{"--passes", "bogus"},
+		{"--labels", "nosuch"},
+	} {
+		args := append([]string{"auto", "-n", "-o", out}, flags...)
+		code, _, diag := invoke(t, append(args, game, "pattern.png")...)
+		if code != 2 || strings.Contains(diag, "Requirements:") || !strings.Contains(diag, "--help") {
+			t.Errorf("%v: exit %d, want 2 with a usage hint: %s", flags, code, diag)
+		}
+	}
+}

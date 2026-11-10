@@ -74,7 +74,7 @@ events:
 }
 
 func TestBuildWidensCountersAndGuardsComputedDives(t *testing.T) {
-	cfg, err := Parse([]byte(`
+	cfg, err := parse([]byte(`
 assume: {var.keys: 0, var.step: 2}
 cut: [endgame]
 unknown: [var.mystery]
@@ -128,7 +128,7 @@ blocked: [{say: Enough.}]
 		t.Errorf("a cut call becomes the blocked commands:\n%s", world)
 	}
 	// An assumed floor makes the floor expression exact.
-	cfg2, err := Parse([]byte("assume: {var.keys: 0, var.floor: 2}\ndive_max: {tower: 3}\nblocked: [{say: Enough.}]\n"))
+	cfg2, err := parse([]byte("assume: {var.keys: 0, var.floor: 2}\ndive_max: {tower: 3}\nblocked: [{say: Enough.}]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ blocked: [{say: Enough.}]
 }
 
 func TestBuildAsidesFollowTheSpeakersFace(t *testing.T) {
-	cfg, err := Parse([]byte("assume: {var.keys: 0}\n"))
+	cfg, err := parse([]byte("assume: {var.keys: 0}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

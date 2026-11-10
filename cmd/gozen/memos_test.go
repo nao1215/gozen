@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"image"
 	"image/color"
+	"image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/nao1215/gozen/internal/base/memo"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 	lang "github.com/nao1215/gozen/internal/base/text"
 )
 
@@ -158,5 +162,63 @@ func TestPlayNotesDefaultsAndFailures(t *testing.T) {
 	_, stderr = invoke(t, 1, "notes", bad, "--out", filepath.Join(t.TempDir(), "o2"))
 	if !strings.Contains(stderr, "gone.png") {
 		t.Errorf("stderr: %q", stderr)
+	}
+}
+
+// A note's screenshot is a file of the notes folder: its thumbnail keeps the
+// picture's shape up to four widths and shows the top of a narrower one, so a
+// tall PNG of a few bytes does not ask for a huge picture, and a picture past
+// the decode limits is refused unread.
+func TestThumbnailBoundsItsOutput(t *testing.T) {
+	dir := t.TempDir()
+	src, dst := filepath.Join(dir, "shot.png"), filepath.Join(dir, "thumbs", "shot.jpg")
+	shot := func(w, h int) {
+		t.Helper()
+		img := image.NewGray(image.Rect(0, 0, w, h))
+		for i := range min(len(img.Pix), 4*w) {
+			img.Pix[i] = 255 // the top four rows are white
+		}
+		var b bytes.Buffer
+		if err := png.Encode(&b, img); err != nil {
+			t.Fatal(err)
+		}
+		write(t, src, b.String())
+	}
+	for _, tc := range []struct{ w, h, wantH int }{
+		{960, 540, 270},
+		{480, 1920, 1920},
+		{1, 40, 1920},
+		{1000, 1, 1},
+	} {
+		shot(tc.w, tc.h)
+		if err := thumbnail(src, dst, 480); err != nil {
+			t.Fatalf("%dx%d: %v", tc.w, tc.h, err)
+		}
+		out, err := jpeg.Decode(bytes.NewReader(read(t, dst)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := out.Bounds().Size(); got != image.Pt(480, tc.wantH) {
+			t.Errorf("a %dx%d source became a %v thumbnail, want 480x%d", tc.w, tc.h, got, tc.wantH)
+		}
+		if err := os.Remove(dst); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The 1x40 picture shows its top four rows, the white ones, to the bottom.
+	shot(1, 40)
+	if err := thumbnail(src, dst, 480); err != nil {
+		t.Fatal(err)
+	}
+	out, err := jpeg.Decode(bytes.NewReader(read(t, dst)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r, _, _, _ := out.At(240, 1900).RGBA(); r < 0xf000 {
+		t.Errorf("the bottom of the thumbnail is %#x, not the top of the picture", r)
+	}
+	shot(1, 8193)
+	if err := thumbnail(src, dst, 480); err == nil || picturelimit.Dimensions(1, 8193) == nil {
+		t.Fatalf("a 1x8193 picture was decoded: %v", err)
 	}
 }

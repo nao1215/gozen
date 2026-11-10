@@ -20,12 +20,13 @@ func (c *command) newGame() clihelp.Operation {
 	template := f.String("template", "rpg", "the game template: rpg, novel, or campaign")
 	id := f.String("id", "", "persistent save identity (default: a new random game ID)")
 	title := f.String("title", "My game", "the game's title")
+	clihelp.Choices(f.Lookup("template"), starter.Templates()...)
 	return clihelp.Operation{Flags: f, Run: func(_ context.Context) (err error) {
 		if f.NArg() != 1 {
 			return cliio.Invalid(diag.Operands, "new expects one new game directory")
 		}
-		if !starter.Has(*template) {
-			return cliio.Invalid(diag.NotAChoice, "--template is rpg, novel, or campaign, not %q", *template)
+		if strings.TrimSpace(f.Arg(0)) == "" {
+			return cliio.Invalid(diag.BadPath, "new expects a nonempty game directory")
 		}
 		if f.Changed("id") && !data.ValidGameID(*id) {
 			return cliio.Invalid(diag.BadValue, "--id must start with a letter or digit and contain only ASCII letters, digits, '_' or '-'")

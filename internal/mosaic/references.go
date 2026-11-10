@@ -61,14 +61,18 @@ func references(base fs.FS, prefix string, extensions []string) (pics, missing [
 		}
 		walkStrings(v, func(s string) {
 			s = strings.TrimSpace(s)
-			if !pictureExt[strings.ToLower(path.Ext(s))] || strings.ContainsAny(s, " \n") {
+			if !pictureExt[strings.ToLower(path.Ext(s))] || strings.Contains(s, "\n") {
 				return
 			}
+			spaced := strings.Contains(s, " ")
 			s = strings.TrimPrefix(path.Clean(s), prefix+"/")
 			if strings.ContainsAny(s, "*?[") {
 				ms, globErr := fs.Glob(assets, s)
 				if globErr != nil {
-					patternErr = globErr
+					// A sentence is not a pattern; only a name without spaces must be one.
+					if !spaced {
+						patternErr = globErr
+					}
 					return
 				}
 				for _, m := range ms {
@@ -76,9 +80,13 @@ func references(base fs.FS, prefix string, extensions []string) (pics, missing [
 				}
 				return
 			}
-			if _, err := fs.Stat(assets, s); err == nil {
+			switch _, err := fs.Stat(assets, s); {
+			case err == nil:
 				found[s] = true
-			} else {
+			case !spaced || strings.Contains(s, "/"):
+				// A file name may hold spaces, and so may a line of text that ends in an
+				// extension. An absent name with spaces is reported only when it is
+				// written as a path.
 				lost[s] = true
 			}
 		})

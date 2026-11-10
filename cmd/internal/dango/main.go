@@ -52,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer, runner testRunner) int {
 	flags := clihelp.NewFlagSet("dango lint")
 	list := flags.Bool("list", false, "list decisions and enforcing tests")
 	format := flags.String("format", "text", "result representation: text or json")
+	clihelp.Choices(flags.Lookup("format"), "text", "json")
 	report.Format = clihelp.OutputFormat(flags, args)
 	if len(args) > 0 && args[0] == "lint" {
 		args = args[1:]
@@ -64,9 +65,6 @@ func run(args []string, stdout, stderr io.Writer, runner testRunner) int {
 		return finish(report, out, errs, cliio.Parse(err))
 	}
 	report.Format = *format
-	if *format != "text" && *format != "json" {
-		return finish(report, out, errs, cliio.Invalid(diag.NotAChoice, "--format must be text or json"))
-	}
 	if flags.NArg() != 0 {
 		return finish(report, out, errs, cliio.Invalid(diag.BadValue, "lint takes no operands"))
 	}
@@ -251,15 +249,13 @@ func runRepro(args []string, stdout, stderr io.Writer) int {
 	target := flags.String("repro", "", "reproduction target: TICK, TIME (12.5s), or PNG")
 	dir := flags.StringP("out", "o", "", "write artifacts to a new DIR")
 	format := flags.String("format", "text", "result representation: text or json")
+	clihelp.Choices(flags.Lookup("format"), "text", "json")
 	report := cliio.Report{Command: "dango repro", Format: clihelp.OutputFormat(flags, args)}
 	help, err := clihelp.Parse(flags, args)
 	if err != nil {
 		return finish(report, out, errs, cliio.Parse(err))
 	}
 	report.Format = *format
-	if *format != "text" && *format != "json" {
-		return finish(report, out, errs, cliio.Invalid(diag.NotAChoice, "--format must be text or json"))
-	}
 	if help {
 		page := clihelp.Page{
 			Name: "dango repro", Summary: "write trace reproduction artifacts",

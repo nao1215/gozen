@@ -17,6 +17,7 @@ func (c *command) exportGame() clihelp.Operation {
 	out := f.StringP("out", "o", "", "write the game to this new `DIR`; required")
 	reuse := f.String("reuse", "", "web: take the converted files whose source is unchanged from this earlier export `DIR`")
 	c.reporting(f)
+	clihelp.Choices(f.Lookup("target"), "web", "linux-amd64", "linux-arm64", "windows-amd64", "windows-arm64", "darwin-amd64", "darwin-arm64")
 	return clihelp.Operation{Flags: f, Run: func(ctx context.Context) (err error) {
 		if f.NArg() != 1 {
 			return cliio.Invalid(diag.Operands, "expected one game directory")
@@ -27,13 +28,10 @@ func (c *command) exportGame() clihelp.Operation {
 		if *reuse != "" && *target != "web" {
 			return cliio.Invalid(diag.BadValue, "--reuse is for --target web")
 		}
-		switch *target {
-		case "web":
+		if *target == "web" {
 			err = distribute.Web(ctx, f.Arg(0), *out, *bundle, clihelp.Version(), *reuse)
-		case "linux-amd64", "linux-arm64", "windows-amd64", "windows-arm64", "darwin-amd64", "darwin-arm64":
+		} else {
 			err = distribute.Desktop(ctx, f.Arg(0), *out, *bundle, *target, clihelp.Version())
-		default:
-			return cliio.Invalid(diag.BadValue, "unsupported export target %q", *target)
 		}
 		if err != nil {
 			return err

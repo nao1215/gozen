@@ -553,3 +553,27 @@ func TestMachineHelpUsesTheRegisteredFlagsWithoutInputs(t *testing.T) {
 	}
 	invoke(t, 2, "help", "missing", "--format", "json")
 }
+
+// A rejected choice lists the values that can be written; an empty "not given"
+// default is not one of them.
+func TestChoiceRejectionsListOnlyRealValues(t *testing.T) {
+	for args, want := range map[string]string{
+		"check --only bogus unused":           "--only must be structure or layout, not",
+		"new --template bogus unused":         "--template must be rpg, novel, or campaign, not",
+		"sim campaign unused --compare bogus": "--compare must be strategies or tactics, not",
+		"sim campaign unused --as lazy":       "--as must be greedy, random, or ai, not",
+		"export unused --target plan9-amd64":  "--target must be web, linux-amd64",
+	} {
+		_, stderr := invoke(t, 2, strings.Fields(args)...)
+		if !strings.Contains(stderr, want) || !strings.Contains(stderr, "[GZN2202]") {
+			t.Errorf("%s: stderr %q lacks %q", args, stderr, want)
+		}
+	}
+	// An empty value written out is as wrong as any other.
+	invoke(t, 2, "check", "--only", "", "unused")
+	// An empty directory name is an argument error, not an I/O failure.
+	_, stderr := invoke(t, 2, "new", "")
+	if !strings.Contains(stderr, "nonempty game directory") {
+		t.Errorf("stderr: %q", stderr)
+	}
+}

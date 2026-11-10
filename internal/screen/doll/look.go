@@ -153,10 +153,38 @@ func alphaOf(img image.Image) func(x, y int) uint32 {
 // cut copies a rectangle of a picture (in fractions of its visible part) at w x h pixels.
 func cut(img image.Image, x0, y0, x1, y1 float64, w, h int) image.Image {
 	b := OpaqueBounds(img)
-	r := image.Rect(b.Min.X+int(x0*float64(b.Dx())), b.Min.Y+int(y0*float64(b.Dy())),
-		b.Min.X+int(x1*float64(b.Dx())), b.Min.Y+int(y1*float64(b.Dy())))
+	r := image.Rect(b.Min.X+pixel(x0*float64(b.Dx())), b.Min.Y+pixel(y0*float64(b.Dy())),
+		b.Min.X+pixel(x1*float64(b.Dx())), b.Min.Y+pixel(y1*float64(b.Dy())))
+	return scaled(img, r, w, h)
+}
+
+// pixel is a coordinate computed from an author's numbers, kept in a range
+// where rectangles of it do not overflow a 32-bit int (NaN is 0).
+func pixel(v float64) int {
+	const far = 1 << 29
+	if v != v {
+		return 0
+	}
+	return int(max(-far, min(far, v)))
+}
+
+// scaled draws the rectangle r of a picture over a new w x h one. Only the part
+// of r inside the picture is read and the rest stays clear: the scaler's time
+// and memory follow the source rectangle, and r comes from a game's files.
+func scaled(img image.Image, r image.Rectangle, w, h int) *image.RGBA {
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, r, xdraw.Src, nil)
+	in := r.Intersect(img.Bounds())
+	if in.Empty() {
+		return dst
+	}
+	dr := dst.Bounds()
+	if in != r {
+		fx, fy := float64(w)/float64(r.Dx()), float64(h)/float64(r.Dy())
+		dr = image.Rect(
+			int(math.Round(float64(in.Min.X-r.Min.X)*fx)), int(math.Round(float64(in.Min.Y-r.Min.Y)*fy)),
+			int(math.Round(float64(in.Max.X-r.Min.X)*fx)), int(math.Round(float64(in.Max.Y-r.Min.Y)*fy)))
+	}
+	xdraw.CatmullRom.Scale(dst, dr, img, in, xdraw.Src, nil)
 	return dst
 }
 
@@ -203,22 +231,17 @@ const FaceMargin = 1.4
 // FaceIn cuts a square around a face box of a picture (its center, FaceMargin times its
 // larger side), at 128 x 128. Outside the picture is clear.
 func FaceIn(img image.Image, box image.Rectangle) image.Image {
-	cx, cy := float64(box.Min.X+box.Max.X)/2, float64(box.Min.Y+box.Max.Y)/2
-	half := float64(max(box.Dx(), box.Dy())) * FaceMargin / 2
-	r := image.Rect(int(cx-half), int(cy-half), int(cx+half), int(cy+half))
-	dst := image.NewRGBA(image.Rect(0, 0, 128, 128))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, r, xdraw.Src, nil)
-	return dst
+	x0, y0, x1, y1 := float64(box.Min.X), float64(box.Min.Y), float64(box.Max.X), float64(box.Max.Y)
+	cx, cy := (x0+x1)/2, (y0+y1)/2
+	half := max(x1-x0, y1-y0) * FaceMargin / 2
+	return scaled(img, image.Rect(pixel(cx-half), pixel(cy-half), pixel(cx+half), pixel(cy+half)), 128, 128)
 }
 
 // Square is the middle square of a picture at 128 x 128 (a face drawn for the balloons).
 func Square(img image.Image) image.Image {
 	b := img.Bounds()
 	n := min(b.Dx(), b.Dy())
-	r := image.Rect(b.Min.X+(b.Dx()-n)/2, b.Min.Y+(b.Dy()-n)/2, b.Min.X+(b.Dx()+n)/2, b.Min.Y+(b.Dy()+n)/2)
-	dst := image.NewRGBA(image.Rect(0, 0, 128, 128))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, r, xdraw.Src, nil)
-	return dst
+	return scaled(img, image.Rect(b.Min.X+(b.Dx()-n)/2, b.Min.Y+(b.Dy()-n)/2, b.Min.X+(b.Dx()+n)/2, b.Min.Y+(b.Dy()+n)/2), 128, 128)
 }
 
 // Round masks a face to a circle (soft at the edge).

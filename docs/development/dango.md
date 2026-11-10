@@ -46,6 +46,18 @@ Dango also checks generated schemas against the Go types and translation keys ag
 - Command checks reject root dispatch, direct parser entry and subprocess
   execution from handlers. Shared flag registration for an external input
   adapter is not another handler invocation. Typed operations remain reusable.
+- Usage-error checks (`TestUsageErrors`) read the command handlers (`cmd/gozen`
+  and the `command` packages) and reject an `errors.New` or `fmt.Errorf` whose
+  message starts with an option name (`--boss: unknown troop`): such an error
+  exits 1 without a code, while an argument error is `cliio.Invalid` (exit 2 with
+  a code and the `--help` hint). A missing prerequisite that names an option is
+  allowlisted with its reason. The check is lexical: it does not find an
+  argument error whose message starts with other words.
+- Choice checks (`TestDeclaredChoices`) reject `diag.NotAChoice` raised outside
+  the option parser and an empty string among `clihelp.Choices`. A fixed set of
+  values is declared once, so the check, the rejection and `gozen help --format
+  json` read the same list; a set known only after the game is read is
+  allowlisted by file.
 - The phone puppet clip test observes actual file reads while advancing headless
   playback. It runs without a window. Trace checks exercise extreme observation
   values and require no diagnostic or failure status for layout and state measurements.
@@ -94,6 +106,17 @@ Dango also checks generated schemas against the Go types and translation keys ag
   files that no other file names. The existing misnamed test files form a fixed
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
+- `TestBoundedPictureDecode` reads every Go file outside tests and rejects a
+  reference to `image.Decode`, `png.Decode`, `jpeg.Decode`, `gif.Decode`,
+  `gif.DecodeAll` or a `webp` package's `Decode` that no `picturelimit.Header`
+  or `picturelimit.Dimensions` precedes in the same function: a picture's header
+  decides how much memory its decode takes. `picturelimit.Read` bounds only the
+  encoded bytes and does not count. `internal/screen/picdecode` is the checked
+  decoder itself. A function bounded another way is listed by file and name with
+  its reason in `pictureDecodeAllowlist` of `decisions_test.go`, and an entry
+  that excuses nothing fails. The check is lexical: it sees that a limit call
+  comes first in the source, not that its error is obeyed, and it does not follow
+  a decoder passed in from another package.
 - `TestCommandWalkerCoverage` finds every `[]Command` field reachable from the game
   data by reflection, plants a marked command in each, and requires `eachCommandList`
   with `Command.branches` (`uses.go`) to reach it once, and `EachCommand`, `StateUses`

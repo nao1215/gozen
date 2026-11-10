@@ -16,7 +16,7 @@ import (
 // a configured but unreadable/incompatible model fails the test.
 func TestONNXDetection(t *testing.T) {
 	model, lib := inferenceInputs(t, "GOZEN_MOSAIC_MODEL")
-	d, err := detect.New(model, lib, 1)
+	d, err := detect.NewWithLabels(model, lib, 1, detect.Labels)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -59,6 +59,16 @@ func (c *command) sim() clihelp.Operation {
 		if db.Troops[troop] == nil {
 			return cliio.Invalid(diag.UnknownName, "unknown troop %q", troop)
 		}
+		for _, id := range commaList(*party) {
+			if db.Actors[id] == nil {
+				return cliio.Invalid(diag.UnknownName, "--party: unknown actor %q", id)
+			}
+		}
+		for _, id := range commaList(*gear) {
+			if db.Items[id] == nil {
+				return cliio.Invalid(diag.UnknownName, "--gear: unknown item %q", id)
+			}
+		}
 		if *asIs && len(*states) == 0 {
 			return cliio.Invalid(diag.OptionNeedsAnother, "--as-is needs --state")
 		}
@@ -176,12 +186,19 @@ type band struct {
 	P90 float64 `json:"p90"`
 }
 
-// commaList splits the --party and --gear lists. It returns nil for an empty string and otherwise keeps empty elements (reported as unknown IDs).
+// commaList splits every comma-separated option value (--party, --gear, --boss,
+// --shops, --supplies, --flags and the like). It returns nil for an empty string,
+// trims the spaces around each element, and keeps an empty element so that the
+// caller reports it (as an unknown ID or a malformed pair) instead of dropping it.
 func commaList(s string) []string {
 	if s == "" {
 		return nil
 	}
-	return strings.Split(s, ",")
+	out := strings.Split(s, ",")
+	for i := range out {
+		out[i] = strings.TrimSpace(out[i])
+	}
+	return out
 }
 
 func pct(a, b int) float64 { return 100 * float64(a) / float64(b) }

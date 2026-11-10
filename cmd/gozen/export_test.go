@@ -97,7 +97,7 @@ func TestExportRejectsInvalidOptionsBeforePublishing(t *testing.T) {
 		message string
 	}{
 		{"missing-runtime", nil, 2, "requires --runtime"},
-		{"unknown-target", []string{"--runtime", "missing", "--target", "unknown"}, 2, "unsupported export target"},
+		{"unknown-target", []string{"--runtime", "missing", "--target", "unknown"}, 2, "--target must be web, linux-amd64"},
 		{"desktop-reuse", []string{"--runtime", "missing", "--target", "linux-amd64", "--reuse", "missing"}, 2, "--reuse is for --target web"},
 		{"missing-bundle", []string{"--runtime", "missing", "--target", "linux-amd64"}, 1, "runtime.json"},
 	} {

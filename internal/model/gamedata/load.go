@@ -63,8 +63,8 @@ type DB struct {
 	// sceneWarns are the warnings of the maps and stages that Check found (SceneWarnings).
 	sceneWarns  []error
 	sceneWarned bool
-	// flagWarns are the warnings of flags that Check found (FlagWarnings).
-	flagWarns       []error
+	// flags are what Check found about the flags (FlagWarnings, UnusedFlags).
+	flags           flagFindings
 	definitionWarns []error // Unreferenced definitions found by Check.
 
 	// Words are the translations of lang/<code>.yaml by language, source to translation

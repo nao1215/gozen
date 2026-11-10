@@ -7,10 +7,13 @@ import (
 	"io/fs"
 	"math"
 	"os"
+	slashpath "path"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/cliio"
+	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 )
 
@@ -24,18 +27,22 @@ func parseClasses(v string) ([]string, error) {
 		out[i] = strings.TrimSpace(out[i])
 	}
 	if err := detect.ValidateClasses(out); err != nil {
-		return nil, fmt.Errorf("--classes: %w", err)
+		return nil, cliio.Invalid(diag.BadValue, "--classes: %v", err)
 	}
 	return out, nil
 }
 
 func (o *options) validate() error {
 	if o.block < 0 || o.block > 256 || o.padBlocks < 0 || o.padBlocks > 256 || o.minBlocks < 0 || o.minBlocks > 256 || o.dilate < -1 || o.dilate > 256 || o.threads < 1 || o.threads > 1024 || o.quality < 1 || o.quality > 100 {
-		return errors.New("invalid numeric options: block/pad/min 0..256, dilate -1..256, threads 1..1024, quality 1..100")
+		return cliio.Invalid(diag.BadValue, "invalid numeric options: block/pad/min 0..256, dilate -1..256, threads 1..1024, quality 1..100")
 	}
-	for name, v := range map[string]float64{"threshold": o.minScore, "sure": o.sure, "margin": o.margin} {
-		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
-			return fmt.Errorf("--%s must be finite and in [0,1]", name)
+	// A fixed order, so that several invalid options always name the same one.
+	for _, v := range []struct {
+		name  string
+		value float64
+	}{{"threshold", o.minScore}, {"sure", o.sure}, {"margin", o.margin}} {
+		if math.IsNaN(v.value) || math.IsInf(v.value, 0) || v.value < 0 || v.value > 1 {
+			return cliio.Invalid(diag.BadValue, "--%s must be finite and in [0,1]", v.name)
 		}
 	}
 	return nil
@@ -124,6 +131,81 @@ func relativePicture(rel string) bool {
 	return fs.ValidPath(rel) && rel != "." && !strings.ContainsAny(rel, "\\:")
 }
 
+// outputRel is where auto writes the pixelated picture of an asset, below --out: the path
+// of the asset, and <name>.png for a WebP one, which is written as PNG. Every command
+// that looks for an output goes through it, so that they agree on the name.
+func outputRel(rel string) string {
+	if strings.HasSuffix(strings.ToLower(rel), ".webp") {
+		return rel + ".png"
+	}
+	return rel
+}
+
+// sourceRel is the reverse of outputRel: the asset that a file below --out was made from.
+// <name>.webp.png stands for <name>.webp unless the assets hold a picture of that very name.
+func sourceRel(assets, rel string) string {
+	if trimmed, ok := strings.CutSuffix(rel, ".png"); ok && outputRel(trimmed) == rel && !isFile(filepath.Join(assets, filepath.FromSlash(rel))) {
+		return trimmed
+	}
+	return rel
+}
+
+func isFile(name string) bool {
+	st, err := os.Stat(name)
+	return err == nil && !st.IsDir()
+}
+
+// below gives the slash-separated path of a file under a directory.
+func below(dir, file string) (string, bool) {
+	root, err := filepath.Abs(dir)
+	if err != nil || !within(file, root) {
+		return "", false
+	}
+	rel, err := filepath.Rel(root, file)
+	return filepath.ToSlash(rel), err == nil
+}
+
+// resolve reads an IMAGE operand, the same way for auto, inspect and the manual commands.
+// rel is the slash-separated path below assets/, path the file that was named, and orig
+// the original picture in the assets. The readings, in order:
+//
+//   - a path below <game-dir>/assets/, with or without a leading assets/, when that
+//     picture exists. It comes first, so that a file of the same name in the working
+//     directory does not hide the asset;
+//   - a path to an existing file. One inside the assets is that asset, one inside --out
+//     stands for the asset it was made from, and any other has no asset (rel is empty);
+//   - otherwise the asset of that name, which the caller then reports as missing.
+//
+// A backslash separates directories on every system: it is not allowed in an asset name
+// (relativePicture), and a Windows-style operand such as assets\a.png names the same
+// picture as assets/a.png.
+func resolve(c config, arg string) (rel, path, orig string) {
+	assets := filepath.Join(c.gameDir, "assets")
+	asset := func(rel string) string { return filepath.Join(assets, filepath.FromSlash(rel)) }
+	name := slashpath.Clean(strings.ReplaceAll(arg, "\\", "/"))
+	stripped := strings.TrimPrefix(name, "assets/")
+	for _, rel := range []string{name, stripped} {
+		if relativePicture(rel) && isFile(asset(rel)) {
+			return rel, asset(rel), asset(rel)
+		}
+	}
+	if isFile(arg) {
+		abs, err := filepath.Abs(arg)
+		if err != nil {
+			return "", arg, arg
+		}
+		if rel, ok := below(assets, abs); ok {
+			return rel, arg, asset(rel)
+		}
+		if rel, ok := below(c.out, abs); ok {
+			rel = sourceRel(assets, rel)
+			return rel, arg, asset(rel)
+		}
+		return "", arg, arg
+	}
+	return stripped, asset(stripped), asset(stripped)
+}
+
 func validPicture(c config, rel string) error {
 	if !relativePicture(rel) {
 		return fmt.Errorf("invalid asset-relative image %q", rel)
@@ -140,7 +222,7 @@ func validPicture(c config, rel string) error {
 	if !within(p, root) {
 		return errors.New("image escapes source assets")
 	}
-	dst := filepath.Join(c.out, filepath.FromSlash(rel))
+	dst := filepath.Join(c.out, filepath.FromSlash(outputRel(rel)))
 	resolved, err := canonical(dst)
 	if err != nil {
 		return err
@@ -190,10 +272,13 @@ func protectView(c config, orig, dst string) error {
 	return nil
 }
 
-func validateReport(c config) error {
-	if err := filepath.WalkDir(c.out, func(p string, d fs.DirEntry, err error) error {
+// noSymlinks refuses an output tree that holds a symbolic link, the directory itself
+// included: a link could lead a write or a removal out of the tree. A directory that does
+// not exist yet has none.
+func noSymlinks(dir string) error {
+	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			if os.IsNotExist(err) && p == c.out {
+			if os.IsNotExist(err) && p == dir {
 				return nil
 			}
 			return err
@@ -202,7 +287,11 @@ func validateReport(c config) error {
 			return errors.New("output tree must not contain symlinks")
 		}
 		return nil
-	}); err != nil {
+	})
+}
+
+func validateReport(c config) error {
+	if err := noSymlinks(c.out); err != nil {
 		return err
 	}
 	b, err := os.ReadFile(filepath.Join(c.out, "report.json"))
