@@ -203,7 +203,7 @@ func (g *Generate) Drawn(floor int) string {
 // number), the farthest from the start (far: stairs down) or anywhere.
 type Put struct {
 	Char  string `yaml:"char"`
-	Count Expr   `yaml:"count"` // default 1
+	Count Expr   `yaml:"count"` // default 1; reads floor only (MapNames)
 	Far   bool   `yaml:"far"`
 	// At puts it at a cell of the map (x, y from the top left; the cell is opened and joined
 	// to the rest): an event at a set place. Steps puts it about that many steps (walked) from
@@ -512,7 +512,7 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 	if g.Rooms < 0 {
 		c.errorf(diag.OutOfRange, w+".generate.rooms", "want 0 or more")
 	}
-	c.expr(w+".generate.size", g.Size, FloorNames)
+	c.expr(w+".generate.size", g.Size, MapNames)
 	if g.Loops < 0 || g.Loops > 1 {
 		c.errorf(diag.OutOfRange, w+".generate.loops", "want 0 to 1")
 	}
@@ -528,7 +528,7 @@ func (c *checker) generate(w string, d *Dungeon, used map[rune]bool) {
 	for i, p := range g.Place {
 		ww := fmt.Sprintf("%s.generate.place[%d]", w, i)
 		placeChar(ww+".char", p.Char)
-		c.expr(ww+".count", p.Count, FloorNames)
+		c.expr(ww+".count", p.Count, MapNames)
 		if p.At != nil && (p.At[0] < 0 || p.At[0] >= g.Width || p.At[1] < 0 || p.At[1] >= g.Height) {
 			c.errorf(diag.OutOfRange, ww+".at", "%v is outside the map (%dx%d)", *p.At, g.Width, g.Height)
 		}
@@ -803,6 +803,9 @@ func (c *checker) roamers(w string, d *Dungeon) {
 			_, ok := c.db.Troops[t.Troop]
 			c.ref(fmt.Sprintf("%s.troops[%d]", ww, j), "troop", t.Troop, ok)
 			c.expr(fmt.Sprintf("%s.troops[%d].when", ww, j), t.When, FieldNames)
+		}
+		if most := MaxDungeonSide * MaxDungeonSide; r.Far > most || r.Sight > most {
+			c.errorf(diag.OutOfRange, ww, "far and sight are at most %d steps (a floor has no more cells)", most)
 		}
 		switch r.Move {
 		case "", "chase", "wander", "guard", "hunt":

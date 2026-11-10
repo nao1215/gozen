@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
@@ -75,12 +77,14 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 	g = &bounded
 	seed := optional.Value[float64](st.Vars[VarSeed])
 	floor := optional.Value[float64](st.Vars[VarFloor])
-	s := uint64(seed)
-	if fs, ok := g.SeedFor(int(floor)); ok {
+	s := seedBits(seed)
+	if fs, ok := g.SeedFor(safeint.From(floor)); ok {
 		s = fs
 	}
-	rng := rand.New(rand.NewPCG(s, uint64(floor)*7919+1)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
-	env := expr.Chain{expr.Map{"floor": floor}, st.Env()}
+	rng := rand.New(rand.NewPCG(s, uint64(safeint.From(floor))*7919+1)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	// The map is made again from the seed when a save is loaded: what shapes it reads the
+	// floor's number only, never the rest of the state (it has changed since the dive).
+	env := expr.Map{"floor": floor}
 	kind := func(r rune) Kind {
 		t := d.Tiles[string(r)]
 		if t == nil {
@@ -101,9 +105,9 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 		if err != nil {
 			return 1
 		}
-		return int(n)
+		return safeint.From(n)
 	}
-	if m := g.Drawn(int(floor)); m != "" {
+	if m := g.Drawn(safeint.From(floor)); m != "" {
 		d.SetMap(Drawn(g, m, rng, kind, count))
 		keepRecords(st, loc, d.Map)
 		return
@@ -113,7 +117,7 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 			if math.IsNaN(n) || math.IsInf(n, 0) {
 				n = 9
 			}
-			side := int(max(9, min(n, float64(data.MaxDungeonSide)))) | 1
+			side := safeint.From(max(9, min(n, float64(data.MaxDungeonSide)))) | 1
 			gg := *g
 			gg.Width, gg.Height = max(9, min(g.Width, side)), max(9, min(g.Height, side))
 			gg.Rooms = max(1, g.Rooms*gg.Width*gg.Height/(g.Width*g.Height))
@@ -125,6 +129,21 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 	}
 	d.SetMap(MazeKinds(g, rng, kind, count))
 	keepRecords(st, loc, d.Map)
+}
+
+// seedBits is the seed's whole part as the generator's 64 bits: a negative one as its two's
+// complement, and one beyond 64 bits as the nearest end (Go leaves such a conversion of a
+// float to the platform, and a save is the same floor on every one).
+func seedBits(seed float64) uint64 {
+	switch {
+	case math.IsNaN(seed):
+		return 0
+	case seed < 0:
+		return uint64(int64(max(seed, math.MinInt64))) //nolint:gosec // The wrap is the point: the seed's bits.
+	case seed >= 1<<64:
+		return math.MaxUint64
+	}
+	return uint64(seed)
 }
 
 // fixSeed puts the data's seed in the state when the data fixes it (a save from before
@@ -299,6 +318,10 @@ func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
 		}
 	}
 	// dead ends mostly filled back (a few kept: something may wait in them)
+	whole := make([][]rune, h)
+	for y := range grid {
+		whole[y] = slices.Clone(grid[y])
+	}
 	for range 3 {
 		for y := 1; y < h-1; y++ {
 			for x := 1; x < w-1; x++ {
@@ -337,13 +360,26 @@ func mazeGrid(g *data.Generate, rng *rand.Rand) ([][]rune, []room) {
 			}
 		}
 	}
+	left := 0
+	for _, row := range grid {
+		left += strings.Count(string(row), ".")
+	}
+	if left < minMazeFloor { // a maze of corridors only may be filled to its last cell
+		return whole, rooms
+	}
 	return grid, rooms
 }
 
+// minMazeFloor is the fewest floor cells a made maze keeps after its dead ends are filled
+// (the smallest room's): with fewer, the maze stays as it was dug, so that there is always
+// floor for the start and the stairs.
+const minMazeFloor = 9
+
 // Drawn is a hand-drawn floor (m: rows of # . D and tile characters, the start drawn once)
 // with what place asks for placed on it as on a made floor: a character drawn counts
-// toward its count, and only the rest are placed. An unchecked map with uneven
-// rows or a side longer than MaxDungeonSide yields an empty string.
+// toward its count, and only the rest are placed. An unchecked map yields an empty string:
+// uneven rows, a side shorter than 3 or longer than MaxDungeonSide, an edge that is not
+// wall, or no start.
 func Drawn(g *data.Generate, m string, rng *rand.Rand, kind func(rune) Kind, count func(data.Expr) int) string {
 	var grid [][]rune
 	width := -1
@@ -355,8 +391,15 @@ func Drawn(g *data.Generate, m string, rng *rand.Rand, kind func(rune) Kind, cou
 		width = rowWidth
 		grid = append(grid, []rune(ln))
 	}
-	if len(grid) == 0 || len(grid[0]) == 0 {
+	if len(grid) < 3 || width < 3 || utf8.RuneCountInString(g.Start) != 1 || g.Start == string(data.CellWall) || !strings.Contains(m, g.Start) {
 		return ""
+	}
+	for y, row := range grid {
+		for x, r := range row {
+			if (y == 0 || x == 0 || y == len(grid)-1 || x == width-1) && r != data.CellWall {
+				return ""
+			}
+		}
 	}
 	return placeOn(g, grid, nil, rng, kind, count, true)
 }
@@ -440,6 +483,9 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 			}
 		}
 	} else {
+		if len(floor) == 0 { // an unchecked grid with nothing dug: nowhere to start
+			return mapText(grid)
+		}
 		start = floor[rng.IntN(len(floor))]
 		if len(rooms) > 0 {
 			r := rooms[rng.IntN(len(rooms))]
@@ -488,7 +534,10 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 	}
 	// blocks says whether putting ch at c would shut a way: some open cell no longer walkable
 	// from the start, a solid thing no longer reachable from a side, or (with slides and
-	// carrying tiles) a cell from which the start can no longer be walked back to.
+	// carrying tiles) a cell from which the start can no longer be walked back to. Only the
+	// ways there are before anything is placed (open) can be shut: a drawn floor may keep a
+	// part behind a locked door, and that part is no reason to place nothing.
+	open := ways(grid, start, kind)
 	steps4 := [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}
 	var guards [][2]int // what near put in front of the stairs: not a wall to the rest (the party beats it)
 	blocks := func(c [2]int, ch rune) bool {
@@ -510,7 +559,13 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 				grid[g[1]][g[0]] = '.'
 			}
 		}
-		return !walkable(grid, start, kind)
+		now := ways(grid, start, kind)
+		for i, ok := range open {
+			if ok && !now[i] {
+				return true
+			}
+		}
+		return false
 	}
 	checked := func(ch rune) bool { k := kind(ch); return k.Solid || k.Slide != "" || k.Carry }
 	byDoor := func(c [2]int) bool {
@@ -521,9 +576,10 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 		}
 		return false
 	}
-	// fits says whether ch may go at c (free, not just inside a door when solid, and not shutting a way)
+	// fits says whether ch may go at c (free, not just inside a door when solid, and, for what
+	// may shut a way, on a cell walked to that shuts none)
 	fits := func(c [2]int, ch rune) bool {
-		return !taken[c] && (!kind(ch).Solid || !byDoor(c)) && (!checked(ch) || !blocks(c, ch))
+		return !taken[c] && (!kind(ch).Solid || !byDoor(c)) && (!checked(ch) || open[c[1]*w+c[0]] && !blocks(c, ch))
 	}
 	deadEnd := func(c [2]int) bool {
 		n := 0
@@ -617,6 +673,11 @@ func placeOn(g *data.Generate, grid [][]rune, rooms []room, rng *rand.Rand, kind
 			grid[best[1]][best[0]] = ch
 		}
 	}
+	return mapText(grid)
+}
+
+// mapText is the grid as a map's rows.
+func mapText(grid [][]rune) string {
 	var b strings.Builder
 	for _, row := range grid {
 		b.WriteString(string(row))
@@ -868,90 +929,129 @@ func abs(n int) int {
 	return n
 }
 
-// walkable reports whether, on grid, every open cell (not a wall, a solid thing, a slide or a
-// carrying tile) can be walked to from start, every solid thing has a side walked to, and
-// the start can be walked back to from everywhere walked to (no slide leaves the party where
-// it cannot come back). Slides carry the party as SlideEnd does (stopping before a wall, a
-// door or a solid thing, and on any other tile).
-func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
+// ways reports, for each cell of grid (row by row), whether it has its way: an open cell
+// (not a wall, a solid thing, a slide or a carrying tile) can be walked to from start and
+// the start walked back to from it, a solid thing or a carrying tile has a side walked to,
+// and a slide leaves the party nowhere it cannot come back from (a wall always has its
+// way). Slides carry the party as SlideEnd does (stopping before a wall, a door or a solid
+// thing, and on any other tile). It is nil for a grid that is no map or a start outside it.
+func ways(grid [][]rune, start [2]int, kind func(rune) Kind) []bool {
 	if len(grid) == 0 {
-		return false
+		return nil
 	}
-	h, w := len(grid), len(grid[0])
-	cells := cellCount(w, h)
-	if cells == 0 || start[0] < 0 || start[1] < 0 || start[0] >= w || start[1] >= h {
-		return false
+	g := gridWalk{grid: grid, w: len(grid[0]), h: len(grid), kind: kind}
+	cells := cellCount(g.w, g.h)
+	if cells == 0 || start[0] < 0 || start[1] < 0 || start[0] >= g.w || start[1] >= g.h {
+		return nil
 	}
 	for _, row := range grid {
-		if len(row) != w {
-			return false
+		if len(row) != g.w {
+			return nil
 		}
 	}
-	at := func(x, y int) rune {
-		if x < 0 || y < 0 || x >= w || y >= h {
-			return '#'
-		}
-		return grid[y][x]
-	}
-	open := func(r rune) bool { return r != '#' && r != ' ' && !kind(r).Solid }
-	dirs := [4][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}} // north east south west
-	// move is where a step from x, y the way f ends (ok false: no step, or carried away)
-	move := func(x, y, f int) (int, int, bool) {
-		nx, ny := x+dirs[f][0], y+dirs[f][1]
-		r := at(nx, ny)
-		if !open(r) {
-			return 0, 0, false
-		}
+	seen, home := g.walked(start, cells)
+	ok := make([]bool, cells)
+	for i := range ok {
+		x, y := i%g.w, i/g.w
+		r := grid[y][x]
 		k := kind(r)
-		if k.Carry {
-			return 0, 0, false
-		}
-		if k.Slide == "" {
-			return nx, ny, true
-		}
-		dir := slideDir(k.Slide, f)
-		seen := map[[3]int]bool{}
-		for {
-			key := [3]int{nx, ny, dir}
-			if seen[key] {
-				break
-			}
-			seen[key] = true
-			mx, my := nx+dirs[dir][0], ny+dirs[dir][1]
-			r := at(mx, my)
-			if !open(r) || r == 'D' {
-				break
-			}
-			nx, ny = mx, my
-			if r == '.' {
-				continue
-			}
-			k := kind(r)
-			if k.Slide == "" {
-				if k.Carry {
-					return 0, 0, false
+		switch {
+		case r == '#' || r == ' ':
+			ok[i] = true
+		case k.Slide != "":
+			ok[i] = !seen[i] || home[i]
+		case k.Solid || k.Carry: // come up to from a side (a carrying tile: stepped on from there)
+			for _, d := range gridDirs {
+				if nx, ny := x+d[0], y+d[1]; nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && seen[ny*g.w+nx] {
+					ok[i] = true
 				}
-				break
 			}
-			dir = slideDir(k.Slide, dir)
+		default:
+			ok[i] = seen[i] && home[i]
 		}
+	}
+	return ok
+}
+
+// gridWalk is a grid of a map being made and how its characters are walked.
+type gridWalk struct {
+	grid [][]rune
+	w, h int
+	kind func(rune) Kind
+}
+
+// gridDirs are the steps north, east, south and west.
+var gridDirs = [4][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
+
+func (g gridWalk) at(x, y int) rune {
+	if x < 0 || y < 0 || x >= g.w || y >= g.h {
+		return '#'
+	}
+	return g.grid[y][x]
+}
+
+func (g gridWalk) open(r rune) bool { return r != '#' && r != ' ' && !g.kind(r).Solid }
+
+// step is where a step from x, y the way f ends (ok false: no step, or carried away).
+func (g gridWalk) step(x, y, f int) (int, int, bool) {
+	nx, ny := x+gridDirs[f][0], y+gridDirs[f][1]
+	r := g.at(nx, ny)
+	if !g.open(r) {
+		return 0, 0, false
+	}
+	k := g.kind(r)
+	if k.Carry {
+		return 0, 0, false
+	}
+	if k.Slide == "" {
 		return nx, ny, true
 	}
-	idx := func(x, y int) int { return y*w + x }
-	seen := make([]bool, cells)
+	dir := slideDir(k.Slide, f)
+	seen := map[[3]int]bool{}
+	for {
+		key := [3]int{nx, ny, dir}
+		if seen[key] {
+			break
+		}
+		seen[key] = true
+		mx, my := nx+gridDirs[dir][0], ny+gridDirs[dir][1]
+		r := g.at(mx, my)
+		if !g.open(r) || r == 'D' {
+			break
+		}
+		nx, ny = mx, my
+		if r == '.' {
+			continue
+		}
+		k := g.kind(r)
+		if k.Slide == "" {
+			if k.Carry {
+				return 0, 0, false
+			}
+			break
+		}
+		dir = slideDir(k.Slide, dir)
+	}
+	return nx, ny, true
+}
+
+// walked are the cells walked to from start (seen) and, of those, the ones the start can
+// be walked back to from (home), row by row. cells is cellCount(g.w, g.h).
+func (g gridWalk) walked(start [2]int, cells int) (seen, home []bool) {
+	first := start[1]*g.w + start[0]
+	seen = make([]bool, cells)
 	back := make([][]int, cells) // back[n]: the cells with a step to n
-	seen[idx(start[0], start[1])] = true
-	q := []int{idx(start[0], start[1])}
+	seen[first] = true
+	q := []int{first}
 	for len(q) > 0 {
 		p := q[0]
 		q = q[1:]
-		x, y := p%w, p/w
 		for f := range 4 {
-			nx, ny, ok := move(x, y, f)
+			nx, ny, ok := g.step(p%g.w, p/g.w, f)
 			if !ok {
 				continue
 			}
-			n := idx(nx, ny)
+			n := ny*g.w + nx
 			back[n] = append(back[n], p)
 			if !seen[n] {
 				seen[n] = true
@@ -959,33 +1059,9 @@ func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
 			}
 		}
 	}
-	for y := range h {
-		for x := range w {
-			r := grid[y][x]
-			k := kind(r)
-			switch {
-			case r == '#' || r == ' ' || k.Slide != "":
-			case k.Solid || k.Carry: // come up to from a side (a carrying tile: stepped on from there)
-				ok := false
-				for _, d := range dirs {
-					if nx, ny := x+d[0], y+d[1]; nx >= 0 && ny >= 0 && nx < w && ny < h && seen[idx(nx, ny)] {
-						ok = true
-					}
-				}
-				if !ok {
-					return false
-				}
-			default:
-				if !seen[idx(x, y)] {
-					return false
-				}
-			}
-		}
-	}
-	// and back: every cell walked to has a way to the start
-	home := make([]bool, cells)
-	home[idx(start[0], start[1])] = true
-	q = []int{idx(start[0], start[1])}
+	home = make([]bool, cells)
+	home[first] = true
+	q = []int{first}
 	for len(q) > 0 {
 		p := q[0]
 		q = q[1:]
@@ -996,12 +1072,7 @@ func walkable(grid [][]rune, start [2]int, kind func(rune) Kind) bool {
 			}
 		}
 	}
-	for i := range seen {
-		if seen[i] && !home[i] {
-			return false
-		}
-	}
-	return true
+	return seen, home
 }
 
 // slideDir is the way a slide carries the party moving the way f.

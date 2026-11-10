@@ -21,6 +21,20 @@ import (
 // sourceGOROOT fills build.Default.GOROOT once for the source importer.
 var sourceGOROOT sync.Once
 
+// fillGOROOT gives the source importer a GOROOT: a binary built with -trimpath
+// (as the dango E2E builds it) knows none, and the importer reads the standard
+// library from there.
+func fillGOROOT() {
+	sourceGOROOT.Do(func() {
+		if build.Default.GOROOT == "" {
+			out, err := exec.CommandContext(context.Background(), "go", "env", "GOROOT").Output()
+			if err == nil {
+				build.Default.GOROOT = strings.TrimSpace(string(out))
+			}
+		}
+	})
+}
+
 // floatToIntConversions lists the conversions of a decimal number to an integer type
 // in the packages under dir (a path from the repository root), as "file:line: text".
 // Go leaves such a conversion to the platform when the number is NaN or beyond the
@@ -30,16 +44,7 @@ var sourceGOROOT sync.Once
 func floatToIntConversions(t *testing.T, dir string) []string {
 	t.Helper()
 	const root = "../../.."
-	sourceGOROOT.Do(func() {
-		// A binary built with -trimpath (as the dango E2E builds it) knows no
-		// GOROOT, and the source importer reads the standard library from there.
-		if build.Default.GOROOT == "" {
-			out, err := exec.CommandContext(context.Background(), "go", "env", "GOROOT").Output()
-			if err == nil {
-				build.Default.GOROOT = strings.TrimSpace(string(out))
-			}
-		}
-	})
+	fillGOROOT()
 	fset := token.NewFileSet()
 	imp := importer.ForCompiler(fset, "source", nil)
 	var found []string

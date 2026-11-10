@@ -581,3 +581,53 @@ func TestBattleEventsAreAnsweredQuietly(t *testing.T) {
 		t.Errorf("a battle cut off by the turn limit is left ongoing for the caller, got %v", b2.Result)
 	}
 }
+
+// TestBattleEventPhoneThatOpensAppEnds: a troop's event may bring up a phone
+// whose button opens an app and comes back to it. The battle fought without a
+// screen leaves that button alone and goes on to its end.
+func TestBattleEventPhoneThatOpensAppEnds(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+troops:
+  ringing:
+    members: [mote]
+    events:
+      - when: "turn == 1"
+        do:
+          - phone: {app: home, rows: [{button: Mail, event: app}]}
+          - set: {flag.rang: true}
+events:
+  app:
+    do: [{set: {var.visits: "var.visits + 1"}}]
+  fight:
+    do: [{battle: ringing}]
+`})
+	st := testgame.State(db, 1)
+	d := headless.New(db, st)
+	if err := d.Run(t.Context(), db.Events["fight"].Do); err != nil {
+		t.Fatal(err)
+	}
+	if d.Battles != 1 || st.Flags["rang"] != true || st.Vars["visits"] != nil {
+		t.Fatalf("battles %d, rang %v, visits %v: want one battle, its event read to the end and no app opened", d.Battles, st.Flags["rang"], st.Vars["visits"])
+	}
+}
+
+// TestShopBuysSuppliesInIDOrder: when the money does not reach every supply
+// asked for, the driver buys in id order, so a run repeats.
+func TestShopBuysSuppliesInIDOrder(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+items:
+  apple: {name: Apple, price: 60, use: {scope: one_ally, effects: [{heal: "5"}]}}
+  berry: {name: Berry, price: 60, use: {scope: one_ally, effects: [{heal: "5"}]}}
+  cocoa: {name: Cocoa, price: 60, use: {scope: one_ally, effects: [{heal: "5"}]}}
+shops:
+  stall: {goods: [cocoa, berry, apple]}
+`})
+	for i := range 40 {
+		st := testgame.State(db, 1) // 100 gold: one of the three
+		d := headless.New(db, st)
+		d.Shop("stall", map[string]int{"apple": 1, "berry": 1, "cocoa": 1})
+		if st.Items["apple"] != 1 || st.Items["berry"] != 0 || st.Items["cocoa"] != 0 {
+			t.Fatalf("run %d bought %v: want the apple, the first id", i, st.Items)
+		}
+	}
+}

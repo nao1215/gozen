@@ -126,7 +126,8 @@ failure tests verify rollback and subsequent advancement and saving.
 Calendars use ISO dates, inclusive endpoints, explicit phases, weekday closures and
 exception dates. Closed days consume one phase. Advancement and reservation
 dispatch are separate so authors can settle pending decisions before dispatch.
-Reservations retain their dispatch keys across saves. Events must finish before
+Reservations retain the day's dispatch keys across saves; they are dropped when
+the date advances, as only the current day's are read. Events must finish before
 the author advances again.
 
 Progress clamps to zero and effort, and rework reopens completed work. A dependency

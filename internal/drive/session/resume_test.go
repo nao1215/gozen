@@ -3,6 +3,7 @@ package session_test
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -258,5 +259,116 @@ func TestSaveAfterAPhoneReplays(t *testing.T) {
 	var way any
 	if err := r.Query("var.way", &way); err != nil || way != float64(2) {
 		t.Fatalf("the loaded choice: %v %v", way, err)
+	}
+}
+
+// TestSaveAfterChoiceThenPhoneRestores: the last line is an answered choice
+// and a phone that keeps a result is put down after it. A save made before
+// the next line holds the choice's answer alone, so it loads at that line.
+func TestSaveAfterChoiceThenPhoneRestores(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":      {Data: []byte("schema_version: 4\nid: story\n" + testgame.Game)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+		"assets/x.png":   {Data: []byte("a stub")},
+		"data/story.yaml": {Data: []byte(`events:
+  story:
+    do:
+      - say: "Before."
+      - choice:
+          - {id: left, label: Left, do: [{set: {var.way: 1}}]}
+          - {id: right, label: Right, do: [{set: {var.way: 2}}]}
+        id: way
+      - phone: {app: page, rows: [{button: Go, set: {flag.went: true}}]}
+      - wait: 1
+      - say: "End."
+`)},
+	}
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: story"); err != nil {
+		t.Fatal(err)
+	}
+	var kinds []string
+	for q := s.Next(); q.Kind != "wait"; q = s.Next() {
+		kinds = append(kinds, q.Kind)
+		if q.Kind == "choice" {
+			s.Answer(1)
+		}
+		if q.Kind == "" {
+			t.Fatalf("the event ended before its wait: %v", kinds)
+		}
+	}
+	save, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, save, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatalf("restore after %v: %v", kinds, err)
+	}
+	for q := r.Next(); q.Text != "End."; q = r.Next() {
+		if q.Kind == "" {
+			t.Fatal("the restored event ended before its last line")
+		}
+	}
+	var way float64
+	if err := r.Query("var.way", &way); err != nil || way != 2 {
+		t.Fatalf("var.way = %v, %v: want the saved answer 2", way, err)
+	}
+}
+
+// TestSaveAfterLineThenPhoneRestores: a phone put down after the last line
+// is not an answer of the save made before the next line (a load reads on only
+// to the last line); the phone comes again after the load.
+func TestSaveAfterLineThenPhoneRestores(t *testing.T) {
+	fsys := fstest.MapFS{
+		"game.yaml":      {Data: []byte("schema_version: 4\nid: story\n" + testgame.Game)},
+		"data/main.yaml": {Data: []byte(testgame.Data)},
+		"assets/x.png":   {Data: []byte("a stub")},
+		"data/story.yaml": {Data: []byte(`events:
+  story:
+    do:
+      - say: "Before."
+      - phone: {app: page, rows: [{button: Go, set: {flag.went: true}}]}
+      - wait: 1
+      - say: "End."
+`)},
+	}
+	g, err := gozen.Load(fsys, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := gozen.New(g, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start("- call: story"); err != nil {
+		t.Fatal(err)
+	}
+	for q := s.Next(); q.Kind != "wait"; q = s.Next() {
+		if q.Kind == "" {
+			t.Fatal("the event ended before its wait")
+		}
+	}
+	save, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, save, gozen.Config{Seed: 3})
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	var kinds []string
+	for q := r.Next(); q.Kind != ""; q = r.Next() {
+		kinds = append(kinds, q.Kind)
+	}
+	if got := strings.Join(kinds, " "); got != "say tap wait say" {
+		t.Fatalf("restored requests %q, want the line, the phone again, the wait and the last line", got)
 	}
 }

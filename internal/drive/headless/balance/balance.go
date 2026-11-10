@@ -7,6 +7,8 @@ import (
 	"math/rand/v2"
 	"sort"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/drive/headless"
 	"github.com/nao1215/gozen/internal/drive/itemuse"
@@ -373,9 +375,9 @@ func (r *runner) rest(st *rpg.State) {
 	if r.cost != nil {
 		if v, err := r.cost.Eval(st.Env()); err == nil {
 			if n, ok := v.(float64); ok && n > 0 {
-				if st.Gold >= int(n) {
-					st.Gold -= int(n)
-					r.fl.Spent += int(n)
+				if st.Gold >= safeint.From(n) {
+					st.Gold -= safeint.From(n)
+					r.fl.Spent += safeint.From(n)
 				} else {
 					r.fl.Unpaid++
 				}

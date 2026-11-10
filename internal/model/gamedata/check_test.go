@@ -512,6 +512,29 @@ func TestActorFaceNumbersAreFinite(t *testing.T) {
 	}
 }
 
+// TestStatsByMustNotReadItsOwnStat: a stats_by multiplier that reads the stat
+// it scales (or the rate whose maximum it is) never settles, so the checker
+// refuses it; another stat of the holder is fine.
+func TestStatsByMustNotReadItsOwnStat(t *testing.T) {
+	for _, tc := range []struct {
+		by   string
+		want string
+	}{
+		{`{mhp: "a.hp_rate + 1"}`, "states.loop.stats_by.mhp"},
+		{`{mmp: "1 + a.mp_rate"}`, "states.loop.stats_by.mmp"},
+		{`{atk: "1 + a.atk / 100"}`, "states.loop.stats_by.atk"},
+		{`{atk: "1 + (1 - a.hp_rate)"}`, ""},
+	} {
+		_, err := testgame.TryLoad(map[string]string{"data/z.yaml": "states:\n  loop: {name: Loop, turns: 3, stats_by: " + tc.by + "}\n"})
+		switch {
+		case tc.want == "" && err != nil:
+			t.Errorf("stats_by %s: %v", tc.by, err)
+		case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)):
+			t.Errorf("stats_by %s: got %v, want an error at %s", tc.by, err, tc.want)
+		}
+	}
+}
+
 // A flag read by a music rule of each context is warned of at the same place on every
 // load: the rules are checked in the order of their contexts, not of a map.
 func TestFlagWarningPlaceIsStable(t *testing.T) {

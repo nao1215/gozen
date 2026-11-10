@@ -157,6 +157,8 @@ func applyCommand(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Comma
 			}
 			st.Date = d.AddDate(0, 0, 1).Format(time.DateOnly)
 			st.Phase = 0
+			// the marks are of the day they were dispatched on, and only read on it
+			clear(st.Dispatched)
 		}
 		return nil, nil
 	case "dispatch":
@@ -279,16 +281,8 @@ func applyCommand(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Comma
 			a.Observed = min(a.Observed, n)
 			n = 0
 		}
-		if n > 0 {
-			for _, dep := range p.Activities[activity].After {
-				ratio := 1.0
-				if p.Activities[activity].DependencyRatio != nil {
-					ratio = *p.Activities[activity].DependencyRatio
-				}
-				if !st.Activities[dep].Cancelled && st.Activities[dep].Progress < s.ActivityEffort(dep)*ratio {
-					return nil, nil
-				}
-			}
+		if n > 0 && waiting(s, activity) {
+			return nil, nil
 		}
 		a.Progress = max(0, min(s.ActivityEffort(activity), a.Progress+n))
 		if a.Progress < s.ActivityEffort(activity) {
@@ -460,6 +454,22 @@ func applyCommand(s *rpg.State, c data.PlanCommand, args expr.Env) ([]data.Comma
 	return nil, nil
 }
 
+// waiting reports whether the activity cannot be worked on yet: one it comes after is
+// neither cancelled nor done to the activity's dependency ratio.
+func waiting(s *rpg.State, activity string) bool {
+	def := s.DB.Game.Planning.Activities[activity]
+	ratio := 1.0
+	if def.DependencyRatio != nil {
+		ratio = *def.DependencyRatio
+	}
+	for _, dep := range def.After {
+		if a := s.Planning.Activities[dep]; !a.Cancelled && a.Progress < s.ActivityEffort(dep)*ratio {
+			return true
+		}
+	}
+	return false
+}
+
 // childIDs keeps allocation and reconciliation deterministic across saves.
 func childIDs(s *rpg.State, parent string) []string {
 	var ids []string
@@ -473,7 +483,9 @@ func childIDs(s *rpg.State, parent string) []string {
 }
 
 // Parent commands preserve old authored hooks; child work rolls up without adding
-// a second budget. Root rework is spread in proportion to existing completed work.
+// a second budget. Root rework is spread in proportion to existing completed work, root
+// work in proportion to the work left, among the children that would take it themselves:
+// not a cancelled child, and no work for a child waiting on what it comes after.
 func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string) error {
 	for _, id := range slices.Sorted(maps.Keys(s.Planning.Activities)) {
 		a := s.Planning.Activities[id]
@@ -486,8 +498,28 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 		if oldEffort == 0 {
 			oldEffort = s.DB.Game.Planning.Activities[id].Effort
 		}
-		for _, child := range children {
-			reconcileChild(s, id, child, a, old, before[child], oldEffort)
+		// The shares are settled before any child changes, so the children's order
+		// does not decide who was waiting.
+		delta := a.Progress - old.Progress
+		shares := make([]float64, len(children))
+		total := 0.0
+		for i, child := range children {
+			was := before[child]
+			switch {
+			case was.Cancelled:
+			case delta < 0:
+				shares[i] = was.Progress
+			case delta > 0 && !waiting(s, child):
+				shares[i] = max(0, childEffort(s, child, was)-was.Progress)
+			}
+			total += shares[i]
+		}
+		for i, child := range children {
+			weight := 0.0
+			if total > 0 {
+				weight = shares[i] / total
+			}
+			reconcileChild(s, id, child, a, old, before[child], oldEffort, delta*weight)
 		}
 		if err := sumParts(s, id, a, children); err != nil {
 			return err
@@ -499,17 +531,21 @@ func reconcileParts(s *rpg.State, before map[string]rpg.ActivityState, op string
 	return nil
 }
 
-// reconcileChild carries a change of the split parent (effort, cancellation,
-// deadline, progress) to one child, in proportion to the child's share.
-func reconcileChild(s *rpg.State, id, child string, a *rpg.ActivityState, old, was rpg.ActivityState, oldEffort float64) {
-	ch := s.Planning.Activities[child]
-	childEffort := was.Effort
-	if childEffort == 0 {
-		childEffort = s.DB.Game.Planning.Activities[child].Effort
+// childEffort is the effort a child had before the command (was).
+func childEffort(s *rpg.State, child string, was rpg.ActivityState) float64 {
+	if was.Effort != 0 {
+		return was.Effort
 	}
-	ratio := childEffort / oldEffort
+	return s.DB.Game.Planning.Activities[child].Effort
+}
+
+// reconcileChild carries a change of the split parent (effort, cancellation,
+// deadline) to one child, in proportion to the child's share of the effort, and gives
+// it its part of the parent's change of progress (work).
+func reconcileChild(s *rpg.State, id, child string, a *rpg.ActivityState, old, was rpg.ActivityState, oldEffort, work float64) {
+	ch := s.Planning.Activities[child]
 	if a.Effort != old.Effort {
-		ch.Effort = s.ActivityEffort(id) * ratio
+		ch.Effort = s.ActivityEffort(id) * childEffort(s, child, was) / oldEffort
 	}
 	if a.Cancelled != old.Cancelled {
 		ch.Cancelled = a.Cancelled
@@ -517,15 +553,8 @@ func reconcileChild(s *rpg.State, id, child string, a *rpg.ActivityState, old, w
 	if a.Deadline != old.Deadline {
 		ch.Deadline = a.Deadline
 	}
-	if delta := a.Progress - old.Progress; delta != 0 {
-		weight := ratio
-		if delta < 0 && old.Progress > 0 {
-			weight = was.Progress / old.Progress
-		}
-		if delta > 0 && oldEffort > old.Progress {
-			weight = (childEffort - was.Progress) / (oldEffort - old.Progress)
-		}
-		ch.Progress = max(0, min(s.ActivityEffort(child), ch.Progress+delta*weight))
+	if work != 0 {
+		ch.Progress = max(0, min(s.ActivityEffort(child), ch.Progress+work))
 	}
 	effort := s.ActivityEffort(child)
 	ch.Progress = min(ch.Progress, effort)

@@ -4485,7 +4485,7 @@
           "x-type": "boolean"
         },
         "rounds": {
-          "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5.",
+          "description": "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5, at most 100.",
           "type": "integer",
           "x-contract": {
             "default": "0",
@@ -12324,7 +12324,7 @@
           "x-type": "integer"
         },
         "size": {
-          "description": "An expression of the floor number giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller.",
+          "description": "An expression of the floor number `floor` alone (no other name, `rand` or `chance`) giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller.",
           "type": [
             "string",
             "number",
@@ -14735,7 +14735,7 @@
           "x-type": "string"
         },
         "generals": {
-          "description": "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken.",
+          "description": "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken. A clash shown as units takes clash.units of them at most; fight: battle is one general's, so generals stays 1.",
           "type": "integer",
           "x-contract": {
             "default": "0",
@@ -18430,7 +18430,7 @@
           "x-type": "string"
         },
         "count": {
-          "description": "How many to place, as an expression of the floor number. The default is 1.",
+          "description": "How many to place, as an expression of the floor number `floor` alone (no other name, `rand` or `chance`: a loaded save makes the same floor again). The default is 1.",
           "type": [
             "string",
             "number",
@@ -19241,7 +19241,7 @@
           "x-type": "expression"
         },
         "far": {
-          "description": "The minimum number of steps from the floor's start where it may be placed. The default is 6 or three fifths of the floor's farthest distance, whichever is larger, or 0 for roamers that use `appear`.",
+          "description": "The minimum number of steps from the floor's start where it may be placed, at most 65025. The default is 6 or three fifths of the floor's farthest distance, whichever is larger, or 0 for roamers that use `appear`.",
           "type": "integer",
           "x-contract": {
             "default": "max(6, farthest distance * 3/5); 0 with appear",
@@ -19377,7 +19377,7 @@
           "x-type": "[Picture](#picture) or string"
         },
         "sight": {
-          "description": "How many cells away it notices the party when chasing. The default is 4.",
+          "description": "How many cells away it notices the party when chasing, at most 65025. The default is 4.",
           "type": "integer",
           "x-contract": {
             "default": "4",

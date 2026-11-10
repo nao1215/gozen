@@ -147,7 +147,7 @@ locations:
         width: 11
         height: 11
         start: S
-        place: [{char: '>', far: true}, {char: R, count: "var.rare_count"}]
+        place: [{char: '>', far: true}, {char: R, count: "0"}]
       tiles:
         S: {start: true}
         '>': {do: [{dive: depths, floor: var.floor + 1}]}

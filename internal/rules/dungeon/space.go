@@ -1,6 +1,7 @@
 package dungeon
 
 import (
+	"github.com/nao1215/gozen/internal/base/safeint"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
 )
@@ -46,7 +47,7 @@ func spaceRoofStepBlocked(s *data.Space, from, to rpg.Pos) bool {
 		t := float64(i) / 25
 		x, z := float64(from.X)+.5+float64(to.X-from.X)*t, float64(from.Y)+.5+float64(to.Y-from.Y)*t
 		level := from.Level
-		if int(x) == to.X && int(z) == to.Y {
+		if safeint.From(x) == to.X && safeint.From(z) == to.Y {
 			level = to.Level
 		}
 		feet := data.SpaceHeightAt(s, level, x, z)

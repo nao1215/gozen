@@ -6,6 +6,7 @@ package field
 
 import (
 	"github.com/nao1215/gozen/internal/base/optional"
+	"github.com/nao1215/gozen/internal/base/safeint"
 	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
@@ -304,5 +305,5 @@ func talkOnEnter(st *rpg.State, id string, loc *data.Location) []data.Command {
 	key := "talk_turn_" + id
 	n := optional.Value[float64](st.Vars[key])
 	st.Vars[key] = n + 1
-	return loc.People[here[int(n)%len(here)]].Talk
+	return loc.People[here[safeint.From(n)%len(here)]].Talk
 }

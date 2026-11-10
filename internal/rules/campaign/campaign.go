@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
 	lang "github.com/nao1215/gozen/internal/base/text"
@@ -51,7 +53,8 @@ func Open(db *data.DB, st *rpg.State, o *data.Order) string {
 	return ""
 }
 
-// Generals are the generals who can lead the order now, in the order of the actors.
+// Generals are the generals who can lead the order now, in the order of the actors. A
+// march needs troops: a general with none leads no march (0 troops take no region).
 func Generals(db *data.DB, st *rpg.State, o *data.Order) []string {
 	c := db.Game.Campaign
 	var out []string
@@ -60,6 +63,9 @@ func Generals(db *data.DB, st *rpg.State, o *data.Order) []string {
 			continue
 		}
 		if o.General == "ready" && !data.Ready(db, st.Campaign(), id) {
+			continue
+		}
+		if o.March && data.GeneralTroops(db, st.Campaign(), id) <= 0 {
 			continue
 		}
 		out = append(out, id)
@@ -97,7 +103,7 @@ func Targets(db *data.DB, st *rpg.State, o *data.Order) []string {
 // Check reports why the order cannot be given with these parts ("" when it can): the
 // same rules the choices that ask for them keep, for an order that names them itself. The
 // leader and those marching with it are generals who can lead it, none twice, no more
-// than the order takes; the target is one it can be given.
+// than the order takes (Cap); the target is one it can be given.
 func Check(db *data.DB, st *rpg.State, o *data.Order, general string, with []string, target string) string {
 	if o.General != "" {
 		can := Generals(db, st, o)
@@ -110,8 +116,8 @@ func Check(db *data.DB, st *rpg.State, o *data.Order, general string, with []str
 				return fmt.Sprintf(lang.T("%sが二度数えられている"), GeneralLabelName(db, g))
 			}
 		}
-		if len(marching) > max(1, o.Generals) {
-			return fmt.Sprintf(lang.T("この命令で出られる将は %d 人まで"), max(1, o.Generals))
+		if len(marching) > Cap(db, o) {
+			return fmt.Sprintf(lang.T("この命令で出られる将は %d 人まで"), Cap(db, o))
 		}
 	}
 	if o.Target != "" && !slices.Contains(Targets(db, st, o), target) {
@@ -126,12 +132,12 @@ func GeneralLabel(db *data.DB, st *rpg.State, id string) string {
 	if a := db.Actors[id]; a != nil && a.Name != "" {
 		name = a.Name
 	}
-	return fmt.Sprintf(lang.T("%s（兵 %d）"), name, int(data.GeneralTroops(db, st.Campaign(), id)))
+	return fmt.Sprintf(lang.T("%s（兵 %d）"), name, safeint.From(data.GeneralTroops(db, st.Campaign(), id)))
 }
 
 // TargetLabel is a region as an option: its name, its owner and its garrison.
 func TargetLabel(db *data.DB, st *rpg.State, id string) string {
-	return fmt.Sprintf(lang.T("%s（%s・兵 %d）"), data.RegionName(db, id), FactionName(db, data.RegionOwner(db, st.Campaign(), id)), int(data.Garrison(db, st.Campaign(), id)))
+	return fmt.Sprintf(lang.T("%s（%s・兵 %d）"), data.RegionName(db, id), FactionName(db, data.RegionOwner(db, st.Campaign(), id)), safeint.From(data.Garrison(db, st.Campaign(), id)))
 }
 
 // FactionName is the name a faction shows (the engine's word for none when "").
@@ -178,13 +184,13 @@ func Give(db *data.DB, st *rpg.State, id string, general string, with []string, 
 		take(st, target, c.Player, garrison)
 		st.Vars[data.VarResult] = "won"
 		st.Vars[data.VarTaken] = float64(data.Taken(st.Campaign()) + 1)
-		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), int(power), int(defense))}
+		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), safeint.From(power), safeint.From(defense))}
 	}
 	share(db, st, generals, left)
 	st.Vars[data.RegionVar(target, "troops")] = held
 	fought(st, target)
 	st.Vars[data.VarResult] = "held"
-	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), int(power), int(defense))}
+	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), safeint.From(power), safeint.From(defense))}
 }
 
 // Side is the player's side of a march, as the clash's formulas read it (a): the troops of
@@ -197,15 +203,24 @@ func Side(db *data.DB, st *rpg.State, generals []string) expr.Map {
 		troops += data.GeneralTroops(db, st.Campaign(), g)
 	}
 	lead := generals[0]
-	a := expr.Map{"troops": troops, "might": c.Generals[lead].Might, "faction": c.Player, "general": lead, "from": "", "level": 0.0}
-	for _, n := range data.StatNames {
-		a[n] = 0.0
-	}
+	a := side(troops, c.Player, "")
+	a["might"], a["general"] = c.Generals[lead].Might, lead
 	if act := st.Actors[lead]; act != nil {
 		a["level"] = float64(act.Level)
 		for _, n := range data.StatNames {
 			a[n] = float64(act.Stat(n))
 		}
+	}
+	return a
+}
+
+// side is a side of a march as the clash's formulas read it (a) with no general: the
+// troops, the faction and the region marched from, the might, level and stats 0 (a
+// faction's march; Side adds the player's leader).
+func side(troops float64, faction, from string) expr.Map {
+	a := expr.Map{"troops": troops, "might": 0.0, "faction": faction, "general": "", "from": from, "level": 0.0}
+	for _, n := range data.StatNames {
+		a[n] = 0.0
 	}
 	return a
 }
@@ -287,10 +302,7 @@ func clash(db *data.DB, st *rpg.State, a expr.Map, b string) (won bool, left, he
 	env := expr.Map{"a": a, "b": region(db, st, b)}
 	chain := expr.Chain{env, st.Env()}
 	num := func(e data.Expr) float64 {
-		n, err := e.Number(chain)
-		if err != nil || math.IsNaN(n) || math.IsInf(n, 0) {
-			return 0
-		}
+		n, _ := number(e, chain)
 		return n
 	}
 	power = max(0, num(or(c.Power, defaultPower)))
@@ -300,6 +312,17 @@ func clash(db *data.DB, st *rpg.State, a expr.Map, b string) (won bool, left, he
 		return true, troops(num(or(c.Won, defaultWon))), 0, power, defense
 	}
 	return false, troops(num(or(c.Lost, defaultLost))), troops(num(or(c.Held, defaultHeld))), power, defense
+}
+
+// number is the formula's value in env, and whether it is one: 0 and false when the
+// formula fails or its value is not finite (an overflow, or infinity less infinity), so
+// that no count of troops is a number a save cannot hold.
+func number(e data.Expr, env expr.Env) (float64, bool) {
+	n, err := e.Number(env)
+	if err != nil || math.IsNaN(n) || math.IsInf(n, 0) {
+		return 0, false
+	}
+	return n, true
 }
 
 // troops is a count of troops: whole and not below 0.
@@ -359,9 +382,9 @@ func FactionTurn(db *data.DB, st *rpg.State, f string) []string {
 		}
 		if r.Draft.Set() {
 			for _, id := range data.RegionsOf(db, st.Campaign(), f) {
-				n, err := r.Draft.Number(expr.Chain{expr.Map{"t": region(db, st, id)}, st.Env()})
-				if err == nil {
-					st.Vars[data.RegionVar(id, "troops")] = troops(data.Garrison(db, st.Campaign(), id) + n)
+				n, ok := number(r.Draft, expr.Chain{expr.Map{"t": region(db, st, id)}, st.Env()})
+				if after := data.Garrison(db, st.Campaign(), id) + n; ok && !math.IsInf(after, 0) {
+					st.Vars[data.RegionVar(id, "troops")] = troops(after)
 				}
 			}
 			continue
@@ -373,15 +396,22 @@ func FactionTurn(db *data.DB, st *rpg.State, f string) []string {
 	return lines
 }
 
-// march is a faction's march by the rule r, if any border allows one.
+// march is a faction's march by the rule r, if any border allows one: from a region
+// whose share to send is a soldier at least. The troops left of a march that does not take
+// the region go back to the region they left.
 func march(db *data.DB, st *rpg.State, f string, r *data.FactionRule) string {
 	type pair struct {
 		s, t string
 		by   float64
 	}
+	send := r.Send
+	if send == 0 {
+		send = 0.6
+	}
+	sending := func(s string) float64 { return math.Floor(data.Garrison(db, st.Campaign(), s) * send) }
 	var cands []pair
 	for _, s := range data.RegionsOf(db, st.Campaign(), f) {
-		if data.Garrison(db, st.Campaign(), s) < r.Keep || data.Garrison(db, st.Campaign(), s) <= 0 {
+		if data.Garrison(db, st.Campaign(), s) < r.Keep || sending(s) <= 0 {
 			continue
 		}
 		for _, t := range db.Regions[s].Next {
@@ -413,27 +443,21 @@ func march(db *data.DB, st *rpg.State, f string, r *data.FactionRule) string {
 	case "random":
 		best = cands[st.Rand.IntN(len(cands))]
 	}
-	send := r.Send
-	if send == 0 {
-		send = 0.6
-	}
-	sent := math.Floor(data.Garrison(db, st.Campaign(), best.s) * send)
-	st.Vars[data.RegionVar(best.s, "troops")] = data.Garrison(db, st.Campaign(), best.s) - sent
-	a := expr.Map{"troops": sent, "might": 0.0, "faction": f, "general": "", "from": best.s, "level": 0.0}
-	for _, n := range data.StatNames {
-		a[n] = 0.0
-	}
+	sent := sending(best.s)
+	stayed := data.Garrison(db, st.Campaign(), best.s) - sent
+	st.Vars[data.RegionVar(best.s, "troops")] = stayed
 	var won bool
 	var left, held float64
 	if len(FactionGenerals(db, f)) > 0 && UsesClashes(db) {
 		won, left, held = factionClash(db, st, f, sent, best.t)
 	} else {
-		won, left, held, _, _ = clash(db, st, a, best.t)
+		won, left, held, _, _ = clash(db, st, side(sent, f, best.s), best.t)
 	}
 	if won {
 		take(st, best.t, f, left)
 		return fmt.Sprintf(lang.T("%sが%sを落とした"), FactionName(db, f), data.RegionName(db, best.t))
 	}
+	st.Vars[data.RegionVar(best.s, "troops")] = stayed + left
 	st.Vars[data.RegionVar(best.t, "troops")] = held
 	fought(st, best.t)
 	return fmt.Sprintf(lang.T("%sは%sの攻めを持ちこたえた"), data.RegionName(db, best.t), FactionName(db, f))
@@ -487,16 +511,6 @@ func Choices(ids []string, label func(string) string) []string {
 // random number: rand() is its middle (0.5) in the clash's formulas.
 func Estimate(db *data.DB, st *rpg.State, general, target string) (float64, float64) {
 	c := db.Game.Campaign
-	a := expr.Map{"troops": data.GeneralTroops(db, st.Campaign(), general), "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
-	for _, n := range data.StatNames {
-		a[n] = 0.0
-	}
-	if act := st.Actors[general]; act != nil {
-		a["level"] = float64(act.Level)
-		for _, n := range data.StatNames {
-			a[n] = float64(act.Stat(n))
-		}
-	}
 	middle := expr.Func(func(args []any) (any, error) {
 		switch len(args) {
 		case 0:
@@ -509,17 +523,17 @@ func Estimate(db *data.DB, st *rpg.State, general, target string) (float64, floa
 		y, _ := expr.ToNumber(args[1])
 		return math.Floor((x + y) / 2), nil
 	})
-	env := expr.Chain{expr.Map{"a": a, "b": region(db, st, target), "rand": middle}, st.Env()}
+	env := expr.Chain{expr.Map{"a": Side(db, st, []string{general}), "b": region(db, st, target), "rand": middle}, st.Env()}
 	or := func(e, def data.Expr) data.Expr {
 		if e.Set() {
 			return e
 		}
 		return def
 	}
-	power, perr := or(c.Clash.Power, defaultPower).Number(env)
-	defense, derr := or(c.Clash.Defense, defaultDefense).Number(env)
-	if perr != nil || derr != nil {
-		return 0, 1 // a formula that fails: no march looks good
+	power, pok := number(or(c.Clash.Power, defaultPower), env)
+	defense, dok := number(or(c.Clash.Defense, defaultDefense), env)
+	if !pok || !dok {
+		return 0, 1 // a formula that fails or is not finite: no march looks good
 	}
 	return power, defense
 }
@@ -555,14 +569,14 @@ func AfterBattle(db *data.DB, st *rpg.State, won bool) []string {
 	if c == nil || db.Regions[target] == nil {
 		return nil
 	}
-	troops := data.GeneralTroops(db, cs, general)
+	before := data.GeneralTroops(db, cs, general)
 	name := GeneralLabelName(db, general)
 	if won {
 		rate := 1.0
 		if a := st.Actors[general]; a != nil && a.Stat("mhp") > 0 {
 			rate = float64(a.HP) / float64(a.Stat("mhp"))
 		}
-		left := math.Floor(troops * max(0.2, rate))
+		left := math.Floor(before * max(0.2, rate))
 		garrison := math.Floor(left * c.Clash.GarrisonShare())
 		share(db, st, []string{general}, left-garrison)
 		take(st, target, c.Player, garrison)
@@ -570,20 +584,16 @@ func AfterBattle(db *data.DB, st *rpg.State, won bool) []string {
 		st.Vars[data.VarTaken] = float64(data.Taken(st.Campaign()) + 1)
 		return []string{fmt.Sprintf(lang.T("%sが%sを落とした"), name, data.RegionName(db, target))}
 	}
-	a := expr.Map{"troops": troops, "might": c.Generals[general].Might, "faction": c.Player, "general": general, "from": "", "level": 0.0}
-	for _, n := range data.StatNames {
-		a[n] = 0.0
-	}
-	env := expr.Chain{expr.Map{"a": a, "b": region(db, st, target), "power": 0.0, "defense": 0.0}, st.Env()}
+	env := expr.Chain{expr.Map{"a": Side(db, st, []string{general}), "b": region(db, st, target), "power": 0.0, "defense": 0.0}, st.Env()}
 	lost := c.Clash.Lost
 	if !lost.Set() {
 		lost = defaultLost
 	}
-	n, err := lost.Number(env)
-	if err != nil {
-		n = troops / 2
+	n, ok := number(lost, env)
+	if !ok {
+		n = before / 2
 	}
-	share(db, st, []string{general}, max(0, math.Floor(n)))
+	share(db, st, []string{general}, troops(n))
 	st.Vars[data.VarResult] = "held"
 	return []string{fmt.Sprintf(lang.T("%sは%sの攻めを持ちこたえた"), data.RegionName(db, target), name)}
 }

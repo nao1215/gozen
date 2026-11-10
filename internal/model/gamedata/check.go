@@ -39,9 +39,12 @@ var (
 	// TargetNames are known to a target's where and by: t is the candidate.
 	TargetNames = append(slices.Clone(BattleNames), "t")
 	// FloorNames are known where floor is the number of a generated floor (it hides the
-	// built-in function floor): generate's size, generate.place's count and a roamer's
-	// count, appear, wait and every.
+	// built-in function floor): a roamer's count, appear, wait and every.
 	FloorNames = append(slices.Clone(FieldNames), "floor")
+	// MapNames are known to what shapes a generated floor's map: generate's size and
+	// generate.place's count. The map is made again from its seed when a save is loaded, so
+	// they read the floor's number only: nothing of the state, and no rand or chance.
+	MapNames = []string{"floor"}
 	// LevelNames are known to a class's growth: the level.
 	LevelNames = []string{"level"}
 )
@@ -1293,6 +1296,11 @@ func (db *DB) Check() []error {
 		for st := range s.Stats {
 			if !slices.Contains(StatNames, st) {
 				c.errorf(diag.UnknownReference, w+".stats", "unknown stat %q", st)
+			}
+		}
+		for _, st := range slices.Sorted(maps.Keys(s.StatsBy)) {
+			if read := statReadBy(s.StatsBy[st].Expr, st); read != "" {
+				c.errorf(diag.Expression, w+".stats_by."+st, "the multiplier of %s reads a.%s, which is %s with this multiplier: it never settles", st, read, st)
 			}
 		}
 	}
@@ -3014,4 +3022,20 @@ func (c *checker) phonePackage(at string, a PhoneApp) {
 		c.errorf(diag.Shape, at+".install", "install must be bundled or optional")
 	}
 	c.expr(at+".when", a.When, FieldNames)
+}
+
+// statReadBy is the field of a (the holder) an expression reads that needs the
+// stat itself: the stat, or the rate whose maximum it is ("" for none). A
+// stats_by multiplier that reads one would be worked out from its own result.
+func statReadBy(e *expr.Expr, stat string) string {
+	for _, ref := range e.Refs() {
+		if ref.Name != "a" || len(ref.Path) == 0 {
+			continue
+		}
+		switch field := ref.Path[0].Name; {
+		case field == stat, stat == "mhp" && field == "hp_rate", stat == "mmp" && field == "mp_rate":
+			return field
+		}
+	}
+	return ""
 }
