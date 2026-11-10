@@ -224,17 +224,23 @@ func TestSerializedStore(t *testing.T) {
 		})
 	}
 	wg.Wait()
-	if names, _ := st.List(); len(names) != 8 {
-		t.Fatalf("names %q, want 8 saves", names)
+	if names, err := st.List(); err != nil || len(names) != 8 {
+		t.Fatalf("names %q (%v), want 8 saves", names, err)
 	}
-	if _, err := st.(modTimer).ModTime("slot0.json"); !errors.Is(err, errors.ErrUnsupported) {
+	timer, ok := st.(modTimer)
+	if !ok {
+		t.Fatal("a serialized Store hides ModTime")
+	}
+	if _, err := timer.ModTime("slot0.json"); !errors.Is(err, errors.ErrUnsupported) {
 		t.Fatalf("a map Store gave a time: %v", err)
 	}
 	dir := savefile.Serialized(savefile.DirStore(t.TempDir()))
 	if err := dir.Write("a.json", []byte("{}")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := dir.(modTimer).ModTime("a.json"); err != nil {
+	if timer, ok := dir.(modTimer); !ok {
+		t.Fatal("a serialized directory hides ModTime")
+	} else if _, err := timer.ModTime("a.json"); err != nil {
 		t.Fatalf("the directory's time was lost: %v", err)
 	}
 }
