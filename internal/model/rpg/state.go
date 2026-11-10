@@ -3,6 +3,7 @@ package rpg
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"maps"
 	"math"
 	"math/rand/v2"
@@ -166,12 +167,14 @@ func New(db *data.DB, rng *rand.Rand) *State {
 	return s
 }
 
-func collectionSeed(id string) uint64 {
-	var hash uint64 = 14695981039346656037
-	for i := range len(id) {
-		hash = (hash ^ uint64(id[i])) * 1099511628211
-	}
-	return hash&((1<<53)-1) | 1
+func collectionSeed(id string) uint64 { return idHash(id)&((1<<53)-1) | 1 }
+
+// idHash is the FNV-1a hash of an id: a stable number for a game or a monster that
+// draws nothing from a random stream.
+func idHash(id string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(id))
+	return h.Sum64()
 }
 
 // SetRecruitSeed chooses a collection stream without advancing gameplay RNG.

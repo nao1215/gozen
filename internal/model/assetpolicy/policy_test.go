@@ -97,3 +97,35 @@ func TestApprovalNativeRoundTrip(t *testing.T) {
 		t.Fatalf("中立形式の往復 %+v %v", got, err)
 	}
 }
+
+// A policy file that leaves out extensions keeps the default pictures, and an
+// upper-case extension matches: either way the release gate finds the referenced picture.
+func TestPolicyExtensionsDefaultAndFoldCase(t *testing.T) {
+	for name, extensions := range map[string]string{"absent": "", "empty": "extensions: []\n", "upper case": "extensions: [.PNG]\n"} {
+		src := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(src, "assets"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		write(t, src, map[string]string{
+			"asset-policy.yaml": extensions + "report: approvals.json\ninspection: {file: file, approved: approved}\nrecords: {file: file, source: source}\n",
+			"game.yaml":         "title_picture: assets/a.png\n",
+			"assets/a.png":      "picture",
+		})
+		p, err := Load(os.DirFS(src), "asset-policy.yaml")
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		pics, _, err := References(os.DirFS(src), "assets", p.Extensions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(pics) != 1 {
+			t.Errorf("%s: extensions = %v, referenced pictures = %v: the gate checks nothing", name, p.Extensions, pics)
+		}
+	}
+	src := t.TempDir()
+	write(t, src, map[string]string{"asset-policy.yaml": "extensions: [png]\nreport: approvals.json\ninspection: {file: file, approved: approved}\nrecords: {file: file, source: source}\n"})
+	if _, err := Load(os.DirFS(src), "asset-policy.yaml"); err == nil {
+		t.Error("an extension without its dot was accepted")
+	}
+}

@@ -645,3 +645,21 @@ func TestWithinAndHelpers(t *testing.T) {
 		t.Error("field follows dotted keys only through objects")
 	}
 }
+
+// TestBuildRefusesAnEmptyDestination: an empty Dst is the working directory, which
+// Build would delete and rebuild; an empty Src is the working directory too.
+func TestBuildRefusesAnEmptyDestination(t *testing.T) {
+	src, work := t.TempDir(), t.TempDir()
+	write(t, src, map[string]string{"game.yaml": "game", "assets/a.png": "orig"})
+	write(t, work, map[string]string{"keep.txt": "the caller's own file"})
+	t.Chdir(work)
+	if _, err := (Tree{Src: src, Prefix: "assets"}).Build(nil); err == nil {
+		t.Error("an empty Dst was accepted")
+	}
+	if _, err := os.Stat(filepath.Join(work, "keep.txt")); err != nil {
+		t.Errorf("the working directory was rebuilt: %v", err)
+	}
+	if _, err := (Tree{Prefix: "assets", Dst: filepath.Join(t.TempDir(), "out")}).Build(nil); err == nil {
+		t.Error("an empty Src was accepted")
+	}
+}

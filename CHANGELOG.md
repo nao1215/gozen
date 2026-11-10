@@ -9,11 +9,17 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
+- Add a dango check that every YAML decode of `internal/base` and `internal/model` runs inside `decodeguard.Run` (`TestYAMLDecodesAreGuarded`); a theme's colors, a package catalog and a `YAML` path lookup were decoded outside it.
 
 ### Fixed
 
 - The face-box warnings of `gozen check` name the command that exists, `gozen faces`, instead of the retired `gozen art faces`; the top-level help lists every `sim` command (`routes`, `breed`, `script` and `batch` were missing), and each `gozen mosaic` region command (`list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear`) has a summary of its own in its help instead of one shared line.
 - The site no longer documents options and commands that do not exist: `--dir` of `gozen run` (live reload comes with `--dev`), `gozen routes` (`gozen sim routes`) and `gozen mosaic manual`; the expression functions `range`, `first`, `has`, `str` and `grouped`, the event name `roamers` and `gozen capture --against` are described.
+- A campaign region whose `area` lies wholly inside another region's, or repeats it, is reported as overlapping. Before, only areas whose edges cross were found.
+- `gozen release` with an `asset-policy.yaml` that names no `extensions` checks the default pictures (`.png`, `.jpg`, `.jpeg`, `.webp`), and an extension written in upper case matches; before, such a policy made the referenced-picture check find nothing. An extension without its dot is refused.
+- A reaction line with a `}` before a field (`} hello {from}`) fills the field, as the book's check accepted it; before, the line was shown with `{from}` unfilled.
+- A game package whose ZIP has bytes after its end record, or an earlier end record whose comment holds the real one, is refused before its directory is read.
+- Building a release tree with an empty source or output path is refused instead of deleting and rebuilding the working directory.
 - `gozen sim routes` branches at a phone that keeps a result as it does at a choice: each page, home or contacts button a player can reach (not one hidden by `when`), a call's answer, decline or missed, and a feed liked all or nothing. Before, the phone was put down unanswered, so an ending reached only through a phone's button was reported unreachable. A home app that returns to its phone is opened once a path.
 - A phone that keeps a result in a troop's battle event is answered with its first result by automatic battles in `sim`, sessions and the balance runner, as a choice there takes its first option; before, its `set` ran only on the screen.
 - The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.
