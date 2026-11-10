@@ -2,6 +2,7 @@ package hygiene_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,7 +35,7 @@ type listedPackage struct {
 // export data of every dependency is at hand for the type checker.
 func goList(t *testing.T, patterns ...string) []listedPackage {
 	t.Helper()
-	cmd := exec.Command("go", append([]string{"list", "-export", "-deps", "-json"}, patterns...)...)
+	cmd := exec.CommandContext(context.Background(), "go", append([]string{"list", "-export", "-deps", "-json"}, patterns...)...) //nolint:gosec // Fixed go list of repository packages.
 	cmd.Dir = "../../.."
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -56,6 +57,14 @@ func goList(t *testing.T, patterns ...string) []listedPackage {
 	return pkgs
 }
 
+// guardedConversions are functions, by package path and name, that convert a
+// float to an integer only after ruling out NaN and the values outside the
+// target's range themselves, where safeint.From would change the answer.
+var guardedConversions = map[string]string{
+	// A seed keeps all 64 bits; safeint.From would cap it at 2^53 and change every floor.
+	"github.com/nao1215/gozen/internal/rules/dungeon.seedBits": "checks NaN, the sign and 2^64 first",
+}
+
 // unsafeIntConversions type-checks one package from its files and returns the
 // conversions of a float value that is not a constant to an integer type.
 // Such a conversion of NaN, an infinity or a value outside the integer's range
@@ -68,6 +77,9 @@ func unsafeIntConversions(fset *token.FileSet, path string, files []*ast.File, i
 	var out []string
 	for _, f := range files {
 		ast.Inspect(f, func(n ast.Node) bool {
+			if fd, ok := n.(*ast.FuncDecl); ok && guardedConversions[path+"."+fd.Name.Name] != "" {
+				return false
+			}
 			call, ok := n.(*ast.CallExpr)
 			if !ok || len(call.Args) != 1 {
 				return true
@@ -103,7 +115,7 @@ func TestRulesConvertNumbersSafely(t *testing.T) {
 		if file == "" {
 			return nil, fmt.Errorf("no export data for %s", path)
 		}
-		return os.Open(file)
+		return os.Open(file) //nolint:gosec // Export data that go list named.
 	})
 	checked := 0
 	for _, p := range pkgs {
@@ -113,7 +125,7 @@ func TestRulesConvertNumbersSafely(t *testing.T) {
 		}
 		var files []*ast.File
 		for _, name := range p.GoFiles {
-			b, err := os.ReadFile(filepath.Join(p.Dir, name))
+			b, err := os.ReadFile(filepath.Join(p.Dir, name)) //nolint:gosec // A source file that go list named.
 			if err != nil {
 				t.Fatal(err)
 			}

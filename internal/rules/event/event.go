@@ -855,7 +855,7 @@ func (r *Runner) beaten(troopID string) []string {
 	for k, v := range r.st.Vars {
 		if id, ok := strings.CutPrefix(k, "last_kill_"); ok {
 			if n, ok := expr.ToNumber(v); ok && n > 0 {
-				left[id] = int(n)
+				left[id] = safeint.From(n)
 			}
 		}
 	}
@@ -1164,7 +1164,7 @@ func (r *Runner) run(c *data.Command) Request {
 						if !ok {
 							floor = 1
 						}
-						dungeon.DiveAt(r.db, r.st, r.st.Location, int(floor), "", "")
+						dungeon.DiveAt(r.db, r.st, r.st.Location, safeint.From(floor), "", "")
 					} else {
 						dungeon.Ensure(r.db, r.st)
 					}
@@ -1194,7 +1194,7 @@ func (r *Runner) run(c *data.Command) Request {
 		if r.st.JoinStory(c.Join) {
 			r.notes = append(r.notes, r.db.Actors[c.Join].Name+lang.T("が なかまに くわわった！"))
 			if a := r.st.Actors[c.Join]; floor > float64(a.Exp) {
-				a.GainExp(int(floor) - a.Exp)
+				a.GainExp(safeint.From(floor) - a.Exp)
 				a.Recover()
 			}
 		}
@@ -1380,7 +1380,7 @@ func (r *Runner) run(c *data.Command) Request {
 			if err != nil {
 				v = 0
 			}
-			k := int(math.Floor(v)) % len(pages)
+			k := safeint.From(math.Floor(v)) % len(pages)
 			if k < 0 {
 				k += len(pages)
 			}
@@ -1569,7 +1569,7 @@ func (r *Runner) run(c *data.Command) Request {
 			r.logf(err)
 			floor = n
 		}
-		dungeon.DiveAt(r.db, r.st, c.Dive, int(floor), c.At, c.Facing)
+		dungeon.DiveAt(r.db, r.st, c.Dive, safeint.From(floor), c.At, c.Facing)
 		r.emit(MoveEffect{c.Dive})
 	case "open_wall": // a wall by the party becomes the tile (stairs that appear)
 		dungeon.OpenWall(r.db, r.st, c.OpenWall)

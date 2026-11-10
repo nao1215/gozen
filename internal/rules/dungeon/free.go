@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
 )
@@ -138,7 +140,7 @@ func freeFacing(yaw float64, current int) int {
 	if math.Abs(delta) <= math.Pi/4+.04 {
 		return current & 3
 	}
-	return int(math.Floor(yaw/(math.Pi/2)+.5)+4) & 3
+	return safeint.From(math.Floor(yaw/(math.Pi/2)+.5)+4) & 3
 }
 
 func ensureFreePose(db *data.DB, st *rpg.State) *rpg.SpacePose {
@@ -216,8 +218,8 @@ func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (fre
 	if d.Space.RoofBlocks(x, z, freeRadius, feet, feet+freeBodyHeight) {
 		return freeBlock{Cell{X: target.X, Y: target.Y, Solid: true}, target.Level}, false
 	}
-	for iz := int(math.Floor(z - freeRadius)); iz <= int(math.Floor(z+freeRadius)); iz++ {
-		for ix := int(math.Floor(x - freeRadius)); ix <= int(math.Floor(x+freeRadius)); ix++ {
+	for iz := safeint.From(math.Floor(z - freeRadius)); iz <= safeint.From(math.Floor(z+freeRadius)); iz++ {
+		for ix := safeint.From(math.Floor(x - freeRadius)); ix <= safeint.From(math.Floor(x+freeRadius)); ix++ {
 			nearX := max(float64(ix), min(float64(ix+1), x))
 			nearZ := max(float64(iz), min(float64(iz+1), z))
 			if math.Hypot(x-nearX, z-nearZ) >= freeRadius-1e-9 {
@@ -264,7 +266,7 @@ func (c *FreeController) send(st *rpg.State, cmds []data.Command, dispatch func(
 // boundary, so even a long headless segment cannot skip a trigger. Exact corner
 // ties enter only the diagonal cell; X then Z resolves support connectivity.
 func (c *FreeController) move(db *data.DB, st *rpg.State, d *data.Dungeon, x, z float64, dispatch func([]data.Command) bool) (bool, bool) {
-	n := max(1, int(math.Ceil(math.Hypot(x, z)/freeSegment)))
+	n := max(1, safeint.From(math.Ceil(math.Hypot(x, z)/freeSegment)))
 	x /= float64(n)
 	z /= float64(n)
 	moved := false
@@ -314,7 +316,7 @@ func (c *FreeController) segment(db *data.DB, st *rpg.State, d *data.Dungeon, dx
 		p := st.SpacePose
 		fraction := freeFraction(p, dx, dz)
 		x, z := p.X+dx*fraction, p.Z+dz*fraction
-		target, ok := freeSupport(d.Space, st.Pos, int(math.Floor(x)), int(math.Floor(z)))
+		target, ok := freeSupport(d.Space, st.Pos, safeint.From(math.Floor(x)), safeint.From(math.Floor(z)))
 		if !ok {
 			return moved, false, freeBlock{Cell{X: target.X, Y: target.Y, Solid: true}, target.Level}
 		}

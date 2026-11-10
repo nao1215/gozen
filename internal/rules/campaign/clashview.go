@@ -5,6 +5,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
@@ -369,9 +371,9 @@ func play(db *data.DB, st *rpg.State, cl *Clash) {
 		n *= scale(tactic(db, u.Tactic).Deal) * scale(tactic(db, v.Tactic).Take)
 		loss := math.Min(v.Troops, math.Max(1, math.Floor(n)))
 		v.Troops -= loss
-		h := Hit{Round: round, Side: side, At: at, Of: 1 - side, To: to, Attackers: int(math.Ceil(u.Troops * 0.3)), Loss: int(loss), Skill: skill}
+		h := Hit{Round: round, Side: side, At: at, Of: 1 - side, To: to, Attackers: safeint.From(math.Ceil(u.Troops * 0.3)), Loss: safeint.From(loss), Skill: skill}
 		if skill != "" && heal > 0 {
-			h.Heal, heal = int(heal), 0
+			h.Heal, heal = safeint.From(heal), 0
 		}
 		if v.Troops <= 0 {
 			v.Troops, v.Routed, h.Routed = 0, true, true

@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
 	lang "github.com/nao1215/gozen/internal/base/text"
@@ -130,12 +132,12 @@ func GeneralLabel(db *data.DB, st *rpg.State, id string) string {
 	if a := db.Actors[id]; a != nil && a.Name != "" {
 		name = a.Name
 	}
-	return fmt.Sprintf(lang.T("%s（兵 %d）"), name, int(data.GeneralTroops(db, st.Campaign(), id)))
+	return fmt.Sprintf(lang.T("%s（兵 %d）"), name, safeint.From(data.GeneralTroops(db, st.Campaign(), id)))
 }
 
 // TargetLabel is a region as an option: its name, its owner and its garrison.
 func TargetLabel(db *data.DB, st *rpg.State, id string) string {
-	return fmt.Sprintf(lang.T("%s（%s・兵 %d）"), data.RegionName(db, id), FactionName(db, data.RegionOwner(db, st.Campaign(), id)), int(data.Garrison(db, st.Campaign(), id)))
+	return fmt.Sprintf(lang.T("%s（%s・兵 %d）"), data.RegionName(db, id), FactionName(db, data.RegionOwner(db, st.Campaign(), id)), safeint.From(data.Garrison(db, st.Campaign(), id)))
 }
 
 // FactionName is the name a faction shows (the engine's word for none when "").
@@ -182,13 +184,13 @@ func Give(db *data.DB, st *rpg.State, id string, general string, with []string, 
 		take(st, target, c.Player, garrison)
 		st.Vars[data.VarResult] = "won"
 		st.Vars[data.VarTaken] = float64(data.Taken(st.Campaign()) + 1)
-		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), int(power), int(defense))}
+		return []string{fmt.Sprintf(lang.T("%sが%sを落とした（%d 対 %d）"), name, data.RegionName(db, target), safeint.From(power), safeint.From(defense))}
 	}
 	share(db, st, generals, left)
 	st.Vars[data.RegionVar(target, "troops")] = held
 	fought(st, target)
 	st.Vars[data.VarResult] = "held"
-	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), int(power), int(defense))}
+	return []string{fmt.Sprintf(lang.T("%sは持ちこたえた（%d 対 %d）"), data.RegionName(db, target), safeint.From(power), safeint.From(defense))}
 }
 
 // Side is the player's side of a march, as the clash's formulas read it (a): the troops of

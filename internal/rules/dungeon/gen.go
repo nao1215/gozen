@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
@@ -76,10 +78,10 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 	seed := optional.Value[float64](st.Vars[VarSeed])
 	floor := optional.Value[float64](st.Vars[VarFloor])
 	s := seedBits(seed)
-	if fs, ok := g.SeedFor(int(floor)); ok {
+	if fs, ok := g.SeedFor(safeint.From(floor)); ok {
 		s = fs
 	}
-	rng := rand.New(rand.NewPCG(s, uint64(floor)*7919+1)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	rng := rand.New(rand.NewPCG(s, uint64(safeint.From(floor))*7919+1)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
 	// The map is made again from the seed when a save is loaded: what shapes it reads the
 	// floor's number only, never the rest of the state (it has changed since the dive).
 	env := expr.Map{"floor": floor}
@@ -103,9 +105,9 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 		if err != nil {
 			return 1
 		}
-		return int(n)
+		return safeint.From(n)
 	}
-	if m := g.Drawn(int(floor)); m != "" {
+	if m := g.Drawn(safeint.From(floor)); m != "" {
 		d.SetMap(Drawn(g, m, rng, kind, count))
 		keepRecords(st, loc, d.Map)
 		return
@@ -115,7 +117,7 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 			if math.IsNaN(n) || math.IsInf(n, 0) {
 				n = 9
 			}
-			side := int(max(9, min(n, float64(data.MaxDungeonSide)))) | 1
+			side := safeint.From(max(9, min(n, float64(data.MaxDungeonSide)))) | 1
 			gg := *g
 			gg.Width, gg.Height = max(9, min(g.Width, side)), max(9, min(g.Height, side))
 			gg.Rooms = max(1, g.Rooms*gg.Width*gg.Height/(g.Width*g.Height))
