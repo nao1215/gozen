@@ -47,7 +47,7 @@ func References(base fs.FS, prefix string, extensions []string) (pics, missing [
 			return err
 		}
 		var v any
-		if err := decodeguard.Run(func() error { return yaml.Unmarshal(b, &v) }); err != nil {
+		if err := decodeguard.Run(b, func() error { return yaml.Unmarshal(b, &v) }); err != nil {
 			return err
 		}
 		walkStrings(v, func(s string) {

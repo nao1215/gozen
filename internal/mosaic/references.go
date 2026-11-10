@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/parser"
 )
 
 // References lists materials with the given extensions from YAML strings and expands patterns.
@@ -45,7 +46,17 @@ func references(base fs.FS, prefix string, extensions []string) (pics, missing [
 			return err
 		}
 		var v any
-		if err := guardYAML(func() error { return yaml.Unmarshal(b, &v) }); err != nil {
+		if err := guardYAML(func() error {
+			// A file that does not parse is reported by the decode below.
+			if file, err := parser.ParseBytes(b, 0); err == nil {
+				for _, doc := range file.Docs {
+					if err := refuseTaggedScalars(doc.Body); err != nil {
+						return err
+					}
+				}
+			}
+			return yaml.Unmarshal(b, &v)
+		}); err != nil {
 			return err
 		}
 		walkStrings(v, func(s string) {
