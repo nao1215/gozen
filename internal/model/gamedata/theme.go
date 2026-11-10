@@ -4,6 +4,7 @@ import (
 	"io/fs"
 
 	"github.com/goccy/go-yaml"
+
 	"github.com/nao1215/gozen/internal/base/decodeguard"
 
 	"github.com/nao1215/gozen/internal/base/diag"

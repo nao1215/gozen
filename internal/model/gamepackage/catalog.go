@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+
 	"github.com/nao1215/gozen/internal/base/decodeguard"
 )
 

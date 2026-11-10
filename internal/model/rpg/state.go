@@ -173,7 +173,7 @@ func collectionSeed(id string) uint64 { return idHash(id)&((1<<53)-1) | 1 }
 // draws nothing from a random stream.
 func idHash(id string) uint64 {
 	h := fnv.New64a()
-	h.Write([]byte(id)) //nolint:errcheck,gosec // A hash.Hash never fails to write.
+	h.Write([]byte(id))
 	return h.Sum64()
 }
 

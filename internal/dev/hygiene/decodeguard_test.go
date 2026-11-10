@@ -32,7 +32,7 @@ func unguardedYAMLDecodes(name string, src []byte) ([]string, error) {
 	}
 	yaml := ""
 	for _, imp := range file.Imports {
-		if path, _ := strconv.Unquote(imp.Path.Value); path == "github.com/goccy/go-yaml" {
+		if path, err := strconv.Unquote(imp.Path.Value); err == nil && path == "github.com/goccy/go-yaml" {
 			yaml = "yaml"
 			if imp.Name != nil {
 				yaml = imp.Name.Name
