@@ -1156,6 +1156,7 @@ breeding:
   min_level: 5
   skill_slots: 2
   staging: {rare_rank: 4, legend_rank: 7}
+  keeper: {name: Mara, text: "Bring me two monsters and I will join them."}
   pairs: [{parents: [dewdrop, dewdrop], child: silverdrop}]
   families: [{parents: [slime, slime], children: [dewdrop, silverdrop]}]
 ```

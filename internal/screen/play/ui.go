@@ -11,6 +11,49 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
+// tapped tells that a click landed on r, and takes it.
+func (g *Game) tapped(r image.Rectangle) bool {
+	in := &g.in
+	return in.inspect(in.click) && in.mouse.In(r) && in.query(true)
+}
+
+// drawTapButton draws a framed button a pointer can press and records it as a
+// control; one that cannot be pressed now is dimmed.
+func (g *Game) drawTapButton(dst *ebiten.Image, r image.Rectangle, label string, size float64, enabled bool) {
+	ink := g.th.text
+	if !enabled {
+		ink = g.th.dim
+	}
+	gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x40))
+	gfx.StrokeRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, 2, g.th.border)
+	gfx.DrawText(dst, label, float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y)+(float64(r.Dy())-size*1.3)/2, size, ink)
+	g.traceControl(label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), enabled, false, "limit")
+}
+
+// stepButtons are the previous and next buttons of a screen that shows one
+// party member at a time, with the pair's top right corner at x, y.
+func stepButtons(x, y float64) (prev, next image.Rectangle) {
+	return image.Rect(int(x)-104, int(y), int(x)-56, int(y)+44), image.Rect(int(x)-48, int(y), int(x), int(y)+44)
+}
+
+// stepTapped is the step a tap on the pair asks for: -1, 1, or 0 for none.
+func (g *Game) stepTapped(x, y float64) int {
+	prev, next := stepButtons(x, y)
+	switch {
+	case g.tapped(prev):
+		return -1
+	case g.tapped(next):
+		return 1
+	}
+	return 0
+}
+
+func (g *Game) drawStepButtons(dst *ebiten.Image, x, y float64) {
+	prev, next := stepButtons(x, y)
+	g.drawTapButton(dst, prev, "◀", sizeM, true)
+	g.drawTapButton(dst, next, "▶", sizeM, true)
+}
+
 type theme struct {
 	window, border, text, accent, cursor, shadow, nameTag, dim, disabled color.NRGBA
 }

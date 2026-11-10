@@ -75,7 +75,7 @@ func (p *phoneView) feedLayout(g *Game, w, view float64) []feedPost {
 			under := 46 + float64(len(lines))*gfx.LineHeight(size)
 			picH := w * g.mediaAspect(post)
 			if across {
-				picH = math.Max(w*phoneFeedWide, math.Min(picH, view-phoneFeedDots-phoneFeedHead-under))
+				picH = math.Max(w*phoneFeedWide, math.Min(picH, view-phoneHomeBar-phoneFeedDots-phoneFeedHead-under))
 			}
 			h := phoneFeedHead + picH + under
 			out[i] = feedPost{top: y, pic: y + phoneFeedHead, picH: picH, h: h, size: size, lines: lines}
@@ -378,7 +378,7 @@ func (g *Game) drawPhoneFeed(p *phoneView, dst *ebiten.Image, w, h float64) {
 				visible++
 			}
 		}
-		drawFeedDots(dst, visible, p.scroll/w, w, h-phoneFeedDots/2)
+		drawFeedDots(dst, visible, p.scroll/w, w, h-phoneHomeBar-phoneFeedDots/2)
 	}
 	// The header goes over the posts that scroll up under it.
 	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)

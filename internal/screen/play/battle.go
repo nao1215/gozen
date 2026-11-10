@@ -1243,7 +1243,7 @@ func (s *battleScene) result(g *Game) {
 	if s.b.Result == battle.Lost && s.retry != nil {
 		snap := s.retry
 		s.retry = nil
-		c := newConfirm(lang.T("ぜんめつ した。たたかう まえから やりなおす？（いいえ: あきらめる）"), func() {
+		c := newChoice(lang.T("ぜんめつ した。たたかう まえから やりなおす？"), lang.T("やりなおす"), lang.T("あきらめる"), func() {
 			if !g.restoreState(snap) {
 				return
 			}

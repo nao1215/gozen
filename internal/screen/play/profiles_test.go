@@ -265,3 +265,20 @@ func TestProfilesListScrollsByTouch(t *testing.T) {
 		t.Fatalf("a tap on ▼: first row %d, selected %d", l.top, s.sel)
 	}
 }
+
+// TestProfilesChartButton: the relation chart opens and closes by its button,
+// as by Tab, and the tap that turns the page selects nothing on it.
+func TestProfilesChartButton(t *testing.T) {
+	g := mnuBookGame(t, Options{})
+	s := newProfiles(g, nil)
+	g.push(s)
+	sel := s.sel
+	mnuTap(g, s.chartButton(g))
+	if !s.chart {
+		t.Fatal("a tap on the chart button did not open the chart")
+	}
+	mnuTap(g, s.chartButton(g))
+	if s.chart || s.sel != sel {
+		t.Fatalf("a second tap: chart %v, profile %d (was %d)", s.chart, s.sel, sel)
+	}
+}

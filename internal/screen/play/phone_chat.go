@@ -90,12 +90,12 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 		}
 		return
 	}
-	// A click on a picture in the chat opens it.
-	if in := &g.in; in.clicked() {
+	// A click on a picture in the chat opens it, one on a clip plays it.
+	if in := &g.in; in.inspect(in.click) {
 		for i, r := range p.pics {
 			if r.has(g, p, in.mouse.X, in.mouse.Y) {
-				p.seenPic[i] = true
-				p.viewPic = p.cue.Messages[i].Picture
+				in.query(true)
+				g.openChatMedia(p, i)
 				return
 			}
 		}
@@ -163,14 +163,43 @@ func (g *Game) openNewest(p *phoneView, last int, m data.PhoneMessage) bool {
 	return false
 }
 
-// picRect is where a chat's picture was drawn, on the phone's screen.
+// openChatMedia opens a chat's picture over the whole screen, or plays its
+// clip (again from its start once it has been watched).
+func (g *Game) openChatMedia(p *phoneView, i int) {
+	m := p.cue.Messages[i]
+	if m.Video == nil {
+		p.seenPic[i] = true
+		p.viewPic = m.Picture
+		return
+	}
+	p.watch, p.watchMsg = p.clip(fmt.Sprintf("msg%d", i), m.Video), i
+	if p.watch.played >= p.watch.length() {
+		p.watch.played = 0
+	}
+	p.turn(true)
+}
+
+// picRect is where a chat's picture or clip was drawn, on the phone's screen.
 type picRect struct{ x, y, w, h float64 }
 
-// has tells that a point on the game's screen is in the rectangle.
+// has tells that a point on the game's screen is in the part of the rectangle
+// under the chat's header.
 func (r picRect) has(g *Game, p *phoneView, mx, my int) bool {
 	sx, sy, _, _ := g.phoneScreenRect(p.side)
 	x, y := float64(mx)-sx, float64(my)-sy
-	return x >= r.x && x < r.x+r.w && y >= r.y && y < r.y+r.h
+	return x >= r.x && x < r.x+r.w && y >= math.Max(r.y, phoneFeedTop) && y < r.y+r.h
+}
+
+// The back chevron of a chat's header: the width and the top of where a press
+// on it goes back.
+const (
+	phoneChevron    = 56.0
+	phoneChevronTop = 34.0
+)
+
+// chatChevron tells that the chat's header with its back chevron is on the screen.
+func (p *phoneView) chatChevron() bool {
+	return p.cue.App == "chat" && !p.cue.History && p.viewPic == "" && p.watch == nil
 }
 
 func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
@@ -182,8 +211,9 @@ func (g *Game) drawPhoneChat(p *phoneView, dst *ebiten.Image, w, h float64) {
 	textStart, controlStart := g.screenOffsets()
 	defer func() {
 		g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
-		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
+		g.drawPhoneHeader(dst, w, p.cue.Title, phoneChevronTop)
 		g.text(dst, "<", 18, 44, 22, g.phoneAccent())
+		g.traceControl("<", roundRect(0, phoneChevronTop, phoneChevron, phoneFeedTop-phoneChevronTop), p.ready(), false, "transition")
 	}()
 	clear(p.pics)
 	top, maxW := phoneFeedTop, w*0.68
@@ -257,15 +287,9 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 		gfx.FillCircle(dst, float32(x+b.bw/2), float32(y+b.bh/2), 26, color.NRGBA{0, 0, 0, 0x88}, true)
 		drawPlay(dst, x+b.bw/2+4, y+b.bh/2, 14)
 		g.text(dst, clipTime(c.length()), x+10, y+b.bh-24, 13, phoneOnVideo)
+		g.chatMediaAt(p, b, x, y)
 	case m.Picture != "":
-		p.pics[b.i] = picRect{x, y, b.bw, b.bh}
-		if g.controlFrame() != nil {
-			reason := "transition"
-			if p.typing > 0 {
-				reason = "typing"
-			}
-			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready() && p.typing == 0, false, reason)
-		}
+		g.chatMediaAt(p, b, x, y)
 		if img := g.pics.get(m.Picture); img != nil {
 			frame := p.frame(fmt.Sprintf("pic%d", b.i), b.bw, b.bh)
 			drawCoverTop(frame, img, 0, 0, b.bw, b.bh)
@@ -290,6 +314,18 @@ func (g *Game) drawChatContent(dst *ebiten.Image, p *phoneView, b chatBubble, x,
 			}
 			g.text(dst, b.lines[k], x+phoneChatPad, ly, phoneChatSize, ink)
 		}
+	}
+}
+
+// chatMediaAt keeps where a picture or a clip was drawn, for a press on it.
+func (g *Game) chatMediaAt(p *phoneView, b chatBubble, x, y float64) {
+	p.pics[b.i] = picRect{x, y, b.bw, b.bh}
+	if g.controlFrame() != nil {
+		reason := "transition"
+		if p.typing > 0 {
+			reason = "typing"
+		}
+		g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready() && p.typing == 0, false, reason)
 	}
 }
 
@@ -373,21 +409,10 @@ func (g *Game) updatePhoneHistory(p *phoneView) {
 			}
 		}
 		for i, r := range p.pics {
-			if !r.has(g, p, at.X, at.Y) {
-				continue
+			if r.has(g, p, at.X, at.Y) {
+				g.openChatMedia(p, i)
+				return
 			}
-			m := p.cue.Messages[i]
-			if m.Video != nil {
-				p.watch, p.watchMsg = p.clip(fmt.Sprintf("msg%d", i), m.Video), i
-				if p.watch.played >= p.watch.length() {
-					p.watch.played = 0
-				}
-				p.turn(true)
-			} else {
-				p.seenPic[i] = true
-				p.viewPic = m.Picture
-			}
-			return
 		}
 	})
 }
@@ -453,21 +478,6 @@ func (g *Game) drawPhoneHistory(p *phoneView, dst *ebiten.Image, w, h float64) {
 		}
 		b := g.chatBubble(p, i, w*0.68)
 		g.drawChatBubble(dst, p, b, w, y)
-		if p.cue.Messages[i].Video != nil {
-			x := 64.0
-			m := p.cue.Messages[i]
-			if m.Mine {
-				x = w - b.bw - 16
-			}
-			if m.Day != "" {
-				y += phoneChatDay
-			}
-			if !m.Mine && m.From != "" {
-				y += 20
-			}
-			p.pics[i] = picRect{x, y, b.bw, b.bh}
-			g.traceControl("", roundRect(x, y, b.bw, b.bh), p.ready(), false, "transition")
-		}
 	}
 	for i, r := range p.replyRows {
 		y := phoneFeedTop + r.top - p.scroll

@@ -429,7 +429,7 @@ func (s *galleryScreen) update(g *Game) {
 		s.updateCheck(g)
 		return
 	}
-	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() && g.in.pressedKey(btnNext) {
+	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() && (g.in.pressedKey(btnNext) || g.tapped(s.reviewButton(g))) {
 		g.sfx("decide")
 		g.push(newCGReview(g))
 		return
@@ -540,6 +540,7 @@ func (s *galleryScreen) draw(g *Game, dst *ebiten.Image) {
 	}
 	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() {
 		hint += lang.T("   Tab: 流し見（札を付ける）")
+		g.drawTapButton(dst, s.reviewButton(g), lang.T("流し見"), sizeS, true)
 	}
 	gfx.DrawTextOutlineColor(dst, hint, sw/2, sh-44, sizeS*0.9, g.th.text, g.th.window, 1)
 	if s.scenePages != nil {
@@ -554,6 +555,12 @@ func (s *galleryScreen) draw(g *Game, dst *ebiten.Image) {
 		}
 		gfx.DrawTextOutlineColor(dst, lang.T("Z: みる   X: もどる"), sw/2, sh-44, sizeS, g.th.text, g.th.window, 1)
 	}
+}
+
+// reviewButton is where the button that opens the picture review stands.
+func (s *galleryScreen) reviewButton(g *Game) image.Rectangle {
+	sw, _ := g.screen()
+	return image.Rect(int(sw)-196, 16, int(sw)-36, 56)
 }
 
 func (s *galleryScreen) pageLabel() string {

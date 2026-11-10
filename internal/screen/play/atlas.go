@@ -61,7 +61,7 @@ type atlasScene struct {
 	cameraCenter geom.Pt
 	cameraZoom   float64
 	cameraPan    bool
-	panelHidden  bool
+	panel        atlasPanel
 	loc          string
 	pic          string
 	age          int
@@ -109,7 +109,7 @@ func (s *atlasScene) location(g *Game) *data.Location { return g.db.Locations[s.
 func (s *atlasScene) arrive(g *Game) {
 	s.pointLayerValid = false
 	s.loc = g.st.Location
-	s.panelHidden = false
+	s.panel.hidden = false
 	l := s.location(g)
 	s.pic = l.Map.Picture
 	s.age, s.banner, s.queue, s.path, s.cross = 0, 240, nil, nil, nil
@@ -327,7 +327,7 @@ func (s *atlasScene) cameraPointVisible(g *Game, p geom.Pt) bool {
 }
 
 func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
-	before, hidden, center := s.sel, s.panelHidden, s.cameraCenter
+	before, hidden, center := s.sel, s.panel.hidden, s.cameraCenter
 	from := s.at
 	if s.sel >= 0 && s.sel < len(s.choices) {
 		from = s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt()
@@ -346,14 +346,14 @@ func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
 		}
 	}
 	if best != s.sel {
-		s.panelHidden = false
+		s.panel.hidden = false
 		s.sel = best
 		g.sfx("cursor")
 	}
 	if len(s.choices) > 0 {
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 	}
-	return s.sel != before || s.panelHidden != hidden || s.cameraCenter != center
+	return s.sel != before || s.panel.hidden != hidden || s.cameraCenter != center
 }
 
 // cameraButtons are in screen coordinates, independent of the map transform; none when
@@ -424,7 +424,7 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 		return true
 	case len(s.choices) > 0 && in.pressedKey(btnNext):
 		s.sel = (s.sel + 1) % len(s.choices)
-		s.panelHidden = false
+		s.panel.hidden = false
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 		return true
 	}
@@ -559,7 +559,7 @@ func (s *atlasScene) update(g *Game) {
 	if in.inspect(in.click) {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
 			in.query(true)
-			if s.location(g).Map.SelectionPanel != nil {
+			if s.location(g).Map.SelectionPanel != nil && c.Point != s.panel.pressed {
 				s.focusPoint(c.Point)
 				return
 			}

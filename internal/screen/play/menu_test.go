@@ -2,6 +2,7 @@ package play
 
 import (
 	"image"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -869,5 +870,121 @@ func TestMenuSkillListStartsOver(t *testing.T) {
 	}
 	if m.items.sel != 0 || m.items.top != 0 {
 		t.Fatalf("the skill list opens on row %d (top %d), the item list's cursor", m.items.sel, m.items.top)
+	}
+}
+
+// TestConfirmTapOutsideCancels: a tap beside the confirmation's window takes
+// the question back as Cancel does; a tap on the window that misses both
+// buttons answers nothing.
+func TestConfirmTapOutsideCancels(t *testing.T) {
+	g, m := mnuMenu(t)
+	accepted, refused := 0, 0
+	c := newConfirm("Overwrite slot 1?", func() { accepted++ })
+	c.onNo = func() { refused++ }
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	_, _, y, h, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y)+8)}
+	c.update(g)
+	if mnuTop(g) != scene(c) || accepted+refused != 0 {
+		t.Fatalf("a tap on the window beside the buttons answered: yes %d no %d", accepted, refused)
+	}
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y+h)+30)}
+	c.update(g)
+	if mnuTop(g) != scene(m) || accepted != 0 || refused != 1 {
+		t.Fatalf("a tap outside the window: top %T yes %d no %d, want the menu and one No", mnuTop(g), accepted, refused)
+	}
+}
+
+// TestChoiceNamesBothWays: a choice shows its own two labels, a script picks
+// them by those names, and a tap outside its window picks neither.
+func TestChoiceNamesBothWays(t *testing.T) {
+	g, _ := mnuMenu(t)
+	retried := 0
+	c := newChoice("The party has fallen.", "Retry", "Give up", func() { retried++ })
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	kind, items := g.scriptPickables()
+	if kind != "confirm" || len(items) != 2 || items[0].label != "Retry" || items[1].label != "Give up" {
+		t.Fatalf("pickables %s %+v", kind, items)
+	}
+	g.tr = &tracer{layout: &layoutFrame{}}
+	c.draw(g, covScreen())
+	var labels []string
+	for _, control := range g.tr.layout.controls {
+		if control.Enabled {
+			labels = append(labels, control.Label)
+		}
+	}
+	g.tr = nil
+	if !slices.Equal(labels, []string{"Retry", "Give up"}) {
+		t.Fatalf("the choice's controls on the screen: %v", labels)
+	}
+	g.in = input{click: true, mouse: image.Pt(4, 4)}
+	c.update(g)
+	if mnuTop(g) != scene(c) {
+		t.Fatal("a tap outside a choice answered it")
+	}
+	_, _, _, _, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: yes.Min.Add(image.Pt(yes.Dx()/2, yes.Dy()/2))}
+	c.update(g)
+	if retried != 1 || mnuTop(g) == scene(c) {
+		t.Fatalf("a tap on the first way: retried %d", retried)
+	}
+}
+
+// mnuTap runs one tick of the top scene with a click at the middle of r.
+func mnuTap(g *Game, r image.Rectangle) {
+	g.in = input{click: true, pdown: true, mouse: r.Min.Add(image.Pt(r.Dx()/2, r.Dy()/2))}
+	mnuTop(g).update(g)
+	g.in = input{}
+}
+
+// TestMenuMemberByTap: the skill and equipment pages change member by a tap on
+// another member's card, and the status page by its previous and next
+// buttons, without closing; a tap elsewhere on the status page still closes it.
+func TestMenuMemberByTap(t *testing.T) {
+	g, m := mnuMenu(t)
+	mnuTab(t, g, lang.T("スキル"))
+	mnuPress(g, btnOK) // the first member's skills
+	if m.picker || m.items == nil || m.member != 0 {
+		t.Fatalf("skills not open: picker %v member %d", m.picker, m.member)
+	}
+	mnuTap(g, m.cardRect(g, 1))
+	if m.member != 1 || m.mode != "skill" || m.picker {
+		t.Fatalf("a tap on the second card in skills: member %d mode %q picker %v", m.member, m.mode, m.picker)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("そうび"))
+	mnuPress(g, btnOK)
+	if m.slots == nil || m.picker {
+		t.Fatal("equipment not open")
+	}
+	shown := m.member
+	mnuTap(g, m.cardRect(g, 1-shown))
+	if m.member != 1-shown || m.mode != "equip" {
+		t.Fatalf("a tap on the other card in equipment: member %d mode %q", m.member, m.mode)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("ステータス"))
+	m.member = 0
+	prev, next := stepButtons(m.statusSteps())
+	mnuTap(g, next)
+	if m.mode != "status" || m.member != 1 {
+		t.Fatalf("the next button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, prev)
+	if m.mode != "status" || m.member != 0 {
+		t.Fatalf("the previous button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, image.Rect(prev.Min.X-200, prev.Max.Y+100, prev.Min.X-100, prev.Max.Y+200))
+	if m.mode != "" {
+		t.Fatalf("a tap on the page did not close it: %q", m.mode)
 	}
 }

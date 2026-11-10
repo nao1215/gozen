@@ -11,6 +11,14 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
+// atlasPanel is the selection panel's own state: hidden after Back until the
+// selection changes, and pressed, the point whose advice it showed when the
+// pointer went down ("" for none).
+type atlasPanel struct {
+	hidden  bool
+	pressed string
+}
+
 // Preview expressions can read the usual state, including rand/chance, without
 // advancing gameplay RNG when the player hovers, pans or redraws the panel.
 func (s *atlasScene) previewState(g *Game) *rpg.State {
@@ -21,7 +29,7 @@ func (s *atlasScene) previewState(g *Game) *rpg.State {
 }
 
 func (s *atlasScene) panelVisible(g *Game) bool {
-	return s.location(g).Map.SelectionPanel != nil && !s.panelHidden && s.sel >= 0 && s.sel < len(s.choices) && !s.walking() && !g.busy()
+	return s.location(g).Map.SelectionPanel != nil && !s.panel.hidden && s.sel >= 0 && s.sel < len(s.choices) && !s.walking() && !g.busy()
 }
 
 func (s *atlasScene) selectionPanelBox(g *Game) plateBox {
@@ -68,7 +76,7 @@ func (s *atlasScene) focusPoint(id string) {
 	for i, c := range s.choices {
 		if c.Point == id {
 			s.sel = i
-			s.panelHidden = false
+			s.panel.hidden = false
 			return
 		}
 	}
@@ -90,9 +98,18 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 	}
 	in := &g.in
 	x, y := float64(in.mouse.X), float64(in.mouse.Y)
+	// What the panel showed when the pointer went down: a press on that point
+	// travels, one on another point only shows its advice. A finger's touch
+	// moves the pointer before it lifts, so the focus alone cannot tell.
+	if in.inspect(in.pdown) {
+		s.panel.pressed = ""
+		if s.panelVisible(g) {
+			s.panel.pressed = s.choices[s.sel].Point
+		}
+	}
 	if s.panelVisible(g) {
 		if in.cancel() {
-			s.panelHidden = true
+			s.panel.hidden = true
 			return true
 		}
 		if inPlate(s.selectionPanelBox(g), x, y) {
@@ -104,7 +121,7 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 					s.goTo(g, s.choices[s.sel])
 				case inPlate(buttons[1], x, y):
 					in.query(true)
-					s.panelHidden = true
+					s.panel.hidden = true
 				}
 				return true
 			}
@@ -124,12 +141,12 @@ func (s *atlasScene) updateSelectionPanel(g *Game) bool {
 	}
 	if s.location(g).Map.Camera == nil && len(s.choices) > 0 && in.pressedKey(btnNext) {
 		s.sel = (s.sel + 1) % len(s.choices)
-		s.panelHidden = false
+		s.panel.hidden = false
 		return true
 	}
 	// Confirm after Back first shows the selected advice again.
-	if s.panelHidden && in.ok() {
-		s.panelHidden = false
+	if s.panel.hidden && in.ok() {
+		s.panel.hidden = false
 		return true
 	}
 	return false

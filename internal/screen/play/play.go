@@ -1204,9 +1204,11 @@ func (g *Game) Update() error {
 		return nil
 	}
 	g.in.observing = true
-	if g.logView != nil {
+	switch {
+	case g.logView != nil:
 		g.logView.update(g)
-	} else if len(g.stack) > 0 {
+	case g.tapNotice():
+	case len(g.stack) > 0:
 		g.stack[len(g.stack)-1].update(g)
 	}
 	g.traceTick()

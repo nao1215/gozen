@@ -54,25 +54,34 @@ func TestAtlasSelectionPanel(t *testing.T) {
 		}
 	}
 	s.resetCamera(g, true)
-	// Real pointer input selects a marker, and clicking it again still only previews.
+	// A tap on a marker selects it and shows its advice; nothing runs yet.
 	x, y := s.screen(g, g.db.Locations[s.loc].Map.Points["quarry"].At.Pt())
-	for range 2 {
-		g.in = input{mouse: image.Pt(int(x), int(y-10)), click: true, moved: true}
-		s.update(g)
-		if s.choices[s.sel].Point != "quarry" || s.walking() {
-			t.Fatal("point click activated or selected the wrong action")
-		}
+	tap := input{mouse: image.Pt(int(x), int(y-10)), click: true, pdown: true, pup: true, moved: true}
+	s.focusPoint("tower")
+	g.in = tap
+	s.update(g)
+	if s.choices[s.sel].Point != "quarry" || len(s.queue) > 0 || g.st.Vars["quarry"] != nil {
+		t.Fatal("the first tap on a point activated it or selected the wrong one")
+	}
+	// A finger that went down on another point's advice and lifts here selects too.
+	s.focusPoint("tower")
+	g.in = input{mouse: tap.mouse, pdown: true, pheld: true, moved: true}
+	s.update(g)
+	g.in = input{mouse: tap.mouse, click: true, pup: true, moved: true}
+	s.update(g)
+	if s.choices[s.sel].Point != "quarry" || len(s.queue) > 0 {
+		t.Fatal("a touch on another point than the focused one activated it")
 	}
 	g.in = input{}
 	g.in.pressed[btnCancel] = true
 	s.update(g)
-	if !s.panelHidden {
+	if !s.panel.hidden {
 		t.Fatal("cancel did not hide panel")
 	}
 	g.in = input{}
 	g.in.pressed[btnOK] = true
 	s.update(g)
-	if s.panelHidden || s.walking() {
+	if s.panel.hidden || s.walking() {
 		t.Fatal("confirm after cancel should first reopen advice")
 	}
 	// Random templates and conditions are evaluated against an isolated RNG.
@@ -115,7 +124,7 @@ func TestAtlasSelectionPanel(t *testing.T) {
 	}
 	g.db.Show("en")
 
-	// Only the explicit panel confirmation runs the action.
+	// The panel's confirmation runs the action.
 	b := s.panelButtons(g)[0]
 	g.in = input{click: true, mouse: image.Pt(int(b.x+10), int(b.y+10))}
 	s.update(g)
@@ -123,6 +132,15 @@ func TestAtlasSelectionPanel(t *testing.T) {
 	wldSettle(t, g, s, 180)
 	if g.st.Vars["quarry"] != 1.0 || g.st.Spot != "town" || g.st.Steps != 0 {
 		t.Fatalf("confirm: vars=%v spot=%s steps=%d", g.st.Vars, g.st.Spot, g.st.Steps)
+	}
+	// So does a second tap on the point the panel shows: no button is needed.
+	s.focusPoint("quarry")
+	g.in = tap
+	s.update(g)
+	g.in = input{}
+	wldSettle(t, g, s, 180)
+	if g.st.Vars["quarry"] != 2.0 || g.st.Spot != "town" {
+		t.Fatalf("a second tap on the focused point did not run it: vars=%v spot=%s", g.st.Vars, g.st.Spot)
 	}
 	s.focusPoint("town")
 	for range 2 {

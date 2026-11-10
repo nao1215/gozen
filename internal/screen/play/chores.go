@@ -126,9 +126,13 @@ func (g *Game) offerGear() {
 		list += fmt.Sprintf(lang.T(" ほか%d"), len(names)-2)
 	}
 	g.emit("request", traceLine{"what": "offer_gear", "items": names})
-	g.push(newConfirm(fmt.Sprintf(lang.T("いまより 強い そうびが あります（%s）。さいきょうそうびに しますか？"), list), func() {
-		g.equipBestAll()
-	}))
+	// An offer on the field asks nothing: it passes by itself, a tap on it
+	// equips, and the equipment menu keeps the same action for the keys.
+	g.notices.offer(fmt.Sprintf(lang.T("いまより 強い そうびが あります（%s）。ここを おすと さいきょうそうび。"), list), func() {
+		if g.st != nil {
+			g.equipBestAll()
+		}
+	})
 }
 
 func (g *Game) equipBestAll() int {

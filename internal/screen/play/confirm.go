@@ -10,15 +10,47 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
+// confirm asks before something that cannot be taken back (a save written
+// over, a load, the way back to the title, a monster released): Yes and No,
+// and a tap outside its window is No. As a choice it offers two named ways on
+// with no way around them (a fallen party: retry or give up).
 type confirm struct {
 	msg  string
 	yes  func()
 	onNo func()
 	age  int
 	no   bool
+	// accept and refuse are the buttons' labels, Yes and No when empty.
+	accept, refuse string
+	// choice tells that both buttons are ways on: a tap outside picks neither.
+	choice bool
 }
 
 func newConfirm(msg string, yes func()) *confirm { return &confirm{msg: msg, yes: yes} }
+
+// newChoice asks between two named ways on: accept runs yes, refuse goes on.
+func newChoice(msg, accept, refuse string, yes func()) *confirm {
+	return &confirm{msg: msg, yes: yes, accept: accept, refuse: refuse, choice: true}
+}
+
+// labels are the words on the two buttons.
+func (c *confirm) labels() (accept, refuse string) {
+	accept, refuse = c.accept, c.refuse
+	if accept == "" {
+		accept = lang.T("はい")
+	}
+	if refuse == "" {
+		refuse = lang.T("いいえ")
+	}
+	return accept, refuse
+}
+
+// window is the dialog's rectangle for a message h tall at y.
+func (c *confirm) window(g *Game, y, h float64) image.Rectangle {
+	sw, _ := g.screen()
+	width := min(720.0, sw-32)
+	return image.Rect(int((sw-width)/2), int(y), int((sw+width)/2), int(y+h))
+}
 
 func (c *confirm) overlay() bool { return true }
 
@@ -46,7 +78,7 @@ func (c *confirm) update(g *Game) {
 	if c.age < 6 {
 		return
 	}
-	_, _, _, _, yes, no := c.layout(g)
+	_, _, y, h, yes, no := c.layout(g)
 	if g.in.moved {
 		if g.in.mouse.In(yes) {
 			c.no = false
@@ -64,7 +96,9 @@ func (c *confirm) update(g *Game) {
 		accept, refuse = !c.no, c.no
 	}
 	if g.in.inspect(g.in.click) {
-		accept, refuse = g.in.mouse.In(yes), g.in.mouse.In(no)
+		// A tap beside the window takes the question back, as Cancel does.
+		outside := !c.choice && !g.in.mouse.In(c.window(g, y, h))
+		accept, refuse = g.in.mouse.In(yes), g.in.mouse.In(no) || outside
 		g.in.query(accept || refuse)
 	}
 	switch {
@@ -90,12 +124,14 @@ func (c *confirm) draw(g *Game, dst *ebiten.Image) {
 	for i, ln := range ls {
 		gfx.DrawText(dst, ln, sw/2, y+20+float64(i)*gfx.LineHeight(sz), sz, g.th.text)
 	}
+	accept, refuse := c.labels()
 	for i, r := range []image.Rectangle{yes, no} {
-		label := lang.T("はい")
+		label := accept
 		if i == 1 {
-			label = lang.T("いいえ")
+			label = refuse
 		}
 		on := (i == 1) == c.no
+		g.traceControl(label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), c.age >= 6, on, "transition")
 		if on {
 			gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x70))
 		}

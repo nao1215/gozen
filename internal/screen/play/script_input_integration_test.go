@@ -804,3 +804,48 @@ func TestScriptOKNeedsWorldAction(t *testing.T) {
 		})
 	}
 }
+
+// TestScriptTapFlows drives the tap flows as a script does, through Update:
+// the phone's home bar puts a page down and its event goes on; a tap outside a
+// confirmation takes the question back; a fallen party's choice is picked by
+// the name of its way.
+func TestScriptTapFlows(t *testing.T) {
+	g := sysOpen(t, Options{Location: "camp", SaveDir: t.TempDir(), Development: true, Script: "wait 100000"}, nil)
+	sysFrames(t, g, 12)
+	run := func(src string, frames int) {
+		t.Helper()
+		sc := sysScript(t, src+"\nwait 100000")
+		s := g.in.script
+		s.cmds, s.pc, s.wait = sc.cmds, 0, 0
+		sysFrames(t, g, frames)
+		if s.pc < len(sc.cmds)-1 {
+			t.Fatalf("the script stopped at command %d of %q", s.pc, src)
+		}
+	}
+
+	run("do [{phone: {app: page, rows: [{text: News}]}}, {set: {var.read: 1}}]\nwait 40", 60)
+	if g.phone == nil {
+		t.Fatal("the phone did not come up")
+	}
+	sx, sy, w, h := g.phoneScreenRect(false)
+	run(fmt.Sprintf("click %d %d\nwait 40", int(sx+w/2), int(sy+h-11)), 80)
+	if g.phone != nil || g.st.Vars["read"] != float64(1) {
+		t.Fatalf("the home bar: phone up %v, read %v", g.phone != nil, g.st.Vars["read"])
+	}
+
+	asked, refused := 0, 0
+	c := newConfirm("Overwrite?", func() { asked++ })
+	c.onNo = func() { refused++ }
+	g.push(c)
+	run("wait 10\nclick 6 6\nwait 4", 40)
+	if asked != 0 || refused != 1 || g.stack[len(g.stack)-1] == scene(c) {
+		t.Fatalf("a tap outside the confirmation: yes %d no %d", asked, refused)
+	}
+
+	retried := 0
+	g.push(newChoice("The party has fallen.", "Retry", "Give up", func() { retried++ }))
+	run("wait 10\npick Retry\nwait 4", 40)
+	if retried != 1 {
+		t.Fatalf("pick Retry answered %d times", retried)
+	}
+}

@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -246,6 +247,44 @@ func (s *tacticsScreen) act(g *Game) {
 	s.refresh(g)
 }
 
+// tacticMark is how wide a row's ON/OFF mark takes a tap: the word at the
+// row's right end or, with simple tactics, the mark before its text.
+const tacticMark = 76
+
+// markAt is the row whose ON/OFF mark is under a tap.
+func (s *tacticsScreen) markAt(g *Game) (int, bool) {
+	in := &g.in
+	if !in.inspect(in.click) {
+		return 0, false
+	}
+	for _, i := range s.rows.shown() {
+		if in.mouse.In(s.markRect(g, i)) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// markRect is where row i's ON/OFF mark takes a tap.
+func (s *tacticsScreen) markRect(g *Game, i int) image.Rectangle {
+	r := s.rows.rowRect(i)
+	if g.db.Game.Battle.SimpleTactics {
+		return image.Rect(r.Min.X, r.Min.Y, r.Min.X+tacticMark, r.Max.Y)
+	}
+	return image.Rect(r.Max.X-tacticMark, r.Min.Y, r.Max.X, r.Max.Y)
+}
+
+// toggleRow turns row i on or off as the ON / OFF action does, leaving the
+// cursor of the actions where it was.
+func (s *tacticsScreen) toggleRow(g *Game, i int) {
+	keep := s.actions.sel
+	s.focus, s.rows.sel, s.actions.sel = 1, i, tacticToggle
+	s.act(g)
+	s.actions.sel = keep
+	s.refresh(g)
+	g.sfx("cursor")
+}
+
 func (s *tacticsScreen) update(g *Game) {
 	if s.presets != nil && !s.editing {
 		s.updatePresets(g)
@@ -262,6 +301,11 @@ func (s *tacticsScreen) update(g *Game) {
 	}
 
 	lists := []*list{s.members, s.rows, s.actions}
+	if i, ok := s.markAt(g); ok {
+		g.in.query(true)
+		s.toggleRow(g, i)
+		return
+	}
 	if f := g.clickedList(lists...); f >= 0 {
 		s.focus = f
 	}
@@ -324,6 +368,12 @@ func (s *tacticsScreen) draw(g *Game, dst *ebiten.Image) {
 			g.window(dst, l.x, l.y, l.w, float64(l.rows)*l.rowH+24)
 		} else {
 			l.draw(g, dst, s.focus == i || i < 2)
+		}
+	}
+	if g.controlFrame() != nil {
+		for _, i := range s.rows.shown() {
+			r := s.markRect(g, i)
+			g.traceControl(lang.T("ON / OFF"), roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), true, false, "")
 		}
 	}
 	if len(s.rows.items) == 0 {
