@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 )
 
@@ -26,6 +27,52 @@ func guardYAML(decode func() error) (err error) {
 		}
 	}()
 	return decode()
+}
+
+// refuseTaggedScalars reports a tag such as !x or !!str on a single value. The decoder
+// dereferences nil when such a value meets a list; recovering that fault corrupted the heap
+// on Windows (golang/go#81238), so the input is refused before the decoder sees it. This is
+// the check of internal/base/decodeguard; the mosaic component may not import layer 1.
+func refuseTaggedScalars(node ast.Node) error {
+	if node == nil {
+		return nil
+	}
+	var found *ast.TagNode
+	ast.Walk(tagVisitor(func(n ast.Node) bool {
+		tag, ok := n.(*ast.TagNode)
+		if found == nil && ok && taggedScalar(tag.Value) {
+			found = tag
+		}
+		return found == nil
+	}), node)
+	if found == nil {
+		return nil
+	}
+	return &yaml.SyntaxError{
+		Message: fmt.Sprintf("the tag %s on a single value is not supported; write the value without a tag", found.Start.Value),
+		Token:   found.Start,
+	}
+}
+
+func taggedScalar(n ast.Node) bool {
+	switch v := n.(type) {
+	case nil, *ast.NullNode, *ast.MappingNode, *ast.MappingValueNode, *ast.SequenceNode:
+		return false
+	case *ast.AnchorNode:
+		return taggedScalar(v.Value)
+	case *ast.TagNode:
+		return taggedScalar(v.Value)
+	}
+	return true
+}
+
+type tagVisitor func(ast.Node) bool
+
+func (v tagVisitor) Visit(n ast.Node) ast.Visitor {
+	if v(n) {
+		return v
+	}
+	return nil
 }
 
 type Fix struct {
@@ -81,6 +128,9 @@ func LoadFixes(path string) (Fixes, error) {
 		}
 		if len(file.Docs) != 1 || file.Docs[0].Body == nil {
 			return errors.New("fix YAML requires one nonempty document")
+		}
+		if err := refuseTaggedScalars(file.Docs[0].Body); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
 		}
 		if err := yaml.NodeToValue(file.Docs[0].Body, &fx, yaml.Strict()); err != nil {
 			return fmt.Errorf("%s: %w", path, err)

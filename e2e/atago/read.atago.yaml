@@ -462,3 +462,147 @@ scenarios:
         - 'facts, never verdicts'
         - '2x "Welcome"'
         - 'same_screen'
+  # --stall-seconds is the shortest unchanged stretch reported: a one-second
+  # threshold adds the short ones, a threshold longer than the play reports none.
+  - run:
+      command: gozen trace "${specdir}/fixtures/metrics.jsonl" --metrics --stall-seconds 1 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.stall_seconds, equals: 1}
+        - {path: $.data.stalls, length: 4}
+        - {path: '$.data.stalls[0].kind', equals: no_observed_progress}
+        - {path: '$.data.stalls[0].ticks', equals: 60}
+  - run:
+      command: gozen trace "${specdir}/fixtures/metrics.jsonl" --metrics --stall-seconds 9999 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.data.stalls, length: 0}
+- name: trace check judges a late song by --music-late
+  steps:
+  - fixture:
+      file: trace.jsonl
+      content: '{"t":"say","tick":60,"text":"The trail is clear."}
+
+        {"t":"music","tick":120,"wanted":"bell","song":""}
+
+        {"t":"end","tick":240}
+
+        '
+  # the song was asked for two seconds before the end and never heard
+  - run:
+      command: gozen trace trace.jsonl --check --music-late 1 --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: $.status, equals: failed}
+        - {path: '$.data.issues[0].kind', equals: music-late}
+        - {path: '$.data.issues[0].code', equals: GZN1403}
+  - run:
+      command: gozen trace trace.jsonl --check --music-late 3 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+        - {path: $.data.issues, length: 0}
+- name: simulation option ${name}
+  matrix:
+  # sim battle: the worn item raises nothing the fight needs, so the numbers stay whole
+  - {name: 'battle --hp --streak --no-tree --gear', args: 'sim battle --troop lesson -n 3 --seed 9 --hp --streak 2 --no-tree --gear hatchet', path: '$.data[0].streak.p50', value: 2}
+  - {name: 'battle --hp', args: 'sim battle --troop lesson -n 3 --seed 9 --hp', path: '$.data[0].hp_left.p50', value: 1}
+  # sim dive: a guard before the stairs, a rest every two floors, a shop and the game's events
+  - {name: 'dive --guards', args: 'sim dive --location pit --floors 2 --battles 1 --tries 1 --guards 1:lesson --rest 2 --shops stall --events', path: '$.data.floors[0].guard', value: lesson}
+  steps:
+  - run:
+      command: gozen ${args} --format json "${specdir}/fixtures/outfitting"
+      deterministic:
+        runs: 2
+        compare: [stdout, stderr, exit_code]
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+        - {path: '${path}', equals: '${value}'}
+      changes: {created: [], modified: [], deleted: []}
+- name: floors --no-map prints the numbers without the maps
+  steps:
+  - run:
+      command: gozen sim floors "${specdir}/fixtures/outfitting" --location pit --floor 1
+  - assert:
+      exit_code: 0
+      stdout: {contains: ['11x11 open', '#']}
+  - run:
+      command: gozen sim floors "${specdir}/fixtures/outfitting" --location pit --floor 1 --no-map
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout: {contains: '11x11 open', not_contains: '#'}
+- name: routes limits are reported, never mistaken for a full exploration
+  steps:
+  - run:
+      command: gozen sim routes "${specdir}/../../examples/novel/game" --paths 1 --format json
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+        - {path: $.data.paths, equals: 1}
+        - {path: $.data.truncated, equals: true}
+  - run:
+      command: gozen sim routes "${specdir}/../../examples/novel/game" --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: $.data.paths, equals: 5}
+        - {path: $.data.truncated, equals: false}
+  # a path cut by --depth is a failure, not an ending
+  - run:
+      command: gozen sim routes "${specdir}/../../examples/novel/game" --depth 2 --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: $.status, equals: failed}
+        - {path: '$.data.errors[0]', matches: 'do not end'}
+- name: batch plays cases with a one-game cache and rejects a cache of none
+  steps:
+  - fixture: {file: wait.txt, content: "wait 5\nquit\n"}
+  - run:
+      command: python3 -c "import json,sys; open('cases.jsonl','w').write(''.join(json.dumps({'id':i,'args':[g,'--start',s,'--script','wait.txt','--trace',i+'.jsonl']})+chr(10) for i,g,s in (('a',sys.argv[1],'camp'),('b',sys.argv[2],'depot'),('c',sys.argv[1],'camp'))))" "${specdir}/fixtures/game" "${specdir}/fixtures/outfitting"
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen sim batch --cases cases.jsonl --games 1
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout: {contains: ['"id":"a","status":"ok"', '"id":"b","status":"ok"', '"id":"c","status":"ok"', '"succeeded":3,"failed":0']}
+  - assert: {file: {path: c.jsonl, contains: '"location":"camp"'}}
+  - assert: {file: {path: b.jsonl, contains: '"location":"depot"'}}
+  - run:
+      command: gozen sim batch --cases cases.jsonl --games 0
+  - assert:
+      exit_code: 2
+      stdout: {equals: ''}
+      stderr:
+        json:
+        - {path: $.code, equals: GZN2201}
+- name: faces --preview writes nothing for a game with no standing pictures
+  steps:
+  - run:
+      command: gozen faces "${specdir}/fixtures/outfitting" --preview preview
+  - assert:
+      exit_code: 0
+      stdout: {contains: nothing to do}
+      changes: {created: [], modified: [], deleted: []}

@@ -41,7 +41,7 @@ func readGame(fsys fs.FS) (out files, assets, carried []string, err error) {
 				return err
 			}
 			var v any
-			if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &v, yaml.UseOrderedMap()) }); err != nil {
+			if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &v, yaml.UseOrderedMap()) }); err != nil {
 				return fmt.Errorf("%s: %w", name, err)
 			}
 			out[name] = mergeKeys(v)

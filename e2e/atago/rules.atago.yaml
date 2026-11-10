@@ -1,0 +1,409 @@
+version: '1'
+suite:
+  name: Gozen event commands change the played state
+scenarios:
+- name: buy and sell trade at the shop's prices and equip moves an item between bag and slot
+  steps:
+  - fixture:
+      file: trade.txt
+      content: |
+        wait 5
+        do buy: {shop: stall, item: tonic, count: 2}
+        wait 5
+        do sell: {shop: stall, item: tonic}
+        wait 5
+        snapshot
+        do buy: {shop: stall, item: hatchet}
+        wait 5
+        do equip: {actor: scout, item: hatchet}
+        wait 5
+        snapshot
+        do equip: {actor: scout, slot: weapon}
+        wait 5
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script trade.txt --trace trade.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: trade.jsonl
+        contains:
+        # 100 gold, two tonics at 8, one sold back at half price
+        - '"gold":88,"items":{"amber":1,"flint":2,"jet":1,"tonic":1}'
+        # the hatchet costs 20 and leaves the bag while it is worn
+        - '"equip":{"weapon":"hatchet"}'
+        - '"gold":68,"items":{"amber":1,"flint":2,"jet":1,"tonic":1}'
+  - run:
+      command: gozen trace trade.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.records[0].state.items.hatchet', equals: 1}
+        - {path: '$.data.records[0].state.actors.scout.equip', equals: {}}
+- name: equip_stones wears a stone set and the fusion screen makes one stone of two
+  steps:
+  - fixture:
+      file: stones.txt
+      content: |
+        wait 5
+        do equip_stones: {actor: '"mender"', set: '"dusk"'}
+        wait 5
+        snapshot
+        do open: fusion
+        wait 10
+        press ok
+        wait 10
+        press ok
+        wait 10
+        press cancel
+        wait 10
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script stones.txt --trace stones.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: stones.jsonl
+        contains:
+        - '"equip":{"stone1":"amber","stone2":"jet"}'
+        - '"what":"open"'
+  - run:
+      command: gozen trace stones.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        # two flints and 10 gold become one spark
+        - {path: '$.data.records[0].state.items', equals: {spark: 1}}
+        - {path: '$.data.records[0].state.gold', equals: 90}
+- name: a checkpoint is kept in a save and restored by a second process
+  steps:
+  - fixture:
+      file: mark.txt
+      content: |
+        wait 5
+        do checkpoint: resumed
+        wait 5
+        do set: {var.depth: 7}
+        wait 5
+        do open: save
+        wait 10
+        press ok
+        wait 30
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script mark.txt --save-dir saves --trace mark.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: saves/save1.json
+        json:
+        - {path: $.state.checkpoint.event, equals: resumed}
+        - {path: $.state.vars.depth, equals: 7}
+  - fixture:
+      file: restore.txt
+      content: |
+        wait 20
+        press ok
+        wait 20
+        press ok
+        wait 20
+        snapshot
+        do restore_checkpoint: true
+        wait 20
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --script restore.txt --save-dir saves --trace restore.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: restore.jsonl
+        # the loaded save still has the later value
+        contains: '"vars":{"depth":7}'
+  - run:
+      command: gozen trace restore.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        # the state of the checkpoint, and its event has run
+        - {path: '$.data.records[0].state.vars', equals: {}}
+        - {path: '$.data.records[0].state.flags.resumed', equals: true}
+- name: a lost battle offers a retry, then runs the game over event, and on_lose replaces it
+  steps:
+  - fixture:
+      file: lose.txt
+      content: |
+        wait 5
+        do move: yard
+        wait 10
+        do battle: wall
+        wait 10
+        play 400
+        pick Yes
+        wait 10
+        play 400
+        pick No
+        wait 100
+        press ok
+        wait 30
+        snapshot
+        do move: yard
+        wait 10
+        do [{battle: wall, on_lose: [{set: {flag.lost: true}}]}]
+        wait 10
+        play 400
+        pick No
+        wait 30
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script lose.txt --trace lose.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: lose.jsonl
+        contains:
+        - '"troop":"wall","what":"retry"'
+        - '"what":"game_over"'
+        # the game over event carried the party back before the second battle
+        - '"flags":{"carried":true,"lost":false,"mused":false,"resumed":false}'
+  - run:
+      command: gozen trace lose.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.records[0].state.flags.lost', equals: true}
+        - {path: '$.data.records[0].state.location', equals: yard}
+        - {path: '$.data.records[0].state.last_battle.result', equals: lose}
+- name: a fully walked dungeon opens the wall its complete commands name
+  steps:
+  - fixture:
+      file: cellar.txt
+      content: |
+        wait 5
+        do move: cellar
+        wait 20
+        snapshot
+        press up
+        wait 30
+        press up
+        wait 40
+        snapshot
+        press ok
+        wait 30
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script cellar.txt --trace cellar.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: cellar.jsonl
+        contains:
+        - '"vars":{"explored":33}'
+        - '"put":{"cellar@4,1":"H"}'
+  - run:
+      command: gozen trace cellar.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        # stepping into the opened wall ran the tile put there
+        - {path: '$.data.records[0].state.location', equals: depot}
+        - {path: '$.data.records[0].state.done.cellar#complete', equals: true}
+- name: a shown picture and a seen scene unlock their gallery entries, and a gallery file opens them at the start
+  steps:
+  - fixture:
+      file: marker.txt
+      content: |
+        wait 5
+        do call: marker
+        wait 10
+        read 3
+        wait 20
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script marker.txt --trace marker.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: marker.jsonl
+        contains:
+        - '"key":"cg:mote.png"'
+        - '"key":"scene:saw_marker"'
+        - '"unlocked":{}'
+  # A scripted play does not write the gallery file, so the second process reads one
+  # as a player's earlier session would have left it.
+  - fixture:
+      file: saves/gallery.json
+      content: '{"format_version": 1, "game_id": "e2e-outfitting", "unlocks": {"cg:mote.png": true}}'
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script marker.txt --save-dir saves --trace again.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: again.jsonl
+        contains:
+        - '"unlocked":{"cg:mote.png":true}'
+        - '"key":"scene:saw_marker"'
+  # the picture was already open, so showing it again unlocks nothing
+  - assert:
+      file:
+        path: again.jsonl
+        not_contains: '"key":"cg:mote.png"'
+- name: capture fills the party then the reserve, reserve swaps a monster in and release removes one
+  steps:
+  - fixture:
+      file: ranch.txt
+      content: |
+        wait 5
+        do capture: drip_slime
+        wait 30
+        read 5
+        wait 20
+        do capture: drip_slime
+        wait 30
+        read 5
+        wait 20
+        do capture: drip_slime
+        wait 30
+        read 5
+        wait 20
+        do capture: drip_slime
+        wait 30
+        read 5
+        wait 20
+        snapshot
+        do reserve: {in: monster_4, out: monster_1}
+        wait 30
+        read 5
+        wait 20
+        snapshot
+        do release: monster_2
+        wait 30
+        read 5
+        wait 20
+        quit
+  - run:
+      command: gozen sim script "${specdir}/../../examples/go-zen/game" --start plaza --script ranch.txt --trace ranch.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: ranch.jsonl
+        contains:
+        - '"party":["maren","monster_1","monster_2","monster_3"]'
+        - '"capture_result":"reserve"'
+        - '"party":["maren","monster_4","monster_2","monster_3"]'
+  - run:
+      command: gozen trace ranch.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        - {path: '$.data.records[0].state.party', equals: [maren, monster_4, monster_3]}
+        - {path: '$.data.records[0].state.actors.monster_1.id', equals: monster_1}
+        - {path: '$.data.records[0].state.actors.monster_4.id', equals: monster_4}
+- name: stone_suggest plans the strongest stones without wearing them and stone_apply wears them
+  steps:
+  - fixture:
+      file: advice.txt
+      content: |
+        wait 5
+        do stone_suggest: tip
+        wait 5
+        snapshot
+        do stone_apply: tip
+        wait 5
+        snapshot
+        do stone_suggest: tip
+        wait 5
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script advice.txt --trace advice.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: advice.jsonl
+        contains:
+        # two members would change, and nothing is worn yet
+        - '"items":{"amber":1,"flint":2,"jet":1}'
+        - '"tip":2,'
+        - '"equip":{"stone1":"amber","stone2":"jet"}'
+        - '"equip":{"stone1":"flint","stone2":"flint"}'
+  - run:
+      command: gozen trace advice.jsonl --only end --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        # asked again with the best stones on, there is nothing to change
+        - {path: '$.data.records[0].state.vars.tip', equals: 0}
+        - {path: '$.data.records[0].state.items', equals: {}}
+- name: an aside follows its speaker's line once, affect changes states and fighters duel alone
+  steps:
+  - fixture:
+      file: chat.txt
+      content: |
+        wait 5
+        do call: chat
+        wait 10
+        read 4
+        wait 10
+        do call: chat
+        wait 10
+        read 4
+        wait 10
+        do affect: {who: all, add: chilled}
+        wait 5
+        snapshot
+        do affect: {who: scout, remove: chilled}
+        wait 5
+        snapshot
+        do [{battle: lesson, fighters: [mender]}]
+        wait 10
+        play 400
+        wait 30
+        read 3
+        wait 20
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/outfitting" --start depot --script chat.txt --trace chat.jsonl
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen trace chat.jsonl --only say --format json
+  - assert:
+      exit_code: 0
+      stdout:
+        json:
+        # the aside comes between the two lines the first time and not the second
+        - {path: $.data.records, length: 5}
+        - {path: '$.data.records[0].text', equals: Ready when you are.}
+        - {path: '$.data.records[1].text', equals: (The flints could be one stone.)}
+        - {path: '$.data.records[2].text', equals: The yard is quiet.}
+        - {path: '$.data.records[3].text', equals: Ready when you are.}
+        - {path: '$.data.records[4].text', equals: The yard is quiet.}
+  - assert:
+      file:
+        path: chat.jsonl
+        contains:
+        - '"id":"mender","learnt":null,"level":1,"mp":5,"sp":0,"states":{"chilled":3}'
+        - '"id":"scout","learnt":null,"level":1,"mp":5,"sp":0,"states":{"chilled":3}'
+        - '"id":"scout","learnt":null,"level":1,"mp":5,"sp":0,"states":{}'
+        - '"text":"Mender: Tap!'
+  - assert:
+      file:
+        path: chat.jsonl
+        not_contains: '"text":"Scout: Tap!'

@@ -41,6 +41,16 @@ func TestMarshalRoundTripsEveryScalar(t *testing.T) {
 	}
 }
 
+// A tagged value is refused when the trial reads the game, as the game's own
+// loader refuses it: the decoder could dereference nil on one (decodeguard).
+func TestReadGameRefusesTaggedValues(t *testing.T) {
+	t.Parallel()
+	fsys := fstest.MapFS{"game.yaml": {Data: []byte("id: x\n")}, "data/a.yaml": {Data: []byte("a: !!binary aGVsbG8=\n")}}
+	if _, _, _, err := readGame(fsys); err == nil {
+		t.Fatal("a tagged value was read")
+	}
+}
+
 // A data file read by readGame and written by marshal means what its source means
 // to the decoder: merge keys are folded, and numbers, nulls and empty collections stay.
 func TestDocumentRoundTrip(t *testing.T) {
@@ -49,7 +59,6 @@ func TestDocumentRoundTrip(t *testing.T) {
 		"merge key":     "base: &b {when: flag.x, say: hi}\nevents:\n  a:\n    do:\n      - <<: *b\n        say: other\n",
 		"merge after":   "base: &b {when: flag.x, say: hi}\nevents:\n  a:\n    do:\n      - say: other\n        <<: *b\n",
 		"merge list":    "b: &b {when: x, say: hi}\nc: &c {say: c, z: 1}\na:\n  <<: [*b, *c]\n  q: other\n",
-		"binary":        "a: !!binary aGVsbG8=\n",
 		"nested":        "a:\n  - - x\n    - y\n  - - k: 1\n      l: [2, {m: n}, []]\n  - []\n  - {}\n  - ~\n",
 		"float":         "v: 1.0\nw: 1e21\nx: -0.0\ny: 0.1\n",
 		"big int":       "v: 18446744073709551615\nw: -9223372036854775808\n",

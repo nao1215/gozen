@@ -7,6 +7,7 @@ After changing the README or the site, pass the following before committing.
 ```sh
 go test ./internal/dev/docs   # ledger and references, marks, YAML examples, README links, picture inputs (no display)
 make docs-images              # remake the pictures (rewrites only those that changed) and docs/images/inputs.sum
+make docs-images-record       # record the hashes only, for a change that cannot alter how a picture looks
 make docs-steps               # run the steps of the README and site
 make website website-check    # build the site and look for broken link and image references
 ```
@@ -58,6 +59,8 @@ The comparison reads only what it looks at: the frame count and the five frames 
 | the picture | its own recipe in the manifest |
 
 A comment, a test file or another documentation check therefore changes no hash, and a change to any code that runs does, even if it draws the same: then `make docs-images` remakes the pictures, keeps the ones that still compare equal, and records the new hashes. What is not hashed is the environment: ffmpeg, Xvfb and Mesa, and the Go toolchain beyond the version in `go.mod`. The full remake covers those, and it also fails when the pictures are current but `inputs.sum` is not, so the two checks cannot disagree unnoticed.
+
+A code change that cannot alter how any picture looks (a validation, a headless rule, a command's error) still changes the hashes of the pictures whose code it touches. `make docs-images-record` records the current hashes of every picture in seconds without remaking one. It trusts the change: the Docs workflow remakes the pictures because `inputs.sum` changed and fails when one of them does differ, so a wrong guess is caught before merge, and then `make docs-images` remakes them.
 
 In CI, `docs-images-fresh` of the CI workflow runs the fast check on every push and pull request (also while private). The images jobs of the Docs workflow remake the pictures, in four shards, when a push or pull request changes `docs/images/` (a picture, the manifest or `inputs.sum`), `internal/dev/docs/` or `docs.yml`, and every night at 03:17 UTC; the nightly run catches a drift of the environment. Any change that can alter a picture changes its hash, so it reaches the full remake through `inputs.sum`.
 

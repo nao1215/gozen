@@ -65,20 +65,42 @@ func parsed(t *testing.T, name string, b []byte) *ast.File {
 	return f
 }
 
+// TestDecisionCoverage checks the table both ways: every test a decision lists exists
+// without a build tag, and every test of this package is listed by a decision, so dango
+// runs and explains it. A scanner's guard test is listed beside its scanner; the
+// package has no test that only go test runs.
 func TestDecisionCoverage(t *testing.T) {
 	found := map[string]bool{}
+	var declared []string
 	sourceFiles(t, func(name string, b []byte) {
-		if !strings.HasSuffix(name, "_test.go") || regexp.MustCompile(`(?m)^//go:build `).Match(b) {
+		if !strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		tagged := regexp.MustCompile(`(?m)^//go:build `).Match(b)
+		if tagged && path.Dir(name) != hygienePackage {
 			return
 		}
 		f := parsed(t, name, b)
 		for _, decl := range f.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if ok && fn.Recv == nil && fn.Type.Params.NumFields() == 1 && fn.Type.Results == nil {
+			if !ok || fn.Recv != nil || fn.Type.Params.NumFields() != 1 || fn.Type.Results != nil {
+				continue
+			}
+			if !tagged {
 				found[path.Dir(name)+"/"+fn.Name.Name] = true
+			}
+			if path.Dir(name) == hygienePackage && strings.HasPrefix(fn.Name.Name, "Test") {
+				declared = append(declared, fn.Name.Name)
 			}
 		}
 	})
+	for _, name := range unregisteredTests(hygienePackage, declared, hygiene.Decisions()) {
+		t.Errorf("%s/%s: no decision lists the test, so dango neither runs nor explains it; add it to a decision in decisions.go (a guard test beside its scanner)", hygienePackage, name)
+	}
+	sample := []hygiene.Decision{{ID: "sample", Tests: []hygiene.Test{{Package: "a", Name: "TestListed"}, {Package: "b", Name: "TestElsewhere"}}}}
+	if got := unregisteredTests("a", []string{"TestStray", "TestListed", "TestElsewhere"}, sample); !slices.Equal(got, []string{"TestElsewhere", "TestStray"}) {
+		t.Errorf("unregistered tests of the sample = %q; want the two that no decision lists for package a", got)
+	}
 	ids := map[string]bool{}
 	for _, d := range hygiene.Decisions() {
 		if ids[d.ID] || d.ID == "" || d.Name == "" || d.Reason == "" || d.Fix == "" || len(d.Tests) == 0 {
@@ -421,10 +443,10 @@ func TestCommandExecution(t *testing.T) {
 // YAML words are checked lexically, not as a proof of gameplay generality.
 // The frozen baseline below may only shrink; new words cannot be added to it.
 const (
-	yamlBaselineLimit = 744
+	yamlBaselineLimit = 728
 	yamlBaseline      = `
 acceleration accent accepts act action activation activity activity_attributes
-add add_state addresses admission advice affect affection affiliation
+add_state addresses admission advice affect affection affiliation
 after_win again all anim answer answer_chance answers any
 appear args armies army asides ask assignee at_point
 attack_skill attribute attributes auto auto_start auto_tactics auto_tempo auto_wait
@@ -439,16 +461,16 @@ camera_on can_escape cap_hours caption capture card card_bubbles carousel
 carry ceiling ceiling_texture cg_review cgs chance channels char
 charge checkpoint child children choice_position chrome clash clear
 col colors columns command comment compact complete condition
-consume control controls cost count counter cover crit
+consume control controls cost counter cover crit
 critical critical_rate critical_ratio crowd currency cursor cut cutin
 cutin_box cutin_lines cx damage damage_rate darkness data data_version
-date date_format date_link day deadline deal defeat defend
+date date_format date_link deadline deal defeat defend
 defense dependency_ratio depth depth_bias desc description destination detail
-dim dir dive done door dot drag drain
+dim dir done door dot drag drain
 draw_roads drop drops due duo_chance duos each east
 echo edge effect effects element elements else enabled
 end_turn end_turn_button endings endure enemy enter entity episodes
-equip equip_slots equip_stones escape evening event_label event_when every
+equip_slots equip_stones escape evening event_label event_when every
 exclusive exp expr expression_depth expression_length extra face_at face_box
 face_expr face_rules face_shade face_shade_top face_shape families family far
 fatal field_notices fight fighters file_lines files filled filter_label
@@ -462,7 +484,7 @@ haze head header header_face header_tint heading heal held
 hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
 hit hits hitstop  host hp hp_triggers hurt
 icon image_height images in indexed_names initial instant instead
-into intro item items join join_exp joined keeper
+into intro items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
 leave ledger ledgers left legacy_keys legend_rank level_scale light
 likes lines live lobby locked logo look looks
@@ -475,7 +497,7 @@ missing_voice monster_class monster_families mood mood_names moods morning motio
 mp music_pictures muted name_tag nav near new no_map
 no_menu no_standing node north note notice novel_window now
 npc observation observations observed ok on on_appear on_draw
-on_enter on_escape on_leave on_lose on_turn on_turn_end on_turn_end_allies on_user
+on_enter on_escape on_leave on_turn on_turn_end on_turn_end_allies on_user
 on_win one_shot one_way only opacities opacity open_wall
 optional options order_view origin_u origin_v others_title out outfit
 over over_size page pages pairs pan paper param
@@ -487,16 +509,16 @@ power preferred preset price primary primary_card primary_text priority
 profile profile_book progress prompt q qr question quick_menu
 quiet r rank rare_rank reaction reactions read reason
 recoil recover recruit rect refraction region_borders region_numbers region_roads
-release remove remove_on_damage remove_state repetitions reply reposts
+remove remove_on_damage remove_state repetitions reply reposts
 requires reserve reset_actor reset_tree resist respond rest restart
 restore_checkpoint restrict restrict_chance resume_to retain retry revive ring
 rise roamers rollback roofs rooms rope rounds row
-rule rules sacrifice safe safe_area sample sample_freshness sample_label
+rule rules sacrifice safe_area sample sample_freshness sample_label
 save scene_review scenes schedule screen_operations scroll search seed
 seed_xor seen selection_panel selector self self_backdrop self_label self_stage
 sell send sex sex_ratio sfx sfx_vary shadow shake
-shape share shop shops short side sight sign
-simple_tactics size skill skill_slots skip sky slide slot
+shape share shops short side sight sign
+simple_tactics size skill skill_slots skip sky slide
 soldiers solid song songs sortie south sp sp_apply
 sp_decline sp_pitch sp_suggest speaking speech spent spin stage_drop
 stage_framing stage_puppets stage_scale stages staging stairs stand_ins star_bonus
@@ -1444,4 +1466,429 @@ func TestSnapshotEngineTagSelection(t *testing.T) {
 	check("v0.22.0")
 	run("git", "tag", "v0.23.0")
 	check("v0.23.0")
+}
+
+// hygienePackage holds the maintainer tests of the decision table.
+const hygienePackage = "internal/dev/hygiene"
+
+// unregisteredTests returns the declared tests of a package that no decision lists.
+func unregisteredTests(pkg string, declared []string, decisions []hygiene.Decision) []string {
+	listed := map[string]bool{}
+	for _, d := range decisions {
+		for _, test := range d.Tests {
+			listed[test.Package+"/"+test.Name] = true
+		}
+	}
+	var out []string
+	for _, name := range declared {
+		if !listed[pkg+"/"+name] {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// packageUse is one reference to a member of a standard package, with the top-level
+// declaration that holds it (a method as Type.method, a package variable as "package").
+type packageUse struct{ fn, member string }
+
+// packageUses lists a file's references to the named members of a standard package
+// under any import alias. A reference counts, not only a call, so assigning the
+// function to a variable does not hide it; a dot import hides every reference and is
+// reported as the member ".".
+func packageUses(f *ast.File, pkg string, members ...string) []packageUse {
+	var uses []packageUse
+	aliases := map[string]bool{}
+	for _, imp := range f.Imports {
+		if imported, err := strconv.Unquote(imp.Path.Value); err != nil || imported != pkg {
+			continue
+		}
+		switch {
+		case imp.Name == nil:
+			aliases[path.Base(pkg)] = true
+		case imp.Name.Name == ".":
+			uses = append(uses, packageUse{"import", "."})
+		default:
+			aliases[imp.Name.Name] = true
+		}
+	}
+	for _, decl := range f.Decls {
+		holder := "package"
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			holder = fn.Name.Name
+			if fn.Recv != nil && len(fn.Recv.List) == 1 {
+				recv := fn.Recv.List[0].Type
+				if star, ok := recv.(*ast.StarExpr); ok {
+					recv = star.X
+				}
+				if index, ok := recv.(*ast.IndexExpr); ok {
+					recv = index.X
+				}
+				if id, ok := recv.(*ast.Ident); ok {
+					holder = id.Name + "." + holder
+				}
+			}
+		}
+		ast.Inspect(decl, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			// A package name resolves to no object of the file; a local variable of the same name does.
+			if id, ok := sel.X.(*ast.Ident); ok && id.Obj == nil && aliases[id.Name] && slices.Contains(members, sel.Sel.Name) {
+				uses = append(uses, packageUse{holder, sel.Sel.Name})
+			}
+			return true
+		})
+	}
+	return uses
+}
+
+// allowedUses reports the uses of one file that the allowlist does not name, and marks
+// the entries it met. An entry is "file:holder" with its reason.
+func allowedUses(name, pkg string, uses []packageUse, allow map[string]string, met map[string]bool) []string {
+	var out []string
+	for _, u := range uses {
+		key := name + ":" + u.fn
+		if allow[key] != "" {
+			met[key] = true
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s: %s uses %s.%s", name, u.fn, path.Base(pkg), u.member))
+	}
+	return out
+}
+
+// directOutputAllowlist names the functions of cmd/gozen that may create a file or a
+// directory with package os themselves, each with its reason. Every other output goes
+// through cmd/internal/cli (Publish, WriteNew, Destination), which refuses an existing
+// destination, stages the result and removes it on failure. The list may only shrink:
+// an entry whose function no longer writes directly must be deleted.
+var directOutputAllowlist = map[string]string{
+	"cmd/gozen/capture.go:writeShotIndex":            "writes shots.json and index.html into the stage directory cli.Publish gives the capture",
+	"cmd/gozen/capture_diff.go:compareShot":          "writes the previous and highlight pictures into that same stage directory",
+	"cmd/gozen/check_baseline.go:writeCheckBaseline": "creates --write-baseline with O_EXCL and reports an existing file as an existing output; to remove: cli.WriteNew does the same",
+	"cmd/gozen/design.go:command.design":             "creates --out itself after cli.Destination, removes it on failure, and writes debug.log, summary.json and report.md into it",
+	"cmd/gozen/design.go:writeBand":                  "writes band.png into the --out directory command.design created",
+	"cmd/gozen/design.go:writeTimeline":              "writes a persona's timeline into the --out directory command.design created",
+	"cmd/gozen/faces.go:command.faces":               "rewrites assets/faces.json inside the game: the file the command maintains, not a new output",
+	"cmd/gozen/main.go:startProfile":                 "writes the CPU profile to the path the developer set in GOZEN_CPUPROFILE: a diagnostic, not a command output",
+	"cmd/gozen/memos.go:command.renderMemos":         "writes index.html into the stage directory cli.Publish gives the memo page",
+	"cmd/gozen/memos.go:thumbnail":                   "writes a thumbnail into that same stage directory",
+	"cmd/gozen/simscript.go:command.executeScript":   "creates the --trace file and its parent; to remove: it overwrites an existing trace",
+	"cmd/gozen/trial.go:writeList":                   "creates the parent of --list before cli.WriteNew; to remove: WriteNew creates the parent itself",
+}
+
+// TestCommandOutputs keeps command outputs on the publication helper.
+func TestCommandOutputs(t *testing.T) {
+	met := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "cmd/gozen/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		uses := packageUses(parsed(t, name, b), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
+		for _, v := range allowedUses(name, "os", uses, directOutputAllowlist, met) {
+			t.Errorf("%s; publish the output through cmd/internal/cli (Publish, WriteNew) so it is new, staged and removed on failure", v)
+		}
+	})
+	for _, key := range slices.Sorted(maps.Keys(directOutputAllowlist)) {
+		if !met[key] {
+			t.Errorf("%s: no direct output is left there; remove it from directOutputAllowlist", key)
+		}
+	}
+}
+
+// wallClockAllowlist names the functions under cmd/ that may read the wall clock, each
+// with its reason. A command's output otherwise depends on its inputs alone, so two
+// runs can be compared byte for byte. The list may only shrink.
+var wallClockAllowlist = map[string]string{
+	"cmd/gozen/capture.go:writeShotIndex": "prints the minute the capture was made into index.html for the author who opens the page; shots.json and the pictures carry no time",
+}
+
+// TestCommandClock keeps the wall clock out of command output.
+func TestCommandClock(t *testing.T) {
+	met := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "cmd/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		uses := packageUses(parsed(t, name, b), "time", "Now", "Since", "Until")
+		for _, v := range allowedUses(name, "time", uses, wallClockAllowlist, met) {
+			t.Errorf("%s; take the time from the command's input so the same input gives the same output", v)
+		}
+	})
+	for _, key := range slices.Sorted(maps.Keys(wallClockAllowlist)) {
+		if !met[key] {
+			t.Errorf("%s: the wall clock is no longer read there; remove it from wallClockAllowlist", key)
+		}
+	}
+}
+
+// TestCommandUsesGuard proves the scanner behind TestCommandOutputs and
+// TestCommandClock: it sees a call, an alias, a stored reference and a dot import,
+// names the declaration that holds each, and passes the helper, reads and a local
+// variable that only shares the package's name.
+func TestCommandUsesGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		want         []packageUse
+	}{
+		{"call", `package main; import "os"; func write() { _ = os.WriteFile("out", nil, 0o600) }`, []packageUse{{"write", "WriteFile"}}},
+		{"alias", `package main; import std "os"; func write() { _ = std.MkdirAll("out", 0o700) }`, []packageUse{{"write", "MkdirAll"}}},
+		{"reference", `package main; import "os"; func write() { create := os.Create; _, _ = create("out") }`, []packageUse{{"write", "Create"}}},
+		{"closure in a method", `package main; import "os"; type c struct{}; func (*c) run() { func() { _ = os.Mkdir("out", 0o700) }() }`, []packageUse{{"c.run", "Mkdir"}}},
+		{"package variable", `package main; import "os"; var open = os.OpenFile`, []packageUse{{"package", "OpenFile"}}},
+		{"dot import", `package main; import . "os"; func write() { _ = WriteFile("out", nil, 0o600) }`, []packageUse{{"import", "."}}},
+		{"helper", `package main; import "example.com/cli"; func write() { _ = cli.WriteNew("out", nil) }`, nil},
+		{"read", `package main; import "os"; func read() { _, _ = os.ReadFile("in"); _, _ = os.MkdirTemp("", "stage") }`, nil},
+		{"local variable", `package main; type files struct{}; func (files) Create(string) {}; func write() { os := files{}; os.Create("out") }`, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := packageUses(parsed(t, tc.name, []byte(tc.source)), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("uses = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	clock := packageUses(parsed(t, "clock", []byte(`package main; import "time"; func stamp() string { return time.Now().Format(time.RFC3339) + time.Since(time.Time{}).String() }`)), "time", "Now", "Since", "Until")
+	if !slices.Equal(clock, []packageUse{{"stamp", "Now"}, {"stamp", "Since"}}) {
+		t.Fatalf("clock uses = %v", clock)
+	}
+	met := map[string]bool{}
+	allow := map[string]string{"cmd/gozen/a.go:stamp": "sample reason", "cmd/gozen/a.go:gone": "sample reason"}
+	if got := allowedUses("cmd/gozen/a.go", "time", clock, allow, met); len(got) != 0 || !met["cmd/gozen/a.go:stamp"] || met["cmd/gozen/a.go:gone"] {
+		t.Fatalf("allowed file: violations %v, met %v", got, met)
+	}
+	if got := allowedUses("cmd/gozen/b.go", "time", clock, allow, met); !slices.Equal(got, []string{"cmd/gozen/b.go: stamp uses time.Now", "cmd/gozen/b.go: stamp uses time.Since"}) {
+		t.Fatalf("other file: violations %v", got)
+	}
+}
+
+// pathFilter is one path pattern of the CI configuration: the file that holds it, the
+// pattern as written, and what one "*" matches there. A shell case pattern lets it
+// cross directories; a workflow filter needs "**" for that.
+type pathFilter struct{ source, pattern, star string }
+
+// shellCasePatterns returns the patterns of the case statements over subject in a
+// shell script, without the empty word and the catch-all "*", which name no path.
+func shellCasePatterns(script, subject string) []string {
+	var patterns []string
+	inCase, inBody := false, false
+	for line := range strings.SplitSeq(script, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "#"):
+		case strings.HasPrefix(line, "case "):
+			inCase, inBody = line == "case "+subject+" in", false
+		case line == "esac":
+			inCase = false
+		case inCase && inBody:
+			inBody = !strings.Contains(line, ";;")
+		case inCase:
+			words, body, ok := strings.Cut(line, ")")
+			if !ok {
+				continue
+			}
+			for word := range strings.SplitSeq(words, "|") {
+				if word = strings.TrimSpace(word); word != "" && word != `""` && word != "*" {
+					patterns = append(patterns, word)
+				}
+			}
+			inBody = !strings.Contains(body, ";;")
+		}
+	}
+	return patterns
+}
+
+// workflowPaths returns the paths and paths-ignore entries of a workflow's events,
+// without the "!" of a negated entry: that pattern too must name something.
+func workflowPaths(workflow []byte) ([]string, error) {
+	var w struct {
+		On any `yaml:"on"`
+	}
+	if err := yaml.Unmarshal(workflow, &w); err != nil {
+		return nil, err
+	}
+	events, ok := w.On.(map[string]any)
+	if !ok { // a bare event name or a list of them carries no filter
+		return nil, nil
+	}
+	var patterns []string
+	for _, event := range slices.Sorted(maps.Keys(events)) {
+		settings, ok := events[event].(map[string]any)
+		if !ok { // a schedule's list, or an event without settings
+			continue
+		}
+		for _, key := range []string{"paths", "paths-ignore"} {
+			entries, ok := settings[key].([]any)
+			if !ok {
+				continue
+			}
+			for _, entry := range entries {
+				patterns = append(patterns, strings.TrimPrefix(fmt.Sprint(entry), "!"))
+			}
+		}
+	}
+	return patterns, nil
+}
+
+// stalePathFilters reports the filters that match none of the files, and the entries of
+// absent (source + ": " + pattern, with the reason it may match nothing) that match one
+// after all or that no filter has any more.
+func stalePathFilters(filters []pathFilter, files []string, absent map[string]string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, f := range filters {
+		key := f.source + ": " + f.pattern
+		seen[key] = true
+		if strings.ContainsAny(f.pattern, `?[]{}+\`) {
+			out = append(out, key+": glob operator the check does not read; extend stalePathFilters")
+			continue
+		}
+		parts := strings.Split(f.pattern, "**")
+		for i, part := range parts {
+			parts[i] = strings.ReplaceAll(regexp.QuoteMeta(part), `\*`, f.star)
+		}
+		re := regexp.MustCompile("^" + strings.Join(parts, ".*") + "$")
+		matched := slices.ContainsFunc(files, re.MatchString)
+		switch _, allowed := absent[key]; {
+		case !matched && !allowed:
+			out = append(out, key+": matches no file, so the filter no longer selects what it was written for; name the path that replaced it or delete the pattern")
+		case matched && allowed:
+			out = append(out, key+": matches a file now; remove it from absentPathFilters")
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(absent)) {
+		if !seen[key] {
+			out = append(out, key+": no such filter is left; remove it from absentPathFilters")
+		}
+	}
+	return out
+}
+
+// absentPathFilters are the CI path patterns that may match no file, with the reason.
+var absentPathFilters = map[string]string{
+	"scripts/ci_changes.sh: LICENSE.*": "a licence text added under its other usual name (LICENSE.txt) is documentation too",
+	"scripts/ci_changes.sh: LICENSE-*": "a second licence added under its usual name (LICENSE-APACHE) is documentation too",
+}
+
+// TestCIPathFilters requires every path pattern of scripts/ci_changes.sh and every
+// paths or paths-ignore entry of the workflows to match a file of the checkout. A
+// pattern left behind by a moved directory matches nothing and silently turns its job
+// off: the performance job was skipped that way after the level directories were renamed.
+// TestCIChangeScope proves the classifier on sample diffs; this checks its patterns
+// against the repository. An untracked local file can satisfy a pattern, so CI's clean
+// checkout is the authority.
+func TestCIPathFilters(t *testing.T) {
+	var files []string
+	repositoryFiles(t, func(name string) { files = append(files, name) })
+	const script = "scripts/ci_changes.sh"
+	b, err := os.ReadFile("../../../" + script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var filters []pathFilter
+	for _, p := range shellCasePatterns(string(b), `"${f}"`) {
+		filters = append(filters, pathFilter{script, p, ".*"})
+	}
+	if len(filters) == 0 {
+		t.Fatalf(`%s: no case statement over "${f}" found; teach TestCIPathFilters where the path patterns are now`, script)
+	}
+	const dir = ".github/workflows"
+	entries, err := os.ReadDir("../../../" + dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		b, err := os.ReadFile("../../../" + dir + "/" + e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		patterns, err := workflowPaths(b)
+		if err != nil {
+			t.Fatalf("%s/%s: %v", dir, e.Name(), err)
+		}
+		for _, p := range patterns {
+			filters = append(filters, pathFilter{dir + "/" + e.Name(), p, "[^/]*"})
+		}
+	}
+	for _, v := range stalePathFilters(filters, files, absentPathFilters) {
+		t.Error(v)
+	}
+}
+
+// TestCIPathFiltersGuard proves the scanner on a sample script and workflow: a stale
+// directory, a stale exact file and a stale workflow entry are reported; live patterns,
+// the catch-all, another case subject and a declared absence are not.
+func TestCIPathFiltersGuard(t *testing.T) {
+	script := `
+case "${event}" in
+  pull_request) ;;
+esac
+while IFS= read -r f; do
+  case "${f}" in
+    "") ;;
+    # a comment (with a parenthesis)
+    *.md | docs/* | internal/layer1/*) ;;
+    internal/base/* | gone.ttf | LICENSE.*) perf=true ;;
+    cmd/*)
+      perf=true
+      ;;
+    *) emit true ;;
+  esac
+done
+`
+	workflow := `
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/registry/**
+      - cmd/*/main.go
+      - cmd/*.go
+  pull_request:
+    paths-ignore:
+      - '!website/**'
+      - '*.md'
+`
+	shell := shellCasePatterns(script, `"${f}"`)
+	if want := []string{"*.md", "docs/*", "internal/layer1/*", "internal/base/*", "gone.ttf", "LICENSE.*", "cmd/*"}; !slices.Equal(shell, want) {
+		t.Fatalf("shell patterns = %q, want %q", shell, want)
+	}
+	paths, err := workflowPaths([]byte(workflow))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"website/**", "*.md", "docs/registry/**", "cmd/*/main.go", "cmd/*.go"}; !slices.Equal(paths, want) {
+		t.Fatalf("workflow paths = %q, want %q", paths, want)
+	}
+	var filters []pathFilter
+	for _, p := range shell {
+		filters = append(filters, pathFilter{"ci.sh", p, ".*"})
+	}
+	for _, p := range paths {
+		filters = append(filters, pathFilter{"ci.yml", p, "[^/]*"})
+	}
+	filters = append(filters, pathFilter{"ci.yml", "docs/[a-z]*", "[^/]*"})
+	files := []string{"README.md", "docs/guide/start.md", "docs/registry/catalog.json", "internal/base/expr/expr.go", "cmd/gozen/main.go"}
+	absent := map[string]string{"ci.sh: LICENSE.*": "sample reason", "ci.sh: docs/*": "sample reason", "ci.sh: removed/*": "sample reason"}
+	got := stalePathFilters(filters, files, absent)
+	want := []string{
+		"ci.sh: docs/*: matches a file now",
+		"ci.sh: internal/layer1/*: matches no file",
+		"ci.sh: gone.ttf: matches no file",
+		"ci.yml: website/**: matches no file",
+		"ci.yml: cmd/*.go: matches no file",
+		"ci.yml: docs/[a-z]*: glob operator",
+		"ci.sh: removed/*: no such filter is left",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("reports = %q, want %q", got, want)
+	}
+	for i := range want {
+		if !strings.HasPrefix(got[i], want[i]) {
+			t.Errorf("report %d = %q, want prefix %q", i, got[i], want[i])
+		}
+	}
 }

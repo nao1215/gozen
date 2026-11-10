@@ -109,6 +109,39 @@ Dango also checks generated schemas against the Go types and translation keys ag
   that excuses nothing fails. The check is lexical: it sees that a limit call
   comes first in the source, not that its error is obeyed, and it does not follow
   a decoder passed in from another package.
+- `TestTestFileStems` applies the other half of the naming rule under `cmd/` and
+  `internal/`: a test file has an implementation file of its name beside it. A
+  platform or build word may stand on either side (`faces_nocgo_test.go` belongs to
+  `faces.go`, `entry_linux_test.go` to `entry_linux.go`), and `*_integration_test.go`
+  belongs to no single file. Three names are conventions of Go itself and need no
+  implementation file: `fuzz_test.go` (the Fuzz targets the fuzz workflow
+  discovers), `export_test.go` (internals exposed to external tests) and
+  `example_test.go` (Example functions). `internal/dev/docs` and
+  `internal/dev/hygiene` are left out: their tests check the repository, not code
+  of their own, and are named after the rule they enforce. The test files that had no such
+  implementation file when the rule was added are a second baseline, one path a
+  line, that may only shrink; a file already in the vague-name baseline is listed
+  there alone. The check is by name: it cannot tell whether the tests in a file
+  exercise the file they are named after.
+- `TestCIPathFilters` requires every path pattern of the changed-file `case`
+  statements in `scripts/ci_changes.sh`, and every `paths` or `paths-ignore` entry
+  of a workflow, to match a file of the checkout, so a pattern left behind by a
+  moved directory cannot silently turn its job off. It reads `*` and `**` only and
+  rejects other glob operators until someone teaches it; the two spare licence
+  names are declared absent with their reason. It walks the working tree, not the
+  Git index, so an untracked local file can satisfy a pattern; CI's clean checkout
+  is the authority. `TestCIChangeScope` still proves what the classifier answers.
+- `TestCommandOutputs` rejects `os.Mkdir`, `os.MkdirAll`, `os.Create`,
+  `os.WriteFile` and `os.OpenFile` in the non-test files of `cmd/gozen` outside
+  an allowlist of file and function with a one-line reason: a command publishes
+  through `cmd/internal/cli`, which refuses an existing destination, stages the
+  result and removes it on failure. `TestCommandClock` rejects `time.Now`,
+  `time.Since` and `time.Until` in the non-test files under `cmd/` the same way;
+  the one entry is the minute printed into the capture page. Both allowlists fail
+  on an entry whose function no longer does what it excuses, so they shrink. The
+  scanner reads names, not types: it sees an import alias, a stored reference and
+  a dot import, but not a write made through another package, and an allowed
+  function may gain a second direct write unnoticed.
 
 - The graphics selection test requires every test of a file built only with the
   `graphics` tag to be named `TestGraphics*`, `make graphics` to select by that
@@ -118,6 +151,17 @@ Dango also checks generated schemas against the Go types and translation keys ag
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.
+
+Every top-level test of `internal/dev/hygiene` must be listed by a decision, or
+`TestDecisionCoverage` fails: that package exists for the table, so a test there
+that only `go test` runs is a rule dango can neither run nor explain. A guard
+test, which proves that a scanner rejects a bad sample and accepts a good one,
+is listed beside its scanner rather than exempted, so there is no list of
+exceptions to maintain. The rule stops at that package. `internal/dev/docs` also
+holds the unit tests of the picture, GIF and step tooling behind the
+documentation; those test tools rather than repository decisions, run with
+`go test ./internal/dev/docs` in `make test` and CI, and only the ones that
+enforce a decision are listed.
 
 ## Verification
 

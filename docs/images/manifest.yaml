@@ -231,10 +231,6 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-relations.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
-  go-zen-relations-focus:
-    sample: go-zen
-    script: scripts/capture-go-zen-relations-focus.txt
-    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   campaign:
     sample: campaign
     script: scripts/capture-campaign.txt
@@ -273,7 +269,7 @@ images:
     run: workboard
     frames:
       - {shots: "carousel*"}
-    mp4: {fps: 12, width: 1280, height: 720}
+    mp4: {fps: 4, width: 1280, height: 720}
   space-stairs.mp4:
     run: space
     frames:
@@ -557,7 +553,7 @@ images:
     run: workboard
     frames:
       - {shots: "carousel*"}
-    gif: {fps: 12, width: 720, height: 405, colors: 256}
+    gif: {fps: 4, width: 720, height: 405, colors: 256}
   workboard-guide.gif:
     run: workboard
     frames:
@@ -577,10 +573,16 @@ images:
     frames:
       - {shots: "flow*"}
     mp4: {fps: 12, width: 1280, height: 720}
-  workboard-peek.jpg:
+  workboard-peek.gif:
     run: workboard
-    shot: workboard-peek
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "peek*", every: 6}
+    gif: {fps: 2, width: 720, height: 405, colors: 256}
+  workboard-peek.mp4:
+    run: workboard
+    frames:
+      - {shots: "peek*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   space-stairs.gif:
     run: space
     frames:
@@ -654,10 +656,16 @@ images:
     frames:
       - {shots: "fight_b*", near: cutin, from: -10, to: 120}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
-  go-zen-tree.jpg:
+  go-zen-tree.gif:
     run: tree
-    shot: s-tree
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "tr*", every: 3}
+    gif: {fps: 4, width: 720, height: 405, colors: 256}
+  go-zen-tree.mp4:
+    run: tree
+    frames:
+      - {shots: "tr*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   go-zen-bestiary.jpg:
     run: lineage
     shot: s-page
@@ -895,14 +903,16 @@ images:
     run: novel-characters
     shot: s-characters
     jpeg: {width: 720, height: 405, quality: 3}
-  go-zen-relations.jpg:
+  go-zen-relations.gif:
     run: go-zen-relations
-    shot: s-relations
-    jpeg: {width: 720, height: 405, quality: 3}
-  go-zen-relations-focus.jpg:
-    run: go-zen-relations-focus
-    shot: s-relations-focus
-    jpeg: {width: 720, height: 405, quality: 3}
+    frames:
+      - {shots: "rel*", every: 2}
+    gif: {fps: 6, width: 720, height: 405, colors: 256}
+  go-zen-relations.mp4:
+    run: go-zen-relations
+    frames:
+      - {shots: "rel*"}
+    mp4: {fps: 12, width: 1280, height: 720}
   puppet.gif:
     run: puppet-tour
     frames:

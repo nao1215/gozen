@@ -19,7 +19,7 @@ DEADCODE ?= $(GO) run golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
 # The base the complexity check compares with (CI fetches the history).
 BASE ?= origin/main
 
-.PHONY: deadcode complexity website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-images-fresh docs-steps
+.PHONY: deadcode complexity website-player web-runtime e2e-web desktop-runtime website-go-zen website-novel website-campaign website-play-check go-zen go-zen-graphics novel novel-graphics campaign campaign-graphics test coverage lint tidy workflows arch boundary graphics e2e e2e-graphics cli-build build website website-serve website-check bench bench-compare docs docs-images docs-images-check docs-images-fresh docs-images-record docs-steps
 
 # One module: ./... includes the gozen command and its internal implementations.
 # Keep ONNX-dependent runtime tests separate; see docs/development/testing.md.
@@ -232,6 +232,12 @@ docs-images-check:
 # with docs/images/inputs.sum (written by docs-images). Seconds instead of minutes.
 docs-images-fresh:
 	$(GO) test ./internal/dev/docs -count=1 -run '^TestDocImageInputs$$'
+
+# Records the current hashes of every picture without remaking any: only for a
+# change that cannot alter how a picture looks. The Docs workflow remakes the
+# pictures because inputs.sum changed and fails if one differs.
+docs-images-record:
+	GOZEN_DOCS_INPUTS=record $(GO) test ./internal/dev/docs -count=1 -run '^TestDocImageInputs$$'
 
 # Runs the shell steps of README.md and website/content against this checkout.
 docs-steps:

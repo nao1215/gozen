@@ -1,0 +1,102 @@
+classes:
+  walker:
+    name: Walker
+    stats: {mhp: 40, mmp: 5, atk: 10, def: 3, mat: 2, mdf: 2, agi: 8, luk: 1}
+    exp_for: level * 30
+    equip: [blade, stone]
+actors:
+  scout: {name: Scout, class: walker}
+  mender: {name: Mender, class: walker}
+skills:
+  attack: {name: Tap, effects: [{damage: 10, variance: 0}]}
+  guard: {name: Wait, scope: self}
+  crush: {name: Crush, scope: all_enemies, effects: [{damage: 999, variance: 0}]}
+items:
+  tonic: {name: Tonic, price: 8, use: {scope: one_ally, effects: [{heal: 30}]}}
+  hatchet: {name: Hatchet, kind: blade, slot: weapon, price: 20, stats: {atk: 5}}
+  amber: {name: Amber, kind: stone, slot: stone, stats: {def: 2}}
+  jet: {name: Jet, kind: stone, slot: stone, stats: {mat: 3}}
+  flint: {name: Flint, kind: stone, slot: stone, price: 6, stats: {atk: 1}}
+  spark: {name: Spark, kind: stone, slot: stone, stats: {atk: 4}}
+states:
+  chilled: {name: Chilled, turns: 3}
+stone_sets:
+  dusk: {name: Dusk, stones: [amber, jet], stats: {mdf: 4}}
+fusions:
+  - {from: [flint, flint], to: spark, price: 10}
+shops:
+  stall: {name: Stall, goods: [tonic, hatchet]}
+enemies:
+  mote:
+    name: Mote
+    image: mote.png
+    stats: {mhp: 10, mmp: 0, atk: 1, def: 0, mat: 0, mdf: 0, agi: 1, luk: 1}
+    ai: [{use: attack}]
+  ogre:
+    name: Ogre
+    image: mote.png
+    stats: {mhp: 999, mmp: 0, atk: 99, def: 99, mat: 0, mdf: 99, agi: 99, luk: 1}
+    ai: [{use: crush}]
+troops:
+  lesson: {members: [mote]}
+  wall: {members: [ogre]}
+locations:
+  depot:
+    name: Depot
+    safe: true
+    actions:
+      - {label: Stall, do: [{shop: stall}]}
+      - {label: Fuse stones, do: [{open: fusion}]}
+      - {label: Spar, do: [{battle: lesson}]}
+      - {label: Descend, do: [{dive: pit}]}
+      - {label: Chat, do: [{call: chat}]}
+      - {label: Cool off, do: [{affect: {who: all, add: chilled}}]}
+    exits: [{to: yard, label: Yard}, {to: cellar, label: Cellar}]
+  yard:
+    name: Yard
+    actions:
+      - {label: Challenge, do: [{battle: wall, on_lose: [{set: {flag.lost: true}}]}]}
+      - {label: Mark the spot, do: [{checkpoint: resumed}]}
+  cellar:
+    name: Cellar
+    dungeon:
+      map: |
+        #####
+        #S..#
+        #####
+      tiles:
+        S: {start: true, facing: east}
+        H: {name: Hidden stair, look: door, solid: "true", do: [{move: depot}]}
+      # The wall the party faces becomes the stair once every cell has been seen.
+      complete:
+        - open_wall: H
+  pit:
+    name: Pit
+    encounters: {rate: 0.1, troops: [{troop: lesson}]}
+    dungeon:
+      generate: {width: 11, height: 11, rooms: 2, start: S, place: [{char: '>'}]}
+      tiles:
+        S: {start: true}
+        '>': {do: [{dive: pit, floor: var.floor + 1}]}
+events:
+  carried_back:
+    do:
+      - set: {flag.carried: true}
+      - move: depot
+  resumed:
+    do:
+      - set: {flag.resumed: true}
+  chat:
+    do:
+      - say: {who: scout, text: Ready when you are.}
+      - say: The yard is quiet.
+  muse:
+    do:
+      - say: (The flints could be one stone.)
+      - set: {flag.mused: true}
+  marker:
+    do:
+      - image: mote.png
+      - say: The marker is in place.
+      - image: ''
+      - set: {flag.saw_marker: true}
