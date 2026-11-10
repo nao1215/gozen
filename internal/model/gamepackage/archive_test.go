@@ -287,3 +287,30 @@ func BenchmarkDiskArchiveVerification(b *testing.B) {
 		})
 	}
 }
+
+// directoryBounds reads the end record archive/zip reads. A decoy record whose
+// comment holds the real one, followed by a byte, must not pass the bound for it.
+func TestDirectoryBoundsReadsTheLastEndRecord(t *testing.T) {
+	_, data := archiveFixture(t, nil)
+	end := bytes.LastIndex(data, []byte{'P', 'K', 5, 6})
+	tail := append(bytes.Clone(data[end:]), 0) // a byte after it: its empty comment no longer ends the file
+	decoy := make([]byte, 22)
+	copy(decoy, []byte{'P', 'K', 5, 6})
+	binary.LittleEndian.PutUint16(decoy[8:], 1)
+	binary.LittleEndian.PutUint16(decoy[10:], 1)
+	binary.LittleEndian.PutUint16(decoy[20:], uint16(len(tail))) //nolint:gosec // 23 bytes.
+	crafted := append(append(bytes.Clone(data[:end]), decoy...), tail...)
+	z, e := zip.NewReader(bytes.NewReader(crafted), int64(len(crafted)))
+	if e != nil || len(z.File) != 3 {
+		t.Fatalf("setup: archive/zip reads %v, %v", z, e)
+	}
+	if e = directoryBounds(bytes.NewReader(crafted), int64(len(crafted)), 1); e == nil {
+		t.Fatal("the bound of 1 entry passed an archive whose directory archive/zip reads as 3 entries")
+	}
+	if e = directoryBounds(bytes.NewReader(data), int64(len(data)), 3); e != nil {
+		t.Fatalf("the plain archive: %v", e)
+	}
+	if e = directoryBounds(bytes.NewReader(data), int64(len(data)), 2); e == nil {
+		t.Fatal("the plain archive passed a bound below its entries")
+	}
+}

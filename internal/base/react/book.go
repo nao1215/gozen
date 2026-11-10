@@ -400,23 +400,49 @@ func (b *Book) checkRef(ref expr.Ref) error {
 	return nil
 }
 
+// scanFields reads a line as every reader of a template does: a field opens at a { and
+// closes at the next } after it, and anything else (a } with no { before it too) is text.
+// text and field are called in order; either may be nil. unclosed is true when a { has
+// no }, and the rest of the line from it is then given as text.
+func scanFields(l string, text, field func(string)) (unclosed bool) {
+	emit := func(f func(string), s string) {
+		if f != nil && s != "" {
+			f(s)
+		}
+	}
+	for {
+		i := strings.IndexByte(l, '{')
+		if i < 0 {
+			emit(text, l)
+			return false
+		}
+		j := strings.IndexByte(l[i:], '}')
+		if j < 0 {
+			emit(text, l)
+			return true
+		}
+		emit(text, l[:i])
+		if field != nil {
+			field(l[i+1 : i+j])
+		}
+		l = l[i+j+1:]
+	}
+}
+
 // checkLines checks the {name} fields of templates.
 func checkLines(lines []string) error {
 	for _, l := range lines {
-		for rest := l; ; {
-			i := strings.IndexByte(rest, '{')
-			if i < 0 {
-				break
-			}
-			j := strings.IndexByte(rest[i:], '}')
-			if j < 0 {
-				return fmt.Errorf("line %q: unclosed {", l)
-			}
-			f := rest[i+1 : i+j]
+		var unknown []string
+		unclosed := scanFields(l, nil, func(f string) {
 			if f != "from" && f != "text" && f != "mood" && !strings.HasPrefix(f, "slot.") && !strings.HasPrefix(f, "mem.") {
-				return fmt.Errorf("line %q: unknown field {%s}", l, f)
+				unknown = append(unknown, f)
 			}
-			rest = rest[i+j+1:]
+		})
+		if len(unknown) > 0 {
+			return fmt.Errorf("line %q: unknown field {%s}", l, unknown[0])
+		}
+		if unclosed {
+			return fmt.Errorf("line %q: unclosed {", l)
 		}
 	}
 	return nil

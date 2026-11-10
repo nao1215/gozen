@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	"github.com/nao1215/gozen/internal/base/savefile"
 )
 
 // MaxArchiveBytes and MaxUnpackedBytes bound memory/browser installations.
@@ -297,8 +299,7 @@ func PortablePath(name string) bool {
 		if strings.HasPrefix(p, ".") || strings.TrimRight(p, ". ") != p {
 			return false
 		}
-		base := strings.ToUpper(strings.SplitN(p, ".", 2)[0])
-		if base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" || len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '1' && base[3] <= '9' {
+		if savefile.ReservedName(strings.SplitN(p, ".", 2)[0]) {
 			return false
 		}
 		for _, r := range p {
@@ -345,6 +346,7 @@ func recordSpelling(spellings map[string]string, name string) error {
 }
 
 // directoryBounds caps central-directory allocation before archive/zip parses it.
+// It reads the end record archive/zip reads: the last one in the file.
 // Under the supported disk limits ZIP64 is unnecessary and deliberately rejected.
 func directoryBounds(reader io.ReaderAt, size int64, entries int) error {
 	if size < 22 {
@@ -359,9 +361,12 @@ func directoryBounds(reader io.ReaderAt, size int64, entries int) error {
 		if !bytes.Equal(tail[end:end+4], []byte{'P', 'K', 5, 6}) {
 			continue
 		}
+		// archive/zip reads the last end record of the file, so this is the one to
+		// bound. An earlier record whose comment holds this one must not stand in for
+		// it, and bytes after the comment are refused rather than skipped.
 		record := tail[end:]
 		if int(binary.LittleEndian.Uint16(record[20:22]))+22 != len(record) {
-			continue
+			return errors.New("ZIP end record does not end the archive")
 		}
 		count := int(binary.LittleEndian.Uint16(record[10:12]))
 		if count > entries || count == 65535 {
