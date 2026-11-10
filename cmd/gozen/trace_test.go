@@ -271,3 +271,23 @@ func TestTraceScreenFormats(t *testing.T) {
 		}
 	}
 }
+
+// A record is printed in the language of its trace whether or not --only or
+// --from hides the start record that names the language.
+func TestTraceFiltersKeepTheTraceLanguage(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "run.jsonl")
+	write(t, p, `{"t":"start","tick":0,"game":"g","seed":1,"language":"en"}`+"\n"+`{"t":"say","tick":60,"who":"A","text":"hi"}`+"\n")
+	all, _ := invoke(t, 0, "trace", p)
+	if !strings.Contains(all, `A"hi"`) {
+		t.Fatalf("the unfiltered trace: %q", all)
+	}
+	for _, filter := range [][]string{{"--only", "say"}, {"--from", "0.5"}} {
+		if err := lang.Use(lang.Japanese, nil); err != nil {
+			t.Fatal(err)
+		}
+		got, _ := invoke(t, 0, append([]string{"trace", p}, filter...)...)
+		if !strings.Contains(got, `A"hi"`) {
+			t.Errorf("%v renders the same record in another language: %q", filter, got)
+		}
+	}
+}

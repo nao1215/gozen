@@ -122,6 +122,13 @@ func (c *command) traceCmd() clihelp.Operation {
 			}
 			k := str(l["t"])
 			count[k]++
+			// The language of the play belongs to every printed record, whether
+			// or not a filter hides the start record itself.
+			if k == "start" {
+				if err := useTraceLanguage(l); err != nil {
+					return err
+				}
+			}
 			sec := traceformat.Number(l["tick"]) / 60
 			if sec < *from || (*to > 0 && sec > *to) || (len(kinds) > 0 && !kinds[k]) || (k == "input" && !*input) {
 				if k == "view" {
@@ -134,9 +141,6 @@ func (c *command) traceCmd() clihelp.Operation {
 			switch k {
 			case "start":
 				what = fmt.Sprintf("%v seed %.0f", l["game"], traceformat.Number(l["seed"]))
-				if err := useTraceLanguage(l); err != nil {
-					return err
-				}
 			case "say":
 				what = str(l["text"])
 				if w := str(l["who"]); w != "" {
