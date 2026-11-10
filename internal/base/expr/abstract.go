@@ -412,7 +412,7 @@ func abstractBinop(op string, l, r Range) Range {
 	return Top()
 }
 
-// remainder is the remainder of a..b divided by c..d (on integer parts; 0 if the divisor is 0; a negative remainder gets the divisor added).
+// remainder is the remainder of a..b divided by c..d (on integer parts; 0 if the divisor is 0; a negative remainder gets the divisor's size added, so it is never negative).
 func remainder(a, b, c, d float64) Range {
 	if c != d || math.IsInf(c, 0) {
 		return anyNumber()

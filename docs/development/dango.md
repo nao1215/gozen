@@ -87,6 +87,16 @@ Dango also checks generated schemas against the Go types and translation keys ag
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
 
+- Number checks keep a game's numbers the same on every machine. `TestNumbersAreFinite`
+  (`internal/model/gamedata/numbers_test.go`) loads the example and fixture games, sets
+  each decimal number they define to NaN in turn and requires `Check` to add a
+  diagnostic; `finiteAllowed` in that file is the allow-list, and every entry needs a
+  reason. It reaches the fields those games define, not every field of the schema: a
+  field no game writes is not swept. `TestModelFloatToInt`
+  (`internal/dev/hygiene/floatint_test.go`) type-checks `internal/model` and rejects a
+  conversion of a non-constant decimal number to an integer type; use
+  `internal/base/safeint`. It does not cover the other levels.
+
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.

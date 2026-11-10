@@ -217,6 +217,7 @@ func TestNumericPresenceContract(t *testing.T) {
 		"data.locations.maze.dungeon.generate.loops", "data.locations.maze.dungeon.tiles.S.size",
 		"game.meters.0.max", "game.card_bubbles.0.count", "game.card_bubbles.0.size",
 		"game.card_bubbles.0.speed", "game.card_bubbles.0.rise",
+		"data.music.bars", "data.music.beats_per_bar",
 	} {
 		legacyNegativeRejected[name] = true
 	}

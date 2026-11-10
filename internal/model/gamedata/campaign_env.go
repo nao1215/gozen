@@ -9,6 +9,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 // CampaignState is what a campaign's names read of a play: its variables (by name,
@@ -156,7 +157,7 @@ func Acted(_ *DB, st CampaignState, id string) bool {
 func Out(st CampaignState, id string) int {
 	v, _ := st.Var(GeneralVar(id, "out"))
 	f, _ := expr.ToNumber(v)
-	return int(f)
+	return safeint.From(f)
 }
 
 // Ready reports whether the general can march: joined, here, not marched this turn, with
@@ -169,21 +170,21 @@ func Ready(db *DB, st CampaignState, id string) bool {
 func Used(st CampaignState, id string) int {
 	v, _ := st.Var(OrderVar(id, "used"))
 	f, _ := expr.ToNumber(v)
-	return int(f)
+	return safeint.From(f)
 }
 
 // Taken is how many regions the player took this turn.
 func Taken(st CampaignState) int {
 	v, _ := st.Var(VarTaken)
 	f, _ := expr.ToNumber(v)
-	return int(f)
+	return safeint.From(f)
 }
 
 // Turn is the campaign's turn (1 at the start).
 func Turn(_ *DB, st CampaignState) int {
 	if v, ok := st.Var(VarTurn); ok {
 		if f, ok := expr.ToNumber(v); ok {
-			return int(f)
+			return safeint.From(f)
 		}
 	}
 	return 1
@@ -209,7 +210,7 @@ func turnActions(db *DB, st CampaignState) (float64, error) {
 	if err != nil {
 		return 1, err
 	}
-	return max(0, float64(int(n))), nil
+	return max(0, float64(safeint.From(n))), nil
 }
 
 // ActionsLeft is the actions left in the turn.

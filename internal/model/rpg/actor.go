@@ -155,7 +155,7 @@ func baseAt(c *data.Class, stat string, level int) int {
 	if err != nil {
 		return 0
 	}
-	return max(0, int(math.Floor(v)))
+	return max(0, safeint.From(math.Floor(v)))
 }
 
 // Stat is the stat with the equipment's bonuses.
