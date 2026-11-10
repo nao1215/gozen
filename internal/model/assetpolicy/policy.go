@@ -44,8 +44,9 @@ type Policy struct {
 
 // LoadPolicy reads the work's settings. If omitted, it uses a neutral approval format.
 func Load(base fs.FS, name string) (Policy, error) {
+	pictures := []string{".png", ".jpg", ".jpeg", ".webp"}
 	p := Policy{
-		Report: "approvals.json", Extensions: []string{".png", ".jpg", ".jpeg", ".webp"},
+		Report: "approvals.json", Extensions: pictures,
 		Inspection: RecordFields{File: "file", Source: "source", Required: "required", Approved: "approved"},
 		Records:    RecordFields{File: "file", Source: "source", Required: "required", Approved: "approved", Output: "output"},
 	}
@@ -60,6 +61,18 @@ func Load(base fs.FS, name string) (Policy, error) {
 	p = Policy{}
 	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
 		return p, err
+	}
+	// A policy that names no extension keeps the default pictures: an empty list would
+	// make the release gate find no referenced picture and check nothing. References
+	// compares lower-case extensions, so ".PNG" is written as ".png".
+	if len(p.Extensions) == 0 {
+		p.Extensions = pictures
+	}
+	for i, ext := range p.Extensions {
+		if !strings.HasPrefix(ext, ".") || len(ext) < 2 {
+			return p, fmt.Errorf("assetfs: extension %q must start with a dot", ext)
+		}
+		p.Extensions[i] = strings.ToLower(ext)
 	}
 	if !fs.ValidPath(p.Report) || p.Records.File == "" || p.Records.Source == "" || p.Inspection.File == "" || (p.Inspection.Approved == "" && (p.Inspection.Status == "" || len(p.Inspection.Accepted) == 0)) {
 		return p, errors.New("assetfs: invalid approval policy")

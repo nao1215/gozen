@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"strings"
@@ -519,7 +520,18 @@ func (c *checker) regionAreas() {
 // areasOverlap reports whether two areas share more than a border: an edge of one
 // crosses an edge of the other, or a point of one lies inside the other off its border.
 func areasOverlap(q, r geom.Poly) bool {
-	in := func(p geom.Pt, poly geom.Poly) bool { return poly.Inside(p) && poly.Distance(p) > 0.5 }
+	// Poly.Distance is 0 for a point inside, so the distance that tells a point on the
+	// border from one within is the distance to the nearest edge.
+	in := func(p geom.Pt, poly geom.Poly) bool {
+		if !poly.Inside(p) {
+			return false
+		}
+		edge := math.Inf(1)
+		for i := range poly {
+			edge = math.Min(edge, geom.SegmentDistance(p, poly[i], poly[(i+1)%len(poly)]))
+		}
+		return edge > 0.5
+	}
 	for _, p := range append(slices.Clone(q), q.Center()) {
 		if in(p, r) {
 			return true

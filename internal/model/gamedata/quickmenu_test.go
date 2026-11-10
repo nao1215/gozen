@@ -32,3 +32,19 @@ func TestQuickMenuAndNovelWindow(t *testing.T) {
 		}
 	}
 }
+
+// TestNovelWindowNumbersAreFinite: the novel window's place and a material's
+// opacities written as .nan are refused.
+func TestNovelWindowNumbersAreFinite(t *testing.T) {
+	for _, ui := range []string{
+		"novel_window: {x: .nan, width: 0.6}",
+		"novel_window: {width: .nan}",
+		"novel_window: {width: 0.6, bottom: .nan}",
+		"material: {kind: glass, opacities: {message: .nan}}",
+	} {
+		_, err := testgame.TryLoad(map[string]string{"game.yaml": "schema_version: 10\nid: b\nui: {" + ui + "}\n" + testgame.Game})
+		if err == nil {
+			t.Errorf("%s: accepted", ui)
+		}
+	}
+}

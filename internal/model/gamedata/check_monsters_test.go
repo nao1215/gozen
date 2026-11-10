@@ -157,3 +157,33 @@ func TestMonsterDefinitionBoundaries(t *testing.T) {
 		})
 	}
 }
+
+// Checking the breeding rules leaves the parents in the order the game writes them: gozen
+// book and the lineage read that order, and a check does not change what it checks.
+func TestBreedingCheckKeepsTheWrittenParentOrder(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/monsters.yaml"] = "monster_families: {slime: Slime, beast: Beast}\nbreeding:\n  min_level: 2\n  skill_slots: 1\n" +
+		"  pairs: [{parents: [mote, boss], child: cub}]\n  families: [{parents: [slime, beast], children: [mote, boss]}]\n"
+	files["data/cub.yaml"] = "enemies:\n  cub:\n    family: beast\n    rank: 1\n    monster_class: ranger\n    name: Cub\n    image: x.png\n    stats: {mhp: 5, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}\n"
+	db := testgame.Load(t, files)
+	if got := db.Breeding.Pairs[0].Parents; !slices.Equal(got, []string{"mote", "boss"}) {
+		t.Errorf("pair parents = %v, want the written [mote boss]", got)
+	}
+	if got := db.Breeding.Families[0].Parents; !slices.Equal(got, []string{"slime", "beast"}) {
+		t.Errorf("family parents = %v, want the written [slime beast]", got)
+	}
+	files["data/monsters.yaml"] = strings.Replace(files["data/monsters.yaml"], "child: cub}]", "child: cub}, {parents: [boss, mote], child: cub}]", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "is also defined at") {
+		t.Errorf("the same pair written in the other order = %v, want a duplicate", err)
+	}
+}
+
+// TestClassMaxLevelIsBounded: the monster check works exp_for out once per level, so a
+// max_level above MaxClassLevel is refused instead of keeping the loader busy.
+func TestClassMaxLevelIsBounded(t *testing.T) {
+	files := testgame.MonsterFiles()
+	files["data/main.yaml"] = strings.Replace(files["data/main.yaml"], "    name: Ranger\n", "    name: Ranger\n    max_level: 2000000000\n", 1)
+	if _, err := testgame.TryLoad(files); err == nil || !strings.Contains(err.Error(), "max_level: want at most 9999") {
+		t.Fatalf("max_level: 2000000000 = %v, want the bound reported", err)
+	}
+}

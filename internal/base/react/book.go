@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"slices"
 	"strings"
 
@@ -242,7 +243,7 @@ func (b *Book) validate() error {
 			return fmt.Errorf("lexicon: tag %q is empty or reserved", tag)
 		}
 		for _, w := range words {
-			if Normalize(w.Text) == "" || w.Weight <= 0 || w.Weight > 1 {
+			if Normalize(w.Text) == "" || !(w.Weight > 0 && w.Weight <= 1) { // also refuses NaN
 				return fmt.Errorf("lexicon.%s: word %q needs text and a weight in (0, 1]", tag, w.Text)
 			}
 		}
@@ -286,6 +287,9 @@ func (b *Book) knownTag(tag string) bool {
 }
 
 func (b *Book) checkPerson(p *personDef) error {
+	if !finite(p.Mood, p.MoodMin, p.MoodMax) {
+		return errors.New("mood, mood_min and mood_max must be finite numbers")
+	}
 	if lo, hi := p.bounds(); lo >= hi {
 		return errors.New("mood_min must be below mood_max")
 	}
@@ -295,9 +299,12 @@ func (b *Book) checkPerson(p *personDef) error {
 		}
 		return nil
 	}
-	for tag := range p.Likes {
+	for tag, weight := range p.Likes {
 		if !b.knownTag(tag) {
 			return fmt.Errorf("likes: unknown tag %q", tag)
+		}
+		if !finite(weight) {
+			return fmt.Errorf("likes: the weight of %q must be a finite number", tag)
 		}
 	}
 	asks := map[string]bool{}
@@ -352,14 +359,17 @@ func (b *Book) checkRule(r ruleDef, asks map[string]bool) error {
 	if r.Cooldown < 0 {
 		return errors.New("cooldown is negative")
 	}
+	if !finite(r.Delta) {
+		return errors.New("delta must be a finite number")
+	}
 	for _, ref := range r.When.Refs() {
 		if err := b.checkRef(ref); err != nil {
 			return err
 		}
 	}
 	for _, m := range r.Remember {
-		if m.Key == "" || (m.Set != "" && m.Add != 0) || m.Turns < 0 || m.Time < 0 {
-			return fmt.Errorf("remember %q: needs a key, set or add (not both), and no negative limits", m.Key)
+		if m.Key == "" || (m.Set != "" && m.Add != 0) || m.Turns < 0 || m.Time < 0 || !finite(m.Add, m.Time) {
+			return fmt.Errorf("remember %q: needs a key, set or add (not both), finite numbers and no negative limits", m.Key)
 		}
 		if err := checkLines([]string{m.Set}); err != nil {
 			return fmt.Errorf("remember %q: %w", m.Key, err)
@@ -400,26 +410,63 @@ func (b *Book) checkRef(ref expr.Ref) error {
 	return nil
 }
 
+// scanFields reads a line as every reader of a template does: a field opens at a { and
+// closes at the next } after it, and anything else (a } with no { before it too) is text.
+// text and field are called in order; either may be nil. unclosed is true when a { has
+// no }, and the rest of the line from it is then given as text.
+func scanFields(l string, text, field func(string)) (unclosed bool) {
+	emit := func(f func(string), s string) {
+		if f != nil && s != "" {
+			f(s)
+		}
+	}
+	for {
+		i := strings.IndexByte(l, '{')
+		if i < 0 {
+			emit(text, l)
+			return false
+		}
+		j := strings.IndexByte(l[i:], '}')
+		if j < 0 {
+			emit(text, l)
+			return true
+		}
+		emit(text, l[:i])
+		if field != nil {
+			field(l[i+1 : i+j])
+		}
+		l = l[i+j+1:]
+	}
+}
+
 // checkLines checks the {name} fields of templates.
 func checkLines(lines []string) error {
 	for _, l := range lines {
-		for rest := l; ; {
-			i := strings.IndexByte(rest, '{')
-			if i < 0 {
-				break
-			}
-			j := strings.IndexByte(rest[i:], '}')
-			if j < 0 {
-				return fmt.Errorf("line %q: unclosed {", l)
-			}
-			f := rest[i+1 : i+j]
+		var unknown []string
+		unclosed := scanFields(l, nil, func(f string) {
 			if f != "from" && f != "text" && f != "mood" && !strings.HasPrefix(f, "slot.") && !strings.HasPrefix(f, "mem.") {
-				return fmt.Errorf("line %q: unknown field {%s}", l, f)
+				unknown = append(unknown, f)
 			}
-			rest = rest[i+j+1:]
+		})
+		if len(unknown) > 0 {
+			return fmt.Errorf("line %q: unknown field {%s}", l, unknown[0])
+		}
+		if unclosed {
+			return fmt.Errorf("line %q: unclosed {", l)
 		}
 	}
 	return nil
+}
+
+// finite reports whether no number is NaN or an infinity: YAML writes them as .nan and
+// .inf, a mood made of one is NaN, and a mind with such a mood cannot be saved.
+func finite(vs ...float64) bool {
+	for _, v := range vs {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
+	}
+	return true
 }
 
 // bounds is the mood range (0..100 when both limits are 0).

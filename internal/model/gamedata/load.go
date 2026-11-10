@@ -68,10 +68,14 @@ type DB struct {
 	definitionWarns []error // Unreferenced definitions found by Check.
 
 	// Words are the translations of lang/<code>.yaml by language, source to translation
-	// (ADR 0027). shown is the language shown, names the sources of the names Show translates.
+	// (ADR 0027).
 	Words map[string]map[string]string
-	shown string
-	names map[*string]string
+	// text is the language shown and the sources of what Show translates in place.
+	text shownText
+
+	// instances are the actors a game in progress added to its own view (ForState); nil
+	// for loaded definitions, which take none.
+	instances map[string]bool
 }
 
 // file is one data file: any of the sections.
@@ -457,8 +461,14 @@ func (db *DB) FacePicture(a *Actor, face, outfit string) string {
 }
 
 // Exists reports whether the game has the file (a path under the game's directory).
+// A name under assets/ that climbs out of it (assets/../game.yaml) names no asset, even
+// when the file it reaches is there: an export of the assets would lack it.
 func (db *DB) Exists(p string) bool {
-	_, err := fs.Stat(db.FS, path.Clean(p))
+	clean := path.Clean(p)
+	if strings.HasPrefix(p, "assets/") && !strings.HasPrefix(clean, "assets/") {
+		return false
+	}
+	_, err := fs.Stat(db.FS, clean)
 	return err == nil
 }
 

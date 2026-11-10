@@ -94,3 +94,14 @@ func TestAtlasHideValidation(t *testing.T) {
 		}
 	}
 }
+
+// TestAtlasSizesAreFinite: a label size and a token's height written as .nan
+// are refused (a range written as two comparisons lets NaN through).
+func TestAtlasSizesAreFinite(t *testing.T) {
+	for _, value := range []string{"label_size: .nan", "token: {picture: x.png, height: .nan}", "marker: {picture: x.png, height: .nan}"} {
+		_, files := scenesWith("    map:", "    map:\n      "+value)
+		if _, err := testgame.TryLoad(files); err == nil {
+			t.Errorf("%s: accepted", value)
+		}
+	}
+}

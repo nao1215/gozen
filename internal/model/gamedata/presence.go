@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/safeint"
 	lang "github.com/nao1215/gozen/internal/base/text"
 
 	"github.com/goccy/go-yaml"
@@ -18,9 +19,28 @@ import (
 
 // numericContract is the default and range of numbers in spec version 1. The type comes from the declared field.
 // positive marks items that do not allow 0. Completion for the old spec stays in the existing defaults and on the user side.
+// limit, when it is above 0, is the largest value any schema version loads: a count
+// that drives a loop or an allocation, which the legacy spec bounds too.
 type numericContract struct {
 	fallback, lower, upper float64
 	positive               bool
+	limit                  float64
+}
+
+// The largest counts a game may write. They bound the loops the loader, the battle
+// and the drawing run once per unit; no shipped rule needs more.
+const (
+	MaxClassLevel   = 9999
+	MaxUsageHits    = 999
+	MaxEnemyActions = 99
+	MaxSummoned     = 99
+	MaxDungeonDepth = 64
+	MaxBreedingPlus = 999
+)
+
+func (r numericContract) atMost(limit float64) numericContract {
+	r.limit = limit
+	return r
 }
 
 func nonnegative(fallback float64) numericContract {
@@ -42,22 +62,22 @@ var numericContracts = map[reflect.Type]map[string]numericContract{
 	reflect.TypeFor[MaterialStyle](): {"blur": {fallback: 14, upper: 64}, "opacity": fraction(.78), "border": fraction(.45), "shadow": fraction(.65)},
 	reflect.TypeFor[Game]():          {"max_party": positive(4)},
 	reflect.TypeFor[Screen]():        {"width": positive(1280), "height": positive(720)},
-	reflect.TypeFor[Class]():         {"sp": nonnegative(1), "start_sp": nonnegative(0), "max_level": positive(99)},
+	reflect.TypeFor[Class]():         {"sp": nonnegative(1), "start_sp": nonnegative(0), "max_level": positive(99).atMost(MaxClassLevel)},
 	reflect.TypeFor[TreeNode]():      {"max": positive(10)},
 	reflect.TypeFor[Require]():       {"level": positive(1)},
 	reflect.TypeFor[Learning]():      {"level": positive(1)},
 	reflect.TypeFor[Actor]():         {"level": positive(1), "face_shade": fraction(0), "face_shade_top": fraction(0)},
-	reflect.TypeFor[Enemy]():         {"level": positive(1), "scale": positive(1), "image_height": fraction(0), "actions": nonnegative(1)},
-	reflect.TypeFor[Usage]():         {"hits": positive(1)},
+	reflect.TypeFor[Enemy]():         {"level": positive(1), "scale": positive(1), "image_height": fraction(0), "actions": nonnegative(1).atMost(MaxEnemyActions)},
+	reflect.TypeFor[Usage]():         {"hits": positive(1).atMost(MaxUsageHits)},
 	reflect.TypeFor[ItemCount]():     {"count": nonnegative(1)},
 	reflect.TypeFor[Affect]():        {"turns": nonnegative(0)},
 	reflect.TypeFor[WaitCue]():       {"seconds": nonnegative(0)},
 	reflect.TypeFor[State]():         {"turns": nonnegative(0), "damage_rate": nonnegative(1), "restrict_chance": fraction(0)},
-	reflect.TypeFor[Effect]():        {"summon_max": positive(5)},
+	reflect.TypeFor[Effect]():        {"summon_max": positive(5).atMost(MaxSummoned)},
 	reflect.TypeFor[BattleCfg]():     {"tempo": positive(1), "auto_tempo": {fallback: 1, lower: 1, upper: math.Inf(1)}},
 	reflect.TypeFor[Picture]():       {"brightness": nonnegative(1)},
 	reflect.TypeFor[CG]():            {"brightness": nonnegative(1), "fade": nonnegative(0.25), "over_size": positive(0.55), "auto": nonnegative(0), "page": nonnegative(0)},
-	reflect.TypeFor[Dungeon]():       {"depth": positive(5), "darkness": fraction(0.5)},
+	reflect.TypeFor[Dungeon]():       {"depth": positive(5).atMost(MaxDungeonDepth), "darkness": fraction(0.5)},
 	reflect.TypeFor[DungeonLook]():   {"darkness": fraction(0)},
 	reflect.TypeFor[Generate]():      {"width": {lower: 9, upper: math.Inf(1)}, "height": {lower: 9, upper: math.Inf(1)}, "rooms": nonnegative(0), "loops": fraction(0.08)},
 	reflect.TypeFor[Tile]():          {"size": positive(0.6)},
@@ -152,27 +172,51 @@ type yamlField struct {
 	inline bool
 }
 
+// typeFields are the YAML fields of a struct type the number walk reads: the ones that
+// hold further definitions, and the ones that hold decimal numbers directly or in lists
+// and maps.
+type typeFields struct {
+	containers, floats []yamlField
+}
+
 // yamlFieldsOf keeps the YAML fields of each struct type walked (the walk visits every
 // definition of a game, and reading the tags again each time is most of its work).
-var yamlFieldsOf sync.Map // reflect.Type -> []yamlField
+var yamlFieldsOf sync.Map // reflect.Type -> typeFields
 
-func yamlFields(t reflect.Type) []yamlField {
+func fieldsOf(t reflect.Type) typeFields {
 	if v, ok := yamlFieldsOf.Load(t); ok {
-		if fs, ok := v.([]yamlField); ok {
+		if fs, ok := v.(typeFields); ok {
 			return fs
 		}
 	}
-	var fs []yamlField
+	var fs typeFields
 	for field := range t.Fields() {
 		tag, ok := field.Tag.Lookup("yaml")
-		if !ok || tag == "-" || !numberContainer(field.Type) {
+		if !ok || tag == "-" {
 			continue
 		}
 		name, options, _ := strings.Cut(tag, ",")
-		fs = append(fs, yamlField{index: field.Index, name: name, inline: options == "inline"})
+		switch {
+		case numberContainer(field.Type):
+			fs.containers = append(fs.containers, yamlField{index: field.Index, name: name, inline: options == "inline"})
+		case field.IsExported() && floatLeaf(field.Type):
+			fs.floats = append(fs.floats, yamlField{index: field.Index, name: name})
+		}
 	}
 	yamlFieldsOf.Store(t, fs)
 	return fs
+}
+
+func yamlFields(t reflect.Type) []yamlField { return fieldsOf(t).containers }
+
+func floatFields(t reflect.Type) []yamlField { return fieldsOf(t).floats }
+
+// floatLeaf reports whether t is a decimal number, or lists and maps of them.
+func floatLeaf(t reflect.Type) bool {
+	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Map || t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Float64
 }
 
 // numberContainer excludes scalar leaves: their numeric contracts are handled
@@ -280,7 +324,7 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 					fallback = v.FieldByName("FaceShade").Float()
 				}
 				if value.Kind() == reflect.Int {
-					value.SetInt(int64(fallback))
+					value.SetInt(int64(safeint.From(fallback)))
 				} else {
 					value.SetFloat(fallback)
 				}
@@ -311,8 +355,62 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 		return db.sourceFiles[source].locateReported(joinDiagnostics(errs))
 	}
 	c := &checker{db: db}
-	c.numericValues(into, source)
+	c.numericValues(into, source, false)
 	return joinDiagnostics(c.errs)
+}
+
+// contract checks one number against its contract. The legacy spec keeps its own
+// defaults and ranges, so only the limit applies to it.
+func (c *checker) contract(value reflect.Value, where string, rule numericContract, legacy bool) {
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return
+		}
+		value = value.Elem()
+	}
+	var n float64
+	if value.Kind() == reflect.Int {
+		n = float64(value.Int())
+	} else {
+		n = value.Float()
+	}
+	switch {
+	case rule.limit > 0 && n > rule.limit:
+		c.errorf(diag.OutOfRange, where, "want at most %g, got %g", rule.limit, n)
+	case legacy:
+	case rule.positive && n == 0:
+		c.errorf(diag.OutOfRange, where, "want a positive number, got 0")
+	default:
+		c.numberRange(where, n, rule.lower, rule.upper)
+	}
+}
+
+// finite reports every decimal number of v (a number, or lists and maps of them) that
+// is NaN or an infinity: YAML writes them as .nan and .inf, a range written as two
+// comparisons lets NaN through, and neither can be drawn, compared or saved.
+func (c *checker) finite(v reflect.Value, where string) {
+	switch v.Kind() { //nolint:exhaustive // Only the kinds floatFields admits.
+	case reflect.Float64:
+		if !finiteNumber(v.Float()) {
+			c.errorf(diag.OutOfRange, where, "want a finite number, got %g", v.Float())
+		}
+	case reflect.Pointer:
+		if !v.IsNil() {
+			c.finite(v.Elem(), where)
+		}
+	case reflect.Slice, reflect.Array:
+		for i := range v.Len() {
+			c.finite(v.Index(i), fmt.Sprintf("%s[%d]", where, i))
+		}
+	case reflect.Map:
+		keys := v.MapKeys()
+		slices.SortFunc(keys, func(a, b reflect.Value) int {
+			return strings.Compare(fmt.Sprint(a.Interface()), fmt.Sprint(b.Interface()))
+		})
+		for _, key := range keys {
+			c.finite(v.MapIndex(key), numberPath(where, fmt.Sprint(key.Interface())))
+		}
+	}
 }
 
 // numericScalar prevents implicit conversion from quoted numbers, null and decimals to integers.
@@ -327,31 +425,22 @@ func numericScalar(raw any, typ reflect.Type) bool {
 	return v.CanInt() || v.CanUint() || (typ.Kind() == reflect.Float64 && v.Kind() == reflect.Float64)
 }
 
-func (c *checker) numericValues(into any, where string) {
-	if c.db.Game.SchemaVersion < SchemaVersion1 {
-		return
-	}
+// numericValues applies the contracts of the numbers under into. finite also reports
+// every decimal number that is NaN or an infinity, which Check asks for once the whole
+// game is read so that the report comes with the game's other diagnostics.
+func (c *checker) numericValues(into any, where string, finite bool) {
+	legacy := c.db.Game.SchemaVersion < SchemaVersion1
 	walkNumberDefinitions(reflect.ValueOf(into), nil, where, func(v reflect.Value, _ yaml.MapSlice, w string) {
+		if finite {
+			for _, field := range floatFields(v.Type()) {
+				c.finite(v.FieldByIndex(field.index), numberPath(w, field.name))
+			}
+		}
 		for _, field := range contractFields(v.Type()) {
-			name, rule := field.name, field.rule
-			value := v.FieldByIndex(field.index)
-			if value.Kind() == reflect.Pointer {
-				if value.IsNil() {
-					continue
-				}
-				value = value.Elem()
-			}
-			var n float64
-			if value.Kind() == reflect.Int {
-				n = float64(value.Int())
-			} else {
-				n = value.Float()
-			}
-			if rule.positive && n == 0 {
-				c.errorf(diag.OutOfRange, w+"."+name, "want a positive number, got 0")
-			} else {
-				c.numberRange(w+"."+name, n, rule.lower, rule.upper)
-			}
+			c.contract(v.FieldByIndex(field.index), w+"."+field.name, field.rule, legacy)
+		}
+		if legacy {
+			return
 		}
 		if v.Type() == reflect.TypeFor[UIStyle]() {
 			if style, ok := reflect.TypeAssert[*UIStyle](v.Addr()); ok {

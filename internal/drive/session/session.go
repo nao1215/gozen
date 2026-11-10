@@ -111,6 +111,7 @@ func New(g *Game, cfg Config) (*Session, error) {
 	}
 	s := newSession(g, cfg)
 	s.st = rpg.New(s.db, rand.New(s.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	s.db = s.st.DB
 	s.st.SetRecruitSeed(s.seed)
 	s.start()
 	return s, nil

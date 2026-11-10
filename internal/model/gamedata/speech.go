@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/base/diag"
 )
@@ -80,7 +81,9 @@ func speechContains(text, token, mode string) bool {
 		if (len(left) == 0 || !word(left[len(left)-1])) && (len(right) == 0 || !word(right[0])) {
 			return true
 		}
-		offset = i + len(token)
+		// The next match may begin inside this one (!! in a!!!).
+		_, size := utf8.DecodeRuneInString(text[i:])
+		offset = i + max(size, 1)
 	}
 	return false
 }

@@ -107,6 +107,7 @@ func Fork(db *DB) *DB {
 	out := *db
 	out.Actors = make(map[string]*Actor, len(db.Actors))
 	maps.Copy(out.Actors, db.Actors)
+	out.instances = maps.Clone(db.instances)
 	out.Locations = make(map[string]*Location, len(db.Locations))
 	for id, l := range db.Locations {
 		if l != nil && l.Dungeon != nil {
@@ -119,6 +120,42 @@ func Fork(db *DB) *DB {
 		out.Locations[id] = l
 	}
 	return &out
+}
+
+// ForState is the view of db one game in progress owns (internal/model/rpg makes one
+// per State). It shares every loaded definition with db, generated dungeons included,
+// and holds its own actors: the authored ones of db, without the instances another
+// game added. Only a view takes instances, so a game's monsters never reach the
+// loaded definitions or another game.
+func (db *DB) ForState() *DB {
+	out := *db
+	out.Actors = make(map[string]*Actor, len(db.Actors))
+	for id, a := range db.Actors {
+		if !db.instances[id] {
+			out.Actors[id] = a
+		}
+	}
+	out.instances = map[string]bool{}
+	return &out
+}
+
+// AddInstance defines the actor of an instance made during play (a recruited or bred
+// monster) in a view made by ForState. It reports false, changing nothing, when db is
+// not such a view or id names an authored actor.
+func (db *DB) AddInstance(id string, a *Actor) bool {
+	if db.instances == nil || a == nil || db.Actors[id] != nil && !db.instances[id] {
+		return false
+	}
+	db.Actors[id], db.instances[id] = a, true
+	return true
+}
+
+// RemoveInstance drops an instance AddInstance defined; authored actors stay.
+func (db *DB) RemoveInstance(id string) {
+	if db.instances[id] {
+		delete(db.Actors, id)
+		delete(db.instances, id)
+	}
 }
 
 // CompileScript parses and validates commands for session, capture and development

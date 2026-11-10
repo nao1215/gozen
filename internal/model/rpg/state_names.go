@@ -41,6 +41,11 @@ func (s *State) initStateNames() {
 }
 
 func (s *State) checkStateValue(path string, value any) error {
+	// A save is JSON, which keeps neither NaN nor an infinity: one kept in the state
+	// would fail every later save.
+	if expr.TypeOfValue(value) == expr.NumberType && !expr.IsFiniteScalar(value) {
+		return fmt.Errorf("set %s: %v is not a finite number", path, value)
+	}
 	d, declared := s.DB.Game.State.Names[path]
 	if s.DB.Game.State.Strict {
 		d, declared = s.stateRegistry()[path]
