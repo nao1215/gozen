@@ -16,8 +16,12 @@ on:
     inputs:
       operation:
         type: choice
-        options: [update, publish]
+        options: [update, publish, sign]
         default: update
+      tag:
+        description: "sign: the package release to sign (phone-NAME-vVERSION)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -157,3 +161,79 @@ jobs:
           else
             gh api --method POST "repos/$GH_REPO/git/refs" -f ref=refs/heads/catalog-data -f sha="$commit"
           fi
+
+  # A package release (phone-NAME-vVERSION) is published by hand once and never
+  # rebuilt. sign gives it what an engine release has: a cosign-signed
+  # checksums.txt and SLSA provenance as release assets, after checking that each
+  # archive is the one the approved catalog names by digest.
+  sign-package:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'sign' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # To add assets to the package release.
+      id-token: write # Keyless cosign signing via GitHub OIDC.
+    outputs:
+      hashes: ${{ steps.check.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - name: Download the package release and check it against the catalog
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            phone-*-v*) ;;
+            *) echo "not a package release: $TAG" >&2; exit 1 ;;
+          esac
+          dir="$RUNNER_TEMP/package"
+          mkdir "$dir"
+          gh release download "$TAG" --dir "$dir" --pattern '*.zip' --pattern 'gozen-package.json'
+          python3 - "$dir" "$TAG" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          d, tag = Path(sys.argv[1]), sys.argv[2]
+          catalog = json.loads(Path('docs/registry/catalog.json').read_text())
+          known = {r['url'].rsplit('/', 1)[-1]: r['sha256'] for r in catalog['releases'] if f'/download/{tag}/' in r['url']}
+          archives = sorted(d.glob('*.zip'))
+          if not archives:
+              sys.exit(f'{tag}: no archive')
+          for a in archives:
+              digest = hashlib.sha256(a.read_bytes()).hexdigest()
+              if known.get(a.name) != digest:
+                  sys.exit(f'{tag}/{a.name}: sha256 {digest} is not the approved catalog digest')
+          PY
+          cd "$dir"
+          sha256sum -- *.zip gozen-package.json > checksums.txt
+          echo "hashes=$(base64 -w0 < checksums.txt)" >> "$GITHUB_OUTPUT"
+      - name: Sign and upload the checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/package"
+          cosign sign-blob --yes --bundle checksums.txt.sigstore.json checksums.txt
+          gh release upload "$TAG" checksums.txt checksums.txt.sigstore.json --clobber
+
+  # The generator must be referenced by tag, not by commit SHA: slsa-verifier
+  # checks the reusable workflow's ref (as in release.yml).
+  package-provenance:
+    needs: [sign-package]
+    permissions:
+      actions: read # To read the workflow path.
+      id-token: write # To sign the provenance.
+      contents: write # To add assets to the release.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.sign-package.outputs.hashes }}"
+      upload-assets: true
+      upload-tag-name: "${{ inputs.tag }}"
