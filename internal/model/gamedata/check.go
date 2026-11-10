@@ -642,7 +642,7 @@ func (c *checker) pictureLimit(where, p string) {
 }
 
 // puppet checks a moving portrait's YAML and that its pictures exist. Picture sizes
-// and positions are checked when the game loads it (and by gozen art puppet).
+// and positions are checked when the game loads it (and by gozen puppet).
 func (c *checker) puppet(where string, file, face string) {
 	if file == "" {
 		return

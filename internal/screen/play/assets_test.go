@@ -171,7 +171,7 @@ func TestFindHeadLocatesTheHeadOfAStandingPicture(t *testing.T) {
 	}
 }
 
-// TestHeadOfAPicture: the face box beside the picture wins, then the one gozen art faces
+// TestHeadOfAPicture: the face box beside the picture wins, then the one gozen faces
 // found, then the detected head, then the top middle of the picture.
 func TestHeadOfAPicture(t *testing.T) {
 	fig := func(x, y int) color.NRGBA {

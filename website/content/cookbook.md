@@ -212,7 +212,7 @@ In the novel window, the player can step back a line with the "Back" button, Q o
 <!-- verify: load group=rollback as=game.yaml -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 ui:
   message: novel
   rollback: 16
@@ -244,7 +244,7 @@ In the novel window, portraits come and go with the speakers by themselves. An e
 <!-- verify: load group=staging as=game.yaml -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 ui:
   message: novel
 ```
@@ -280,7 +280,7 @@ A line's `voice` names its recording. For an actor with `voices`, a folder under
 <!-- verify: load group=voices as=game.yaml -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 ui:
   message: novel
   voice:
@@ -806,7 +806,7 @@ A campaign is a war of regions over turns (`schema_version: 5`): factions hold r
 
 <!-- verify: load as=game.yaml group=campaign -->
 ```yaml
-schema_version: 5
+schema_version: 11
 campaign:
   location: war
   player: crown
@@ -871,7 +871,7 @@ A campaign shares its game with the towns and dungeons: the generals are the par
 
 <!-- verify: load as=game.yaml group=mixed -->
 ```yaml
-schema_version: 5
+schema_version: 11
 campaign:
   location: war
   player: crown
@@ -1057,7 +1057,7 @@ To open a page when the player meets the character, write `met: true` (schema 10
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 ui:
   profiles: true    # Characters in the title, the menu and the novel bar for players too
 ```
@@ -1103,7 +1103,7 @@ Add `lore` to each enemy that can appear in an encounter and set `ui.bestiary: t
 <!-- verify: parse the game setting shown by the following enemy example -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 ui:
   bestiary: true
 ```
@@ -1329,7 +1329,7 @@ Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `tex
 <!-- verify: load group=languages as=game.yaml -->
 ```yaml
 # game.yaml
-schema_version: 4
+schema_version: 11
 language: en          # shown at first
 written_in: en        # the language of data/
 languages: [en, ja]   # the settings offer both

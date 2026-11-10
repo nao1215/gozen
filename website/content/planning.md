@@ -9,8 +9,8 @@ Planning is optional in schema 10. Start with a plain authored list for choices.
 Use `entities` for a roster, `timeline` for work, `calendar` for dates, `islands`
 for seats, `ensemble` for a conversation, and `workspace` only when controls need
 explicit positions. The neutral workshop under `examples/workshop/game` contains
-working definitions. The repository guide `docs/authoring-workboard.md` explains
-the larger layouts and typed event arguments.
+working definitions. The [workspace recipes](../workspaces/) explain
+the larger layouts, and [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) the event arguments.
 
 ## Start with a list
 

@@ -13,7 +13,7 @@
 | Office sample pictures in `examples/office/game/assets/` (a module of its own, not in the gozen module) | No copyright claimed; CC0 1.0, see [examples/office/game/assets/LICENSE](examples/office/game/assets/LICENSE) and [examples/office/ASSETS.md](examples/office/ASSETS.md) |
 | M+ 1p font of the campaign sample (`examples/campaign/game/assets/fonts/`) | M+ FONTS LICENSE, see [examples/go-zen/ASSETS.md](examples/go-zen/ASSETS.md) |
 | Dungeon theme pictures embedded in the `gozen` command (`cmd/internal/themes/assets/`, copied into a game by `gozen theme add`) | No copyright claimed (CC0 1.0), made by the author to tile; see [cmd/internal/themes/assets/LICENSE](cmd/internal/themes/assets/LICENSE) |
-| Terrace Quarter materials and sky (`examples/space/game/assets/`) and captures (`docs/media/stacked-space-*`, `docs/images/space-*`) | Original generated assets, MIT; see [provenance](docs/examples/stacked-space-assets.md) |
+| Terrace Quarter materials and sky (`examples/space/game/assets/`) and captures (`docs/images/space-*`) | Original generated assets, MIT; see [provenance](docs/examples/stacked-space-assets.md) |
 | Lantern Quarter building materials and neutral furniture (`examples/space-buildings/game/assets/`) | Original CC0-1.0 fixtures; see [sources and generator](docs/examples/space-buildings.md#assets-and-verification) |
 | Showcase GIF and screenshots in `docs/images/` | The pictures inside claim no copyright (CC0 1.0); the rest MIT |
 | Go Regular font built into the engine (`golang.org/x/image/font/gofont/goregular`, Bigelow & Holmes). A game whose game.yaml has no `fonts.regular` (the minimal example among them) sets its text in it. It has Latin letters only | BSD notice below |

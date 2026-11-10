@@ -22,7 +22,7 @@ gozen sim dive game --location cave --floors 5 --boss 5:cave_boss    # a whole d
 gozen book game > book.md                              # everything, as one Markdown file
 ```
 
-`check` exits 1 on any error, so it works as a gate in a script, a git hook, or CI ([setup-gozen](/cookbook/#check-and-measure-in-ci) installs it in GitHub Actions). `gozen check --format json game` prints the same errors and warnings as a JSON array (`file`, `line`, `col`, `path`, `code`, `message`, `severity`) for a tool that reads them.
+`check` exits 1 on any error, so it works as a gate in a script, a git hook, or CI ([setup-gozen](/cookbook/#check-and-measure-in-ci) installs it in GitHub Actions). `gozen check --format json game` prints a version-1 result (`version`, `command`, `status`, `data`) whose `data` is the array of the same errors and warnings (`file`, `line`, `col`, `path`, `code`, `message`, `severity`) for a tool that reads them.
 
 ## The gozen skill
 

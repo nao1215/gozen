@@ -11,7 +11,7 @@ the repository. The files under `game/assets/` are listed here.
 | `cg/toast.jpg`, `cg/wine.jpg`, `cg/table.jpg` | The event pictures: Brenna raising her mug, Wren with a glass of wine, and the counter with a glass and bottles | CC0 1.0 |
 | `brenna/`, `wren/`, `hedda/` | The standing picture of each character (`normal.png`) | CC0 1.0 |
 | `bgm/evening.ogg`, `bgm/town.ogg`, `bgm/gate.ogg`, `bgm/finale.ogg` | Music by the author from the author's own RPG, for the tavern, town, gate and reflective scenes | CC BY 4.0 |
-| `faces.json` | The face box of each standing picture, written by `gozen art faces` (the face icons of the character book) | MIT |
+| `faces.json` | The face box of each standing picture, written by `gozen faces` (the face icons of the character book) | MIT |
 | `fonts/mplus-1p-regular.ttf` | M+ 1p regular 1.060, M+ FONTS PROJECT (Latin and Japanese letters) | M+ FONTS LICENSE (below) |
 
 No copyright is claimed in the pictures; to the extent any rights exist, they are dedicated to the public domain under CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/; the text is in `game/assets/LICENSE`): use them for any purpose, with or without credit. The music is Copyright (c) 2026 CHIKAMATSU Naohiro and licensed under the

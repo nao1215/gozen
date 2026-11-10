@@ -157,7 +157,7 @@ func TestProfilesDevOpensAll(t *testing.T) {
 	}
 }
 
-// TestFaceIconFromFaceBoxes: a face icon is cut around the box gozen art faces wrote
+// TestFaceIconFromFaceBoxes: a face icon is cut around the box gozen faces wrote
 // (assets/faces.json), scaled to the picture as loaded; without one, as before.
 func TestFaceIconFromFaceBoxes(t *testing.T) {
 	p := newPictures(fstest.MapFS{"assets/faces.json": {Data: []byte(`{"version": 1, "pictures": {

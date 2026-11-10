@@ -97,7 +97,7 @@ gozen new window-check
 gozen run window-check
 ```
 
-Runtime checks are done on Linux. Windows and macOS are built in CI but have not been played yet; reports are welcome.
+CI runs the screen tests and a packaged game on Linux, Windows and macOS runners, with the sound muted. Play by hand has been done on Linux only; reports from Windows and macOS are welcome.
 
 ## Without a screen (CI, servers)
 

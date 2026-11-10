@@ -12,9 +12,9 @@ import (
 	"github.com/nao1215/gozen/internal/base/diag"
 )
 
-// FacesFile is where gozen art faces writes the face boxes of the standing pictures (ADR 0022):
+// FacesFile is where gozen faces writes the face boxes of the standing pictures (ADR 0022):
 // one file for the game, made by the tool and read by the screen without any inference, so
-// a web build uses it too. It is not written by hand; run gozen art faces again after changing
+// a web build uses it too. It is not written by hand; run gozen faces again after changing
 // a picture.
 const FacesFile = "assets/faces.json"
 
@@ -140,7 +140,7 @@ func (c *checker) faceWarnings() {
 		c.warnf(diag.FaceBox, FacesFile, "%v", err)
 		return
 	case !ok:
-		c.warnf(diag.FaceBox, FacesFile, "no such file: the faces of the balloons and the icons are guessed (run gozen art faces to find them)")
+		c.warnf(diag.FaceBox, FacesFile, "no such file: the faces of the balloons and the icons are guessed (run gozen faces to find them)")
 		return
 	}
 	for _, p := range pics {
@@ -149,9 +149,9 @@ func (c *checker) faceWarnings() {
 		switch {
 		case err != nil:
 		case !found:
-			c.warnf(diag.FaceBox, "assets/"+p, "no face box in %s (run gozen art faces)", FacesFile)
+			c.warnf(diag.FaceBox, "assets/"+p, "no face box in %s (run gozen faces)", FacesFile)
 		case f.SHA256 != sum:
-			c.warnf(diag.FaceBox, "assets/"+p, "the picture changed since gozen art faces found its face (run it again)")
+			c.warnf(diag.FaceBox, "assets/"+p, "the picture changed since gozen faces found its face (run it again)")
 		case f.Box == nil:
 			c.warnf(diag.FaceBox, "assets/"+p, "no face was found: its balloon face and icon are guessed (or give the doll face_at)")
 		}

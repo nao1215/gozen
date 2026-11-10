@@ -170,7 +170,7 @@ type Doll struct {
 	// picture's visible part (found from the picture when empty).
 	FaceAt []float64 `yaml:"face_at"`
 	// Icon is a square picture of the face drawn for the balloons (cut round); it comes
-	// before face_at and the face gozen art faces finds.
+	// before face_at and the face gozen faces finds.
 	Icon string `yaml:"icon"`
 }
 

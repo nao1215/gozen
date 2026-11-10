@@ -48,7 +48,7 @@ type pictures struct {
 	blurs    map[string]*ebiten.Image
 	shades   map[string][2]float64
 	shaded   map[string]*ebiten.Image
-	// found are the face boxes gozen art faces wrote (assets/faces.json), read once.
+	// found are the face boxes gozen faces wrote (assets/faces.json), read once.
 	found     map[string]data.FaceBox
 	foundRead bool
 
@@ -456,7 +456,7 @@ func (p *pictures) head(path string) image.Rectangle {
 	return image.Rect(w/2-s/2, 0, w/2+s/2, s)
 }
 
-// foundFace is the square a face icon is cut from around the face gozen art faces found
+// foundFace is the square a face icon is cut from around the face gozen faces found
 // in the picture (assets/faces.json), scaled to the picture as loaded; false when it found
 // none. The caller holds p.mu.
 func (p *pictures) foundFace(path string, size image.Point) (image.Rectangle, bool) {

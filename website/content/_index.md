@@ -138,7 +138,7 @@ See [the battle recipes](/cookbook/#transform-an-enemy).
 
 ### Multi-level maps
 
-[![Walking up to the second and third floors across the town](/images/space-stairs.mp4)](https://github.com/nao1215/gozen/raw/main/docs/media/stacked-space-short.mp4)
+![Walking up to the second and third floors across the town](/images/space-stairs.mp4)
 
 ## Playtesting
 

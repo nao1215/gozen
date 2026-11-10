@@ -10,10 +10,9 @@ gozen run examples/space/game --dev --mute
 
 Use Up to walk, Left and Right to turn, and Down to turn around. The demonstration
 has an open plaza, two wall-mounted exterior stair runs, an elevated bridge,
-a roof terrace, and ground-floor space beneath the upper staircase. [Short video](../media/stacked-space-short.mp4) and
-[mobile GIF](../media/stacked-space-short.gif) show an 11.5-second continuous
-excerpt (18.5–30 seconds) of the [full recorded route](../media/stacked-space-preview.mp4).
-Playback speed is unchanged.
+a roof terrace, and ground-floor space beneath the upper staircase. The [video](../images/space-stairs.mp4) and [GIF](../images/space-stairs.gif) show the
+walk up to the second and third floors; `make docs-images` remakes them from the sample
+([docs/images/manifest.yaml](../images/manifest.yaml)).
 This is a technical demonstration of bounded geometry, not a finished town.
 
 ## Authoring

@@ -110,7 +110,7 @@ pattern.png:
 |:--|:--|
 | `auto` | Find and pixelate regions; write the images, `report.json` and review sheets. `-n` writes nothing. |
 | `inspect` | One JSON line per image: whether it needs pixelation, what was found, whether the output covers it, and a status (`none`, `todo`, `done`, `review`). Writes no file. |
-| `manual` | `list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `check`, `clear` the regions of one image by coordinates. |
+| `list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear` | Work on the regions of one image by coordinates, kept in the `--manual` file. `mark --checked` records that the image was looked at. |
 
 How it pixelates:
 
