@@ -238,7 +238,7 @@ The book shows each character of `profiles` with the standing picture, the faces
 
 ![Hedda's line is edited in the YAML and F5 shows the new text at the same place](/images/playtest-reload.mp4)
 
-With `--dir`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. The field menu, the settings, the gallery and the character book are rebuilt with the new definitions at once and stay open. In a battle the reload waits until the battle ends, and on another screen, such as a shop or the save screen, until you close it.
+With `--dev`, the game watches `game.yaml`, `data/` and `assets/`. Pictures and sounds are reloaded on their own. For definitions, press F5: the game loads them, checks them, and swaps them in. The field menu, the settings, the gallery and the character book are rebuilt with the new definitions at once and stay open. In a battle the reload waits until the battle ends, and on another screen, such as a shop or the save screen, until you close it.
 
 If the edit has an error, the game keeps the old definitions and shows the error with its file and line, so a typo never ends the session. Changing the game `id` or lowering `data_version` cannot be reloaded; restart the game for those.
 
@@ -368,11 +368,11 @@ To take a list of screenshots in one go, each from a fresh start, use [`gozen ca
 
 ## All game options
 
-Run your game with `--help` to see the same list in the terminal.
+Run `gozen run --help` to see the same list in the terminal.
 
 | Group | Options |
 |:--|:--|
-| Game | `--dir DIR`, `--seed SEED`, `--mute`, `--fullscreen`, `--window SCALE`, `--save-dir DIR`, `--dev` |
+| Game | `--seed SEED`, `--mute`, `--fullscreen`, `--window SCALE`, `--save-dir DIR`, `--dev` |
 | Test play (`--dev`) | `--start LOCATION`, `--battle TROOP`, `--party IDS`, `--level LEVEL`, `--flags FLAGS`, `--gold GOLD`, `--items ITEMS`, `--floor FLOOR`, `--calm`, `--scene SCENE`, `--event EVENT`, `--line LINE`, `--picture FILE`, `--answers ANSWERS` |
 | Autoplay (`--dev`) | `--autoplay SECONDS`, `--report FILE`, `--shot-every SECONDS`, `--auto-floors FLOORS`, `--speed TIMES` |
 | Scripts and records (`--dev`) | `--script FILE`, `--shots DIR`, `--record FILE`, `--trace FILE`, `--trace-shots`, `--replay FILE`, `--replay-battle N`, `--until TICK` |

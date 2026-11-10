@@ -156,7 +156,7 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 ### Multi-level maps
 
-[![Walking up to the second and third floors across the town](docs/images/space-stairs.gif)](docs/media/stacked-space-short.mp4)
+[![Walking up to the second and third floors across the town](docs/images/space-stairs.gif)](docs/images/space-stairs.mp4)
 
 ## Playtesting
 

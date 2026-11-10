@@ -451,7 +451,7 @@ func collectAssets(fs files, all []string, keep []string) (map[string]bool, []st
 		}
 	}
 	addDir("sfx")
-	// the face boxes gozen art faces writes: not named by the YAML, read by the painted scenes
+	// the face boxes gozen faces writes: not named by the YAML, read by the painted scenes
 	if faces := strings.TrimPrefix(gamedata.FacesFile, "assets/"); exists[faces] {
 		got[faces] = true
 	}

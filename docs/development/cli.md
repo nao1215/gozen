@@ -11,7 +11,7 @@ The tree lives in `cmd/gozen/main.go` (`tree`): a group holds commands, a leaf r
 | `new` | (a leaf) | create a game directory from a template |
 | `run` | (a leaf) | play a game directory; `--dev` enables author tools |
 | `check` | (a leaf) `--only structure\|layout`, `--format text\|json\|jsonl` | the game directory |
-| `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed` | play by the rules without a window |
+| `sim` | `battle`, `dive`, `floors`, `design`, `campaign`, `routes`, `breed`, `script`, `batch` | play by the rules without a window |
 | `trace`, `notes` | (leaves) | inspect traces and F9 notes |
 | `capture` | (a leaf) | PNG/GIF jobs in one graphics loop |
 | `book` | (a leaf) | |
@@ -42,7 +42,7 @@ The registry is `internal/base/diag`: `register` is the only way to make a code 
 
 When testing, run the built binary directly. The exit status of `go run` itself can differ from the CLI's exit status, so the E2E does not use it.
 
-Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `mosaic` and `mosaic`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
+Every `--help` has the same shape: the name, a one-line description and the version on line 1; `[Usage]` and a description; `[Commands]` (for the top level, the groups, `prompt` and `mosaic`); `[Examples]` that really work; `[Options]` grouped by kind; notes, where `Requirements:` is written once on the top page, on a group page for what its commands share, and on a leaf only when it differs; and finally the links Documentation, Report an issue and GitHub Sponsors. The examples are written with `e2e/atago/fixtures/game` (troop `lesson`, dungeon `grotto`) as `game`. Help does not require any of the prerequisites. A neutral example of the configuration is `e2e/atago/fixtures/game/{trial,designeval}.yaml`.
 
 ## E2E
 
@@ -73,7 +73,7 @@ try {
 
 The normal specs do not depend on a shell. For every `gozen` subcommand they check the form of help, GNU-style options, exit status, stdout/stderr, determinism, whether anything is written, generated files and protection against overwriting. The capture specs with the `graphics` tag run separately. The capture specs run the actual CLI with multiple jobs, PNG/GIF outputs and failure recovery. Capture does not launch a child game process.
 
-For macOS, the direct steps are the same build command without `.exe`, `bin` added to PATH, and the same atago command run from `build/atago`. The results on Windows and macOS and the remote CI are not confirmed locally. For the check before publication, follow the [release checklist](release-checklist.md).
+For macOS, the direct steps are the same build command without `.exe`, `bin` added to PATH, and the same atago command run from `build/atago`. The cli-e2e job of CI runs the same steps on Windows and macOS; a local Linux run does not confirm them. For the check before publication, follow the [release checklist](release-checklist.md).
 
 `make e2e-web` builds the common WASM runtime and runs the browser export
 scenario with Chrome, Python 3 and `go-licenses`. It checks a choice, a save,
@@ -90,7 +90,7 @@ or stderr write exits 1, including when reporting invalid arguments. A failed
 result already written to stdout uses `cliio.ErrReported` to avoid a duplicate
 diagnostic.
 
-`new`, `export`, `capture`, `theme list`, `trace` and the `sim` commands other than `sim batch` support `--format text|json|jsonl`. JSON emits one
+`new`, `check`, `export`, `capture`, `trace`, `theme list`, `help`, `prompt`, `prompt lint`, `models list`, `models fetch`, `mosaic` and its subcommands, and the `sim` commands other than `sim script` and `sim batch` support `--format text|json|jsonl`; `book` adds `markdown`. JSON emits one
 version-1 envelope with `command`, `status` and `data`. JSONL theme lists emit
 ordered `item` records and one terminal `summary`; creation emits one summary.
 Both machine formats send fatal diagnostics to stderr as JSONL, preserving the

@@ -10,7 +10,7 @@ under `game/assets/` are copies of earlier work by the same author, and pictures
 | `maps/town.jpg` | The town map of Pellmere, kept as a second picture of the land | Go Zen (`examples/go-zen/game/assets/`, see [its ASSETS.md](../go-zen/ASSETS.md)) | CC0 1.0 |
 | `corin/`, `hilde/`, `sable/`, `vessa/` (`normal.png`) | The generals' standing pictures | The author's earlier game, renamed for this sample | CC0 1.0 |
 | `envoy/normal.png` | The Raven envoy | The author's earlier game, renamed for this sample | CC0 1.0 |
-| `icons/` | The generals' round faces for the map's token, cut from their standing pictures at the boxes `gozen art faces` found | Made from the pictures above | CC0 1.0 |
+| `icons/` | The generals' round faces for the map's token, cut from their standing pictures at the boxes `gozen faces` found | Made from the pictures above | CC0 1.0 |
 | `foes/` | The foes who hold the regions in a clash | The author's earlier game, renamed for this sample | CC0 1.0 |
 | `bg/field.jpg`, `bg/town.jpg`, `bg/castle.jpg` | The grounds behind a clash, by a region's terrain | Generated for this sample (Illustrious XL, takostyle LoRA 0.25) | CC0 1.0 |
 | `armies/{men,women,monsters}_{1..4}.png` | The soldiers of each army kind, lined up in a clash, drawn facing right (the foe side is flipped by the engine). | Generated for this sample and cut out (BiRefNet) | CC0 1.0 |

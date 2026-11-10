@@ -223,7 +223,7 @@ func (g *Game) dollFace(sp dollSpec) *ebiten.Image {
 
 // faceIcon cuts the round face of a balloon from the standing picture (a doll's icon, its
 // own face picture, comes before it): around the doll's
-// face_at when written, else around the face gozen art faces found (assets/faces.json, when it
+// face_at when written, else around the face gozen faces found (assets/faces.json, when it
 // is of this picture's size), else where a face usually is.
 func faceIcon(pic image.Image, sp dollSpec, found *[4]int) *image.RGBA {
 	if pic == nil {
@@ -241,7 +241,7 @@ func faceIcon(pic image.Image, sp dollSpec, found *[4]int) *image.RGBA {
 	return doll.Round(face)
 }
 
-// foundFace is the face box gozen art faces wrote for a picture of the size, or nil.
+// foundFace is the face box gozen faces wrote for a picture of the size, or nil.
 func (g *Game) foundFace(picture string, size image.Point) *[4]int {
 	c := g.scenes()
 	c.facesMu.Lock()

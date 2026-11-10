@@ -36,7 +36,7 @@ var topPage = clihelp.Page{
 		{"new", "Create a playable game from a YAML template"},
 		{"run", "Run a game directory in a window"},
 		{"check", "Check a game directory: definitions, references, expressions, assets, text layout"},
-		{"sim", "Measure play without a window: battle, dive, floors, design, campaign"},
+		{"sim", "Measure play without a window: battle, dive, floors, design, campaign, routes, breed, script, batch"},
 		{"trace", "Inspect a gameplay trace"},
 		{"notes", "Build an HTML report from test-play notes"},
 		{"release", "Build an approved asset tree"},

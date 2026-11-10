@@ -142,7 +142,7 @@ func TestProfilesTranslate(t *testing.T) {
 	}
 }
 
-// TestProfilesFaceBoxes: the pictures of a book are face pictures for gozen art faces,
+// TestProfilesFaceBoxes: the pictures of a book are face pictures for gozen faces,
 // with the actors' faces; check warns of one without a box in assets/faces.json.
 func TestProfilesFaceBoxes(t *testing.T) {
 	files := profileFiles(`profiles:

@@ -89,7 +89,7 @@ locations:
     exits: [{to: town, label: Back}]
 `
 
-// ScenesFaces is the face boxes of the town's pictures (as gozen art faces writes them): the
+// ScenesFaces is the face boxes of the town's pictures (as gozen faces writes them): the
 // keeper's picture is the expedition's file sentinel.
 var ScenesFaces = `{"version": 1, "model": "test", "pictures": {"x.png": {"box": [2, 3, 12, 15], "size": [40, 100], "sha256": "` + sentinelSHA() + `"}}}`
 

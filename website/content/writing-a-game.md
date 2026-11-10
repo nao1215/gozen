@@ -151,7 +151,7 @@ The full list, with the options each verb accepts, is [Command](/schema/#command
 
 ### Changing the state
 
-`set` writes flags and variables, and from version 2 also `gold`, `item.ID` (how many), `party`, `location` (without the arrival events) and `actor.ID.tactics` (`auto`, `manual` or a preset). The values of flags, variables, `gold` and `item.ID` are expressions; `location`, `party` and `actor.ID.tactics` take names as written: `{location: camp, party: [hero, sela], actor.hero.tactics: auto}`. `actor.ID.tactics` also takes the rows themselves: `{mode: manual, rows: [{enabled: true, condition: always, action: guard}]}`. In the development mode (`--dev`, `Config.Dev`) `set` also moves the party in a dungeon (`pos.x`, `pos.y`, `pos.facing`; `pos.x` and `pos.y` elsewhere are an error), sets `steps`, and sends the floor's strong foes away (`roamers: none`).
+`set` writes flags and variables, and from version 2 also `gold`, `item.ID` (how many), `party`, `location` (without the arrival events) and `actor.ID.tactics` (`auto`, `manual` or a preset). The values of flags, variables, `gold` and `item.ID` are expressions; `location`, `party` and `actor.ID.tactics` take names as written: `{location: camp, party: [hero, sela], actor.hero.tactics: auto}`. `actor.ID.tactics` also takes the rows themselves: `{mode: manual, rows: [{enabled: true, condition: always, action: guard}]}`. In the development mode (`--dev`) `set` also moves the party in a dungeon (`pos.x`, `pos.y`, `pos.facing`; `pos.x` and `pos.y` elsewhere are an error), sets `steps`, and sends the floor's strong foes away (`roamers: none`).
 
 `actor.ID.hp`, `mp`, `exp`, `level` and `sp` can be set too, but only in the development mode (`--dev`) and in tests. A game played normally skips them, and `gozen check` warns where game data sets them. Grow a party in the game with `exp`, `heal` and `learn`. To start someone over, for a new game plus, use `reset_actor` ([cookbook](/cookbook/#grow-by-level-and-learn-skills)).
 
@@ -262,7 +262,7 @@ events:
 
 `trigger: auto` runs the event as soon as its `when` holds. `once: true` runs it a single time per save.
 
-A choice with `muted` waits behind a muted microphone, as the floor of a video call does: only an Unmute button shows, and the answers come when the player presses it (OK, a click, or on a call a click on its struck-through mic control). Left muted for `seconds`, the player has kept quiet: the muted `do` runs instead of an answer, a named choice keeps `muted` in `chose.<id>`, and the story goes on. The call stays on the screen, its mic struck, for a choice without a `prompt` right after a line of the call; a choice whose options are all hidden by `when` is not asked, and its muted `do` does not run either. `gozen routes` explores keeping quiet as one more branch.
+A choice with `muted` waits behind a muted microphone, as the floor of a video call does: only an Unmute button shows, and the answers come when the player presses it (OK, a click, or on a call a click on its struck-through mic control). Left muted for `seconds`, the player has kept quiet: the muted `do` runs instead of an answer, a named choice keeps `muted` in `chose.<id>`, and the story goes on. The call stays on the screen, its mic struck, for a choice without a `prompt` right after a line of the call; a choice whose options are all hidden by `when` is not asked, and its muted `do` does not run either. `gozen sim routes` explores keeping quiet as one more branch.
 
 <!-- verify: parse a fragment of an event -->
 ```yaml
@@ -287,10 +287,10 @@ damage: a.atk * 2 - b.def
 ```
 
 - Names in the field: `flag.NAME`, `var.NAME`, `gold`, `item.ID` (the count), `party`, `members`, `actor.ID`, `location`, `spot` (version 3: the point of a map or the spot of a scene the party stands on), `steps`, `pos`, `chose.ID` (version 4: the option last taken at the choice with that `id`, "" before).
-- In the commands of an event (version 2 games and older): `menu` (the entries of the current place, each with `kind`, `label`, `new` and `marked`), `map` (the rows of the dungeon floor), `cell(x, y)` (`char`, `raw`, `passable`, `solid`, `look`, `seen`, `shown`, `spent`), `result` (the last battle: `win`, `lose` or `escape`), `over` and `cleared`, `completed` (the floor has been walked whole), `moved` (the last step went forward), `ran.ID` (an event's `count` of runs and the `order` of its last run), `repairs` (what loading a save had to fix), and `actor.ID.tactics` (`mode`, `preset`, `rows`).
+- In the commands of an event (version 2 and later): `menu` (the entries of the current place, each with `kind`, `label`, `new` and `marked`), `map` (the rows of the dungeon floor), `cell(x, y)` (`char`, `raw`, `passable`, `solid`, `look`, `seen`, `shown`, `spent`), `roamers` (the strong enemies of the current dungeon floor, each with `kind`, `name`, `troop`, `x` and `y`), `result` (the last battle: `win`, `lose` or `escape`), `over` and `cleared`, `completed` (the floor has been walked whole), `moved` (the last step went forward), `ran.ID` (an event's `count` of runs and the `order` of its last run), `repairs` (what loading a save had to fix), and `actor.ID.tactics` (`mode`, `preset`, `rows`).
 - In battle formulas, `a` is the user and `b` the target; in stats, `level` is the actor's level.
 - Operators: `+ - * /`, comparisons, `&&` (`and`), `||` (`or`), `!`, and `cond ? x : y`.
-- Functions: `min`, `max`, `abs`, `floor`, `ceil`, `round`, `int`, `sqrt`, `pow`, `clamp`, `len`, `rand`, `chance`, `pages`.
+- Functions: `min`, `max`, `abs`, `floor`, `ceil`, `round`, `int`, `sqrt`, `pow`, `clamp`, `len`, `rand`, `chance`, `pages`, `range(a, b)` (the whole numbers from `a` up to but not `b`), `first(list, fallback)` (the first element, or the fallback for an empty list), `has(object, "field")` (the object has that field and it is true), `str(x)` (the value as text) and `grouped(n)` (the number as text with thousands separators).
 - Use collection expressions such as `filter`, `count` and `sum` to select or summarize records. A bounded `call.each` applies one parameterized event to selected IDs; screen entries also accept `each`. Read [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) for scope and replay limits.
 
 A condition you leave out holds; a formula you leave out is 0. `gozen check` parses every expression and reports unknown names with file and line.
@@ -614,7 +614,7 @@ A campaign can share a game with dungeons and towns. The generals are the same a
 
 <!-- verify: load as=game.yaml group=mixed -->
 ```yaml
-schema_version: 5
+schema_version: 11
 campaign:
   location: war
   player: crown

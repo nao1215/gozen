@@ -800,7 +800,7 @@ var english = map[string]string{
 	"replay 区間一致: %d 行一致（%d ティックまで）":              "replay range matched: %d lines (up to tick %d)",
 	"replay 戦闘一致: %d 行一致（行動・判断理由・報酬・乱数検証済み）":      "replay battle matched: %d lines (actions, decisions, rewards and random state checked)",
 	"replay 完全一致: %d 行一致（終端・状態検証済み）":              "replay fully matched: %d lines (end and state checked)",
-	// gozen art prompt
+	// gozen prompt
 	"未知の層です。%s":                               "unknown layer: %s",
 	"層の選択数が範囲外です。%s":                          "layer selection count out of range: %s",
 	"項目が未知か重複しています。%s/%s":                     "unknown or repeated entry: %s/%s",

@@ -119,9 +119,22 @@ var inspectPage = clihelp.Page{
 	},
 }
 
+// manualSummaries is the one-line description of each command that edits the
+// instructions of one image; its help page and the command index show it.
+var manualSummaries = map[string]string{
+	"list":  "list the images to review",
+	"show":  "print the detections, regions, and instructions of an image",
+	"view":  "draw an image with a coordinate scale",
+	"add":   "add regions by hand",
+	"drop":  "drop automatic regions",
+	"grow":  "grow or shrink regions",
+	"skip":  "use only regions added by hand for an image",
+	"mark":  "mark an image as reviewed",
+	"clear": "remove the manual instructions of an image",
+}
+
 var manualPage = clihelp.Page{
-	Name:    "gozen mosaic",
-	Summary: "add, drop, grow, or check regions",
+	Name: "gozen mosaic",
 	Usage: []string{
 		"gozen mosaic list [OPTIONS] <game-dir>",
 		"gozen mosaic <command> [OPTIONS] <game-dir> <IMAGE>",

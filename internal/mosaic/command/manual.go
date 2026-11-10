@@ -96,6 +96,7 @@ func (cli *cli) manualCmd(action string) clihelp.Operation {
 	p := manualPage
 	p.Commands = nil
 	p.Name = "gozen mosaic " + action
+	p.Summary = manualSummaries[action]
 	p.Usage = []string{"gozen mosaic " + action + " [OPTIONS] GAME [IMAGE]"}
 	p.Groups = append([]clihelp.Group{}, p.Groups...)
 	p.Groups = append(p.Groups, clihelp.Group{Title: "Review", Flags: []string{"checked"}})
