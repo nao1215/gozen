@@ -949,7 +949,7 @@ func ways(grid [][]rune, start [2]int, kind func(rune) Kind) []bool {
 			return nil
 		}
 	}
-	seen, home := g.walked(start)
+	seen, home := g.walked(start, cells)
 	ok := make([]bool, cells)
 	for i := range ok {
 		x, y := i%g.w, i/g.w
@@ -1036,11 +1036,11 @@ func (g gridWalk) step(x, y, f int) (int, int, bool) {
 }
 
 // walked are the cells walked to from start (seen) and, of those, the ones the start can
-// be walked back to from (home), row by row.
-func (g gridWalk) walked(start [2]int) (seen, home []bool) {
+// be walked back to from (home), row by row. cells is cellCount(g.w, g.h).
+func (g gridWalk) walked(start [2]int, cells int) (seen, home []bool) {
 	first := start[1]*g.w + start[0]
-	seen = make([]bool, g.w*g.h)
-	back := make([][]int, g.w*g.h) // back[n]: the cells with a step to n
+	seen = make([]bool, cells)
+	back := make([][]int, cells) // back[n]: the cells with a step to n
 	seen[first] = true
 	q := []int{first}
 	for len(q) > 0 {
@@ -1059,7 +1059,7 @@ func (g gridWalk) walked(start [2]int) (seen, home []bool) {
 			}
 		}
 	}
-	home = make([]bool, g.w*g.h)
+	home = make([]bool, cells)
 	home[first] = true
 	q = []int{first}
 	for len(q) > 0 {
