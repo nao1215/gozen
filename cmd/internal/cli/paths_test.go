@@ -251,3 +251,19 @@ func TestWriteNew(t *testing.T) {
 		t.Fatalf("%s %v", b, err)
 	}
 }
+
+// A build that fails leaves nothing, the parent directories Publish made for the
+// destination among them; a parent that was already there stays.
+func TestFailedPublishRemovesTheParentsItMade(t *testing.T) {
+	root := t.TempDir()
+	err := Publish(filepath.Join(root, "a", "b", "out"), nil, func(string) error { return errors.New("build failed") })
+	if err == nil {
+		t.Fatal("want the build's error")
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "a")); statErr == nil {
+		t.Fatal("the failed Publish left the parent directories it made")
+	}
+	if _, statErr := os.Stat(root); statErr != nil {
+		t.Fatalf("the failed Publish removed a directory it did not make: %v", statErr)
+	}
+}
