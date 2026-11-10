@@ -205,7 +205,10 @@ func ParseWithConfig(db *data.DB, b []byte, rng *rand.Rand, opt Config) (*State,
 // bind checks the decoded state against the data and moves it to the current data: the
 // part of ParseWithConfig after the JSON is decoded.
 func (s *State) bind() (*State, error) {
-	db := s.DB
+	// The state reads the definitions through its own view, which takes its monsters'
+	// instances; the caller's data and other states on it stay as they were loaded.
+	db := s.DB.ForState()
+	s.DB = db
 	// Older saves predate instance sexes. Give each existing monster a stable sex
 	// without advancing the restored gameplay random stream.
 	// A newer version of the game may have dropped a monster's species or narrowed its
@@ -237,21 +240,12 @@ func (s *State) bind() (*State, error) {
 	}
 	// Rebuild instance definitions before reconciliation. A monster's template is the
 	// enemy and class in the current game; the save keeps only its identity and progress.
-	forked := false
 	for id, a := range s.Actors {
 		if a.Monster == "" {
 			continue
 		}
 		if e := db.Enemies[a.Monster]; e != nil && db.Classes[db.MonsterClass(a.Monster)] != nil {
-			if db.Actors[id] != nil {
-				continue
-			}
-			if !forked {
-				db = data.Fork(db)
-				s.DB = db
-				forked = true
-			}
-			db.Actors[id] = &data.Actor{Name: e.Name, Class: db.MonsterClass(a.Monster), Level: 1}
+			db.AddInstance(id, &data.Actor{Name: e.Name, Class: db.MonsterClass(a.Monster), Level: 1})
 		}
 	}
 	for _, who := range slices.Sorted(maps.Keys(s.Reactions)) {
@@ -409,7 +403,11 @@ func (s *State) reconcileSave() {
 				s.changed(prefix+"tree", node, lang.T("ツリーの定義に合わせて補正し、余分な割り振りを SP に返却"))
 			}
 		}
+		hp, mp := a.HP, a.MP
 		a.bind(db)
+		if a.HP != hp || a.MP != mp {
+			s.changed(prefix+"hp", "", "HP or MP outside the current limits; clamped")
+		}
 	}
 	s.Party = slices.DeleteFunc(s.Party, func(id string) bool { return s.Actors[id] == nil })
 	for id := range s.Items {

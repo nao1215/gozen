@@ -10,6 +10,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
 - Add a dango check that every YAML decode of `internal/base` and `internal/model` runs inside `decodeguard.Run` (`TestYAMLDecodesAreGuarded`); a theme's colors, a package catalog and a `YAML` path lookup were decoded outside it.
+- Add a dango check that keeps the loaded game definitions read-only outside `internal/model/gamedata` (`TestDefinitionsAreImmutable`): a game's own additions go on the view its state owns.
 
 ### Fixed
 
@@ -28,6 +29,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
 - An authored screen's entry whose `destination` is the screen that opened it closes back to that screen in sessions and in save replay, as it already did in play: the opener's action goes on and one copy of it shows. Before, a session stacked a second copy and the opener's remaining commands waited until it was closed.
 - A save Store supplied by the host (the browser player, an embedding) is called one call at a time, since the phone store installs package archives into it from a goroutine while the game writes saves. A replaced package archive that fails to close after the new selection was saved is logged instead of shown as a failed installation.
+- A recruited or bred monster belongs to its own game. Its actor was written into the definitions every game of the run shares, so a second new game numbered its first monster `monster_2`, and a save loaded after another game took the name and class of that game's monster of the same id. Each state now reads the definitions through its own view.
+- `set` refuses a variable value that is not a finite number (the square root of a negative, an overflowing `pow`). Before, the value was kept and every later save failed with `json: unsupported value`.
+- A loaded save keeps HP within the member's maximum and HP and MP at 0 or more (a maximum lowered by an update, or equipment that no longer exists), and reports the correction.
+- Taking an item worn in several slots (`take`, a fusion's materials) empties the slots in the order of `game.yaml`, so the same play takes the same ones; the order came from a map before.
+- A copy of the definitions (a session, a state's view) shows the game's title and subtitle in the language it is shown in; before, changing the language translated only the first copy's.
 
 ## v0.23.2 - 2026-11-09
 

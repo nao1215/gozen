@@ -75,7 +75,7 @@ func (db *DB) loadLanguages() error {
 
 // Tr is the translation of a source text in the language shown (the source itself when
 // it is the language written, or when the text has no translation yet).
-func (db *DB) Tr(s string) string { return db.TrIn(db.shown, s) }
+func (db *DB) Tr(s string) string { return db.TrIn(db.text.code, s) }
 
 // TrIn is the translation of a source text in a language (the source when there is none).
 func (db *DB) TrIn(code, s string) string {
@@ -89,21 +89,34 @@ func (db *DB) TrIn(code, s string) string {
 }
 
 // Shown is the language the game's text is shown in.
-func (db *DB) Shown() string { return cmp.Or(db.shown, db.Game.Written()) }
+func (db *DB) Shown() string { return cmp.Or(db.text.code, db.Game.Written()) }
 
 // Show shows the game's text in a language: the names of the definitions are translated
 // in place (from their sources), and Tr translates the lines into it.
 func (db *DB) Show(code string) {
-	if db.names == nil {
-		db.names = map[*string]string{}
+	t := &db.text
+	if t.names == nil {
+		t.names = map[*string]string{}
 		for _, p := range db.nameFields() {
-			db.names[p] = *p
+			t.names[p] = *p
 		}
+		t.title, t.subtitle = db.Game.Title, db.Game.Subtitle
 	}
-	db.shown = code
-	for p, src := range db.names {
+	t.code = code
+	for p, src := range t.names {
 		*p = db.Tr(src)
 	}
+	db.Game.Title, db.Game.Subtitle = db.Tr(t.title), db.Tr(t.subtitle)
+}
+
+// shownText is the language a DB is shown in and the sources of the texts Show
+// translates in place. names are the names of the definitions, which every copy of the
+// DB shares; the title and subtitle are values of the DB itself, so each copy (Fork,
+// ForState) keeps their sources and translates its own.
+type shownText struct {
+	code            string
+	names           map[*string]string
+	title, subtitle string
 }
 
 // EngineWords are the words game.yaml's text and lang/<code>.yaml give the engine's own
@@ -117,10 +130,11 @@ func (db *DB) EngineWords(code string) map[string]string {
 	return out
 }
 
-// nameFields are the names and descriptions of the definitions shown as text.
+// nameFields are the names and descriptions of the definitions shown as text, apart
+// from the game's title and subtitle (see Show).
 func (db *DB) nameFields() []*string {
 	g := &db.Game
-	out := []*string{&g.Title, &g.Subtitle}
+	var out []*string
 	for i := range g.Gallery.Scenes {
 		out = append(out, &g.Gallery.Scenes[i].Title)
 	}
@@ -197,14 +211,19 @@ func (db *DB) SourceTexts() []SourceText {
 		}
 	}
 	src := func(p *string) string {
-		if s, ok := db.names[p]; ok {
+		if s, ok := db.text.names[p]; ok {
 			return s
 		}
 		return *p
 	}
 	g := &db.Game
-	add("game.yaml title", src(&g.Title))
-	add("game.yaml subtitle", src(&g.Subtitle))
+	if db.text.names != nil {
+		add("game.yaml title", db.text.title)
+		add("game.yaml subtitle", db.text.subtitle)
+	} else {
+		add("game.yaml title", g.Title)
+		add("game.yaml subtitle", g.Subtitle)
+	}
 	for _, name := range slices.Sorted(maps.Keys(g.Screens)) {
 		screen := g.Screens[name]
 		if screen == nil {

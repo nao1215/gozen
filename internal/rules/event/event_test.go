@@ -409,7 +409,7 @@ func TestRecruitOfferDoesNotShiftBattleRandomStream(t *testing.T) {
 func TestCaptureResultNamesReserveAndFirstCompanion(t *testing.T) {
 	db := testgame.Load(t, testgame.MonsterFiles())
 	st := testgame.State(db, 1)
-	db.Game.MaxParty = len(st.Party)
+	st.DB.Game.MaxParty = len(st.Party)
 	r := event.New(db, st, &host{})
 	r.Start([]data.Command{{Capture: "mote"}})
 	r.Next() // The saved-instance note precedes the staged result line.
@@ -437,7 +437,7 @@ func TestStrictRecruitmentAdmission(t *testing.T) {
 			}
 			db := testgame.Load(t, files)
 			st := testgame.State(db, 1)
-			db.Game.MaxParty = len(st.Party) + 1
+			st.DB.Game.MaxParty = len(st.Party) + 1
 			if source == "battle" {
 				db.Troops["one"].Members = []string{"mote", "mote"}
 			}
@@ -492,7 +492,7 @@ func TestStrictRecruitmentRechecksPendingOffer(t *testing.T) {
 	}
 	db := testgame.Load(t, files)
 	st := testgame.State(db, 1)
-	db.Game.MaxParty = len(st.Party) + 1
+	st.DB.Game.MaxParty = len(st.Party) + 1
 	r := event.New(db, st, &host{})
 	r.Start([]data.Command{{Battle: "one"}})
 	r.Next()
