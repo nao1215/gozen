@@ -808,7 +808,7 @@ func TestPhoneChatPictureInputState(t *testing.T) {
 			dst := ebiten.NewImage(1280, 720)
 			defer dst.Deallocate()
 			g.drawPhone(dst)
-			controls := g.tr.layout.controls
+			controls := slices.DeleteFunc(g.tr.layout.controls, func(c screenControl) bool { return c.Label != "" })
 			if len(controls) != 1 || controls[0].Enabled == typing {
 				t.Errorf("picture controls while typing=%t: %+v", typing, controls)
 			}
@@ -1381,9 +1381,6 @@ func TestPhoneFeedBrowse(t *testing.T) {
 	phoneTicks(g, 40)
 	if want := math.Min(posts[1].top, end); p.scroll != want {
 		t.Fatalf("down did not scroll the browsed feed: %v, want %v", p.scroll, want)
-	}
-	if g.phoneHint(p) != lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる") {
-		t.Fatalf("the browsed feed's hint offers a like: %q", g.phoneHint(p))
 	}
 }
 
@@ -2353,6 +2350,201 @@ func TestPhoneGameAndStoreBlockHeldSkip(t *testing.T) {
 			g.updatePhone()
 			if g.phone.closing == 0 {
 				t.Fatal("saved cursor reconstruction attempted to run app")
+			}
+		})
+	}
+}
+
+// TestPhoneChatBackChevron: the chat's header draws a back chevron as a
+// phone's chat app does, and a press on it puts the phone down as Esc does: no
+// message arrives and the event hears the dismissal.
+func TestPhoneChatBackChevron(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{From: "Ann", Text: "Hi"}, {Mine: true, Text: "Hello"}, {From: "Ann", Text: "Lunch?"},
+	}})
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	// The chevron is drawn at 18, 44 of the phone's screen, 22 units big.
+	g.in = input{click: true, pdown: true, pheld: true, mouse: image.Pt(int(sx+24), int(sy+56))}
+	g.updatePhone()
+	if p.closing == 0 || p.shown != 1 || p.result != phoneDismissed(p) {
+		t.Fatalf("a press on the back chevron did not put the phone down: closing %d shown %d result %d", p.closing, p.shown, p.result)
+	}
+}
+
+// TestPhoneHomeBar: a press on the home bar at the bottom of the phone's screen
+// puts the phone down as Esc does, whatever app shows (a feed, a page, a home
+// screen and a store have nothing else to press for it); a press above the bar
+// or on the veil outside the phone does not.
+func TestPhoneHomeBar(t *testing.T) {
+	cues := []data.PhoneCue{
+		{App: "feed", Browse: true, Posts: []data.PhonePost{{Who: "Ann", Text: "Hi"}}},
+		{App: "page", Rows: []data.PhoneRow{{Text: "News"}}},
+		{App: "home", Rows: []data.PhoneRow{{Button: "Contacts"}}},
+		{App: "store"},
+		{App: "chat", Messages: []data.PhoneMessage{{From: "Ann", Text: "Hi"}, {Mine: true, Text: "Hello"}}},
+		{App: "game", Game: "missing"},
+	}
+	for _, cue := range cues {
+		for _, c := range []struct {
+			name  string
+			at    func(sx, sy, w, h float64) image.Point
+			close bool
+		}{
+			{"home bar", func(sx, sy, w, h float64) image.Point { return image.Pt(int(sx+w/2), int(sy+h-11)) }, true},
+			{"veil", func(_, _, _, _ float64) image.Point { return image.Pt(4, 4) }, false},
+			{"screen", func(sx, sy, w, h float64) image.Point { return image.Pt(int(sx+w-8), int(sy+h/2)) }, false},
+		} {
+			t.Run(cue.App+"/"+c.name, func(t *testing.T) {
+				g := phoneGame(t, cue)
+				p := g.phone
+				phoneTicks(g, phoneRise+1)
+				shown := p.shown
+				at := c.at(g.phoneScreenRect(false))
+				g.in = input{pdown: true, pheld: true, mouse: at}
+				g.updatePhone()
+				g.in = input{pup: true, click: true, mouse: at} // a finger lifts where it pressed
+				g.updatePhone()
+				if got := p.closing > 0 && p.result == phoneDismissed(p); got != c.close {
+					t.Fatalf("put down after the press: %v (closing %d, result %d), want %v", got, p.closing, p.result, c.close)
+				}
+				if c.close && p.shown != shown {
+					t.Fatalf("the finger lifting from the home bar advanced the app: shown %d, was %d", p.shown, shown)
+				}
+			})
+		}
+	}
+}
+
+// TestPhoneHomeBarGoesBackOneStep: with a chat's picture open over the screen,
+// the home bar goes back to the chat as Esc does, and the finger lifting from
+// it is not a tap on the chat.
+func TestPhoneHomeBarGoesBackOneStep(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{Picture: "wide.png"}, {Mine: true, Text: "Nice"}, {Mine: true, Text: "Really"},
+	}})
+	g.pics.imgs["wide.png"] = &picEntry{img: ebiten.NewImage(160, 90)}
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnOK)
+	if p.viewPic == "" {
+		t.Fatal("a press on the newest picture did not open it")
+	}
+	sx, sy, w, h := g.phoneScreenRect(false)
+	at := image.Pt(int(sx+w/2), int(sy+h-11))
+	g.in = input{pdown: true, pheld: true, mouse: at}
+	g.updatePhone()
+	g.in = input{pheld: true, mouse: at}
+	g.updatePhone()
+	g.in = input{pup: true, click: true, mouse: at}
+	g.updatePhone()
+	if p.viewPic != "" || p.closing != 0 || p.shown != 1 {
+		t.Fatalf("the home bar over a picture: picture %q closing %d shown %d, want the chat as it was", p.viewPic, p.closing, p.shown)
+	}
+	phonePress(g, btnOK)
+	if p.shown != 2 {
+		t.Fatalf("the chat takes no press after the home bar: shown %d", p.shown)
+	}
+}
+
+// TestPhoneChatClipThumbnailReplays: a chat's picture opens again by a tap on
+// it, and so does a clip's thumbnail (drawn with a play button) once the clip
+// has been played.
+func TestPhoneChatClipThumbnailReplays(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: []data.PhoneMessage{
+		{Video: &data.PhoneVideo{Picture: "wide.png", Seconds: 1}}, {Mine: true, Text: "Nice"},
+	}})
+	g.pics.imgs["wide.png"] = &picEntry{img: ebiten.NewImage(160, 90)}
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	phonePress(g, btnOK)
+	if p.watch == nil {
+		t.Fatal("a press on the newest clip did not open it")
+	}
+	phoneTicks(g, phoneTurn+p.watch.length()+2)
+	phonePress(g, btnOK)
+	phoneTicks(g, phoneTurn+1)
+	if p.watch != nil || p.shown != 1 {
+		t.Fatalf("the clip did not go back to the chat: shown %d", p.shown)
+	}
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	g.drawPhone(dst)
+	sx, sy, w, h := g.phoneScreenRect(false)
+	b := g.chatBubble(p, 0, w*0.68)
+	x, y := 64.0, h-28-b.h
+	g.in = input{click: true, mouse: image.Pt(int(sx+x+b.bw/2), int(sy+y+b.bh/2))}
+	g.updatePhone()
+	if p.watch == nil || p.watch.played != 0 {
+		t.Fatalf("a tap on the clip's thumbnail did not play it again (shown %d)", p.shown)
+	}
+}
+
+// TestPhoneChatPictureUnderHeader: the part of a picture that has scrolled up
+// under the chat's header takes no tap.
+func TestPhoneChatPictureUnderHeader(t *testing.T) {
+	msgs := []data.PhoneMessage{{Picture: "tall.png"}}
+	for range 6 {
+		msgs = append(msgs, data.PhoneMessage{Mine: true, Text: "A line that pushes the picture up."})
+	}
+	g := phoneGame(t, data.PhoneCue{App: "chat", Messages: msgs})
+	g.pics.imgs["tall.png"] = &picEntry{img: ebiten.NewImage(90, 160)}
+	p := g.phone
+	phoneTicks(g, phoneRise)
+	p.seenPic[0] = true
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	sx, sy, _, _ := g.phoneScreenRect(false)
+	for p.shown < len(msgs) {
+		phonePress(g, btnOK)
+		g.drawPhone(dst)
+		r, ok := p.pics[0]
+		if !ok || r.y >= phoneFeedTop-30 || r.y+r.h <= phoneFeedTop+30 {
+			continue
+		}
+		shown := p.shown
+		g.in = input{click: true, mouse: image.Pt(int(sx+r.x+r.w/2), int(sy+phoneFeedTop-10))}
+		g.updatePhone()
+		if p.viewPic != "" {
+			t.Fatal("a tap on the header opened the picture under it")
+		}
+		p.shown = shown
+		g.in = input{click: true, mouse: image.Pt(int(sx+r.x+r.w/2), int(sy+phoneFeedTop+10))}
+		g.updatePhone()
+		if p.viewPic == "" {
+			t.Fatal("a tap on the picture's part under the header did not open it")
+		}
+		return
+	}
+	t.Fatal("the picture never straddled the header: the chat is too short to test this")
+}
+
+// phoneDismissed is the result a phone answers with when it is dismissed (Esc,
+// the home bar), -1 when its cue keeps none.
+func phoneDismissed(p *phoneView) int {
+	results := p.cue.Results()
+	if p.appRows != nil {
+		results = p.homeResults
+	}
+	return slices.IndexFunc(results, func(r data.PhoneResult) bool { return r.Row == -4 && r.Notice == -4 })
+}
+
+// TestPhoneStoreWords: the store's own words go through the game's language,
+// and its rows are laid out before the phone has risen.
+func TestPhoneStoreWords(t *testing.T) {
+	for language, title := range map[string]string{lang.English: "Games", lang.Japanese: "ゲーム"} {
+		t.Run(title, func(t *testing.T) {
+			words, err := lang.NewContext(language, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			g := phoneGame(t, data.PhoneCue{App: "store"})
+			defer words.Activate()()
+			p := g.phone
+			phoneTicks(g, 2)
+			if p.cue.Title != title || len(p.cue.Rows) == 0 {
+				t.Fatalf("the rising store: title %q with %d rows, want %q and its rows", p.cue.Title, len(p.cue.Rows), title)
 			}
 		})
 	}

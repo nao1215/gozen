@@ -487,7 +487,7 @@ func (p *phoneView) homeLayout(w float64) []pageRow {
 }
 
 func (g *Game) updatePhoneHome(p *phoneView) {
-	g.addPhoneGameApps(p)
+	g.preparePhoneRows(p)
 	defer func() {
 		if p.selectedApp != "" {
 			id := p.selectedApp

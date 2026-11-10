@@ -128,7 +128,6 @@ func (g *Game) drawPhoneLock(p *phoneView, dst *ebiten.Image, w, h float64) {
 		}
 		y += g.drawLockNotice(p, dst, i, 10, y-(1-in)*40, w-20, in) + 10
 	}
-	gfx.FillRoundRect(dst, float32(w/2-60), float32(h-14), 120, 5, 2.5, phoneOnVideo)
 }
 
 // drawLockNotice draws a notice's card at x, y, w wide, faded in by alpha, and
