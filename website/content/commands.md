@@ -565,6 +565,10 @@ gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 | `--list FILE` | Write what was kept and dropped to this new file |
 | `-n, --dry-run` | Write nothing; print only how much would be kept |
 
+The trial holds what [`gozen export`](#export) takes from a game: the pruned `game.yaml` and `data/`, the assets the kept part uses, and, unchanged, `lang/`, `streams/`, the license notices and `LICENSES/`. The translations are copied whole, so they still hold the text of what was cut. A symlink anywhere in the game fails the build, as it fails an export. The YAML is written anew: comments and flow style are not kept, and every text is quoted.
+
+Without `--overlay`, the trial of a game that has `asset-policy.yaml` keeps that file: its assets are as unapproved as the game's, so `gozen export` refuses the trial as it refuses the game. Build the trial with `--overlay` and `--inspect` to get an approved tree, which holds no policy. The list is written after the tree, and a run that fails leaves neither.
+
 ## Picture tools
 
 Tools for the pictures of a game. [prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog, and [mosaic](/production-tools/#gozen-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
@@ -708,7 +712,8 @@ plain directories, without signing or notarization.
 The command checks the runtime version, target and player checksum. It performs
 no download or compilation. The destination must not exist or overlap an input.
 A game with `asset-policy.yaml` must first pass `gozen release`; export the
-resulting approved tree.
+resulting approved tree. A [trial](#trial) built without `--overlay` keeps the
+policy of its game and is refused in the same way.
 
 Export copies `game.yaml`, YAML under `data/`, `lang/` and `streams/`, runtime asset formats
 under `assets/`, root license notices and the contents of `LICENSES/`. Other root
