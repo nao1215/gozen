@@ -12,8 +12,8 @@ import (
 
 func TestMonsterReserveBreedAndSave(t *testing.T) {
 	db := testgame.Load(t, testgame.MonsterFiles())
-	st := testgame.State(db, 4)
 	db.Game.MaxParty = 2
+	st := testgame.State(db, 4)
 	a, ok := st.Recruit("mote", 1, 0, nil)
 	if !ok || len(st.Party) != 2 {
 		t.Fatalf("first capture: %q %v party=%v", a, ok, st.Party)
@@ -135,9 +135,9 @@ func TestCollectionDrawsDoNotShiftGameplayRandomness(t *testing.T) {
 
 func TestStoryJoinMovesFullPartyMemberToReserve(t *testing.T) {
 	db := testgame.Load(t, nil)
-	st := testgame.State(db, 1)
 	db.Game.MaxParty = 2
 	db.Actors["healer"] = db.Actors["guide"]
+	st := testgame.State(db, 1)
 	if !st.Join("guide") {
 		t.Fatal("guide did not join")
 	}
@@ -154,8 +154,8 @@ func TestStoryJoinMovesFullPartyMemberToReserve(t *testing.T) {
 // allowed takes an allowed one, and both are in the load report.
 func TestMonsterSaveAfterTheGameChanged(t *testing.T) {
 	db := testgame.Load(t, testgame.MonsterFiles())
-	st := testgame.State(db, 4)
 	db.Game.MaxParty = 3
+	st := testgame.State(db, 4)
 	a, okA := st.Recruit("mote", 1, 0, nil)
 	b, okB := st.Recruit("boss", 1, 0, nil)
 	if !okA || !okB {

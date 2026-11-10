@@ -144,8 +144,12 @@ type SpacePose struct {
 	Encounter float64 `json:"encounter"`
 }
 
-// New is the state a new game starts in (game.yaml start).
+// New is the state a new game starts in (game.yaml start). The state reads the
+// definitions through its own view of db (State.DB, DB.ForState): the monsters it
+// recruits are defined there, never in db, so games on the same definitions do not
+// see each other's. A caller that looks actors up by a member's id reads State.DB.
 func New(db *data.DB, rng *rand.Rand) *State {
+	db = db.ForState()
 	if rng == nil {
 		rng = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
 	}
@@ -277,8 +281,10 @@ func (s *State) createMonster(species string, level, plus int, skills []string, 
 		seq++
 		id = fmt.Sprintf("monster_%d", int(seq)+1)
 	}
+	if !s.DB.AddInstance(id, &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}) {
+		return "", false
+	}
 	s.Vars["monster.next"] = float64(int(seq) + 1)
-	s.DB.Actors[id] = &data.Actor{Name: e.Name, Class: s.DB.MonsterClass(species), Level: max(1, level)}
 	a := NewActor(s.DB, id)
 	a.Monster, a.Plus = species, plus
 	if sex == "" {
@@ -337,7 +343,7 @@ func (s *State) ReleaseMonster(id string) bool {
 	}
 	s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
 	delete(s.Actors, id)
-	delete(s.DB.Actors, id)
+	s.DB.RemoveInstance(id)
 	return true
 }
 
@@ -383,7 +389,7 @@ func (s *State) Breed(first, second string, skills []string) (string, error) {
 	for _, parent := range []string{first, second} {
 		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == parent })
 		delete(s.Actors, parent)
-		delete(s.DB.Actors, parent)
+		s.DB.RemoveInstance(parent)
 	}
 	if preferredSlot >= 0 {
 		s.Party = slices.DeleteFunc(s.Party, func(p string) bool { return p == id })
@@ -996,7 +1002,9 @@ type Roamer struct {
 	Walk int `json:"walk,omitempty"`
 }
 
-// Take takes n of an item: from the bag first, then off whoever wears it.
+// Take takes n of an item: from the bag first, then off whoever wears it, the members in
+// party order and each member's slots in the order of game.yaml, so the same play takes
+// the same ones.
 func (s *State) Take(id string, n int) {
 	if b := min(n, s.Items[id]); b > 0 {
 		s.AddItem(id, -b)
@@ -1004,9 +1012,9 @@ func (s *State) Take(id string, n int) {
 	}
 	for _, aid := range s.Party {
 		a := s.Actors[aid]
-		for slot, it := range a.Equip {
-			if n > 0 && it == id {
-				delete(a.Equip, slot)
+		for _, slot := range s.DB.Game.Slots {
+			if n > 0 && a.Equip[slot.ID] == id {
+				delete(a.Equip, slot.ID)
 				n--
 			}
 		}
