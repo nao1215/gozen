@@ -464,10 +464,10 @@ func TestCommandExecution(t *testing.T) {
 // YAML words are checked lexically, not as a proof of gameplay generality.
 // The frozen baseline below may only shrink; new words cannot be added to it.
 const (
-	yamlBaselineLimit = 744
+	yamlBaselineLimit = 728
 	yamlBaseline      = `
 acceleration accent accepts act action activation activity activity_attributes
-add add_state addresses admission advice affect affection affiliation
+add_state addresses admission advice affect affection affiliation
 after_win again all anim answer answer_chance answers any
 appear args armies army asides ask assignee at_point
 attack_skill attribute attributes auto auto_start auto_tactics auto_tempo auto_wait
@@ -482,16 +482,16 @@ camera_on can_escape cap_hours caption capture card card_bubbles carousel
 carry ceiling ceiling_texture cg_review cgs chance channels char
 charge checkpoint child children choice_position chrome clash clear
 col colors columns command comment compact complete condition
-consume control controls cost count counter cover crit
+consume control controls cost counter cover crit
 critical critical_rate critical_ratio crowd currency cursor cut cutin
 cutin_box cutin_lines cx damage damage_rate darkness data data_version
-date date_format date_link day deadline deal defeat defend
+date date_format date_link deadline deal defeat defend
 defense dependency_ratio depth depth_bias desc description destination detail
-dim dir dive done door dot drag drain
+dim dir done door dot drag drain
 draw_roads drop drops due duo_chance duos each east
 echo edge effect effects element elements else enabled
 end_turn end_turn_button endings endure enemy enter entity episodes
-equip equip_slots equip_stones escape evening event_label event_when every
+equip_slots equip_stones escape evening event_label event_when every
 exclusive exp expr expression_depth expression_length extra face_at face_box
 face_expr face_rules face_shade face_shade_top face_shape families family far
 fatal field_notices fight fighters file_lines files filled filter_label
@@ -505,7 +505,7 @@ haze head header header_face header_tint heading heal held
 hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
 hit hits hitstop  host hp hp_triggers hurt
 icon image_height images in indexed_names initial instant instead
-into intro item items join join_exp joined keeper
+into intro items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
 leave ledger ledgers left legacy_keys legend_rank level_scale light
 likes lines live lobby locked logo look looks
@@ -518,7 +518,7 @@ missing_voice monster_class monster_families mood mood_names moods morning motio
 mp music_pictures muted name_tag nav near new no_map
 no_menu no_standing node north note notice novel_window now
 npc observation observations observed ok on on_appear on_draw
-on_enter on_escape on_leave on_lose on_turn on_turn_end on_turn_end_allies on_user
+on_enter on_escape on_leave on_turn on_turn_end on_turn_end_allies on_user
 on_win one_shot one_way only opacities opacity open_wall
 optional options order_view origin_u origin_v others_title out outfit
 over over_size page pages pairs pan paper param
@@ -530,16 +530,16 @@ power preferred preset price primary primary_card primary_text priority
 profile profile_book progress prompt q qr question quick_menu
 quiet r rank rare_rank reaction reactions read reason
 recoil recover recruit rect refraction region_borders region_numbers region_roads
-release remove remove_on_damage remove_state repetitions reply reposts
+remove remove_on_damage remove_state repetitions reply reposts
 requires reserve reset_actor reset_tree resist respond rest restart
 restore_checkpoint restrict restrict_chance resume_to retain retry revive ring
 rise roamers rollback roofs rooms rope rounds row
-rule rules sacrifice safe safe_area sample sample_freshness sample_label
+rule rules sacrifice safe_area sample sample_freshness sample_label
 save scene_review scenes schedule screen_operations scroll search seed
 seed_xor seen selection_panel selector self self_backdrop self_label self_stage
 sell send sex sex_ratio sfx sfx_vary shadow shake
-shape share shop shops short side sight sign
-simple_tactics size skill skill_slots skip sky slide slot
+shape share shops short side sight sign
+simple_tactics size skill skill_slots skip sky slide
 soldiers solid song songs sortie south sp sp_apply
 sp_decline sp_pitch sp_suggest speaking speech spent spin stage_drop
 stage_framing stage_puppets stage_scale stages staging stairs stand_ins star_bonus

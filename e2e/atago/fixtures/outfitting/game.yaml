@@ -1,0 +1,30 @@
+schema_version: 11
+id: e2e-outfitting
+title: Outfitting
+language: en
+screen: {width: 960, height: 540}
+start: {location: depot, party: [scout, mender], gold: 100, items: {amber: 1, jet: 1, flint: 2}}
+battle: {variance: 0, critical: 0, escape: 0, retry: true}
+game_over: {event: carried_back}
+# Manual slots keep the "stronger equipment" offer from interrupting scripted commands.
+equip_slots:
+  - {id: weapon, name: Weapon, manual: true}
+  - {id: stone1, name: Stone 1, manual: true}
+  - {id: stone2, name: Stone 2, manual: true}
+gallery:
+  cgs:
+    - {title: Marker, file: mote.png}
+  scenes:
+    - {title: Marker placed, event: marker, flag: saw_marker, location: depot}
+asides:
+  - {actor: scout, when: "!flag.mused", call: muse}
+cg_review:
+  tags: [{id: ok, label: OK, ok: true}, {id: redo, label: Redo}]
+scene_review:
+  tags: [{id: ok, label: OK, ok: true}]
+state:
+  names:
+    flag.carried: {type: bool, initial: false}
+    flag.resumed: {type: bool, initial: false}
+    flag.lost: {type: bool, initial: false}
+    flag.mused: {type: bool, initial: false}
