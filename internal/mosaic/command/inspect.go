@@ -140,30 +140,6 @@ func (cli *cli) inspectCmd() clihelp.Operation {
 	}}
 }
 
-func resolve(c config, arg string) (rel, path, orig string) {
-	assets := filepath.Join(c.gameDir, "assets")
-	if st, err := os.Stat(arg); err == nil && !st.IsDir() {
-		abs, err := filepath.Abs(arg)
-		if err != nil {
-			return "", arg, arg
-		}
-		for _, root := range []string{assets, c.out} {
-			r, err := filepath.Abs(root)
-			if err != nil {
-				continue
-			}
-			if rr, err := filepath.Rel(r, abs); err == nil && !strings.HasPrefix(rr, "..") {
-				rel = filepath.ToSlash(rr)
-				return rel, arg, filepath.Join(assets, filepath.FromSlash(rel))
-			}
-		}
-		return "", arg, arg
-	}
-	rel = filepath.ToSlash(strings.TrimPrefix(arg, "assets/"))
-	p := filepath.Join(assets, filepath.FromSlash(rel))
-	return rel, p, p
-}
-
 func inspect(ctx context.Context, c *config, arg string, report map[string]entry) (inspection, error) {
 	rel, path, origPath := resolve(*c, arg)
 	in := inspection{File: rel, Path: path, Categories: []string{}, Evidence: []string{}, Objects: []object{}, Candidates: []object{}, Review: []string{}}
@@ -289,8 +265,7 @@ func inspect(ctx context.Context, c *config, arg string, report map[string]entry
 
 	outPath := ""
 	if rel != "" {
-		p := filepath.Join(c.out, filepath.FromSlash(rel))
-		if _, err := os.Stat(p); err == nil {
+		if p := filepath.Join(c.out, filepath.FromSlash(outputRel(rel))); isFile(p) {
 			outPath = p
 		}
 	}

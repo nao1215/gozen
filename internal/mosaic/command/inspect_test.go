@@ -317,3 +317,39 @@ func TestCoveredBy(t *testing.T) {
 		t.Fatal("nothing to cover is covered")
 	}
 }
+
+// webpFixture adds the lossless WebP of the production example to the game.
+func webpFixture(t *testing.T, game string) {
+	t.Helper()
+	b := readFile(t, "../../../docs/examples/production/pattern.webp")
+	if err := os.WriteFile(filepath.Join(game, "assets", "pattern.webp"), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestInspectFindsTheOutputOfAWebP: auto writes a WebP picture as <name>.webp.png, and
+// inspect and view look for the output under that name. They used to look for
+// <name>.webp, so --redetect called a finished picture todo, and the output file given as
+// the operand was mapped to an asset <name>.webp.png that does not exist.
+func TestInspectFindsTheOutputOfAWebP(t *testing.T) {
+	game, out := fixture(t)
+	webpFixture(t, game)
+	m := useModels(t)
+	model, _ := m.detector(t, "model.onnx", penis(2, 2, 8, 8, 0.9))
+	base := []string{"--model", model, "-o", out, game}
+	if code, _, diag := invoke(t, append(append([]string{"auto"}, base...), "pattern.webp")...); code != 0 {
+		t.Fatal(diag)
+	}
+	output := filepath.Join(out, "pattern.webp.png")
+	for _, args := range [][]string{{"pattern.webp"}, {"--redetect", "pattern.webp"}, {output}, {"--redetect", output}} {
+		in := inspectOne(t, append(append([]string{}, base...), args...)...)
+		if in.File != "pattern.webp" || in.Status != "done" || !in.Mosaicked.OutputCovers || in.Mosaicked.Output != output {
+			t.Errorf("inspect %v: file %q, status %s, output %q covers %v, note %q", args, in.File, in.Status, in.Mosaicked.Output, in.Mosaicked.OutputCovers, in.Mosaicked.Note)
+		}
+	}
+	// view of the output file draws the picture it was made from.
+	code, stdout, diag := invoke(t, "view", "--model", model, "-o", out, "--size", "48", "--src", "masked", game, output)
+	if code != 0 || !strings.Contains(stdout, "pattern.webp.masked.png") {
+		t.Fatalf("view of the output: code %d, %q, %s", code, stdout, diag)
+	}
+}

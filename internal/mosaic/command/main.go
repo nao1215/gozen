@@ -283,7 +283,14 @@ func (cli *cli) autoCmd() clihelp.Operation {
 			c.printClasses()
 		}
 		c.tags.readOnly = *dry
-		pics := fs.Args()[1:]
+		var pics []string
+		for _, arg := range fs.Args()[1:] {
+			rel, _, _ := resolve(c, arg)
+			if rel == "" {
+				return fmt.Errorf("%s is outside %s: auto pixelates the images of the game only", arg, filepath.Join(gameDir, "assets"))
+			}
+			pics = append(pics, rel)
+		}
 		if len(pics) == 0 {
 			var missing []string
 			if pics, missing, err = mosaic.Pictures(gameDir); err != nil {
@@ -504,11 +511,8 @@ func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 	if c.dry || len(shapes) == 0 {
 		return e, nil
 	}
-	outputRel := rel
-	if strings.EqualFold(filepath.Ext(rel), ".webp") {
-		outputRel = rel + ".png"
-	}
-	dst := filepath.Join(c.out, filepath.FromSlash(outputRel))
+	output := outputRel(rel)
+	dst := filepath.Join(c.out, filepath.FromSlash(output))
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return e, err
 	}
@@ -521,7 +525,7 @@ func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 	if err := writeMask(maskPath(c.out, rel), b, shapes, e.Block, off); err != nil {
 		return e, err
 	}
-	e.Output = outputRel
+	e.Output = output
 	return e, nil
 }
 

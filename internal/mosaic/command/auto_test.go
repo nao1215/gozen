@@ -455,3 +455,28 @@ func TestMissingFixFileIsAnError(t *testing.T) {
 		t.Fatalf("a manual file that is not there yet: code %d, %s", code, diag)
 	}
 }
+
+// TestAutoReadsOperandsLikeInspect: auto takes the forms of IMAGE that inspect and the
+// manual commands take: a leading assets/, a backslash as the separator, and a file path.
+func TestAutoReadsOperandsLikeInspect(t *testing.T) {
+	game, out := fixture(t)
+	m := useModels(t)
+	model, _ := m.detector(t, "model.onnx", penis(4, 4, 10, 10, 0.9))
+	for _, arg := range []string{"assets/pattern.png", `assets\pattern.png`, filepath.Join(game, "assets", "pattern.png")} {
+		code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, arg)
+		if code != 0 {
+			t.Fatalf("auto %q: code %d: %s", arg, code, diag)
+		}
+		if es := readEntries(t, out); len(es) != 1 || es[0].File != "pattern.png" || es[0].Output != "pattern.png" {
+			t.Fatalf("auto %q: report %+v", arg, es)
+		}
+	}
+	// A picture that is not an asset of the game is refused, not written somewhere.
+	other := filepath.Join(t.TempDir(), "elsewhere.png")
+	if err := encode(other, image.NewRGBA(image.Rect(0, 0, 8, 8)), 90); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, other); code != 1 || !strings.Contains(diag, "outside") {
+		t.Fatalf("auto of a file outside the assets: code %d: %s", code, diag)
+	}
+}

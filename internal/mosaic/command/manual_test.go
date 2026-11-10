@@ -291,3 +291,23 @@ func TestManualBlockAndHumanFixFile(t *testing.T) {
 		t.Fatalf("code %d: %s", code, diag)
 	}
 }
+
+// TestManualPrefersTheAssetOverAFileInTheWorkingDirectory: IMAGE is a path below assets/.
+// A file of the same name in the working directory used to be taken instead, and the
+// command refused it as a picture outside the assets.
+func TestManualPrefersTheAssetOverAFileInTheWorkingDirectory(t *testing.T) {
+	e := newManualEnv(t)
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+	if err := encode(filepath.Join(cwd, "pattern.png"), image.NewRGBA(image.Rect(0, 0, 8, 8)), 90); err != nil {
+		t.Fatal(err)
+	}
+	e.ok("skip")
+	if !e.fix().Skip {
+		t.Fatal("the instruction was not written for the asset")
+	}
+	// Named by its path, the other file is still the file outside the assets.
+	if code, _, diag := invoke(t, "skip", "--manual", e.manual, "-o", e.out, e.game, filepath.Join(cwd, "pattern.png")); code != 1 || !strings.Contains(diag, "assets") {
+		t.Fatalf("a file outside the assets: code %d: %s", code, diag)
+	}
+}
