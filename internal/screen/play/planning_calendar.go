@@ -110,9 +110,7 @@ func (s *authorScreen) updateCalendar(g *Game) bool {
 	}
 	if delta == 0 {
 		if g.in.inspect(g.in.click) {
-			_, h := g.screen()
-			v := g.db.Game.Screens[s.name].View
-			for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
+			for _, cell := range s.surfaceCalendar(g) {
 				if g.in.mouse.In(cell.bounds) {
 					return g.in.query(s.openCalendarDate(g, cell.date))
 				}
@@ -131,6 +129,12 @@ func (s *authorScreen) updateCalendar(g *Game) bool {
 		s.calendarMonth = d.Format(time.DateOnly)
 	}
 	return true
+}
+
+// surfaceCalendar lays the month out where drawSurface draws it.
+func (s *authorScreen) surfaceCalendar(g *Game) []calendarCell {
+	x, y, w, h := g.surfaceChart()
+	return calendarCells(g.db.Game.Planning, g.db.Game.Screens[s.name].View, s.calendarDate(g), x, y, w, h)
 }
 
 func (s *authorScreen) drawCalendar(g *Game, dst *ebiten.Image, x, y, w, h float64) {
@@ -183,9 +187,8 @@ func (s *authorScreen) drawCalendar(g *Game, dst *ebiten.Image, x, y, w, h float
 }
 
 func (s *authorScreen) calendarDescription(g *Game) string {
-	w, h := g.screen()
 	v := g.db.Game.Screens[s.name].View
-	for _, cell := range calendarCells(g.db.Game.Planning, v, s.calendarDate(g), 0, 108, w, h-226) {
+	for _, cell := range s.surfaceCalendar(g) {
 		if g.in.mouse.In(cell.bounds) {
 			labels := []string{planningDate(cell.date, "", v)}
 			for _, label := range cell.labels {
@@ -245,12 +248,13 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 
 func (s *authorScreen) timelinePointerDate(g *Game) string {
 	w, _ := g.screen()
-	for _, r := range timelineZoomBounds(0, 108, w) {
+	x, y, w, _ := g.surfaceChart()
+	for _, r := range timelineZoomBounds(x, y, w) {
 		if g.in.mouse.In(r) {
 			return ""
 		}
 	}
-	if g.in.mouse.Y < 108 || g.in.mouse.Y >= 164 || g.in.mouse.X < 260 || float64(g.in.mouse.X) >= w-20 {
+	if float64(g.in.mouse.Y) < y || float64(g.in.mouse.Y) >= y+56 || g.in.mouse.X < 260 || float64(g.in.mouse.X) >= w-20 {
 		return ""
 	}
 	start, end, err := s.timelineRange(g)

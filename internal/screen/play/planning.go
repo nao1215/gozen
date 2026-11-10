@@ -38,8 +38,7 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 		g.window(dst, x, y, w, h)
 		g.text(dst, planningDate(st.Date, p.Calendar.Phases[st.Phase], v), x+20, y+18, sizeM, g.th.accent)
 	}
-	y += 60
-	h -= 70
+	x, y, w, h = planningChart(x, y, w, h)
 	if v.Fullscreen && g.hasMaterial() && (kind == "calendar" || kind == "timeline") {
 		// A full-screen calendar or timeline over a picture stands on one glass card,
 		// as the workspace entries do, so its lines stay readable.
@@ -143,6 +142,20 @@ func (s *authorScreen) drawPlanning(g *Game, dst *ebiten.Image, kind string, x, 
 	case "entities", "ensemble", "islands":
 		s.drawResidents(g, dst, kind, x, y, w, h)
 	}
+}
+
+// planningFrame is the part of the screen a full-screen planning view owns:
+// under the title strip and above the band of actions.
+func planningFrame(sw, sh float64) (x, y, w, h float64) { return 0, 48, sw, sh - 156 }
+
+// planningChart is the part of a planning frame under its date line, where the
+// calendar, the timeline and the residents are laid out.
+func planningChart(x, y, w, h float64) (cx, cy, cw, ch float64) { return x, y + 60, w, h - 70 }
+
+// surfaceChart is the chart of a full-screen planning view. drawSurface draws
+// into it and every pointer test reads it, so the two cannot drift apart.
+func (g *Game) surfaceChart() (x, y, w, h float64) {
+	return planningChart(planningFrame(g.screen()))
 }
 
 // planningCells reserves gaps and never lets one tile overlap another.

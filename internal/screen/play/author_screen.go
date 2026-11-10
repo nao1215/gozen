@@ -227,7 +227,8 @@ func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
 		fill(dst, light.paper)
 	}
 	parent.drawPlanningHeader(g, dst)
-	parent.drawGroupedTimeline(g, dst, 0, 108, sw-360, sh-226)
+	cx, cy, cw, ch := g.surfaceChart()
+	parent.drawGroupedTimeline(g, dst, cx, cy, cw-360, ch)
 	g.window(dst, sw-360, 48, 360, sh-48)
 	g.drawPlanningText(dst, s.title, sw-348, 60, 336, 18, 2, g.th.accent)
 	if len(s.entries) > 0 {
@@ -949,7 +950,8 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		g.desktopFrame(dst, sh-16, 38, color.NRGBA{})
 		g.drawPlanningText(dst, data.Render(g.db.Tr(v.Window), s.env(g)), 36, 26, sw-200, 15, 1, g.chrome().title)
 	}
-	s.drawPlanning(g, dst, def.Kind, 0, 48, sw, sh-156)
+	fx, fy, fw, fh := planningFrame(sw, sh)
+	s.drawPlanning(g, dst, def.Kind, fx, fy, fw, fh)
 	s.drawPlanningHeader(g, dst)
 	g.prepareMaterial(dst, "")
 	ring := s.ringMembers()
