@@ -9,6 +9,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
+- Add dango checks that a test file under `cmd/` and `internal/` is named after an implementation file beside it (the existing others are a baseline that may only shrink), that every CI path filter matches a file, that `cmd/gozen` creates outputs through the publication helper and that commands do not read the wall clock, each outside a short allowlist with reasons. Every test of `internal/dev/hygiene` must now belong to a decision, so the English-comment, `FitLines` and CI retry checks run in `dango lint` too.
 
 ### Fixed
 
