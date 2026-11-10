@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"io/fs"
+	"log"
 	"maps"
 	"regexp"
 	"strings"
@@ -229,11 +230,16 @@ func (g *Game) selectPhonePackage(id string, inst *gamepackage.Installed) error 
 	g.packages.selected = next
 	clear(g.packages.iconReleases)
 	delete(g.packages.opened, id)
+	// The selection is saved; closing the archives it replaced is cleanup, so a
+	// failure there is logged rather than reported as a failed installation.
 	var errClose error
 	if old != nil && old != inst {
 		errClose = old.Close()
 	}
-	return errors.Join(errClose, inst.Close())
+	if err := errors.Join(errClose, inst.Close()); err != nil {
+		log.Printf("phone package %s: closing a replaced archive: %v", id, err)
+	}
+	return nil
 }
 
 // Custom save stores and legacy browser caches encode archive payloads as text.

@@ -2,12 +2,15 @@ package savefile_test
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -177,5 +180,61 @@ func TestStores(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// plainStore is a host's Store with no guard of its own: a bare map.
+type plainStore map[string][]byte
+
+func (p plainStore) Read(name string) ([]byte, error) {
+	if b, ok := p[name]; ok {
+		return b, nil
+	}
+	return nil, fs.ErrNotExist
+}
+func (p plainStore) Write(name string, b []byte) error { p[name] = b; return nil }
+func (p plainStore) List() ([]string, error) {
+	return slices.Sorted(maps.Keys(p)), nil
+}
+func (p plainStore) Remove(name string) error { delete(p, name); return nil }
+
+// TestSerializedStore: a host's unguarded Store shared by the game thread and
+// an install goroutine takes one call at a time (go test -race finds none
+// overlapping), and a save's time comes through only where the Store keeps it.
+func TestSerializedStore(t *testing.T) {
+	st := savefile.Serialized(plainStore{})
+	if savefile.Serialized(st) != st {
+		t.Fatal("a serialized Store was wrapped twice")
+	}
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Go(func() {
+			name := fmt.Sprintf("slot%d.json", i)
+			for range 50 {
+				if err := st.Write(name, []byte("{}")); err != nil {
+					t.Error(err)
+				}
+				if _, err := st.Read(name); err != nil {
+					t.Error(err)
+				}
+				if _, err := st.List(); err != nil {
+					t.Error(err)
+				}
+			}
+		})
+	}
+	wg.Wait()
+	if names, _ := st.List(); len(names) != 8 {
+		t.Fatalf("names %q, want 8 saves", names)
+	}
+	if _, err := st.(modTimer).ModTime("slot0.json"); !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("a map Store gave a time: %v", err)
+	}
+	dir := savefile.Serialized(savefile.DirStore(t.TempDir()))
+	if err := dir.Write("a.json", []byte("{}")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := dir.(modTimer).ModTime("a.json"); err != nil {
+		t.Fatalf("the directory's time was lost: %v", err)
 	}
 }

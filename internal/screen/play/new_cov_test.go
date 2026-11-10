@@ -260,10 +260,12 @@ func TestStoreForIsAskedForTheGameID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if asked != "screen-test" || g.store != mem {
-		t.Fatalf("asked %q", asked)
-	}
+	// The host's Store is used, behind the guard that serializes its calls.
+	werr := g.store.Write("probe.json", []byte("{}"))
 	sysClose(t, g)
+	if _, err := mem.Read("probe.json"); asked != "screen-test" || werr != nil || err != nil {
+		t.Fatalf("asked %q, probe %v %v", asked, werr, err)
+	}
 	_, err = New(Options{FS: gameFiles(t), NoSound: true, StoreFor: func(string) (Store, error) { return nil, errors.New("no storage") }})
 	if err == nil || !strings.Contains(err.Error(), "no storage") {
 		t.Fatalf("err = %v", err)
