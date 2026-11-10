@@ -15,7 +15,8 @@ const (
 )
 
 // Next is the first move on the shortest way to the nearest cell whose character (as it
-// is now) is goal: walking onto it, or, for a solid one, up to it and looking at it. The
+// is now) is goal: walking onto it (a slide: being carried over it), or, for a solid one, up
+// to it and looking at it. The
 // way does not step on other tiles that do something when stepped on (stairs...), unless
 // there is no other way: then it steps on those that keep the party where it is (a steam
 // vent that hurts, a roamer in the way to fight), never on those that take it elsewhere. ok is false when there is no way.
@@ -58,12 +59,24 @@ func next(d *data.Dungeon, st *rpg.State, goal rune, through bool) (string, bool
 				first = f
 			}
 			if Slides(c) && c.Passable() { // carried on: the way goes on from where it stops
-				ex, ey, _, _ := SlideEnd(d, st, x, y, f)
+				ex, ey, _, way := SlideEnd(d, st, x, y, f)
 				e := CellAt(d, st, ex, ey)
 				if e.Char == goal {
 					return face(p.Facing, first, MoveForward), true
 				}
-				if !seen[ey*w+ex] && !avoid(st, e, through) {
+				if avoid(st, e, through) {
+					continue
+				}
+				// a slide is come to by being carried over it (never stopped on): the one
+				// stepped onto, and those passed on the way
+				over := c.Char == goal
+				for _, q := range way {
+					over = over || CellAt(d, st, q[0], q[1]).Char == goal
+				}
+				if over {
+					return face(p.Facing, first, MoveForward), true
+				}
+				if !seen[ey*w+ex] {
 					seen[ey*w+ex] = true
 					queue = append(queue, node{ex, ey, first})
 				}

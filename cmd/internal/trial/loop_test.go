@@ -59,7 +59,7 @@ locations:
         start: S
         place:
           - {char: '>', far: true}
-          - {char: K, count: "var.keys"}
+          - {char: K, count: "floor"}
       tiles:
         S: {start: true}
         '>': {do: [{dive: tower, floor: var.floor + 1}]}

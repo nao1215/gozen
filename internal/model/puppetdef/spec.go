@@ -485,7 +485,7 @@ func (m Motion) check() error {
 		}
 	}
 	if t := m.Talk; t != nil {
-		if err := nonNeg("talk", t.Nod); err != nil {
+		if err := nonNeg("talk", t.Nod, t.Bounce); err != nil {
 			return err
 		}
 	}

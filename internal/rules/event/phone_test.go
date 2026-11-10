@@ -526,3 +526,59 @@ events:
 		t.Fatalf("frames: %v", frames)
 	}
 }
+
+// TestPhoneUnattendedLeavesAppButtons: a row with an event opens an app whose
+// event comes back to the phone. An unattended run does not press it (it would
+// open the app again without end) and takes the first result that puts the
+// phone down, or puts it down unread when there is none.
+func TestPhoneUnattendedLeavesAppButtons(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  app:
+    do: [{set: {var.visits: "var.visits + 1"}}]
+  only_apps:
+    do:
+      - phone: {app: home, rows: [{button: Mail, event: app}]}
+      - set: {flag.after: true}
+  app_then_button:
+    do:
+      - phone: {app: home, var: var.pressed, rows: [{button: Mail, event: app}, {button: Go, id: go}]}
+`})
+	st := testgame.State(db, 1)
+	for _, name := range []string{"only_apps", "app_then_button"} {
+		r := event.New(db, st, nil)
+		r.Log = func(err error) { t.Error(err) }
+		r.Start(db.Events[name].Do)
+		r.RunUnattended()
+		if r.Running() {
+			t.Fatalf("%s: the unattended run did not end", name)
+		}
+	}
+	if st.Vars["visits"] != nil || st.Flags["after"] != true || st.Vars["pressed"] != "go" {
+		t.Fatalf("visits %v, after %v, pressed %v: want no app opened, the event read on, and the button Go", st.Vars["visits"], st.Flags["after"], st.Vars["pressed"])
+	}
+}
+
+// TestPhoneUnattendedPassesHiddenRows: a row hidden by its when is a result
+// the screen never offers, so an unattended run takes the first button shown.
+func TestPhoneUnattendedPassesHiddenRows(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone:
+          app: page
+          var: var.pressed
+          rows:
+            - {button: Secret, id: secret, when: "flag.never"}
+            - {button: Go, id: go}
+`})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, nil)
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	r.RunUnattended()
+	if st.Vars["pressed"] != "go" {
+		t.Fatalf("var.pressed = %v: want the first button the screen shows (go)", st.Vars["pressed"])
+	}
+}

@@ -5,6 +5,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
@@ -177,18 +179,29 @@ func FightView(db *data.DB, st *rpg.State, id, general string, with []string, ta
 }
 
 // shareUnits writes each general's troops left (less its share of the garrison left in a
-// region taken), marks it as marched, and sends one with none away.
+// region taken), marks it as marched, and sends one with none away. The shares are whole
+// and add up to the garrison: what flooring them leaves over is taken from the last
+// generals that still have troops, so the troops after the clash are those left of it.
 func shareUnits(db *data.DB, st *rpg.State, units []Unit, garrison float64) {
 	total := 0.0
 	for _, u := range units {
 		total += u.Troops
 	}
-	for _, u := range units {
-		n := u.Troops
+	stay := make([]float64, len(units))
+	rest := garrison
+	for i, u := range units {
 		if total > 0 {
-			n -= math.Floor(garrison * u.Troops / total)
+			stay[i] = math.Floor(garrison * u.Troops / total)
 		}
-		n = max(0, math.Floor(n))
+		rest -= stay[i]
+	}
+	for i := len(units) - 1; i >= 0 && rest > 0; i-- {
+		more := max(0, min(rest, units[i].Troops-stay[i]))
+		stay[i] += more
+		rest -= more
+	}
+	for i, u := range units {
+		n := max(0, math.Floor(u.Troops-stay[i]))
 		st.Vars[data.GeneralVar(u.Actor, "troops")] = n
 		st.Vars[data.GeneralVar(u.Actor, "acted")] = 1.0
 		if n <= 0 && db.Game.Campaign.Defeat.Out > 0 {
@@ -319,8 +332,17 @@ func factionClash(db *data.DB, st *rpg.State, f string, sent float64, target str
 }
 
 // play fights the rounds: each round every unit standing gains a charge; a unit whose
-// skill is charged uses it, else strikes a foe its tactic picks.
+// skill is charged uses it, else strikes a foe its tactic picks. A unit that comes with no
+// troops (a garrison smaller than its troop) is routed before the first round, and a march
+// with no unit standing is lost, whatever the region holds.
 func play(db *data.DB, st *rpg.State, cl *Clash) {
+	for side := range cl.Sides {
+		for i := range cl.Sides[side] {
+			if u := &cl.Sides[side][i]; u.Troops <= 0 {
+				u.Troops, u.Routed = 0, true
+			}
+		}
+	}
 	c := db.Game.Campaign
 	hit := c.Clash.Hit
 	if !hit.Set() {
@@ -349,9 +371,9 @@ func play(db *data.DB, st *rpg.State, cl *Clash) {
 		n *= scale(tactic(db, u.Tactic).Deal) * scale(tactic(db, v.Tactic).Take)
 		loss := math.Min(v.Troops, math.Max(1, math.Floor(n)))
 		v.Troops -= loss
-		h := Hit{Round: round, Side: side, At: at, Of: 1 - side, To: to, Attackers: int(math.Ceil(u.Troops * 0.3)), Loss: int(loss), Skill: skill}
+		h := Hit{Round: round, Side: side, At: at, Of: 1 - side, To: to, Attackers: safeint.From(math.Ceil(u.Troops * 0.3)), Loss: safeint.From(loss), Skill: skill}
 		if skill != "" && heal > 0 {
-			h.Heal, heal = int(heal), 0
+			h.Heal, heal = safeint.From(heal), 0
 		}
 		if v.Troops <= 0 {
 			v.Troops, v.Routed, h.Routed = 0, true, true
@@ -432,11 +454,11 @@ func play(db *data.DB, st *rpg.State, cl *Clash) {
 			strike(round, t.side, t.at, to, n, "")
 		}
 		switch {
-		case len(alive(1)) == 0:
-			cl.Result = "won"
-			return
 		case len(alive(0)) == 0:
 			cl.Result = "lost"
+			return
+		case len(alive(1)) == 0:
+			cl.Result = "won"
 			return
 		}
 	}

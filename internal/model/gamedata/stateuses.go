@@ -17,31 +17,46 @@ type NameUse struct {
 // StateUses indexes the names of the state that events and places write and read:
 // flag.<name>, var.<name>, item.<id>, ran.<event>, gold and the other names that set writes.
 // A name read with fields after it is indexed by its first two parts (flag.met, item.key).
-// It walks events (their when and commands, into the branches of if, choice and battle,
-// and the lines said instead of a fallen member), the events of troops in battle, and the
-// people, actions, exits and on-arrival commands of places.
+// It walks the conditions of events, troop events, places and authored screens, and every
+// command list of the game (eachCommandList), into the branches of if, choice and battle
+// and the lines said instead of a fallen member.
 //
-// One index is shared by the checks that warn of a flag that is set but never read (or read
-// but never set), by gozen book's flow of events and by the --dev panel (ADR 0029).
+// gozen book's flow of events and the --dev panel read this index (ADR 0029). The check's
+// warnings of a flag set but never read keep their own record while they check.
 func (db *DB) StateUses() map[string]*NameUse {
 	u := stateUses{out: map[string]*NameUse{}}
+	// The lists are indexed beside the conditions of their definitions, so the places of a
+	// name read in the order of the data; the lists of the other definitions follow.
+	var lists []commandList
+	at := map[string]int{}
+	db.eachCommandList(func(l commandList) bool {
+		at[l.where] = len(lists)
+		lists = append(lists, l)
+		return false
+	})
+	list := func(where string) {
+		if i, ok := at[where]; ok {
+			u.commands(where, lists[i].cmds)
+			delete(at, where)
+		}
+	}
 	for _, name := range slices.Sorted(maps.Keys(db.Events)) {
 		e := db.Events[name]
 		w := "events." + name
 		u.expr(w+".when", e.When)
-		u.commands(w+".do", e.Do)
+		list(w + ".do")
 	}
 	for _, name := range slices.Sorted(maps.Keys(db.Troops)) {
 		for i, e := range db.Troops[name].Events {
 			w := fmt.Sprintf("troops.%s.events[%d]", name, i)
 			u.expr(w+".when", e.When)
-			u.commands(w+".do", e.Do)
+			list(w + ".do")
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(db.Locations)) {
 		l := db.Locations[name]
 		w := "locations." + name
-		u.commands(w+".on_enter", l.OnEnter)
+		list(w + ".on_enter")
 		if a := l.Map; a != nil {
 			for _, id := range a.PointIDs() {
 				p := a.Points[id]
@@ -62,19 +77,19 @@ func (db *DB) StateUses() map[string]*NameUse {
 			u.expr(pw+".when", p.When)
 			u.expr(pw+".new", p.New)
 			u.expr(pw+".mark", p.Mark)
-			u.commands(pw+".talk", p.Talk)
+			list(pw + ".talk")
 		}
 		for i, a := range l.Actions {
 			aw := fmt.Sprintf("%s.actions[%d]", w, i)
 			u.expr(aw+".when", a.When)
 			u.expr(aw+".new", a.New)
 			u.expr(aw+".mark", a.Mark)
-			u.commands(aw+".do", a.Do)
+			list(aw + ".do")
 		}
 		for i, x := range l.Exits {
 			xw := fmt.Sprintf("%s.exits[%d]", w, i)
 			u.expr(xw+".when", x.When)
-			u.commands(xw+".do", x.Do)
+			list(xw + ".do")
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(db.Game.Screens)) {
@@ -101,8 +116,11 @@ func (db *DB) StateUses() map[string]*NameUse {
 			u.text(w+".hint", entry.Hint)
 			u.text(w+".drag", entry.Drag)
 			u.text(w+".peek", entry.Peek)
-			u.commands(w+".do", entry.Do)
+			list(w + ".do")
 		}
+	}
+	for _, l := range lists {
+		list(l.where)
 	}
 	return u.out
 }
@@ -217,21 +235,13 @@ func (u *stateUses) commands(where string, cs []Command) {
 				u.expr(w+".call.each.in", c.Call.Each.In)
 			}
 		}
-		u.commands(w+".then", c.Then)
-		u.commands(w+".else", c.Else)
-		u.commands(w+".on_win", c.OnWin)
-		u.commands(w+".on_lose", c.OnLose)
-		u.commands(w+".on_escape", c.OnRun)
 		for j, o := range c.Choice {
 			ow := fmt.Sprintf("%s.choice[%d]", w, j)
 			u.expr(ow+".when", o.When)
 			u.text(ow+".label", o.Label)
 			u.expr(ow+".label_expr", o.LabelExpr)
-			u.commands(ow+".do", o.Do)
 		}
-		if c.Muted != nil {
-			u.commands(w+".muted.do", c.Muted.Do)
-		}
+		c.branches(func(field string, option int, cs []Command) { u.commands(branchPath(w, field, option), cs) })
 	}
 }
 

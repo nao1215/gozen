@@ -381,7 +381,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		}
 		if e.Drain > 0 && lost > 0 {
 			// Absorption is computed from the amount actually reduced, and the display shows the amount actually increased (the part capped by the maximum is not counted).
-			g := int(math.Round(float64(lost) * e.Drain))
+			g := safeint.From(math.Round(float64(lost) * e.Drain))
 			if stat == "mp" {
 				before := u.MP
 				u.MP = min(u.MMP(), u.MP+g)
@@ -397,7 +397,7 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		}
 		if e.Recoil > 0 && lost > 0 && u.HP > 1 {
 			// recoil: also reduce the user's HP by a fraction of the damage dealt (does not knock them out)
-			r := min(u.HP-1, int(math.Round(float64(lost)*e.Recoil)))
+			r := min(u.HP-1, safeint.From(math.Round(float64(lost)*e.Recoil)))
 			u.HP -= r
 			steps = append(steps, Step{Kind: Damage, User: u, Target: u, Amount: r, Text: b.text(lang.T("{user}は 反動で {amount}の ダメージを うけた！"), u, u, skill, r), HP: u.HP, MP: u.MP})
 		}
@@ -423,12 +423,13 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if err != nil {
 			return []Step{{Kind: Message, Text: lang.T("(式のエラー: ") + err.Error() + ")"}}
 		}
+		// a state can lower the maximum below what the unit has: the room is then none
 		n := max(0, safeint.From(math.Round(vary(v))))
 		if stat == "mp" {
-			n = min(n, t.MMP()-t.MP)
+			n = min(n, max(0, t.MMP()-t.MP))
 			t.MP += n
 		} else {
-			n = min(n, t.MHP()-t.HP)
+			n = min(n, max(0, t.MHP()-t.HP))
 			t.HP += n
 		}
 		text := e.Message
@@ -553,7 +554,7 @@ func (b *Battle) addState(u, t *Unit, s string, chance, length data.Expr, quiet 
 	turns := st.Turns
 	if length.Set() { // the skill's turns (an expression; a.lv can lengthen it with learned level)
 		if v, err := length.Number(b.effEnv(u, t)); err == nil {
-			turns = max(1, int(math.Round(v)))
+			turns = max(1, safeint.From(math.Round(v)))
 		}
 	}
 	if turns <= 0 {

@@ -43,5 +43,9 @@ events:
 	}
 	if speechContains("twelve", "we", "word") || !speechContains("we agree", "we", "word") || !speechContains("prefixwe", "we", "substring") {
 		t.Fatal("matching boundaries")
+	} // A token that overlaps itself is found at every start: the match on a word
+	// boundary of "a!!!" begins inside the one before it.
+	if !speechContains("a!!!", "!!", "word") {
+		t.Error("an overlapping match on a word boundary was skipped")
 	}
 }

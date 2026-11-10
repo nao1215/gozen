@@ -253,6 +253,8 @@ func TestParseAdditionalInvalidFields(t *testing.T) {
 		{"too wide tilt", "base: a.png\nmotion: {tilt: {angle: 60}}\n", "at most 45"},
 		{"bad tilt range", "base: a.png\nmotion: {tilt: {angle: 3, every: [5, 1]}}\n", "every"},
 		{"negative nod", "base: a.png\nmotion: {talk: {nod: -1}}\n", "talk"},
+		{"negative bounce", "base: a.png\nmotion: {talk: {bounce: -1}}\n", "talk"},
+		{"bounce that is not a number", "base: a.png\nmotion: {talk: {bounce: .nan}}\n", "talk"},
 		{"off mouth with frames", "base: a.png\nmouth: {off: true, frames: [face, m.png]}\n", "off mouth"},
 		{"mouth frame that is broken", "base: a.png\nmouth: {frames: [face, {image: m.png, at: [1]}]}\n", "frames[1]"},
 		{"rect of three", head + "hair: [{rect: [1, 2, 3]}]\n", "rect needs"},

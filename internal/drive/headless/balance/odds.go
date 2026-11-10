@@ -5,6 +5,8 @@ import (
 	"math/rand/v2"
 	"sort"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/drive/headless"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
@@ -49,7 +51,7 @@ func (o Odds) HPBand() (low, mid, high float64, ok bool) {
 	}
 	s := append([]float64(nil), o.HP...)
 	sort.Float64s(s)
-	at := func(p float64) float64 { return s[int(p*float64(len(s)-1)+0.5)] }
+	at := func(p float64) float64 { return s[safeint.From(p*float64(len(s)-1)+0.5)] }
 	return at(0.1), at(0.5), at(0.9), true
 }
 
@@ -208,7 +210,7 @@ func Percentile(v []int, p float64) int {
 	}
 	s := append([]int(nil), v...)
 	sort.Ints(s)
-	return s[int(p*float64(len(s)-1)+0.5)]
+	return s[safeint.From(p*float64(len(s)-1)+0.5)]
 }
 
 // Sim is the tally of n fights against troop from start's starting states (gozen sim battle). seen receives the battle number and Step.

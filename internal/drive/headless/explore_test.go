@@ -398,3 +398,89 @@ events:
 		t.Errorf("all five options are tried: %d", len(all))
 	}
 }
+
+// TestExploreDecidedBattleIsRecorded: a battle Explore decides is left as the
+// driver leaves a supplied result (TestDefeatRecoveryPolicy): the outcome is
+// recorded for last_battle, and recover: false keeps a fallen fighter at 0.
+func TestExploreDecidedBattleIsRecorded(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/loss.yaml": `
+events:
+  loss:
+    do:
+      - battle: boss
+        fighters: [guide]
+        retry: false
+        recover: false
+        on_lose: [{set: {var.losses: "var.losses + 1", var.final_hp: "last_battle.hp.guide"}}]
+`})
+	st := testgame.State(db, 1)
+	st.Join("guide")
+	st.Actors["guide"].HP = 0
+	paths := headless.Explore(db, st, db.Events["loss"].Do, headless.Config{
+		Outcomes: func(*rpg.State, event.Battle) []int { return []int{event.BattleLost} },
+		NoArrive: true,
+	})
+	if len(paths) != 1 {
+		t.Fatalf("paths: %d", len(paths))
+	}
+	p := paths[0]
+	if len(p.Errs) > 0 {
+		t.Errorf("errors on the explored path: %v", p.Errs)
+	}
+	if p.St.LastBattle == nil || p.St.LastBattle.Result != "lose" {
+		t.Errorf("last_battle %+v: want the decided loss recorded as Driver records it", p.St.LastBattle)
+	}
+	if hp := p.St.Actors["guide"].HP; hp != 0 {
+		t.Errorf("guide HP %d: recover: false keeps a fallen fighter at 0 (Driver does)", hp)
+	}
+}
+
+// TestExploreRevealsAndMeetsHunters: an explored move records the entrance it
+// arrives at, and a strong foe whose appear holds comes when the events are
+// over, as on the screen and in the driver.
+func TestExploreRevealsAndMeetsHunters(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/deep.yaml": `
+locations:
+  deep:
+    name: Deep
+    dungeon:
+      generate:
+        width: 15
+        height: 15
+        rooms: 2
+        start: S
+        place: [{char: ">", far: true}]
+      roamers:
+        - name: Hunter
+          icon: x.png
+          mark: "#c0a0ff"
+          move: hunt
+          appear: "var.pent == 1"
+          wait: "0"
+          every: "3"
+          on_appear: [{say: here}]
+          meet: [{say: met}]
+      tiles:
+        S: {start: true}
+        ">": {name: Stairs, solid: "true", do: [{say: down}]}
+events:
+  descend:
+    do: [{set: {var.pent: 1}}, {dive: deep}]
+`})
+	st := testgame.State(db, 1)
+	paths := headless.Explore(db, st, db.Events["descend"].Do, headless.Config{})
+	if len(paths) != 1 || len(paths[0].Errs) > 0 {
+		t.Fatalf("paths %d, errors %v", len(paths), paths[0].Errs)
+	}
+	p := paths[0]
+	if !slices.Contains(p.Lines, "here") || len(p.St.Roamers) != 1 {
+		t.Errorf("lines %v, roamers %+v: want the hunter to appear", p.Lines, p.St.Roamers)
+	}
+	seen := false
+	for _, cells := range p.St.Mapped {
+		seen = seen || slices.Contains(cells, 1)
+	}
+	if !seen {
+		t.Errorf("the entrance arrived at is not on the map: %v", p.St.Mapped)
+	}
+}

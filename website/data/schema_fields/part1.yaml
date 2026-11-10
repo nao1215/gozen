@@ -236,7 +236,7 @@ Clash:
   hit: "The troops a unit's strike takes in a clash shown as units: a strikes, b is struck (troops, max, might, hp, mhp, player, level and the stats). Default `a.troops * 0.15 * (0.8 + rand() * 0.4)`."
   per_soldier: "The troops one soldier stands for in a clash shown as units. Default 50 for the ranks; with armies, the troops a unit marches with divided by max_soldiers, and a value here wins."
   max_soldiers: "The most soldiers one unit of an army shows in a clash shown with armies, from 1 to 12. Default 4. They fall from the back as the troops fall."
-  rounds: "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5."
+  rounds: "The most rounds of a clash shown as units; when they run out, the region holds (a draw). Default 5, at most 100."
   soldiers: "The pictures of one soldier of the player's side (player, facing right) and of the foes' (foe, facing left), lined up behind each leader in a clash shown as units."
   held: "The garrison of b left after holding. Default `b.troops - power * 0.4`."
   lost: "The troops of a left after failing. Default `a.troops * 0.5`."

@@ -39,9 +39,12 @@ var (
 	// TargetNames are known to a target's where and by: t is the candidate.
 	TargetNames = append(slices.Clone(BattleNames), "t")
 	// FloorNames are known where floor is the number of a generated floor (it hides the
-	// built-in function floor): generate's size, generate.place's count and a roamer's
-	// count, appear, wait and every.
+	// built-in function floor): a roamer's count, appear, wait and every.
 	FloorNames = append(slices.Clone(FieldNames), "floor")
+	// MapNames are known to what shapes a generated floor's map: generate's size and
+	// generate.place's count. The map is made again from its seed when a save is loaded, so
+	// they read the floor's number only: nothing of the state, and no rand or chance.
+	MapNames = []string{"floor"}
 	// LevelNames are known to a class's growth: the level.
 	LevelNames = []string{"level"}
 )
@@ -748,12 +751,18 @@ func (db *DB) Check() []error {
 	c.callLoops()
 	c.tacticCatalog()
 	c.profiles()
-	c.numericValues(&db.Game, "game.yaml")
+	c.numericValues(&db.Game, "game.yaml", true)
+	c.amounts()
 	c.numericValues(&file{
 		Classes: db.Classes, Actors: db.Actors, Items: db.Items, Skills: db.Skills,
 		States: db.States, Enemies: db.Enemies, Troops: db.Troops, Locations: db.Locations,
 		Events: db.Events, Shops: db.Shops, AI: db.AI, Music: &db.Music,
-	}, "")
+		StoneSets: db.StoneSets, Fusions: db.Fusions, Breeding: db.Breeding, Profiles: db.Profiles,
+		Regions: db.Regions, Factions: db.Factions,
+	}, "", true)
+	if db.Streams != nil {
+		c.numericValues(db.Streams, "streams", true)
+	}
 	g := &db.Game
 	_, ok := db.Locations[g.Start.Location]
 	c.ref("game.yaml start.location", "location", g.Start.Location, ok)
@@ -1289,6 +1298,11 @@ func (db *DB) Check() []error {
 				c.errorf(diag.UnknownReference, w+".stats", "unknown stat %q", st)
 			}
 		}
+		for _, st := range slices.Sorted(maps.Keys(s.StatsBy)) {
+			if read := statReadBy(s.StatsBy[st].Expr, st); read != "" {
+				c.errorf(diag.Expression, w+".stats_by."+st, "the multiplier of %s reads a.%s, which is %s with this multiplier: it never settles", st, read, st)
+			}
+		}
 	}
 	for _, id := range db.Ordered("enemies") {
 		e := db.Enemies[id]
@@ -1522,7 +1536,8 @@ func (db *DB) Check() []error {
 	for _, id := range db.Ordered("ai") {
 		c.rules("ai."+id, db.AI[id])
 	}
-	for name, s := range db.Music.Songs {
+	for _, name := range slices.Sorted(maps.Keys(db.Music.Songs)) {
+		s := db.Music.Songs[name]
 		if s.File != "" { // a track
 			c.file("music.songs."+name+".file", s.File)
 			if len(s.Moods) > 0 {
@@ -1537,7 +1552,9 @@ func (db *DB) Check() []error {
 			c.errorf(diag.Shape, "music.songs."+name, "bpm is missing")
 		}
 	}
-	for ctx, rules := range db.Music.Rules {
+	// In a fixed order: the first read of a flag is the place its warning names.
+	for _, ctx := range slices.Sorted(maps.Keys(db.Music.Rules)) {
+		rules := db.Music.Rules[ctx]
 		names := FieldNames
 		switch ctx {
 		case "field":
@@ -3018,4 +3035,20 @@ func (c *checker) phonePackage(at string, a PhoneApp) {
 		c.errorf(diag.Shape, at+".install", "install must be bundled or optional")
 	}
 	c.expr(at+".when", a.When, FieldNames)
+}
+
+// statReadBy is the field of a (the holder) an expression reads that needs the
+// stat itself: the stat, or the rate whose maximum it is ("" for none). A
+// stats_by multiplier that reads one would be worked out from its own result.
+func statReadBy(e *expr.Expr, stat string) string {
+	for _, ref := range e.Refs() {
+		if ref.Name != "a" || len(ref.Path) == 0 {
+			continue
+		}
+		switch field := ref.Path[0].Name; {
+		case field == stat, stat == "mhp" && field == "hp_rate", stat == "mmp" && field == "mp_rate":
+			return field
+		}
+	}
+	return ""
 }

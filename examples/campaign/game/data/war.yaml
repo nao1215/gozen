@@ -9,7 +9,7 @@ factions:
     capital: well
     generals: [raven_knight, pale_guard]
     ai:
-      - {draft: "280"}
+      - {draft: "160"}
       - {march: true, when: "var.truce < campaign.turn", keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
   stag:
     name: Stag
@@ -17,7 +17,7 @@ factions:
     capital: hill
     generals: [stag_brute, hill_wolf]
     ai:
-      - {draft: "280"}
+      - {draft: "160"}
       - {march: true, keep: 1000, where: "s.troops * 0.6 > t.troops * 1.25", pick: min, by: t.troops}
 regions:
   vale: {name: Ashvale, next: [cross, ford], owner: crown, troops: 600, terrain: castle, defend: vale_guard, values: {wealth: 40}, area: [[110, 430], [300, 430], [560, 500], [640, 640], [900, 690], [780, 780], [520, 880], [330, 800], [200, 700], [100, 520]]}

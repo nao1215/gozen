@@ -17,7 +17,6 @@ import (
 	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/dungeon"
 	"github.com/nao1215/gozen/internal/rules/event"
-	"github.com/nao1215/gozen/internal/rules/field"
 	"github.com/nao1215/gozen/internal/rules/scope"
 	"github.com/nao1215/gozen/internal/rules/world"
 )
@@ -83,9 +82,12 @@ type cursor struct {
 	lines     int
 	answers   []int
 	// unread tells that the last request was a phone with results, which a
-	// session does not show: the next request puts it down with nothing kept
-	// (-1 in answers then, so a save at the phone keeps its line's answers).
-	unread      bool
+	// session does not show: the next request puts it down with nothing kept.
+	unread bool
+	// put counts the phones put down since the last line. Each becomes a -1 in
+	// answers when the next line is counted: a load reads on only to the last
+	// line, so an answer recorded after it would be one no restore reaches.
+	put         int
 	noBack      bool
 	arriving    bool
 	before, rbf []byte
@@ -111,6 +113,7 @@ func New(g *Game, cfg Config) (*Session, error) {
 	}
 	s := newSession(g, cfg)
 	s.st = rpg.New(s.db, rand.New(s.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	s.db = s.st.DB
 	s.st.SetRecruitSeed(s.seed)
 	s.start()
 	return s, nil
@@ -417,7 +420,7 @@ func (s *Session) next() Request {
 		if s.runner.Running() {
 			if s.at.unread {
 				// The runner drops the phone on this Next; a load replays -1 for it.
-				s.at.answers, s.at.unread = append(s.at.answers, -1), false
+				s.at.put, s.at.unread = s.at.put+1, false
 			}
 			r := s.runner.Next()
 			if r == nil {
@@ -437,6 +440,10 @@ func (s *Session) next() Request {
 			q := s.request(r)
 			switch q.Kind {
 			case "say", "choice":
+				for range s.at.put {
+					s.at.answers = append(s.at.answers, -1)
+				}
+				s.at.put = 0
 				s.at.lines++
 			case "battle", "shop", "save", "open", "clear", "game_over":
 				s.at.noBack = true
@@ -493,7 +500,7 @@ func (s *Session) next() Request {
 			s.quiet = false
 			continue
 		}
-		if cmds := field.Auto(s.db, s.st); cmds != nil {
+		if cmds := world.Auto(s.db, s.st); cmds != nil {
 			s.runner.Start(cmds)
 			continue
 		}
@@ -541,15 +548,7 @@ func (s *Session) Answer(n int) {
 	res := n
 	switch n {
 	case Won, Lost, Fled:
-		s.st.Fighters = b.Fighters
-		members := s.st.BattleMembers()
-		s.st.Fighters = nil
-		s.st.RecordBattle(scope.ResultName(n), members)
-		if n == Lost && b.CanLose && !b.NoRecovery {
-			for _, m := range members {
-				m.HP = max(1, m.HP)
-			}
-		}
+		b.Decide(s.st, n)
 	default:
 		res = s.fight(b)
 	}
@@ -760,9 +759,7 @@ func (s *Session) autoBattle(b *battle.Battle, maxTurns int) {
 			}
 			sub.Extra = b.Env(nil)
 			sub.Start(st.Commands)
-			for sub.Running() {
-				sub.Unattended(sub.Next()) // there is no battle inside a battle
-			}
+			sub.RunUnattended() // there is no battle inside a battle
 		}
 	}
 	play(b.Begin())

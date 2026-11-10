@@ -110,3 +110,14 @@ func TestTacticYAMLDefaults(t *testing.T) {
 		}
 	}
 }
+
+// TestAssetNamesStayUnderAssets: a name that climbs out of assets/ names no asset,
+// even when the file it reaches exists.
+func TestAssetNamesStayUnderAssets(t *testing.T) {
+	db := &DB{FS: fstest.MapFS{"game.yaml": {Data: []byte("title: T")}, "assets/x.png": {Data: []byte("x")}}}
+	c := &checker{db: db}
+	c.file("game.yaml fonts.regular", "../game.yaml")
+	if len(c.errs) == 0 {
+		t.Error(`fonts.regular: ../game.yaml passes as an asset (assets/../game.yaml)`)
+	}
+}

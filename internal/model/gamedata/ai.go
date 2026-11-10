@@ -28,7 +28,7 @@ func (db *DB) RuleUsage(r Rule) *Usage {
 // It does not evaluate the battle situation or learning state. Rules without a position return a logical path from rules.
 func (db *DB) CheckRules(rules []Rule) []error {
 	c := &checker{db: db}
-	c.numericValues(rules, "rules")
+	c.numericValues(rules, "rules", false)
 	c.rules("rules", rules)
 	return sortedDiagnostics(c.errs)
 }

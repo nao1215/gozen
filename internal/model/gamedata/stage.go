@@ -657,6 +657,8 @@ func (c *checker) stage(w, _ string, l *Location) {
 			c.errorf(diag.Shape, ww+".id", "a thing needs an id (or action)")
 		case thingIDs[t.ID]:
 			c.errorf(diag.Duplicate, ww+".id", "duplicate thing id %q", t.ID)
+		case s.Spots[t.ID] != nil: // once keeps one record for an id of the location
+			c.errorf(diag.Duplicate, ww+".id", "%q is a spot's id too (a thing and a spot of one stage have their own ids)", t.ID)
 		}
 		thingIDs[t.ID] = true
 		if t.Name == "" {

@@ -2,7 +2,10 @@ package dungeon
 
 import (
 	"math"
+	"slices"
 	"strconv"
+
+	"github.com/nao1215/gozen/internal/base/safeint"
 
 	"github.com/nao1215/gozen/internal/base/expr"
 	"github.com/nao1215/gozen/internal/base/optional"
@@ -73,11 +76,14 @@ func placeRoamers(db *data.DB, st *rpg.State, d *data.Dungeon) {
 			if err != nil {
 				continue
 			}
-			n = int(v)
+			n = safeint.From(v)
 		}
 		far := r.Far
 		if !r.HasFar() || (db.Game.SchemaVersion == data.LegacySchemaVersion && far <= 0) {
 			far = max(6, most*3/5)
+		}
+		if far > most { // no cell is that far: the search below starts by the farthest, on the same steps down
+			far -= (far - most) / 2 * 2
 		}
 		var cells [][2]int
 		open := 0
@@ -196,7 +202,7 @@ func roamerTile(d *data.Dungeon, st *rpg.State, i int) *data.Tile {
 func SettleRoamers(st *rpg.State) {
 	if f := optional.Value[float64](st.Vars[VarRoamerFled]); f > 0 {
 		delete(st.Vars, VarRoamerFled)
-		if i := int(f) - 1; i < len(st.Roamers) {
+		if i := safeint.From(f) - 1; i >= 0 && i < len(st.Roamers) {
 			st.Roamers[i].Calm = st.Steps + roamFledSteps
 		}
 	}
@@ -205,7 +211,7 @@ func SettleRoamers(st *rpg.State) {
 		return
 	}
 	delete(st.Vars, VarRoamerBeaten)
-	if i := int(n) - 1; i < len(st.Roamers) {
+	if i := safeint.From(n) - 1; i >= 0 && i < len(st.Roamers) {
 		st.Roamers = append(st.Roamers[:i], st.Roamers[i+1:]...)
 	}
 }
@@ -253,11 +259,11 @@ func moveRoamers(d *data.Dungeon, st *rpg.State, from [2]int) {
 		n := every(k, st)
 		moves := 1
 		if n >= 1 {
-			if s := int(n); s > 1 && r.Walk%s != 0 { // one cell every `every` steps: rest on this step
+			if s := safeint.From(n); s > 1 && r.Walk%s != 0 { // one cell every `every` steps: rest on this step
 				continue
 			}
 		} else { // every is less than 1: several cells per step (2 cells for 0.5)
-			moves = max(1, int(math.Round(1/n)))
+			moves = max(1, safeint.From(math.Round(1/n)))
 		}
 		for m := range moves {
 			if !stepRoamer(d, st, dist, from, i, m == 0) {
@@ -362,7 +368,7 @@ func every(k data.Roamer, st *rpg.State) float64 {
 	if v < 1 {
 		return v
 	}
-	return float64(int(v))
+	return float64(safeint.From(v))
 }
 
 // floorEnv is the state's names with floor (the floor's number).
@@ -428,6 +434,8 @@ func Hunters(db *data.DB, st *rpg.State) []data.Command {
 // huntIn puts a roamer of kind on the plain floor farthest from the party by the walk (one
 // of them at random), and reports whether there was such a cell. Its far keeps it that many
 // steps from the floor's start (so the up stairs near the arrival point are not blocked, leaving no escape).
+// Its battle is drawn from its troops as on a dive: without meet and with no troop whose
+// when holds, it does not come out.
 func huntIn(d *data.Dungeon, st *rpg.State, kind int) bool {
 	w, h := d.Size()
 	dist := walkDistances(d, st, st.Pos.X, st.Pos.Y)
@@ -444,6 +452,9 @@ func huntIn(d *data.Dungeon, st *rpg.State, kind int) bool {
 					break
 				}
 			}
+		}
+		if fromStart != nil {
+			far = min(far, slices.Max(fromStart)) // no cell is farther than the farthest
 		}
 		for f := far; fromStart != nil && f > 0; f-- { // if there is no such floor, bring it closer
 			ok := false
@@ -480,8 +491,14 @@ func huntIn(d *data.Dungeon, st *rpg.State, kind int) bool {
 	if len(cells) == 0 {
 		return false
 	}
+	troop := ""
+	if k := d.Roamers[kind]; len(k.Meet) == 0 { // meet stands for the battle
+		if troop = pickTroop(st, k.Troops); troop == "" {
+			return false
+		}
+	}
 	c := cells[st.Rand.IntN(len(cells))]
-	st.Roamers = append(st.Roamers, rpg.Roamer{Kind: kind, X: c[0], Y: c[1]})
+	st.Roamers = append(st.Roamers, rpg.Roamer{Kind: kind, Troop: troop, X: c[0], Y: c[1]})
 	return true
 }
 

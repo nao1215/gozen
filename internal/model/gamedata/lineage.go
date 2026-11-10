@@ -13,10 +13,6 @@ const (
 	RecipeFamily  = "family"
 )
 
-// DefaultOpenDepth is how many generations a lineage opens by default. The root is depth
-// zero, and a node shows its parents when its depth is below this number.
-const DefaultOpenDepth = 2
-
 // Recipe is one way to obtain a species: a capture, a specific pair of species or a
 // rule for two families. Parents are concrete species IDs; Families names the family
 // rule when one applies. Steps is the fewest breeding generations for this recipe.

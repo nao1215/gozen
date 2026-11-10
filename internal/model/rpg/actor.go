@@ -104,6 +104,11 @@ func (a *Actor) bind(db *data.DB) {
 		a.Tree = map[string]int{}
 	}
 	a.fitTree()
+	// The limits may have moved since the save: equipment left above, or the class changed.
+	if a.Def() != nil && a.Class() != nil {
+		a.HP, a.MP = max(0, a.HP), max(0, a.MP)
+		a.clamp()
+	}
 }
 
 // fitTree fits an old save's skill tree to the current data. Levels of vanished nodes, and levels beyond
@@ -155,7 +160,7 @@ func baseAt(c *data.Class, stat string, level int) int {
 	if err != nil {
 		return 0
 	}
-	return max(0, int(math.Floor(v)))
+	return max(0, safeint.From(math.Floor(v)))
 }
 
 // Stat is the stat with the equipment's bonuses.
