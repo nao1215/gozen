@@ -6,7 +6,7 @@ Generate:
   place: "The other characters placed on the floor apart from the start, such as stairs and events."
   rooms: "How many rooms the maze has."
   seed: "The random seed of the map. When set, every save gets the same map; otherwise each save gets its own seed."
-  size: "An expression of the floor number giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller."
+  size: "An expression of the floor number `floor` alone (no other name, `rand` or `chance`) giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller."
   start: "The map character the party arrives at."
   width: "The width of the maze in cells. Use an odd number."
 Grant:

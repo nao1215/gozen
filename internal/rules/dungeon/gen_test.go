@@ -1,6 +1,7 @@
 package dungeon
 
 import (
+	"math"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 func TestAMadeFloorIsAllReachable(t *testing.T) {
@@ -336,5 +338,154 @@ func TestPutNearTheStairs(t *testing.T) {
 	// If the stairs are at a dead end, the guard blocks the way. In a room and the like, you only stand on the tile before the stairs (you can go around; the game's descend stops it).
 	if placed != 60 || cut < 20 {
 		t.Errorf("the guard stood in front of the stairs on %d of 60 floors, and shut them off on %d (want 60 and 20 or more)", placed, cut)
+	}
+}
+
+// A drawn floor may keep a part behind a solid tile (a locked door, solid: "!flag.key"): the
+// stairs and the chest are still placed, in the part walked to, and shut nothing there.
+func TestDrawnFloorWithAShutPartGetsItsPlacements(t *testing.T) {
+	g := &data.Generate{Start: "S", Place: []data.Put{{Char: ">", Far: true}, {Char: "T"}}}
+	kind := func(r rune) Kind {
+		switch r {
+		case 'L', 'T':
+			return Kind{Solid: true}
+		case '>':
+			return Kind{Carry: true}
+		}
+		return Kind{}
+	}
+	one := func(data.Expr) int { return 1 }
+	open := "#########\n#S......#\n#.......#\n#.......#\n#########"
+	shut := "#########\n#S...#..#\n#....L..#\n#....#..#\n#########"
+	for _, c := range []struct{ name, m string }{{"open", open}, {"shut", shut}} {
+		out := Drawn(g, c.m, rand.New(rand.NewPCG(1, 1)), kind, one) //nolint:gosec // Deterministic test.
+		if strings.Count(out, ">") != 1 || strings.Count(out, "T") != 1 {
+			t.Errorf("%s: stairs %d, chests %d (want 1 and 1):\n%s", c.name, strings.Count(out, ">"), strings.Count(out, "T"), out)
+		}
+		for row := range strings.SplitSeq(out, "\n") {
+			if c.name == "shut" && strings.ContainsAny(row[min(len(row), 6):], ">T") {
+				t.Errorf("something is placed behind the shut door, where no way is checked:\n%s", out)
+			}
+		}
+	}
+}
+
+// Drawn gives no map for a floor the check would refuse, instead of walking off its grid.
+func TestDrawnRefusesAMapItCannotWalk(t *testing.T) {
+	g := &data.Generate{Start: "S", Place: []data.Put{{Char: ">", Far: true}, {Char: "T", At: &[2]int{1, 1}}}}
+	for name, m := range map[string]string{
+		"no start":          "###\n#.#\n###",
+		"an open edge":      "###\n#S.\n###",
+		"the start on edge": "#S#\n#.#\n###",
+		"two rows":          "###\n#S#",
+		"two columns":       "#S\n#.\n##",
+		"uneven rows":       "###\n#S##\n###",
+		"nothing":           "",
+	} {
+		if out := Drawn(g, m, rand.New(rand.NewPCG(1, 1)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }); out != "" { //nolint:gosec // Deterministic test.
+			t.Errorf("%s: want no map, got\n%s", name, out)
+		}
+	}
+}
+
+// A maze of corridors only (rooms: 0) could have every dead end filled, to its last cell:
+// no floor to start on (seed 3726 of a 9x9 floor), or the start alone and no stairs down.
+func TestMazeOfCorridorsOnlyKeepsItsFloor(t *testing.T) {
+	g := &data.Generate{Width: 9, Height: 9, Start: "S", Loops: 1e-9, Place: []data.Put{{Char: ">", Far: true}}}
+	for _, seed := range []uint64{3726, 14531, 0, 1, 2} {
+		m := MazeKinds(g, rand.New(rand.NewPCG(seed, 1)), func(rune) Kind { return Kind{} }, func(data.Expr) int { return 1 }) //nolint:gosec // Deterministic test.
+		if open := strings.Count(m, "."); strings.Count(m, "S") != 1 || strings.Count(m, ">") != 1 || open+2 < minMazeFloor {
+			t.Errorf("seed %d: want a start, stairs down and %d cells of floor or more:\n%s", seed, minMazeFloor, m)
+		}
+	}
+	// the same through checked data and a dive (rooms: 0 passes the check)
+	game := strings.Replace(strings.Replace(countGame, "rooms: 4", "rooms: 0", 1), "width: 21\n        height: 21", "width: 9\n        height: 9", 1)
+	db := testgame.Load(t, map[string]string{"data/deep.yaml": game})
+	st := testgame.State(db, 1)
+	st.Location = "deep"
+	st.Vars[VarSeed] = 32682.0
+	Dive(db, st, "deep", 1)
+	if m := db.Locations["deep"].Dungeon.Map; strings.Count(m, ">") != 1 {
+		t.Errorf("dive_seed 32682: no stairs down:\n%s", m)
+	}
+}
+
+const countGame = `
+locations:
+  deep:
+    name: Deep
+    dungeon:
+      generate:
+        width: 21
+        height: 21
+        rooms: 4
+        start: S
+        place:
+          - {char: ">", far: true}
+          - {char: T, count: "1 + floor"}
+      tiles:
+        S: {start: true}
+        T: {name: Chest, solid: "true", once: true, after: ".", do: [{say: chest}]}
+        ">": {name: Stairs, solid: "true", do: [{say: down}]}
+`
+
+// A floor is made again from its seed when a save is loaded, so what shapes it reads the
+// floor's number only: a count or a size of the state (which the check refuses) would make
+// another map, and the chests opened and the cells seen on the floor would be forgotten.
+func TestAFloorMadeAgainIsTheSameMap(t *testing.T) {
+	for _, field := range []string{"count", "size"} {
+		db := testgame.Load(t, map[string]string{"data/deep.yaml": countGame})
+		g := db.Locations["deep"].Dungeon.Generate
+		of := func(src string) data.Expr {
+			p, err := expr.Parse(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return data.Expr{Expr: p}
+		}
+		if field == "count" { // unchecked data: put past the check
+			g.Place[1].Count = of("1 + var.luck + rand(6)")
+		} else {
+			g.Size = of("9 + 2 * var.luck + 2 * rand(4)")
+		}
+		st := testgame.State(db, 5)
+		st.Location = "deep"
+		Dive(db, st, "deep", 1)
+		want := db.Locations["deep"].Dungeon.Map
+		st.Done["deep/1@3,3"] = true // a chest opened on this floor
+		st.Vars["luck"] = 2.0        // the game goes on
+		for range 8 {                // a save loaded
+			Remake(db, st)
+			if got := db.Locations["deep"].Dungeon.Map; got != want {
+				t.Fatalf("%s: the floor made again is another map:\n%s\nwas\n%s", field, got, want)
+			}
+		}
+		if !st.Done["deep/1@3,3"] {
+			t.Errorf("%s: the opened chest was forgotten", field)
+		}
+	}
+}
+
+// The seed is a number of the save: its bits are the same on every platform.
+func TestSeedBits(t *testing.T) {
+	for seed, want := range map[float64]uint64{
+		0:                  0,
+		32682.9:            32682,
+		4294967295:         4294967295,
+		-1:                 math.MaxUint64,
+		-5.5:               math.MaxUint64 - 4,
+		math.Inf(-1):       1 << 63,
+		-1e300:             1 << 63,
+		math.Inf(1):        math.MaxUint64,
+		1e300:              math.MaxUint64,
+		1 << 63:            1 << 63,
+		math.MaxUint32 + 1: 1 << 32,
+	} {
+		if got := seedBits(seed); got != want {
+			t.Errorf("seedBits(%g) = %d, want %d", seed, got, want)
+		}
+	}
+	if got := seedBits(math.NaN()); got != 0 {
+		t.Errorf("seedBits(NaN) = %d, want 0", got)
 	}
 }

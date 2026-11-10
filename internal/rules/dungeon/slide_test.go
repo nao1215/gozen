@@ -371,3 +371,19 @@ events:
 		t.Fatal("no way over the spent nook")
 	}
 }
+
+// TestTheWayToASlide: a slide is come to by stepping onto it, though it carries the party on
+// past it (the way's goal is the slide itself, not only where it ends).
+func TestTheWayToASlide(t *testing.T) {
+	db, st := slideSetup(t)
+	if move, ok := dungeon.Next(db, st, 'i'); !ok || move != dungeon.MoveForward {
+		t.Fatalf("the way to the ice ahead: %q %v, want forward", move, ok)
+	}
+	dungeon.Forward(db, st)
+	if move, ok := dungeon.Next(db, st, 'i'); !ok || move != dungeon.MoveForward {
+		t.Fatalf("the way onto the ice in front: %q %v, want forward", move, ok)
+	}
+	if move, ok := dungeon.Next(db, st, 'v'); !ok || move != dungeon.MoveForward {
+		t.Fatalf("the way to the rail over the ice: %q %v, want forward", move, ok)
+	}
+}

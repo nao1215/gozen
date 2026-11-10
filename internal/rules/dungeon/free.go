@@ -202,12 +202,19 @@ func freeCell(d *data.Dungeon, st *rpg.State, level, x, z int) Cell {
 	return CellAt(data.DungeonLevel(d, level), &copyState, x, z)
 }
 
+// freeBlock is what stands in the way of the body: a cell and the level it is on (a wall or
+// the underside of a floor above is in the way of a body on the stairs below it).
+type freeBlock struct {
+	Cell
+	level int
+}
+
 // freeFits checks the footprint against nearby cells, including missing support,
 // walls on other levels and the underside of floors/stair volumes above the body.
-func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (Cell, bool) {
+func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (freeBlock, bool) {
 	feet := data.SpaceHeightAt(d.Space, target.Level, x, z)
 	if d.Space.RoofBlocks(x, z, freeRadius, feet, feet+freeBodyHeight) {
-		return Cell{X: target.X, Y: target.Y, Solid: true}, false
+		return freeBlock{Cell{X: target.X, Y: target.Y, Solid: true}, target.Level}, false
 	}
 	for iz := int(math.Floor(z - freeRadius)); iz <= int(math.Floor(z+freeRadius)); iz++ {
 		for ix := int(math.Floor(x - freeRadius)); ix <= int(math.Floor(x+freeRadius)); ix++ {
@@ -219,7 +226,7 @@ func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (Cel
 			support, ok := freeSupport(d.Space, target, ix, iz)
 			cell := freeCell(d, st, support.Level, ix, iz)
 			if !ok || cell.Solid {
-				return cell, false
+				return freeBlock{cell, support.Level}, false
 			}
 			for level := range d.Space.Levels {
 				if level == support.Level {
@@ -235,12 +242,12 @@ func freeFits(d *data.Dungeon, st *rpg.State, target rpg.Pos, x, z float64) (Cel
 					top += data.SpaceStoryHeight
 				}
 				if bottom-.15 < feet+freeBodyHeight-1e-8 && top > feet+1e-8 {
-					return other, false
+					return freeBlock{other, level}, false
 				}
 			}
 		}
 	}
-	return Cell{}, true
+	return freeBlock{}, true
 }
 
 func (c *FreeController) send(st *rpg.State, cmds []data.Command, dispatch func([]data.Command) bool) bool {
@@ -280,10 +287,12 @@ func (c *FreeController) move(db *data.DB, st *rpg.State, d *data.Dungeon, x, z 
 				return true, true
 			}
 			if !ok {
-				key := fmt.Sprintf("%s/%d/%d/%d", st.Location, st.Pos.Level, blocked.X, blocked.Y)
+				key := fmt.Sprintf("%s/%d/%d/%d", st.Location, blocked.level, blocked.X, blocked.Y)
 				if key != c.contact {
 					c.contact = key
-					if !c.send(st, trigger(st, blocked, "bump"), dispatch) {
+					there := *st // the cell's own level: its once is kept there (see freeCell)
+					there.Pos.Level = blocked.level
+					if !c.send(st, trigger(&there, blocked.Cell, "bump"), dispatch) {
 						return moved, true
 					}
 				}
@@ -299,31 +308,15 @@ func (c *FreeController) move(db *data.DB, st *rpg.State, d *data.Dungeon, x, z 
 	return moved, false
 }
 
-func (c *FreeController) segment(db *data.DB, st *rpg.State, d *data.Dungeon, dx, dz float64, dispatch func([]data.Command) bool) (bool, bool, Cell) {
+func (c *FreeController) segment(db *data.DB, st *rpg.State, d *data.Dungeon, dx, dz float64, dispatch func([]data.Command) bool) (bool, bool, freeBlock) {
 	moved := false
 	for math.Hypot(dx, dz) > 1e-10 {
 		p := st.SpacePose
-		fraction := 1.0
-		for _, axis := range [][2]float64{{p.X, dx}, {p.Z, dz}} {
-			if axis[1] == 0 {
-				continue
-			}
-			edge := math.Floor(axis[0]) + 1
-			if axis[1] < 0 {
-				edge = math.Floor(axis[0])
-				if math.Abs(axis[0]-edge) < 1e-10 {
-					edge--
-				}
-			}
-			f := (edge - axis[0]) / axis[1]
-			if f >= 0 && f < fraction {
-				fraction = min(1, f+1e-8)
-			}
-		}
+		fraction := freeFraction(p, dx, dz)
 		x, z := p.X+dx*fraction, p.Z+dz*fraction
 		target, ok := freeSupport(d.Space, st.Pos, int(math.Floor(x)), int(math.Floor(z)))
 		if !ok {
-			return moved, false, Cell{X: target.X, Y: target.Y, Solid: true}
+			return moved, false, freeBlock{Cell{X: target.X, Y: target.Y, Solid: true}, target.Level}
 		}
 		if blocked, fits := freeFits(d, st, target, x, z); !fits {
 			return moved, false, blocked
@@ -355,10 +348,10 @@ func (c *FreeController) segment(db *data.DB, st *rpg.State, d *data.Dungeon, dx
 		if entered {
 			Reveal(db, st)
 			if !c.send(st, complete(Of(db, st), st), dispatch) {
-				return true, true, Cell{}
+				return true, true, freeBlock{}
 			}
 			if !c.send(st, trigger(st, freeCell(d, st, target.Level, target.X, target.Y), "step"), dispatch) {
-				return true, true, Cell{}
+				return true, true, freeBlock{}
 			}
 		}
 		if !freeEncounterEligible(db, st) {
@@ -367,13 +360,36 @@ func (c *FreeController) segment(db *data.DB, st *rpg.State, d *data.Dungeon, dx
 		}
 		if roll {
 			if !c.send(st, encounter(db, st), dispatch) {
-				return true, true, Cell{}
+				return true, true, freeBlock{}
 			}
 		}
 		dx *= 1 - fraction
 		dz *= 1 - fraction
 	}
-	return moved, false, Cell{}
+	return moved, false, freeBlock{}
+}
+
+// freeFraction is the part of the move dx, dz that reaches the first grid boundary crossed
+// from the pose (1: none is crossed), a hair beyond it so that the next cell is entered.
+func freeFraction(p *rpg.SpacePose, dx, dz float64) float64 {
+	fraction := 1.0
+	for _, axis := range [][2]float64{{p.X, dx}, {p.Z, dz}} {
+		if axis[1] == 0 {
+			continue
+		}
+		edge := math.Floor(axis[0]) + 1
+		if axis[1] < 0 {
+			edge = math.Floor(axis[0])
+			if math.Abs(axis[0]-edge) < 1e-10 {
+				edge--
+			}
+		}
+		f := (edge - axis[0]) / axis[1]
+		if f >= 0 && f < fraction {
+			fraction = min(1, f+1e-8)
+		}
+	}
+	return fraction
 }
 
 func freeEncounterEligible(db *data.DB, st *rpg.State) bool {

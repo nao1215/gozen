@@ -296,3 +296,81 @@ func TestStaleRoamersAreHarmless(t *testing.T) {
 		t.Errorf("%+v", cmds)
 	}
 }
+
+// A roamer that appears by condition draws its battle from its troops as one placed on the
+// dive does (without meet, the troop is its battle); with no troop to draw it stays away.
+func TestAppearRoamerDrawsItsTroop(t *testing.T) {
+	appear := func(troops string) (*data.DB, *rpg.State) {
+		db := testgame.Load(t, map[string]string{"data/r.yaml": strings.Replace(huntGame, "meet: [{say: met}, {battle: one}]", "troops: "+troops, 1)})
+		st := testgame.State(db, 3)
+		st.Location = "deep"
+		st.Calm = true
+		dungeon.Dive(db, st, "deep", 1)
+		st.Vars["pent"] = 1.0
+		st.Steps += 4
+		dungeon.Hunters(db, st)
+		return db, st
+	}
+	db, st := appear("[{troop: one}]")
+	if len(st.Roamers) != 1 {
+		t.Fatalf("roamers %+v", st.Roamers)
+	}
+	h := st.Roamers[0]
+	c := dungeon.CellAt(dungeon.Of(db, st), st, h.X, h.Y)
+	if h.Troop != "one" || c.Tile == nil || len(c.Tile.Do) != 1 || c.Tile.Do[0].Battle != "one" {
+		t.Errorf("the hunter's troop is %q and meeting it gives %+v, want the battle one", h.Troop, c.Tile)
+	}
+	if _, st := appear(`[{troop: one, when: "false"}]`); len(st.Roamers) != 0 {
+		t.Errorf("a hunter with no troop to draw came out: %+v", st.Roamers)
+	}
+}
+
+// A far beyond the floor's farthest cell is the farthest cell: the search for a cell does
+// not walk down from the number given (unchecked data may give any).
+func TestRoamerFarBeyondTheFloor(t *testing.T) {
+	for _, appear := range []bool{false, true} {
+		game := roamGame
+		if appear {
+			game = strings.Replace(huntGame, "meet: [{say: met}, {battle: one}]", "far: 3\n          troops: [{troop: one}]", 1)
+		}
+		places := func(far int) string {
+			db := testgame.Load(t, map[string]string{"data/r.yaml": game})
+			db.Locations["deep"].Dungeon.Roamers[0].Far = far
+			st := testgame.State(db, 3)
+			st.Location = "deep"
+			st.Calm = true
+			dungeon.Dive(db, st, "deep", 1)
+			st.Vars["pent"] = 1.0
+			st.Steps += 4
+			dungeon.Hunters(db, st)
+			if len(st.Roamers) == 0 {
+				t.Fatalf("appear %v, far %d: no roamer", appear, far)
+			}
+			return fmt.Sprint(st.Roamers)
+		}
+		// 15x15 cells: no walk is 500 steps, and the steps down from far keep their parity
+		if near, beyond := places(500), places(math.MaxInt-1); near != beyond {
+			t.Errorf("appear %v: far beyond the floor placed %s, want %s as for the farthest cell", appear, beyond, near)
+		}
+	}
+}
+
+// roamer_fled and roamer_beaten are variables a game's commands may set: a number that is
+// no roamer's (between 0 and 1, or past the last) settles nothing.
+func TestSettleRoamersIgnoresANumberOfNoRoamer(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/r.yaml": roamGame})
+	st := testgame.State(db, 3)
+	st.Location = "deep"
+	st.Calm = true
+	dungeon.Dive(db, st, "deep", 1)
+	before := fmt.Sprint(st.Roamers)
+	for _, name := range []string{dungeon.VarRoamerFled, dungeon.VarRoamerBeaten} {
+		for _, n := range []float64{0.5, 99} {
+			st.Vars[name] = n
+			dungeon.SettleRoamers(st)
+			if _, kept := st.Vars[name]; kept || fmt.Sprint(st.Roamers) != before {
+				t.Errorf("%s = %g: roamers %v (were %s), variable kept %v", name, n, st.Roamers, before, kept)
+			}
+		}
+	}
+}
