@@ -718,17 +718,11 @@ func (s *authorScreen) returnTo(g *Game, name string) bool {
 	}
 	under, ok := g.stack[len(g.stack)-2].(*authorScreen)
 	// The opener directly under, or a screen whose action opened this one and
-	// waits for it: closing hands control back, and the opener goes on.
-	if !ok || !under.running && (under.name != name || len(under.args) > 0) {
+	// waits for it: closing hands control back, and the opener goes on. A
+	// running opener gives control back only for itself or a home screen, so a
+	// phone's card can lead to its profile while the home's action still waits.
+	if !ok || !event.ReturnsTo(g.db, name, under.name, len(under.args), under.running) {
 		return false
-	}
-	// A running opener gives control back only for itself or a home screen
-	// (goingHome). Another destination opens over it, so a phone's card can
-	// lead to its profile while the home's action still waits.
-	if under.running && under.name != name {
-		if def := g.db.Game.Screens[name]; def == nil || !def.Home {
-			return false
-		}
 	}
 	g.pop()
 	if s.done != nil {

@@ -192,6 +192,13 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 						}
 						f := &s.Frames[len(s.Frames)-1]
 						s.Runner = f.Runner
+						if f.Destination != "" && len(s.Frames) > 1 {
+							under := s.Frames[len(s.Frames)-2]
+							if ReturnsTo(r.db, f.Destination, under.Name, len(under.Args), f.Runner.Running()) {
+								s.Frames = s.Frames[:len(s.Frames)-1]
+								continue
+							}
+						}
 						if f.Destination != "" {
 							f.Name, f.Args, f.Destination = f.Destination, nil, ""
 						}

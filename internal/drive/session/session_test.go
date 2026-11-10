@@ -2166,6 +2166,87 @@ func TestRepeatedScreenRowsResumeSelectedIdentity(t *testing.T) {
 	}
 }
 
+// TestScreenDestinationReturnsToOpener: an entry going to the screen whose
+// action opened this one closes back to it, as play does: the opener's action
+// goes on and one copy of it shows, live and after a save and restore.
+func TestScreenDestinationReturnsToOpener(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte(`schema_version: 10
+id: workshop-return
+planning:
+  calendar: {start: "2030-01-01", end: "2030-01-02", phases: [morning]}
+  entities: {potter: {name: Potter}}
+  activities: {shape: {name: Shape bowls, effort: 2}}
+start: {location: workshop}
+screens:
+  hub:
+    title: Hub
+    kind: workspace
+    entries:
+    - label: Detail
+      do: [{open: detail}, {set: {var.after: 'var.after+1'}}]
+  detail:
+    title: Detail
+    kind: workspace
+    entries: [{label: Back, destination: hub}]
+`)},
+		"data/world.yaml": {Data: []byte("locations: {workshop: {name: Workshop}}\nevents: {visit: {do: [{open: hub}]}}\n")},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, restore := range []bool{false, true} {
+		s := session(t, g, gozen.Config{Seed: 17})
+		if err = s.Start("- call: visit"); err != nil {
+			t.Fatal(err)
+		}
+		if q := s.Next(); q.Text != "Hub" {
+			t.Fatal(q)
+		}
+		s.Answer(0)
+		if q := s.Next(); q.Text != "Detail" {
+			t.Fatal(q)
+		}
+		if restore {
+			b, err := s.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s, err = gozen.Restore(g, b, gozen.Config{}); err != nil {
+				t.Fatal(err)
+			}
+			if q := s.Next(); q.Text != "Detail" {
+				t.Fatal(q)
+			}
+		}
+		s.Answer(0)
+		if q := s.Next(); q.Text != "Hub" {
+			t.Fatalf("restore %v: %+v, want the hub", restore, q)
+		}
+		if v := query[int](t, s, "var.after"); v != 1 {
+			t.Fatalf("restore %v: the opener's action did not go on before the hub showed again (after = %v)", restore, v)
+		}
+		if restore {
+			// The save replays the return as well: one hub, the action done once.
+			b, err := s.Save()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s, err = gozen.Restore(g, b, gozen.Config{}); err != nil {
+				t.Fatal(err)
+			}
+			if q := s.Next(); q.Text != "Hub" || query[int](t, s, "var.after") != 1 {
+				t.Fatalf("restored return: %+v", q)
+			}
+		}
+		s.Answer(-1)
+		if q := s.Next(); q.Kind != "" {
+			t.Fatalf("restore %v: a second hub was stacked: %+v", restore, q)
+		}
+	}
+}
+
 func TestScreenDestinationSurvivesPendingChoiceSave(t *testing.T) {
 	files := fstest.MapFS{
 		"game.yaml": {Data: []byte(`schema_version: 10
