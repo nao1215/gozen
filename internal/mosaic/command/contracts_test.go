@@ -109,9 +109,13 @@ func TestManualStateAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := []string{"--out", out, "--manual", manual, "--size", "48"}
+	base := []string{"--out", out, "--manual", manual}
 	call := func(sub string, flags ...string) int {
 		args := append([]string{sub}, base...)
+		if sub != "mark" {
+			// mark draws no check image, so it has no --size.
+			args = append(args, "--size", "48")
+		}
 		args = append(args, flags...)
 		args = append(args, game, "pattern.png")
 		code, _, diag := invoke(t, args...)

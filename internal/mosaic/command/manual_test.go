@@ -4,6 +4,8 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -33,7 +35,11 @@ func newManualEnv(t *testing.T, boxes ...detect.Box) *manualEnv {
 // call runs a manual command on pattern.png with the environment's files.
 func (e *manualEnv) call(sub string, flags ...string) (int, string, string) {
 	e.t.Helper()
-	args := []string{sub, "--model", e.model, "--manual", e.manual, "-o", e.out, "--size", "96"}
+	args := []string{sub, "--model", e.model, "--manual", e.manual, "-o", e.out}
+	if sub != "show" && sub != "mark" {
+		// The commands that draw: view, and those that leave a check image.
+		args = append(args, "--size", "96")
+	}
 	args = append(args, flags...)
 	args = append(args, e.game, "pattern.png")
 	return invoke(e.t, args...)
@@ -147,9 +153,14 @@ func TestManualCommandArgumentErrors(t *testing.T) {
 		{"no image", []string{"skip", "--manual", e.manual, game}, 2, "expected a game directory and an image"},
 		{"list with image", []string{"list", game, "pattern.png"}, 2, "expected a game directory"},
 		{"no manual file", []string{"skip", "-o", e.out, game, "pattern.png"}, 1, "MOSAIC_MANUAL"},
-		{"box on grow", []string{"grow", "--manual", e.manual, "--box", "0,0,4,4", game, "pattern.png"}, 1, "require add or drop"},
-		{"poly on drop", []string{"drop", "--manual", e.manual, "--poly", "0,0,4,0,2,4", game, "pattern.png"}, 1, "drop requires rectangles"},
-		{"geometry on skip", []string{"skip", "--manual", e.manual, "--rect", "0,0,4,4", game, "pattern.png"}, 1, "geometry flags require"},
+		{"box on grow", []string{"grow", "--manual", e.manual, "--box", "0,0,4,4", game, "pattern.png"}, 2, "unknown flag: --box"},
+		{"poly on drop", []string{"drop", "--manual", e.manual, "--poly", "0,0,4,0,2,4", game, "pattern.png"}, 2, "unknown flag: --poly"},
+		{"geometry on skip", []string{"skip", "--manual", e.manual, "--rect", "0,0,4,4", game, "pattern.png"}, 2, "unknown flag: --rect"},
+		{"geometry on list", []string{"list", "--rect", "0,0,4,4", game}, 2, "unknown flag: --rect"},
+		{"amount on add", []string{"add", "--manual", e.manual, "--rect", "0,0,4,4", "--by", "2", game, "pattern.png"}, 2, "unknown flag: --by"},
+		{"view options on show", []string{"show", "--src", "masked", game, "pattern.png"}, 2, "unknown flag: --src"},
+		{"checked on skip", []string{"skip", "--manual", e.manual, "--checked", game, "pattern.png"}, 2, "unknown flag: --checked"},
+		{"no image for mark", []string{"mark", "--manual", e.manual, "--checked", game}, 2, "gozen mosaic mark [OPTIONS] <game-dir> <IMAGE>"},
 		{"view size", []string{"view", "--size", "0", game, "pattern.png"}, 1, "view size"},
 		{"view size big", []string{"view", "--size", "5000", game, "pattern.png"}, 1, "view size"},
 		{"view step", []string{"view", "--step", "-1", game, "pattern.png"}, 1, "view size"},
@@ -309,5 +320,67 @@ func TestManualPrefersTheAssetOverAFileInTheWorkingDirectory(t *testing.T) {
 	// Named by its path, the other file is still the file outside the assets.
 	if code, _, diag := invoke(t, "skip", "--manual", e.manual, "-o", e.out, e.game, filepath.Join(cwd, "pattern.png")); code != 1 || !strings.Contains(diag, "assets") {
 		t.Fatalf("a file outside the assets: code %d: %s", code, diag)
+	}
+}
+
+// TestManualHelpDescribesEachCommand: every manual command has its own usage, summary and
+// option groups. They used to share one page: "GAME [IMAGE]" for an image that is
+// required, one summary for nine commands, and an empty Review heading.
+func TestManualHelpDescribesEachCommand(t *testing.T) {
+	groupHeading := regexp.MustCompile(`^ {2}[A-Z][A-Za-z ]*:$`)
+	summaries := map[string]bool{}
+	names := map[string]bool{}
+	for _, action := range manualActions() {
+		for _, name := range action.flags {
+			names[name] = true
+		}
+	}
+	for sub, action := range manualActions() {
+		code, out, diag := invoke(t, sub, "--help")
+		if code != 0 || diag != "" {
+			t.Fatalf("%s --help: code %d: %s", sub, code, diag)
+		}
+		usage := "[Usage]\n  gozen mosaic " + sub + " [OPTIONS] <game-dir> <IMAGE>\n"
+		if sub == "list" {
+			usage = "[Usage]\n  gozen mosaic list [OPTIONS] <game-dir>\n"
+		}
+		if !strings.HasPrefix(out, "gozen mosaic "+sub+" - "+action.summary+" (") || !strings.Contains(out, usage) {
+			t.Errorf("%s: title or usage:\n%s", sub, out)
+		}
+		if summaries[action.summary] {
+			t.Errorf("%s shares its summary %q", sub, action.summary)
+		}
+		summaries[action.summary] = true
+		// A group heading is followed by an option.
+		_, options, _ := strings.Cut(out, "[Options]\n")
+		lines := strings.Split(options, "\n")
+		for i, line := range lines[:len(lines)-1] {
+			if groupHeading.MatchString(line) && !strings.HasPrefix(strings.TrimSpace(lines[i+1]), "-") {
+				t.Errorf("%s: the option group %q is empty", sub, strings.TrimSpace(line))
+			}
+		}
+		// Exactly the options the command reads are listed, beyond the common ones.
+		for name := range names {
+			listed := regexp.MustCompile(`(?m)^\s+--` + name + `( |$)`).MatchString(options)
+			if reads := slices.Contains(action.flags, name); listed != reads {
+				t.Errorf("%s: --%s listed %v, read %v", sub, name, listed, reads)
+			}
+		}
+		if len(action.examples) == 0 {
+			t.Errorf("%s has no example", sub)
+		}
+		for _, ex := range action.examples {
+			if !strings.HasPrefix(ex[1], "gozen mosaic "+sub+" ") {
+				t.Errorf("%s shows the example of another command: %s", sub, ex[1])
+			}
+		}
+	}
+	if len(manualActions()) != 9 || len(names) != 18 {
+		t.Fatalf("%d manual commands with %d options", len(manualActions()), len(names))
+	}
+	// models fetch names its operand the same way in the usage and in the text.
+	_, out, _ := invoke(t, "models", "fetch", "--help")
+	if !strings.Contains(out, "gozen models fetch [OPTIONS] [NAME ...]") || strings.Contains(out, "MODEL ...") {
+		t.Errorf("models fetch usage:\n%s", out)
 	}
 }

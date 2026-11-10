@@ -48,7 +48,7 @@ func publishManual(ctx context.Context, c config, pic, orig, sub string, size, s
 	if _, err = run(ctx, c, []string{pic}); err != nil {
 		return err
 	}
-	if sub != "check" {
+	if sub != "mark" {
 		if _, err = manualView(c, pic, orig, "masked", image.Rectangle{}, size, step, ""); err != nil {
 			return err
 		}
