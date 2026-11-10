@@ -10,7 +10,7 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
-func TestEntryPartsDraw(t *testing.T) {
+func TestGraphicsEntryPartsDraw(t *testing.T) {
 	g, s := openPartsBoard(t)
 	if s.entries[3].Ticket.After[0] != "Bowl glazing" || len(s.entries[3].Ticket.After) != 1 {
 		t.Fatal("ticket prerequisites were not interpolated", s.entries[3].Ticket.After)
@@ -46,7 +46,7 @@ func TestEntryPartsDraw(t *testing.T) {
 
 // Drawing uses UI coordinates at all supported capture scales. Pixel evidence
 // is produced by the workboard capture recipe inside the Ebitengine loop.
-func TestEntryPartsAtCaptureScales(t *testing.T) {
+func TestGraphicsEntryPartsAtCaptureScales(t *testing.T) {
 	g, _ := openPartsBoard(t)
 	defer gfx.SetScale(1)
 	for _, scale := range []float64{1, 1.5, 3} {
@@ -57,7 +57,7 @@ func TestEntryPartsAtCaptureScales(t *testing.T) {
 	}
 }
 
-func TestGuideVeilOwnership(t *testing.T) {
+func TestGraphicsGuideVeilOwnership(t *testing.T) {
 	g := openFlowHoldGame(t)
 	g.guideVeil = ebiten.NewImage(1920, 1080)
 	g.reloadAssets()

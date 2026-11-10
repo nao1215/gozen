@@ -1,7 +1,9 @@
 version: '1'
 suite:
   name: maintainer dango decision contracts
-  timeout: 180s
+  # Each command builds and runs the decision tests; on a Windows runner with a
+  # cold build cache one command has taken more than three minutes.
+  timeout: 300s
 scenarios:
 - name: list decision tests
   steps:

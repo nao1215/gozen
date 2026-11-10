@@ -144,8 +144,13 @@ jobs:
         if: runner.os == 'Windows' && needs.changes.outputs.code != 'false'
         shell: pwsh
         run: |
-          choco install make -y --no-progress
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The Chocolatey mirror answers 504 now and then; try three times.
+          foreach ($attempt in 1..3) {
+            choco install make -y --no-progress
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($attempt -eq 3) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds (20 * $attempt)
+          }
           $posixTools = Join-Path $env:ProgramFiles 'Git/usr/bin'
           if (-not (Test-Path $posixTools)) { throw "Git POSIX tools are missing: $posixTools" }
           Add-Content -Path $env:GITHUB_PATH -Value $posixTools
@@ -270,16 +275,8 @@ jobs:
       - name: Render on Linux with Xvfb
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum --error-file=/dev/stderr make graphics
-      # The Go Zen sample's screens take minutes; they run only when started by hand.
-      - name: Render the Go Zen sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 1
-        run: xvfb-run --auto-servernum --error-file=/dev/stderr make go-zen-graphics
-      - name: Render the novel sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 1
-        run: xvfb-run --auto-servernum --error-file=/dev/stderr make novel-graphics
-      - name: Render the campaign sample on Linux with Xvfb
-        if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && matrix.shard == 2
-        run: xvfb-run --auto-servernum --error-file=/dev/stderr make campaign-graphics
+      # The screens of the Go Zen, novel and campaign samples are checked every
+      # night and on manual runs by sample-screens of the Docs workflow.
       # Native desktop execution is required on Windows/macOS; failures remain fatal.
       # Local Linux results do not establish these runners can render.
       - name: Render on the native desktop
@@ -287,7 +284,9 @@ jobs:
         shell: bash
         run: |
           if [ "$GRAPHICS_SHARD" = 1 ]; then
-            go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play ./internal/screen/puppet -run "$GRAPHICS_SPLIT" -count=1
+            go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play -run "$GRAPHICS_SPLIT" -count=1
+            # GRAPHICS_SPLIT names tests of play only: puppet is selected by the prefix.
+            go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/puppet -run TestGraphics -count=1
           else
             go test -tags=graphics -timeout=20m -parallel=4 ./internal/screen/play -run TestGraphics -skip "$GRAPHICS_SPLIT" -count=1
           fi
@@ -378,8 +377,13 @@ jobs:
         if: runner.os == 'Windows' && needs.changes.outputs.code != 'false'
         shell: pwsh
         run: |
-          choco install make -y --no-progress
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The Chocolatey mirror answers 504 now and then; try three times.
+          foreach ($attempt in 1..3) {
+            choco install make -y --no-progress
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($attempt -eq 3) { exit $LASTEXITCODE }
+            Start-Sleep -Seconds (20 * $attempt)
+          }
           $posixTools = Join-Path $env:ProgramFiles 'Git/usr/bin'
           if (-not (Test-Path $posixTools)) { throw "Git POSIX tools are missing: $posixTools" }
           Add-Content -Path $env:GITHUB_PATH -Value $posixTools

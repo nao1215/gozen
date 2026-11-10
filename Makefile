@@ -122,13 +122,14 @@ campaign-graphics:
 # Requires a display; Linux CI wraps this target with xvfb-run. CI runs it in two
 # shards: GRAPHICS_SHARD=1 runs the tests GRAPHICS_SPLIT names (and puppet),
 # GRAPHICS_SHARD=2 every other one (-skip), so no test falls between them.
-GRAPHICS_RUN := TestGraphicsScreens|TestGraphicsStage|TestGraphicsMap|TestGraphicsWild|TestGraphicsNovel|TestGraphicsCampaign|TestGraphicsSpace|TestGraphicsSimulateMatchesRun|TestGraphicsCall|TestGraphicsToasts|TestGraphicsTraceLayout
-GRAPHICS_FILTER := -run '$(GRAPHICS_RUN)'
+# Every test of a graphics-tagged file is named TestGraphics* (TestGraphicsTestSelection
+# of internal/dev/hygiene), so this prefix selects them all.
+GRAPHICS_FILTER := -run TestGraphics
 ifeq ($(GRAPHICS_SHARD),1)
 GRAPHICS_FILTER := -run '$(GRAPHICS_SPLIT)'
 endif
 ifeq ($(GRAPHICS_SHARD),2)
-GRAPHICS_FILTER := -run '$(GRAPHICS_RUN)' -skip '$(GRAPHICS_SPLIT)'
+GRAPHICS_FILTER := -run TestGraphics -skip '$(GRAPHICS_SPLIT)'
 endif
 graphics:
 	$(GO) test -tags=graphics -parallel=$(GRAPHICS_JOBS) -timeout=$(GRAPHICS_TIMEOUT) ./internal/screen/play $(GRAPHICS_FILTER) -count=1

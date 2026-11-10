@@ -145,6 +145,33 @@ jobs:
           RESULT: ${{ needs.image-shards.result }}
         run: test "$RESULT" = success
 
+  # The screen tests of the Go Zen, novel and campaign samples (make go-zen-graphics,
+  # novel-graphics, campaign-graphics). The samples are modules of their own, so the
+  # graphics job of the CI workflow does not reach them; the pictures above play the
+  # samples but assert nothing about their screens. Nightly and by hand.
+  sample-screens:
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [go-zen, novel, campaign]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: examples/${{ matrix.sample }}/go.mod
+      - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
+        with:
+          xvfb: true
+      - name: Check the screens of the sample under Xvfb
+        env:
+          SAMPLE: ${{ matrix.sample }}
+        run: xvfb-run --auto-servernum --error-file=/dev/stderr make "${SAMPLE}-graphics"
+
   steps:
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
