@@ -173,7 +173,7 @@ func Load(fsys fs.FS, path string) (*Config, error) {
 		return nil, err
 	}
 	var c Config
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict()) }); err != nil {
 		return nil, fmt.Errorf("%s: %s", path, yaml.FormatError(err, false, true))
 	}
 	return &c, c.check(nil)

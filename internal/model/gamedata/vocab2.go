@@ -607,7 +607,7 @@ func (a *Assignments) UnmarshalYAML(n ast.Node) error {
 func literalText(n ast.Node) (string, error) {
 	if _, ok := n.(*ast.MappingNode); ok {
 		var v any
-		if err := decodeguard.Run(func() error { return yaml.NodeToValue(n, &v) }); err != nil {
+		if err := decodeguard.RunNode(n, func() error { return yaml.NodeToValue(n, &v) }); err != nil {
 			return "", err
 		}
 		b, err := json.Marshal(v)

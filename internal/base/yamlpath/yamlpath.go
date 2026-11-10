@@ -20,7 +20,7 @@ func At(src []byte, path string) ([]byte, error) {
 		return append([]byte(nil), src...), nil
 	}
 	var v any
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(src, &v, yaml.UseOrderedMap()) }); err != nil {
+	if err := decodeguard.Run(src, func() error { return yaml.UnmarshalWithOptions(src, &v, yaml.UseOrderedMap()) }); err != nil {
 		return nil, err
 	}
 	missing := func() error { return fmt.Errorf("%s: %w", path, fs.ErrNotExist) }

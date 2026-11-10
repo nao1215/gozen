@@ -55,7 +55,7 @@ func Parse(b []byte) (Catalog, error) {
 	if len(b) > maxCatalogBytes {
 		return c, errors.New("catalog exceeds size limit")
 	}
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict()) }); err != nil {
 		return Catalog{}, fmt.Errorf("catalog: %w", err)
 	}
 	if c.Schema != 1 {

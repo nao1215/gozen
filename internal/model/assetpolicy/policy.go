@@ -59,7 +59,7 @@ func Load(base fs.FS, name string) (Policy, error) {
 	}
 	// Accept the written settings as a whole so that fields of the standard format do not leak in.
 	p = Policy{}
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
 		return p, err
 	}
 	// A policy that names no extension keeps the default pictures: an empty list would

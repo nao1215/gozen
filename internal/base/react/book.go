@@ -224,7 +224,7 @@ func Load(fsys fs.FS, path string) (*Book, error) {
 // Parse reads and validates a book from YAML.
 func Parse(b []byte) (*Book, error) {
 	var bk Book
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &bk.doc, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &bk.doc, yaml.Strict()) }); err != nil {
 		return nil, err
 	}
 	if err := bk.validate(); err != nil {

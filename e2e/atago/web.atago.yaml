@@ -635,6 +635,39 @@ scenarios:
       - eval: *state
   - assert: {value: {contains: 'Could not start'}}
 
+- name: a web export made with --reuse serves the same files and leaves the earlier export alone
+  tags: [web]
+  steps:
+  - run: {command: 'gozen new game --id web-reuse'}
+  - assert: {exit_code: 0}
+  - run:
+      command: 'gozen export game --target web --out first --runtime "${env:GOZEN_WEB_RUNTIME}"'
+  - assert: {exit_code: 0}
+  - run:
+      command: python3 -c "import pathlib; pathlib.Path('first.json').write_bytes(pathlib.Path('first/game/files.json').read_bytes())"
+  - assert: {exit_code: 0}
+  - run:
+      command: 'gozen export game --target web --out second --runtime "${env:GOZEN_WEB_RUNTIME}" --reuse first --format json'
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout:
+        json:
+        - {path: $.status, equals: ok}
+        - {path: $.data.directory, equals: second}
+        - {path: $.data.target, equals: web}
+  - assert: {file: {path: second/game/files.json, equals_file: first.json}}
+  - assert: {file: {path: first/game/files.json, equals_file: first.json}}
+  - assert: {file: {path: second/index.html, equals_file: first/index.html}}
+  # a directory that is not a web export is refused before anything is written
+  - run:
+      command: 'gozen export game --target web --out third --runtime "${env:GOZEN_WEB_RUNTIME}" --reuse game'
+  - assert:
+      exit_code: 1
+      stdout: {equals: ''}
+      stderr: {contains: 'not a web export'}
+      changes: {created: [], modified: [], deleted: []}
+
 - name: web export requires a runtime option
   steps:
   - run: {command: 'gozen export game --target web --out out'}

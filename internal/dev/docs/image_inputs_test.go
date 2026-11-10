@@ -498,12 +498,24 @@ func staleMessage(stale []string) string {
 // makes every picture and compares it with inputsPath. A picture whose hash matches
 // was made from the same inputs, so it is current; the Docs workflow remakes the
 // pictures whenever inputsPath changes, and nightly, to prove it.
+//
+// With GOZEN_DOCS_INPUTS=record (make docs-images-record) it writes the current
+// hashes of every picture instead, without remaking any: for a change that
+// cannot alter how a picture looks. The Docs workflow then remakes the pictures
+// because inputsPath changed, and fails if one of them does differ.
 func TestDocImageInputs(t *testing.T) {
 	t.Parallel()
 	m := loadManifest(t)
 	current, err := computeImageInputs(m, root)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if os.Getenv("GOZEN_DOCS_INPUTS") == "record" {
+		if err := recordImageInputs(filepath.Join(root, inputsPath), m, current, sortedKeys(m.Images)); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("recorded the inputs of %d pictures in %s without remaking them", len(m.Images), inputsPath)
+		return
 	}
 	recorded, err := readImageInputs(filepath.Join(root, inputsPath))
 	if err != nil {

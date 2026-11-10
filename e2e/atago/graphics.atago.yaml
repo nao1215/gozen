@@ -723,3 +723,118 @@ scenarios:
         - {path: '$.data.items[2].changed', equals: false}
         - {path: $.data.comparison.changed, equals: 0}
         - {path: $.data.comparison.unchanged, equals: 3}
+- name: run replays a recorded trace and stops where a changed record diverges
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: play.txt
+      content: |
+        gap 12
+        wait 10
+        shot camp
+        press ok
+        wait 12
+        shot conversation
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --seed 7 --start camp --script play.txt --shots shots --trace run.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --replay run.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      stdout: {contains: replay fully matched}
+  # the same record with one line the game does not say
+  - run:
+      command: python3 -c "import pathlib; pathlib.Path('edited.jsonl').write_text(pathlib.Path('run.jsonl').read_text(encoding='utf-8').replace('The trail is clear.', 'The trail is closed.'), encoding='utf-8')"
+  - assert: {exit_code: 0}
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --replay edited.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 1
+      stdout: {contains: ['replay diverged', 'The trail is closed.']}
+      stderr: {contains: replay diverged}
+- name: a note taken in play becomes a notes page and a place to start from
+  tags: [graphics]
+  steps:
+  - fixture:
+      file: memo.txt
+      content: |
+        gap 12
+        wait 10
+        press ok
+        wait 12
+        memo typo The courier line reads oddly
+        wait 30
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --seed 7 --start camp --script memo.txt --shots shots --memos notes
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+  # the note's directory is named after the day: give it a fixed name
+  - run:
+      command: python3 -c "import glob, shutil; shutil.copytree(glob.glob('notes/*')[0], 'note')"
+  - assert:
+      exit_code: 0
+      file:
+        path: note/001.json
+        json:
+        - {path: $.kind, equals: typo}
+        - {path: $.text, equals: The courier line reads oddly}
+        - {path: $.line, equals: The trail is clear.}
+        - {path: $.resume.event, equals: camp.Courier}
+        - {path: $.resume.line, equals: 1}
+  - assert: {image: {path: note/001.png, format: png, width: 960, height: 540}}
+  - assert: {file: {path: note/001.save, exists: true}}
+  - run:
+      command: gozen notes notes --out page
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file: {path: page/index.html, contains: The courier line reads oddly}
+  - fixture:
+      file: resume.txt
+      content: |
+        wait 30
+        look
+        quit
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --from-memo note/001.json --script resume.txt --shots resumed --trace resumed.jsonl
+      timeout: 30s
+  - assert:
+      exit_code: 0
+      stderr: {equals: ''}
+      file:
+        path: resumed.jsonl
+        # the event of the note began again and stopped on the noted line
+        contains: ['"event":"camp.Courier"', '"on":"talk","text":"The trail is clear."']
+- name: autoplay dives by itself and writes its report, shots and trace
+  tags: [graphics]
+  steps:
+  - run:
+      command: gozen run "${specdir}/fixtures/outfitting" --dev --mute --seed 7 --autoplay 3 --speed 8 --shot-every 1 --auto-floors 1 --shots shots --trace auto.jsonl --report report.txt
+      timeout: 60s
+  - assert:
+      exit_code: 0
+      file:
+        path: report.txt
+        contains: ['autopilot report', 'dives 1', 'deepest B1F', 'Scout Lv1', 'problems 0']
+  - assert: {image: {path: shots/auto_00001.png, format: png, width: 960, height: 540}}
+  - assert: {file: {path: auto.jsonl, contains: ['"autopilot":true', '"speed":8', '"t":"end"']}}
+  # a game with no dive to take: the report still comes, with the problem in it
+  - run:
+      command: gozen run "${specdir}/fixtures/game" --dev --mute --seed 7 --autoplay 3 --report stuck.txt
+      timeout: 60s
+  - assert:
+      exit_code: 0
+      file:
+        path: stuck.txt
+        contains: ['problems 1', 'no way into the dungeon']

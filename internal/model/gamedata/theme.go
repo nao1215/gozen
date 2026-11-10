@@ -64,7 +64,7 @@ func (db *DB) readTheme(name string) (themeColors, error) {
 	if err != nil {
 		return tc, err
 	}
-	err = decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &tc, yaml.Strict()) })
+	err = decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &tc, yaml.Strict()) })
 	return tc, err
 }
 

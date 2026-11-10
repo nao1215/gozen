@@ -61,7 +61,7 @@ func unguardedYAMLDecodes(name string, src []byte) ([]string, error) {
 			if !ok || i+1 >= len(stack) {
 				continue
 			}
-			if fn, ok := selector(call.Fun, "decodeguard"); ok && fn == "Run" {
+			if fn, ok := selector(call.Fun, "decodeguard"); ok && (fn == "Run" || fn == "RunNode") {
 				if _, lit := stack[i+1].(*ast.FuncLit); lit {
 					return true
 				}
@@ -102,7 +102,7 @@ func TestYAMLDecodesAreGuarded(t *testing.T) {
 			}
 			found, err := unguardedYAMLDecodes(path, src)
 			for _, f := range found {
-				t.Errorf("%s; wrap the decode in decodeguard.Run(func() error { ... })", f)
+				t.Errorf("%s; wrap the decode in decodeguard.Run(src, func() error { ... })", f)
 			}
 			return err
 		})
