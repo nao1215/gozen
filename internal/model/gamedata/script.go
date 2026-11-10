@@ -26,7 +26,7 @@ func IsScript(src string) bool {
 // ParseScript reads a command list. Errors are Diagnostics with positions.
 func ParseScript(src string) ([]Command, Diagnostics) {
 	var cmds []Command
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions([]byte(src), &cmds, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run([]byte(src), func() error { return yaml.UnmarshalWithOptions([]byte(src), &cmds, yaml.Strict()) }); err != nil {
 		d := Diagnostic{File: ScriptFile, Message: yaml.FormatError(err, false, false), Severity: "error", err: err}
 		if ye, ok := errors.AsType[yaml.Error](err); ok {
 			if tk := ye.GetToken(); tk != nil && tk.Position != nil {

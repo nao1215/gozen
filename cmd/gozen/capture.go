@@ -275,7 +275,7 @@ func readShotList(p string) (*shotList, error) {
 		return nil, err
 	}
 	var l shotList
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &l, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &l, yaml.Strict()) }); err != nil {
 		return nil, fmt.Errorf("%s: %w", p, err)
 	}
 	seen := map[string]bool{}

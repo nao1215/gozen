@@ -20,7 +20,7 @@ func UseWords(fsys fs.FS) error {
 		Text     map[string]string `yaml:"text"`
 	}
 	if b, err := fs.ReadFile(fsys, "game.yaml"); err == nil {
-		if decodeguard.Run(func() error { return yaml.Unmarshal(b, &g) }) != nil {
+		if decodeguard.Run(b, func() error { return yaml.Unmarshal(b, &g) }) != nil {
 			g.Text = nil
 		}
 	}

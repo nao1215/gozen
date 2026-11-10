@@ -58,7 +58,7 @@ func Load(base fs.FS, name string) (Policy, error) {
 	}
 	// Accept the written settings as a whole so that fields of the standard format do not leak in.
 	p = Policy{}
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &p, yaml.Strict()) }); err != nil {
 		return p, err
 	}
 	if !fs.ValidPath(p.Report) || p.Records.File == "" || p.Records.Source == "" || p.Inspection.File == "" || (p.Inspection.Approved == "" && (p.Inspection.Status == "" || len(p.Inspection.Accepted) == 0)) {
