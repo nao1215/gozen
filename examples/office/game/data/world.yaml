@@ -136,14 +136,17 @@ events:
     - phone:
         app: page
         url: harbor-outfitters.example/team
+        var: var.team_wear
         rows:
         - {text: Harbor Outfitters, size: large, bold: true}
-        - {text: 'Team wear, autumn line. Free delivery over $100.', size: small}
+        - {text: 'Team wear, autumn line. Tap one for the team order.', size: small}
         - {pictures: [phone/photo1.jpg, phone/photo2.jpg, phone/photo3.jpg, phone/photo4.jpg, phone/photo6.jpg, phone/photo7.jpg]}
-        - {item: {icon: apps/shop.png, title: Team hoodie, text: 'Navy · S to XL', value: '$58'}}
-        - {item: {icon: apps/shop.png, title: Denim jacket, text: 'Washed blue · M, L', value: '$89'}}
-        - {button: Add six hoodies to the cart}
-    - say: {who: martin, text: Six hoodies. The budget line says merchandise. Close enough.}
+        # An item with a button is tapped itself, as a shop's product row is.
+        - {button: Team hoodie, id: hoodie, item: {icon: apps/shop.png, title: Team hoodie, text: 'Navy · S to XL', value: '$58'}}
+        - {button: Denim jacket, id: jacket, item: {icon: apps/shop.png, title: Denim jacket, text: 'Washed blue · M, L', value: '$89'}}
+    - if: 'var.team_wear == "jacket"'
+      then: [{say: {who: martin, text: Six denim jackets. The budget line says merchandise. Close enough.}}]
+      else: [{say: {who: martin, text: Six hoodies. The budget line says merchandise. Close enough.}}]
   phone_bank:
     - say: {who: martin, text: The contractor invoice is due today.}
     - phone:
@@ -243,9 +246,8 @@ events:
         - {picture: bg/meeting.jpg}
         - {item: {icon: icons/iris.png, title: Iris Vale, text: 'Illustration, office life, small comics', value: 320 supporters}}
         - {text: 'Monthly sketches of a small app team. Supporters see the full pages.', size: small}
-        - {item: {icon: apps/studio.png, title: Coffee tier, text: 'A sketch a month, early posts', value: '$3 / mo'}}
-        - {item: {icon: apps/studio.png, title: Studio tier, text: 'Full comic pages and process files', value: '$8 / mo'}}
-        - {button: Support Iris, set: {flag.iris_supported: true}}
+        - {button: Coffee tier, set: {flag.iris_supported: true}, item: {icon: apps/studio.png, title: Coffee tier, text: 'A sketch a month, early posts', value: '$3 / mo'}}
+        - {button: Studio tier, set: {flag.iris_supported: true}, item: {icon: apps/studio.png, title: Studio tier, text: 'Full comic pages and process files', value: '$8 / mo'}}
         - {text: Posts, bold: true}
         - {pictures: [phone/photo1.jpg, phone/photo5.jpg, phone/photo9.jpg]}
         - {pictures: [phone/photo2.jpg, phone/photo8.jpg, phone/photo10.jpg], locked: '!flag.iris_supported', label: Supporters only}

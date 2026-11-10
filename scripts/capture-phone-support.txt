@@ -1,4 +1,4 @@
-# Office sample capture (run phone-support): an illustrator's supporter page: tiers, a Support button and locked posts that open when the page is shown again (pu###).
+# Office sample capture (run phone-support): an illustrator's supporter page: a tap on a tier row supports her, and the locked posts open when the page is shown again (pu###).
 # A frame every 5 ticks.
 gap 1
 wait 30
@@ -86,7 +86,7 @@ shot pu038
 wait 2
 shot pu039
 wait 2
-click 640 371
+pick Coffee tier
 shot pu040
 wait 2
 shot pu041

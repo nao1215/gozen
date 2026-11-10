@@ -550,8 +550,10 @@ type PhoneCue struct {
 // Pictures in a grid of Columns (2 or 3, 0 is 3) a line, an Item of a list, a
 // QR code of a text (a link, a contact) with its Caption, or
 // a Button that puts the phone down when pressed, setting Set and the phone's
-// Var to its ID. Home and contacts may combine Item and Button; other rows
-// contain one content kind. A picture or a grid is Locked (blurred,
+// Var to its ID. An Item, and on a page a single Picture, may also carry a
+// Button: the item or the picture is then what the player taps, its Button the
+// label a trace and the keys' focus name. Other rows contain one content kind.
+// A picture or a grid is Locked (blurred,
 // with a lock and its Label) while the condition holds when the phone comes up.
 type PhoneRow struct {
 	// Event opens a parameterless app event from home or contacts and returns to this phone.

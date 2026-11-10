@@ -120,6 +120,7 @@ func (g *Game) pageView(p *phoneView) (rows []pageRow, end float64) {
 
 func (g *Game) updatePhonePage(p *phoneView) {
 	rows, end := g.pageView(p)
+	g.in.receivePick(p)
 	if g.pageKeys(p, rows, end) {
 		return
 	}
@@ -148,6 +149,20 @@ func pageButtons(rows []data.PhoneRow) []int {
 	for i, r := range rows {
 		if r.Button != "" && !r.Hidden {
 			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// pickables are the page's buttons on the screen, for a script's pick and
+// look: a pick rings one as the keys would and the OK it sends presses it, so
+// a script reaches a phone app by what it shows, as a player does.
+func (g *Game) pagePickables(p *phoneView) []pickable {
+	rows, _ := g.pageView(p)
+	var out []pickable
+	for _, i := range pageButtons(p.cue.Rows) {
+		if g.pageInView(p, rows[i]) {
+			out = append(out, pickable{target: p, label: p.cue.Rows[i].Button, selectIt: func() { p.focus, p.keyed = i, true }})
 		}
 	}
 	return out
@@ -291,6 +306,9 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		if r.Shut {
 			g.drawLocked(dst, x, y, iw, ph, r.Label)
 		}
+		if r.Button != "" {
+			g.drawPageTapRing(dst, p, i, r.Button, x, y, iw, l.h)
+		}
 		for k, line := range l.lines {
 			g.text(dst, line, x, y+ph+6+float64(k)*gfx.LineHeight(13), 13, g.pageMuted(p))
 		}
@@ -298,10 +316,7 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		g.drawPageGrid(dst, r, x, y, iw)
 	case r.Item != nil:
 		if r.Button != "" {
-			if p.keyed && p.focus == i {
-				gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(iw), float32(l.h), 10, 2, g.phoneAccent())
-			}
-			g.traceControl(r.Button, roundRect(x, y, iw, l.h), p.ready(), p.keyed && p.focus == i, "transition")
+			g.drawPageTapRing(dst, p, i, r.Button, x, y, iw, l.h)
 		}
 		g.drawPageItem(dst, p, r.Item, x, y, iw)
 	case r.QR != "":
@@ -321,6 +336,16 @@ func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y,
 		gfx.FillRoundRect(dst, float32(x), float32(y), float32(iw), phonePageBtn, 12, accent)
 		g.screenText(dst, gfx.Ellipsis(r.Button, 17, iw-24), w/2, y+13, 17, phoneOnVideo)
 	}
+}
+
+// drawPageTapRing marks an item or a picture that is itself the row's button:
+// the keys' focus ring when it holds the focus, and the control a trace records.
+func (g *Game) drawPageTapRing(dst *ebiten.Image, p *phoneView, i int, label string, x, y, w, h float64) {
+	focused := p.keyed && p.focus == i
+	if focused {
+		gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(w), float32(h), 10, 2, g.phoneAccent())
+	}
+	g.traceControl(label, roundRect(x, y, w, h), p.ready(), focused, "transition")
 }
 
 func (g *Game) drawPageGrid(dst *ebiten.Image, r data.PhoneRow, x, y, iw float64) {
@@ -473,6 +498,7 @@ func (g *Game) updatePhoneHome(p *phoneView) {
 		}
 	}()
 	rows, end := g.pageView(p)
+	g.in.receivePick(p)
 	if g.pageKeys(p, rows, end) {
 		return
 	}

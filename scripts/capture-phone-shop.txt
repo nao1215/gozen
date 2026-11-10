@@ -1,4 +1,4 @@
-# Office sample capture (run phone-shop): a browser page of a shop: a grid of pictures, list items with prices, and the button rung and pressed with the keys (ps###).
+# Office sample capture (run phone-shop): a browser page of a shop: a grid of pictures and product rows with prices; a tap on the denim jacket row picks it (ps###).
 # The capture ends as the phone goes down, before the line after it.
 # A frame every 5 ticks.
 gap 1
@@ -20,7 +20,6 @@ shot ps006
 wait 2
 shot ps007
 wait 2
-press right
 shot ps008
 wait 2
 shot ps009
@@ -37,11 +36,37 @@ shot ps014
 wait 2
 shot ps015
 wait 2
-press ok
 shot ps016
 wait 2
 shot ps017
 wait 2
 shot ps018
+wait 2
+shot ps019
+wait 2
+shot ps020
+wait 2
+shot ps021
+wait 2
+shot ps022
+wait 2
+shot ps023
+wait 2
+pick Denim jacket
+shot ps024
+wait 2
+shot ps025
+wait 2
+shot ps026
+wait 2
+shot ps027
+wait 2
+shot ps028
+wait 2
+shot ps029
+wait 2
+shot ps030
+wait 2
+shot ps031
 wait 2
 quit

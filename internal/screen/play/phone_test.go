@@ -5,6 +5,7 @@ import (
 	"image"
 	"io/fs"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -2113,6 +2114,83 @@ func TestPhoneHomePointerOriginalRow(t *testing.T) {
 	g.updatePhone()
 	if p.closing == 0 || cue.Results()[p.answer()].ID != "contacts" {
 		t.Fatal("grid click lost original row", p.answer())
+	}
+}
+
+// TestPhonePageTapsProduct: a shop chooses by a tap on the product row or the
+// photo itself, not on a Yes or No under it, and the tapped row's id is kept.
+func TestPhonePageTapsProduct(t *testing.T) {
+	cue := data.PhoneCue{App: "page", Var: "var.wear", Rows: []data.PhoneRow{
+		{Text: "Team wear"},
+		{Button: "Team hoodie", ID: "hoodie", Item: &data.PhoneItem{Title: "Team hoodie", Value: "$58"}},
+		{Button: "Denim jacket", ID: "jacket", Item: &data.PhoneItem{Title: "Denim jacket", Value: "$89"}},
+		{Button: "Sneakers", ID: "sneakers", Picture: "x.png", Caption: "White sneakers"},
+	}}
+	for _, tc := range []struct {
+		row  int
+		want string
+	}{{1, "hoodie"}, {2, "jacket"}, {3, "sneakers"}} {
+		t.Run(tc.want, func(t *testing.T) {
+			g := phoneGame(t, cue)
+			p := g.phone
+			phoneTicks(g, phoneRise)
+			rows, _ := g.pageView(p)
+			sx, sy, w, _ := g.phoneScreenRect(false)
+			l := rows[tc.row]
+			p.scroll = l.top - phonePageGap
+			g.in = input{pdown: true, pup: true, click: true, mouse: image.Pt(int(sx+w/2), int(sy+phoneFeedTop+l.top-p.scroll+l.h/2))}
+			g.updatePhone()
+			if p.closing == 0 || cue.Results()[p.answer()].ID != tc.want {
+				t.Fatalf("a tap on row %d answered %d, want %s", tc.row, p.answer(), tc.want)
+			}
+		})
+	}
+	// The keys still reach the tappable rows: right rings the first product.
+	t.Run("keys", func(t *testing.T) {
+		g := phoneGame(t, cue)
+		p := g.phone
+		phoneTicks(g, phoneRise)
+		phonePress(g, btnRight)
+		if p.focus != 1 {
+			t.Fatalf("right focused row %d, want the first product", p.focus)
+		}
+		dst := ebiten.NewImage(1280, 720)
+		defer dst.Deallocate()
+		g.drawPhone(dst)
+	})
+}
+
+// TestPhonePagePick: a script picks a page button on the screen by its label,
+// as a tap would; one scrolled out of the screen is not offered.
+func TestPhonePagePick(t *testing.T) {
+	rows := []data.PhoneRow{
+		{Button: "Team hoodie", ID: "hoodie", Item: &data.PhoneItem{Title: "Team hoodie"}},
+		{Button: "Denim jacket", ID: "jacket", Item: &data.PhoneItem{Title: "Denim jacket"}},
+	}
+	for range 12 {
+		rows = append(rows, data.PhoneRow{Text: "Free delivery over $100."})
+	}
+	cue := data.PhoneCue{App: "page", Var: "var.wear", Rows: append(rows, data.PhoneRow{Button: "Sneakers", ID: "sneakers"})}
+	g := phoneGame(t, cue)
+	p := g.phone
+	if kind, _ := g.scriptPickables(); kind == "phone:page" {
+		t.Fatal("a phone still rising offered its buttons")
+	}
+	phoneTicks(g, phoneRise)
+	kind, items := g.scriptPickables()
+	var labels []string
+	for _, it := range items {
+		labels = append(labels, it.label)
+	}
+	if kind != "phone:page" || !slices.Equal(labels, []string{"Team hoodie", "Denim jacket"}) {
+		t.Fatalf("pickables %s %q, want the two products on the screen", kind, labels)
+	}
+	if err := g.scriptPick(&g.in, "Denim"); err != nil {
+		t.Fatal(err)
+	}
+	g.updatePhone()
+	if p.closing == 0 || cue.Results()[p.answer()].ID != "jacket" {
+		t.Fatalf("pick answered %d, want jacket", p.answer())
 	}
 }
 

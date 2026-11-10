@@ -16437,7 +16437,7 @@
           "x-type": "boolean"
         },
         "button": {
-          "description": "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down.",
+          "description": "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down. With an item, or a page's picture, the item or the picture itself is tapped and the label names it.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
