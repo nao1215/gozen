@@ -1522,7 +1522,8 @@ func (db *DB) Check() []error {
 	for _, id := range db.Ordered("ai") {
 		c.rules("ai."+id, db.AI[id])
 	}
-	for name, s := range db.Music.Songs {
+	for _, name := range slices.Sorted(maps.Keys(db.Music.Songs)) {
+		s := db.Music.Songs[name]
 		if s.File != "" { // a track
 			c.file("music.songs."+name+".file", s.File)
 			if len(s.Moods) > 0 {
@@ -1537,7 +1538,9 @@ func (db *DB) Check() []error {
 			c.errorf(diag.Shape, "music.songs."+name, "bpm is missing")
 		}
 	}
-	for ctx, rules := range db.Music.Rules {
+	// In a fixed order: the first read of a flag is the place its warning names.
+	for _, ctx := range slices.Sorted(maps.Keys(db.Music.Rules)) {
+		rules := db.Music.Rules[ctx]
 		names := FieldNames
 		switch ctx {
 		case "field":

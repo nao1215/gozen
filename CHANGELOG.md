@@ -9,6 +9,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
+- Add a dango check that every command list reachable from the game data is read by the one shared walk (`TestCommandWalkerCoverage`), so a definition that gains commands is resolved, indexed, translated and named alike.
 
 ### Fixed
 
@@ -22,6 +23,13 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
 - An authored screen's entry whose `destination` is the screen that opened it closes back to that screen in sessions and in save replay, as it already did in play: the opener's action goes on and one copy of it shows. Before, a session stacked a second copy and the opener's remaining commands waited until it was closed.
 - A save Store supplied by the host (the browser player, an embedding) is called one call at a time, since the phone store installs package archives into it from a goroutine while the game writes saves. A replaced package archive that fails to close after the new selection was saved is logged instead of shown as a failed installation.
+- A save or a note made in the middle of a person's talk or a place's action resumes after the language is changed: the command list is named from the name as written, not as shown. Before, the name followed the language, so the save found no commands in another language. A save made earlier while a translation was shown still resumes in that language.
+- Two people or actions of one place that share a name (the same person before and after a flag) have their own command lists by name: the second is `<place>.<name>#2`. Before, a save made in the second talk resumed the first one's commands. A save made before this change in such a second talk still resumes the first, as it did.
+- `gozen book` and the `--dev` panel index the flags and variables set and read in dungeon tiles, roamers, `complete` and `walked`, stage spots and things, map points and roads, and campaign orders, which the state index left out.
+- The lines of troop events, dungeon tiles, roamers, stage spots and things, and map points and roads are texts of the game for translation: `gozen check` reports them when untranslated and no longer warns that their translations are not a text of the game. The untranslated warnings of screen entries and campaign orders name the same paths as the other checks (`game.yaml.screens.<id>.entries[n].do`, `game.yaml campaign.orders.<id>.do`).
+- The warning of a flag read but never set names the same place on every run when rules of both `music.rules` contexts read it.
+- Checking `breeding` leaves `parents` in the order written, so `gozen book` and the lineage show them as authored; the same pair written in the other order is still a duplicate.
+- A `speech` word rule finds a token that overlaps its own earlier match (`!!` in `a!!!`).
 
 ## v0.23.2 - 2026-11-09
 

@@ -511,3 +511,25 @@ func TestActorFaceNumbersAreFinite(t *testing.T) {
 		}
 	}
 }
+
+// A flag read by a music rule of each context is warned of at the same place on every
+// load: the rules are checked in the order of their contexts, not of a map.
+func TestFlagWarningPlaceIsStable(t *testing.T) {
+	seen := map[string]bool{}
+	for range 40 {
+		db, err := testgame.TryLoad(map[string]string{
+			"data/review.yaml": `music: {rules: {field: [{when: "flag.unset_probe", mood: calm}], battle: [{when: "flag.unset_probe", mood: calm}]}}`,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, w := range db.FlagWarnings() {
+			if strings.Contains(w.Error(), "unset_probe") {
+				seen[w.Error()] = true
+			}
+		}
+	}
+	if len(seen) != 1 {
+		t.Errorf("the same game gave %d different warnings: %v", len(seen), seen)
+	}
+}
