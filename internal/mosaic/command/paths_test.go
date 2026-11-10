@@ -344,6 +344,21 @@ func TestPlanGeometryRules(t *testing.T) {
 	}
 }
 
+// TestValidateNamesTheSameOptionEveryTime: with several invalid options, the one named in
+// the error is the first in a fixed order, not whichever a map walk reaches first.
+func TestValidateNamesTheSameOptionEveryTime(t *testing.T) {
+	o := &options{threads: 1, quality: 90, minScore: 7, sure: 9, margin: 5}
+	for range 200 {
+		if got := o.validate().Error(); !strings.Contains(got, "--threshold") {
+			t.Fatalf("the invalid options named %q, want --threshold first", got)
+		}
+	}
+	o.minScore = 0.5
+	if got := o.validate().Error(); !strings.Contains(got, "--sure") {
+		t.Fatalf("after --threshold comes --sure, got %q", got)
+	}
+}
+
 // TestResolveReadsEveryOperandTheSameWay: auto, inspect and the manual commands read an
 // IMAGE operand through resolve. The asset comes before a file of the same name in the
 // working directory, assets/ may lead the name, and a backslash separates directories.

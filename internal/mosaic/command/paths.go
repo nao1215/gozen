@@ -34,9 +34,13 @@ func (o *options) validate() error {
 	if o.block < 0 || o.block > 256 || o.padBlocks < 0 || o.padBlocks > 256 || o.minBlocks < 0 || o.minBlocks > 256 || o.dilate < -1 || o.dilate > 256 || o.threads < 1 || o.threads > 1024 || o.quality < 1 || o.quality > 100 {
 		return errors.New("invalid numeric options: block/pad/min 0..256, dilate -1..256, threads 1..1024, quality 1..100")
 	}
-	for name, v := range map[string]float64{"threshold": o.minScore, "sure": o.sure, "margin": o.margin} {
-		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
-			return fmt.Errorf("--%s must be finite and in [0,1]", name)
+	// A fixed order, so that several invalid options always name the same one.
+	for _, v := range []struct {
+		name  string
+		value float64
+	}{{"threshold", o.minScore}, {"sure", o.sure}, {"margin", o.margin}} {
+		if math.IsNaN(v.value) || math.IsInf(v.value, 0) || v.value < 0 || v.value > 1 {
+			return fmt.Errorf("--%s must be finite and in [0,1]", v.name)
 		}
 	}
 	return nil

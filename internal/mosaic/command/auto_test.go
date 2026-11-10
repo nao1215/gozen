@@ -456,6 +456,31 @@ func TestMissingFixFileIsAnError(t *testing.T) {
 	}
 }
 
+// TestAutoRecordsFinishedPicturesWhenOneFails: a picture that cannot be read ends the run
+// with an error, and the pictures written before it are in report.json. They used to be
+// left in --out without a report, so inspect and the manual commands did not know them.
+func TestAutoRecordsFinishedPicturesWhenOneFails(t *testing.T) {
+	game, out := fixture(t)
+	if err := os.WriteFile(filepath.Join(game, "assets", "broken.png"), []byte("not a picture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := useModels(t)
+	model, _ := m.detector(t, "model.onnx", penis(4, 4, 10, 10, 0.5))
+	code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, "pattern.png", "broken.png")
+	if code != 1 || !strings.Contains(diag, "broken.png: ") {
+		t.Fatalf("code %d: %s", code, diag)
+	}
+	es := readEntries(t, out)
+	if len(es) != 1 || es[0].File != "pattern.png" || es[0].Output != "pattern.png" {
+		t.Fatalf("report after a failed batch: %+v", es)
+	}
+	for _, name := range []string{"pattern.png", "review.md"} {
+		if _, err := os.Stat(filepath.Join(out, name)); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
 // TestAutoReadsOperandsLikeInspect: auto takes the forms of IMAGE that inspect and the
 // manual commands take: a leading assets/, a backslash as the separator, and a file path.
 func TestAutoReadsOperandsLikeInspect(t *testing.T) {

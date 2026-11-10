@@ -378,10 +378,14 @@ func run(ctx context.Context, c config, pics []string) (report []entry, err erro
 	defer func() { err = errors.Join(err, c.close()) }()
 	report = []entry{}
 	var masked, review int
+	var failed error
 	for i, rel := range pics {
 		e, err := one(ctx, &c, rel)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", rel, err)
+			// The pictures before this one are written. They are recorded below, so that
+			// no output is left without its entry in report.json.
+			failed = fmt.Errorf("%s: %w", rel, err)
+			break
 		}
 		report = append(report, e)
 		mark := "-"
@@ -402,18 +406,20 @@ func run(ctx context.Context, c config, pics []string) (report []entry, err erro
 	}
 	if !c.dry {
 		if err := c.tags.save(); err != nil {
-			return nil, err
+			return nil, errors.Join(failed, err)
 		}
 	}
-	c.outw.Printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
-	if c.dry {
-		return report, nil
+	if failed == nil {
+		c.outw.Printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
+	}
+	if c.dry || failed != nil && len(report) == 0 {
+		return report, failed
 	}
 	all, err := writeReport(c.gameDir, c.out, report)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(failed, err)
 	}
-	return report, writeReview(c, all)
+	return report, errors.Join(failed, writeReview(c, all))
 }
 
 func one(ctx context.Context, c *config, rel string) (result entry, err error) {
