@@ -42,8 +42,8 @@ func Relative(name string) bool {
 // ID is a single portable component, suitable for generated file names.
 func ID(name string) bool { return name != "." && Relative(name) && !strings.Contains(name, "/") }
 
-// Canonical resolves symlinks in the existing prefix even for a new destination.
-func Canonical(name string) (string, error) {
+// canonical resolves symlinks in the existing prefix even for a new destination.
+func canonical(name string) (string, error) {
 	if name == "" {
 		return "", errors.New("empty path")
 	}
@@ -101,7 +101,7 @@ func Destination(dst string, protected ...string) error {
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	d, err := Canonical(dst)
+	d, err := canonical(dst)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func Destination(dst string, protected ...string) error {
 		if src == "" {
 			continue
 		}
-		s, err := Canonical(src)
+		s, err := canonical(src)
 		if err != nil {
 			return err
 		}
@@ -122,12 +122,29 @@ func Destination(dst string, protected ...string) error {
 
 // Publish builds in an isolated staging tree and reserves a new destination.
 // Existing destinations, including empty directories and symlinks, are never replaced.
+// A failed build leaves nothing: the parent directories Publish made are removed too.
 func Publish(dst string, protected []string, build func(string) error) (err error) {
 	if err = Destination(dst, protected...); err != nil {
 		return err
 	}
+	// made is the topmost parent that does not exist yet; removing it on failure
+	// removes every directory MkdirAll is about to create and nothing older.
+	made := ""
+	for p := filepath.Dir(dst); ; p = filepath.Dir(p) {
+		if _, statErr := os.Lstat(p); statErr == nil || !errors.Is(statErr, fs.ErrNotExist) || filepath.Dir(p) == p {
+			break
+		}
+		made = p
+	}
 	if err = os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return err
+	}
+	if made != "" {
+		defer func() {
+			if err != nil {
+				err = errors.Join(err, os.RemoveAll(made))
+			}
+		}()
 	}
 	stage, err := os.MkdirTemp(filepath.Dir(dst), ".gozen-stage-")
 	if err != nil {

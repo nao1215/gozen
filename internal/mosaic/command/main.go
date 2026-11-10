@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -134,13 +135,13 @@ func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
 	for l := range strings.SplitSeq(labels, ",") {
 		if l = strings.TrimSpace(l); l != "" {
 			if !slices.Contains(classes, l) {
-				return config{}, fmt.Errorf("unknown label %q: --labels must be chosen from the classes %s", l, strings.Join(classes, ","))
+				return config{}, cliio.Invalid(diag.UnknownName, "unknown label %q: --labels must be chosen from the classes %s", l, strings.Join(classes, ","))
 			}
 			p.labels[l] = true
 		}
 	}
 	if len(p.labels) == 0 {
-		return config{}, errors.New("--labels cannot be empty")
+		return config{}, cliio.Invalid(diag.BadValue, "--labels cannot be empty")
 	}
 	out := o.out
 	if out == "" {
@@ -148,23 +149,27 @@ func (o *options) setup(ctx context.Context, gameDir string) (config, error) {
 	}
 	c := config{classes: classes, classSource: source, outw: o.outw, diag: o.diag, gameDir: gameDir, out: out, block: o.block, quality: o.quality, p: p, opts: o}
 	if o.shape != "mask" && o.shape != "box" {
-		return c, fmt.Errorf("--shape は mask か box（%q）", o.shape)
+		return c, cliio.Invalid(diag.BadValue, "--shape は mask か box（%q）", o.shape)
 	}
 	if err = protectPaths(gameDir, out, o.fixFile, o.manualFile, o.tagsFile); err != nil {
 		return c, err
 	}
 	if c.passes, err = detect.PassesByName(o.passes); err != nil {
-		return c, err
+		return c, cliio.Invalid(diag.BadValue, "--passes: %v", err)
 	}
 	if len(c.passes) == 0 {
-		return c, errors.New("--passes cannot be empty")
+		return c, cliio.Invalid(diag.BadValue, "--passes cannot be empty")
 	}
 	human, err := mosaic.LoadFixes(o.fixFile)
 	if err != nil {
-		return c, err
+		return c, fmt.Errorf("--fix: %w", err)
 	}
-	if c.manual, err = mosaic.LoadFixes(o.manualFile); err != nil {
-		return c, err
+	// The manual file is written by the manual commands, so it may not exist yet. The fix
+	// file is written by hand: a missing one is a mistyped name, not "no fixes".
+	if c.manual, err = mosaic.LoadFixes(o.manualFile); errors.Is(err, fs.ErrNotExist) {
+		c.manual = mosaic.Fixes{}
+	} else if err != nil {
+		return c, fmt.Errorf("--manual: %w", err)
 	}
 	c.fixes = mosaic.Fixes{}
 	maps.Copy(c.fixes, human)
@@ -278,7 +283,14 @@ func (cli *cli) autoCmd() clihelp.Operation {
 			c.printClasses()
 		}
 		c.tags.readOnly = *dry
-		pics := fs.Args()[1:]
+		var pics []string
+		for _, arg := range fs.Args()[1:] {
+			rel, _, _ := resolve(c, arg)
+			if rel == "" {
+				return fmt.Errorf("%s is outside %s: auto pixelates the images of the game only", arg, filepath.Join(gameDir, "assets"))
+			}
+			pics = append(pics, rel)
+		}
 		if len(pics) == 0 {
 			var missing []string
 			if pics, missing, err = mosaic.Pictures(gameDir); err != nil {
@@ -366,10 +378,14 @@ func run(ctx context.Context, c config, pics []string) (report []entry, err erro
 	defer func() { err = errors.Join(err, c.close()) }()
 	report = []entry{}
 	var masked, review int
+	var failed error
 	for i, rel := range pics {
 		e, err := one(ctx, &c, rel)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", rel, err)
+			// The pictures before this one are written. They are recorded below, so that
+			// no output is left without its entry in report.json.
+			failed = fmt.Errorf("%s: %w", rel, err)
+			break
 		}
 		report = append(report, e)
 		mark := "-"
@@ -390,18 +406,20 @@ func run(ctx context.Context, c config, pics []string) (report []entry, err erro
 	}
 	if !c.dry {
 		if err := c.tags.save(); err != nil {
-			return nil, err
+			return nil, errors.Join(failed, err)
 		}
 	}
-	c.outw.Printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
-	if c.dry {
-		return report, nil
+	if failed == nil {
+		c.outw.Printf("%d 枚中 %d 枚にモザイク、要確認 %d 枚\n", len(pics), masked, review)
+	}
+	if c.dry || failed != nil && len(report) == 0 {
+		return report, failed
 	}
 	all, err := writeReport(c.gameDir, c.out, report)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(failed, err)
 	}
-	return report, writeReview(c, all)
+	return report, errors.Join(failed, writeReview(c, all))
 }
 
 func one(ctx context.Context, c *config, rel string) (result entry, err error) {
@@ -499,11 +517,8 @@ func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 	if c.dry || len(shapes) == 0 {
 		return e, nil
 	}
-	outputRel := rel
-	if strings.EqualFold(filepath.Ext(rel), ".webp") {
-		outputRel = rel + ".png"
-	}
-	dst := filepath.Join(c.out, filepath.FromSlash(outputRel))
+	output := outputRel(rel)
+	dst := filepath.Join(c.out, filepath.FromSlash(output))
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return e, err
 	}
@@ -516,7 +531,7 @@ func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 	if err := writeMask(maskPath(c.out, rel), b, shapes, e.Block, off); err != nil {
 		return e, err
 	}
-	e.Output = outputRel
+	e.Output = output
 	return e, nil
 }
 
@@ -525,7 +540,20 @@ func decode(path string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	img, _, err := image.Decode(f)
+	// The header is checked first: a small file may claim a picture of gigabytes.
+	// The limits are those of a game's pictures (8192 a side, 32 Mi pixels), which
+	// also keep the covered pixels mosaic.BestOffset counts within 32 bits.
+	var img image.Image
+	cfg, _, err := image.DecodeConfig(f)
+	if err == nil && (cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > 8192 || cfg.Height > 8192 || cfg.Width > (32<<20)/cfg.Height) {
+		err = fmt.Errorf("picture dimensions %dx%d exceed limits (8192 per side, 33554432 pixels)", cfg.Width, cfg.Height)
+	}
+	if err == nil {
+		_, err = f.Seek(0, io.SeekStart)
+	}
+	if err == nil {
+		img, _, err = image.Decode(f)
+	}
 	return img, errors.Join(err, f.Close())
 }
 

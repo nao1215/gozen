@@ -84,3 +84,58 @@ func TestMapAdviceSourceTexts(t *testing.T) {
 		}
 	}
 }
+
+// TestCopiesTranslateTheirOwnTitle: a copy of the definitions (Fork, and the view a
+// state owns, ForState) shows its title in the language it is shown in, and shares the
+// names of the definitions; and a view takes a game's instances without the loaded
+// definitions or another view seeing them.
+func TestCopiesTranslateTheirOwnTitle(t *testing.T) {
+	db := testgame.Load(t, map[string]string{
+		"game.yaml":    twoLanguages + testgame.Game,
+		"lang/ja.yaml": "text:\n  \"Camp expedition\": \"野営の旅\"\n  \"Camp\": \"野営地\"\n",
+	})
+	for name, copyOf := range map[string]func(*data.DB) *data.DB{"Fork": data.Fork, "ForState": (*data.DB).ForState} {
+		c := copyOf(db)
+		c.Show("ja")
+		if c.Game.Title != "野営の旅" || c.Locations["camp"].Name != "野営地" || c.Shown() != "ja" {
+			t.Errorf("%s shown in ja: title %q, camp %q", name, c.Game.Title, c.Locations["camp"].Name)
+		}
+		c.Show("en")
+		if c.Game.Title != "Camp expedition" || c.Locations["camp"].Name != "Camp" {
+			t.Errorf("%s back in en: title %q, camp %q", name, c.Game.Title, c.Locations["camp"].Name)
+		}
+	}
+	if db.AddInstance("monster_1", &data.Actor{Name: "Mote"}) {
+		t.Error("the loaded definitions took an instance")
+	}
+	first, second := db.ForState(), db.ForState()
+	if !first.AddInstance("monster_1", &data.Actor{Name: "Mote"}) || first.AddInstance("scout", &data.Actor{Name: "Mote"}) {
+		t.Fatal("a view takes an instance under a new id, never under an authored actor's")
+	}
+	if db.Actors["monster_1"] != nil || second.Actors["monster_1"] != nil || first.ForState().Actors["monster_1"] != nil {
+		t.Error("an instance left its view")
+	}
+	if data.Fork(first).Actors["monster_1"] == nil {
+		t.Error("a fork of a view lost the view's instance")
+	}
+	first.RemoveInstance("scout")
+	first.RemoveInstance("monster_1")
+	if first.Actors["scout"] == nil || first.Actors["monster_1"] != nil {
+		t.Error("RemoveInstance drops instances only")
+	}
+}
+
+// SourceTexts lists the lines of every command list, the events of troops among them, so
+// such a line is reported untranslated and its translation is a text of the game.
+func TestSourceTextsCoverTroopEvents(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, st := range db.SourceTexts() {
+		if st.Text == "The bell rings." {
+			if st.Path != "troops.boss.events[0].do[0].say" {
+				t.Errorf("the line is at %q", st.Path)
+			}
+			return
+		}
+	}
+	t.Error(`troops.boss.events[0].do says "The bell rings." but SourceTexts does not list it`)
+}

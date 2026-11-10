@@ -435,3 +435,73 @@ func TestRunExitCodesAndOutputFailures(t *testing.T) {
 		t.Fatalf("a failing diagnostics writer gave %d", code)
 	}
 }
+
+// TestMissingFixFileIsAnError: a --fix file that does not exist is a mistyped name. It used
+// to be read as "no fixes", so auto pixelated nothing by hand and exited 0. A --manual
+// file may be absent: the manual commands create it.
+func TestMissingFixFileIsAnError(t *testing.T) {
+	game, out := fixture(t)
+	missing := filepath.Join(filepath.Dir(game), "does-not-exist.yaml")
+	for _, sub := range []string{"auto", "list", "inspect"} {
+		code, stdout, diag := invoke(t, sub, "--fix", missing, "-o", out, game)
+		if code != 1 || stdout != "" || !strings.Contains(diag, "--fix") || !strings.Contains(diag, "does-not-exist.yaml") {
+			t.Errorf("%s --fix with a missing file: code %d, %q, %s", sub, code, stdout, diag)
+		}
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatal("a run with a missing fix file wrote the output directory")
+	}
+	if code, _, diag := invoke(t, "list", "--manual", missing, "-o", out, game); code != 0 {
+		t.Fatalf("a manual file that is not there yet: code %d, %s", code, diag)
+	}
+}
+
+// TestAutoRecordsFinishedPicturesWhenOneFails: a picture that cannot be read ends the run
+// with an error, and the pictures written before it are in report.json. They used to be
+// left in --out without a report, so inspect and the manual commands did not know them.
+func TestAutoRecordsFinishedPicturesWhenOneFails(t *testing.T) {
+	game, out := fixture(t)
+	if err := os.WriteFile(filepath.Join(game, "assets", "broken.png"), []byte("not a picture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := useModels(t)
+	model, _ := m.detector(t, "model.onnx", penis(4, 4, 10, 10, 0.5))
+	code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, "pattern.png", "broken.png")
+	if code != 1 || !strings.Contains(diag, "broken.png: ") {
+		t.Fatalf("code %d: %s", code, diag)
+	}
+	es := readEntries(t, out)
+	if len(es) != 1 || es[0].File != "pattern.png" || es[0].Output != "pattern.png" {
+		t.Fatalf("report after a failed batch: %+v", es)
+	}
+	for _, name := range []string{"pattern.png", "review.md"} {
+		if _, err := os.Stat(filepath.Join(out, name)); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// TestAutoReadsOperandsLikeInspect: auto takes the forms of IMAGE that inspect and the
+// manual commands take: a leading assets/, a backslash as the separator, and a file path.
+func TestAutoReadsOperandsLikeInspect(t *testing.T) {
+	game, out := fixture(t)
+	m := useModels(t)
+	model, _ := m.detector(t, "model.onnx", penis(4, 4, 10, 10, 0.9))
+	for _, arg := range []string{"assets/pattern.png", `assets\pattern.png`, filepath.Join(game, "assets", "pattern.png")} {
+		code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, arg)
+		if code != 0 {
+			t.Fatalf("auto %q: code %d: %s", arg, code, diag)
+		}
+		if es := readEntries(t, out); len(es) != 1 || es[0].File != "pattern.png" || es[0].Output != "pattern.png" {
+			t.Fatalf("auto %q: report %+v", arg, es)
+		}
+	}
+	// A picture that is not an asset of the game is refused, not written somewhere.
+	other := filepath.Join(t.TempDir(), "elsewhere.png")
+	if err := encode(other, image.NewRGBA(image.Rect(0, 0, 8, 8)), 90); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, diag := invoke(t, "auto", "--model", model, "-o", out, game, other); code != 1 || !strings.Contains(diag, "outside") {
+		t.Fatalf("auto of a file outside the assets: code %d: %s", code, diag)
+	}
+}

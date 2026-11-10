@@ -11,6 +11,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
 )
@@ -83,7 +85,7 @@ func Turn(d *data.Streams, p *rpg.Streams, shows []*Show, now time.Time, rng *ra
 		return shows
 	}
 	again := func(s *Show) time.Time {
-		return s.Start.Add(time.Duration((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second)))
+		return s.Start.Add(time.Duration(safeint.From((s.Seconds() + *d.Slot.Rest*60) * float64(time.Second))))
 	}
 	for {
 		// the show to start again first, in the order of time
@@ -212,7 +214,7 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 			own++
 		}
 	}
-	want := int(math.Ceil(d.Live.MinShare * float64(own)))
+	want := safeint.From(math.Ceil(d.Live.MinShare * float64(own)))
 	for _, c := range d.Channels {
 		if n < want && !live[c.ID] && len(c.Shows) > 0 {
 			live[c.ID] = true
@@ -221,7 +223,7 @@ func Lineup(d *data.Streams, p *rpg.Streams, now time.Time, rng *rand.Rand) []*S
 	}
 	// late starts a show up to four minutes ago, and before its middle.
 	late := func(s *Show) *Show {
-		s.Start = now.Add(-time.Duration(rng.Float64() * min(float64(maxLate), s.Seconds()/2*float64(time.Second))))
+		s.Start = now.Add(-time.Duration(safeint.From(rng.Float64() * min(float64(maxLate), s.Seconds()/2*float64(time.Second)))))
 		return s
 	}
 	paired := map[string]*Show{}
@@ -351,5 +353,5 @@ func Settle(d *data.Streams, p *rpg.Streams, now time.Time) int {
 			stars += Step(d, pr.Points)
 		}
 	}
-	return int(d.Away.PerHour * min(away, d.Away.CapHours) * (1 + d.Away.StarBonus*float64(stars)))
+	return safeint.From(d.Away.PerHour * min(away, d.Away.CapHours) * (1 + d.Away.StarBonus*float64(stars)))
 }

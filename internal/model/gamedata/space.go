@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 // Space is an opt-in bounded stack of maps. Blank cells are open air; ordinary
@@ -145,7 +146,7 @@ func SpaceHeightAt(s *Space, level int, x, z float64) float64 {
 		if stair.Level-1 != level {
 			continue
 		}
-		if n, ok := StairOffset(stair, int(math.Floor(x)), int(math.Floor(z))); ok && stair.Length > 0 && n < stair.Length {
+		if n, ok := StairOffset(stair, safeint.From(math.Floor(x)), safeint.From(math.Floor(z))); ok && stair.Length > 0 && n < stair.Length {
 			dx, dz := StairDelta(stair)
 			along := (x-float64(stair.X)-.5)*float64(dx) + (z-float64(stair.Y)-.5)*float64(dz) + .5
 			return (float64(level) + max(0, min(1, along/float64(stair.Length)))) * SpaceStoryHeight

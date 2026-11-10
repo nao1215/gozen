@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nao1215/gozen/internal/base/expr"
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 // WorkSample is a saved public observation for presentation charts, never true progress.
@@ -410,7 +411,7 @@ func calendarShift(args []any) (any, error) {
 	if !ok || expr.TypeOfValue(args[1]) != expr.NumberType || math.IsNaN(days) || math.Abs(days) > 3652058 || math.Trunc(days) != days {
 		return nil, errors.New("calendar_shift offset must be an integer within -3652058..3652058")
 	}
-	result := date.AddDate(0, 0, int(days))
+	result := date.AddDate(0, 0, safeint.From(days))
 	if result.Year() < 1 || result.Year() > 9999 {
 		return nil, errors.New("calendar_shift result must be in years 0001 through 9999")
 	}
@@ -553,7 +554,7 @@ func (s *State) periodValue(args []any) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.Planning.Ledgers[ledger][date.AddDate(0, int(offset), 0).Format("2006-01")][owner], nil
+	return s.Planning.Ledgers[ledger][date.AddDate(0, safeint.From(offset), 0).Format("2006-01")][owner], nil
 }
 
 // RecordWorkSample is called by the planning interpreter after successful observe

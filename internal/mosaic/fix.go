@@ -108,15 +108,16 @@ func (f Fix) Empty() bool {
 
 type Fixes map[string]Fix
 
+// LoadFixes reads a fix file. An empty path is no file and gives no fixes. A file that
+// cannot be read is an error, a missing one too (it matches fs.ErrNotExist): the caller
+// decides whether a file it may create itself is allowed to be absent, so that a mistyped
+// name is not read as "no fixes".
 func LoadFixes(path string) (Fixes, error) {
 	fx := Fixes{}
 	if path == "" {
 		return fx, nil
 	}
 	b, err := os.ReadFile(path) //nolint:gosec // The caller explicitly selects this input file.
-	if os.IsNotExist(err) {
-		return fx, nil
-	}
 	if err != nil {
 		return nil, err
 	}

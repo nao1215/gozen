@@ -73,7 +73,7 @@ func (session *Session) loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (i
 		if e.IsDir() || (ext != ".ogg" && ext != ".wav") {
 			continue
 		}
-		b, err := fs.ReadFile(fsys, path.Join(dir, e.Name()))
+		b, err := readSound(fsys, path.Join(dir, e.Name()))
 		if err != nil {
 			log.Printf("sfx %s: %v", e.Name(), err)
 			continue
@@ -82,7 +82,7 @@ func (session *Session) loadEffects(fsys fs.FS, dir string, lengthsOnly bool) (i
 		var seconds float64
 		if lengthsOnly {
 			var stream effectStream
-			stream, err = decodeEffectStream(b, ext)
+			stream, err = openSound(b, ext, maxClipBytes)
 			if err == nil {
 				seconds = float64(stream.Length()/4) / SampleRate
 			}
@@ -111,21 +111,111 @@ type effectStream interface {
 	Length() int64
 }
 
-func decodeEffectStream(b []byte, ext string) (effectStream, error) {
-	if ext == ".wav" {
-		return wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+// maxSoundFile is the most encoded bytes read from one sound file (music, effect
+// or voice), the same as a picture's limit.
+const maxSoundFile = 64 << 20
+
+// maxClipSeconds is the longest effect or voice the player decodes. A clip is
+// kept whole in memory as 32-bit stereo (about 20 MiB a minute, and sixteen
+// voices are cached); longer sound belongs to the music.
+const (
+	maxClipSeconds = 60
+	// maxClipBytes is that length as the decoders give it: 16-bit stereo.
+	maxClipBytes = maxClipSeconds * SampleRate * 4
+)
+
+// readSound reads one sound file of the game. A file past maxSoundFile is
+// refused from its reported size, before a byte is read, and the read itself
+// stops at the limit when the size is not reported.
+func readSound(fsys fs.FS, name string) ([]byte, error) {
+	f, err := fsys.Open(name)
+	if err != nil {
+		return nil, err
 	}
-	return vorbis.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+	tooLarge := fmt.Errorf("%s: %w", name, errSoundFileTooLarge)
+	var b []byte
+	if info, statErr := f.Stat(); statErr == nil && info.Size() > maxSoundFile {
+		err = tooLarge
+	} else {
+		b, err = io.ReadAll(io.LimitReader(f, maxSoundFile+1))
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil && len(b) > maxSoundFile {
+		err = tooLarge
+	}
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
-func DecodeEffect(b []byte, ext string) ([]byte, error) {
-	r, err := decodeEffectStream(b, ext)
+var errSoundFileTooLarge = fmt.Errorf("sound file exceeds %d encoded bytes", maxSoundFile)
+
+// openSound opens a sound file (ext is ".wav", anything else is Ogg Vorbis) as
+// 16-bit stereo at SampleRate and refuses one that claims more than maxBytes of
+// it, before anything is decoded. The claim is a field of the file, so a
+// negative (wrapped) one is refused too.
+func openSound(b []byte, ext string, maxBytes int64) (r effectStream, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			r, err = nil, decoderFailure(p)
+		}
+	}()
+	if ext == ".wav" {
+		r, err = wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+	} else {
+		r, err = vorbis.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
+	}
 	if err != nil {
 		return nil, err
 	}
-	raw, err := io.ReadAll(r)
+	if n := r.Length(); n < 0 || n > maxBytes {
+		return nil, fmt.Errorf("sound claims %d seconds, over the limit of %d", n/(4*SampleRate), maxBytes/(4*SampleRate))
+	}
+	return guarded{r}, nil
+}
+
+// guarded turns a panic of a decoder into an error of the read. The decoders
+// index by numbers of the file (a last Ogg page that claims fewer frames than
+// its packets hold makes the Vorbis reader slice below zero), and a broken
+// sound file must not end the game.
+type guarded struct{ effectStream }
+
+func (g guarded) Read(p []byte) (n int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			n, err = 0, decoderFailure(r)
+		}
+	}()
+	return g.effectStream.Read(p)
+}
+
+func decoderFailure(recovered any) error {
+	return fmt.Errorf("sound decoder failed: %v", recovered)
+}
+
+// DecodeEffect decodes an effect or a voice (ext is ".wav" or ".ogg") into
+// 32-bit float stereo at SampleRate. A clip longer than maxClipSeconds is an
+// error, whether its header says so or its data runs past what the header says.
+func DecodeEffect(b []byte, ext string) ([]byte, error) {
+	r, err := openSound(b, ext, maxClipBytes)
 	if err != nil {
 		return nil, err
+	}
+	return readClip(r, maxClipBytes)
+}
+
+// readClip converts an opened clip, reading at most limit bytes of it: the
+// length a file claims is not the length of its data.
+func readClip(r io.Reader, limit int64) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > limit {
+		return nil, fmt.Errorf("sound is longer than the limit of %d seconds", limit/(4*SampleRate))
 	}
 	out := make([]byte, len(raw)/2*4)
 	for i := range len(raw) / 2 {

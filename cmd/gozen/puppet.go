@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -43,6 +44,11 @@ func (c *command) puppetCmd() clihelp.Operation {
 		b, err := yaml.Marshal(spec)
 		if err != nil {
 			return err
+		}
+		for n := range files {
+			if !cli.ID(n) {
+				return fmt.Errorf("puppet: picture name %q is not one portable file name", n)
+			}
 		}
 		err = cli.Publish(*out, nil, func(stage string) error {
 			if err := cli.WriteNew(filepath.Join(stage, name), b); err != nil {

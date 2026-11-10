@@ -4,6 +4,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
@@ -27,7 +29,7 @@ func (b *Battle) transform(u, t *Unit, e *data.Effect) []Step {
 		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
 			return []Step{{Kind: Message, Text: "The form did not change."}}
 		}
-		hp = int(math.Round(v))
+		hp = safeint.From(math.Round(v))
 	}
 	n := newEnemyUnit(b, e.Transform, t.Index)
 	if !e.TransformClear {
@@ -36,7 +38,7 @@ func (b *Battle) transform(u, t *Unit, e *data.Effect) []Step {
 	}
 	switch hpMode {
 	case "", "ratio":
-		hp = int(math.Round(ratio * float64(n.MHP())))
+		hp = safeint.From(math.Round(ratio * float64(n.MHP())))
 	case "full":
 		hp = n.MHP()
 	}
@@ -109,7 +111,7 @@ func (b *Battle) merge(u *Unit, e *data.Effect) []Step {
 	case "", "sum":
 		n.HP = min(n.MHP(), sum)
 	case "ratio":
-		n.HP = min(n.MHP(), max(1, int(math.Round(rates/float64(len(members))*float64(n.MHP())))))
+		n.HP = min(n.MHP(), max(1, safeint.From(math.Round(rates/float64(len(members))*float64(n.MHP())))))
 	}
 	for _, f := range members {
 		f.Fled = true // consumed forms do not pay rewards or count as defeats

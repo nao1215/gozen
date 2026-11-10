@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -26,18 +25,14 @@ func (c *command) campaignCmd() clihelp.Operation {
 	maxOrders := fs.Int("orders", 2000, "orders a campaign may give before it is cut")
 	c.reporting(fs)
 	compare := fs.String("compare", "", "compare strategies or declared tactics on the same seeds")
+	clihelp.Choices(fs.Lookup("as"), campaignsim.Strategies...)
+	clihelp.Choices(fs.Lookup("compare"), "strategies", "tactics")
 	return clihelp.Operation{Flags: fs, Run: func(ctx context.Context) (err error) {
 		if fs.NArg() != 1 {
 			return cliio.Invalid(diag.Operands, "expected <game-dir>")
 		}
 		if *n <= 0 || *maxOrders <= 0 {
 			return cliio.Invalid(diag.BadValue, "--campaigns and --orders must be positive")
-		}
-		if !slices.Contains(campaignsim.Strategies, *as) {
-			return cliio.Invalid(diag.NotAChoice, "--as is %s, not %q", strings.Join(campaignsim.Strategies, ", "), *as)
-		}
-		if *compare != "" && *compare != "strategies" && *compare != "tactics" {
-			return cliio.Invalid(diag.NotAChoice, "--compare is strategies or tactics, not %q", *compare)
 		}
 		fsys, err := gameFS(fs.Arg(0))
 		if err != nil {

@@ -216,3 +216,25 @@ troops:
 		t.Errorf("equal weights hit both rows: %v", even)
 	}
 }
+
+// TestStatEndsWhenMultipliersReadEachOther: two states whose stats_by
+// multipliers read each other's stat would work each out from the other
+// without end. The stat being worked out is read as it is before the states.
+func TestStatEndsWhenMultipliersReadEachOther(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/units.yaml": unitData, "data/loops.yaml": `
+states:
+  edge: {name: Edge, turns: 9, stats_by: {atk: "1 + a.def / 10"}}
+  wall: {name: Wall, turns: 9, stats_by: {def: "1 + a.atk / 10"}}
+`})
+	st := testgame.State(db, 1)
+	b := battle.New(db, st, "mask")
+	mask := b.Foes[0] // atk 4, def 1
+	mask.States["edge"], mask.States["wall"] = 9, 9
+	// def read for atk sees atk before the states: 1 * (1 + 4/10) = 1.4 -> 1; atk = 4 * (1 + 1/10) = 4.4 -> 4.
+	if atk, def := mask.Stat("atk"), mask.Stat("def"); atk != 4 || def != 1 {
+		t.Fatalf("atk %d def %d, want 4 and 1", atk, def)
+	}
+	if again := mask.Stat("atk"); again != 4 {
+		t.Fatalf("a second reading gives %d: the guard was not put away", again)
+	}
+}

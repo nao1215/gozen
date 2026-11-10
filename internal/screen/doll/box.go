@@ -20,8 +20,9 @@ const (
 	Poses = 5
 )
 
-// unitsH is the picture's height in the doll's heights (a little room over the head).
-const unitsH = 1.12
+// UnitsH is the picture's height in the doll's heights (a little room over the head).
+// The stage sizes its figures with the same value.
+const UnitsH = 1.12
 
 // The color indexes of a doll's shapes; the parts' own colors come after.
 const (
@@ -398,7 +399,7 @@ func (b *Baker) Step() bool {
 func (b *Baker) picture(side, pose int) {
 	fw, fh, el := b.fw, b.fh, b.el
 	dc, dr := vec{0, 0.55, 0}, 0.7 // the whole doll lies in this sphere
-	k := unitsH / float64(fh)
+	k := UnitsH / float64(fh)
 	light := vec{-0.45, 0.75, 0.5}
 	light = scale(light, 1/length(light))
 	th := float64(side) * math.Pi / 4

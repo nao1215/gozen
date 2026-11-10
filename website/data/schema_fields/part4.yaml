@@ -6,7 +6,7 @@ Generate:
   place: "The other characters placed on the floor apart from the start, such as stairs and events."
   rooms: "How many rooms the maze has."
   seed: "The random seed of the map. When set, every save gets the same map; otherwise each save gets its own seed."
-  size: "An expression of the floor number giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller."
+  size: "An expression of the floor number `floor` alone (no other name, `rand` or `chance`) giving the side length of the maze on that floor, capped by `width` and `height` and at least 9. It makes early floors smaller."
   start: "The map character the party arrives at."
   width: "The width of the maze in cells. Use an odd number."
 Grant:
@@ -202,7 +202,7 @@ Order:
   cost: "The actions it takes. Default 1."
   do: "The commands run after the march (if any), with general and target bound."
   fight: "clash_view to decide the march by a clash of units shown on its own screen (the generals against the members of the target's defend troop, at most four a side), or battle to decide it by the game's battle: the general alone against the target's defend troop. A win takes the region with the share of the troops of the HP left; a loss leaves the clash's lost. Omitted: by the numbers of clash."
-  generals: "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken."
+  generals: "How many generals may march together (1 when omitted). After the first, the order asks who else goes, until March now is chosen or all are taken. A clash shown as units takes clash.units of them at most; fight: battle is one general's, so generals stays 1."
   on_draw: "Commands run after a march whose rounds ran out (a clash shown as units), before do: a general's word on it."
   on_lose: "Commands run after a march that failed, before do."
   on_win: "Commands run after a march that took the region, before do."

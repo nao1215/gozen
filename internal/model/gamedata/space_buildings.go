@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 // SpaceMaterial supplies play with a building surface. Width/Height are world
@@ -135,8 +136,8 @@ func (s *Space) parseBuildings() {
 			if s.roofCells == nil {
 				s.roofCells = map[[2]int][]int{}
 			}
-			for z := int(math.Floor(q.Bounds[1])); z < int(math.Ceil(q.Bounds[3])); z++ {
-				for x := int(math.Floor(q.Bounds[0])); x < int(math.Ceil(q.Bounds[2])); x++ {
+			for z := safeint.From(math.Floor(q.Bounds[1])); z < safeint.From(math.Ceil(q.Bounds[3])); z++ {
+				for x := safeint.From(math.Floor(q.Bounds[0])); x < safeint.From(math.Ceil(q.Bounds[2])); x++ {
 					key := [2]int{x, z}
 					s.roofCells[key] = append(s.roofCells[key], id)
 				}
@@ -151,8 +152,8 @@ func (s *Space) RoofBlocks(x, z, radius, feet, head float64) bool {
 	if len(s.roofParts) == 0 {
 		return false
 	}
-	for iz := int(math.Floor(z - radius)); iz <= int(math.Floor(z+radius)); iz++ {
-		for ix := int(math.Floor(x - radius)); ix <= int(math.Floor(x+radius)); ix++ {
+	for iz := safeint.From(math.Floor(z - radius)); iz <= safeint.From(math.Floor(z+radius)); iz++ {
+		for ix := safeint.From(math.Floor(x - radius)); ix <= safeint.From(math.Floor(x+radius)); ix++ {
 			for _, id := range s.RoofCandidates(ix, iz) {
 				p := s.roofParts[id]
 				nearX := max(p.Bounds[0], min(p.Bounds[2], x))
@@ -203,8 +204,8 @@ func (s *Space) RoofRay(origin, direction [3]float64, limit float64) (float64, b
 	if minZ > maxZ {
 		minZ, maxZ = maxZ, minZ
 	}
-	for z := max(0, int(math.Floor(minZ))); z <= min(63, int(math.Floor(maxZ))); z++ {
-		for x := max(0, int(math.Floor(minX))); x <= min(63, int(math.Floor(maxX))); x++ {
+	for z := max(0, safeint.From(math.Floor(minZ))); z <= min(63, safeint.From(math.Floor(maxZ))); z++ {
+		for x := max(0, safeint.From(math.Floor(minX))); x <= min(63, safeint.From(math.Floor(maxX))); x++ {
 			for _, id := range s.RoofCandidates(x, z) {
 				p := s.roofParts[id]
 				lo, hi := 0.0, limit

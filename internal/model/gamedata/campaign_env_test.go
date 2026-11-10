@@ -119,3 +119,26 @@ func TestCampaignEnvironmentDefaultsAndOverrides(t *testing.T) {
 		t.Fatal("unknown root claimed by campaign environment")
 	}
 }
+
+// TestCampaignNumbersSaturate: a campaign number outside the range of an int
+// (an infinite actions formula, a saved 1e300) becomes the largest count on every
+// platform; a bare conversion gives the lowest int on amd64 and the highest on arm64.
+func TestCampaignNumbersSaturate(t *testing.T) {
+	db := &DB{Game: Game{Campaign: &Campaign{Actions: MustExpr("pow(10, 400)")}}}
+	if got := TurnActions(db, CampaignState{}); got < 1 {
+		t.Errorf("TurnActions of an infinite formula = %v, want the saturated maximum", got)
+	}
+	st := CampaignState{Vars: map[string]any{VarTurn: 1e300, VarTaken: 1e300, GeneralVar("g", "out"): 1e300, OrderVar("o", "used"): 1e300}}
+	if got := Turn(db, st); got <= 0 {
+		t.Errorf("Turn(1e300) = %d, want a saturated positive number", got)
+	}
+	if got := Taken(st); got <= 0 {
+		t.Errorf("Taken(1e300) = %d", got)
+	}
+	if got := Out(st, "g"); got <= 0 {
+		t.Errorf("Out(1e300) = %d", got)
+	}
+	if got := Used(st, "o"); got <= 0 {
+		t.Errorf("Used(1e300) = %d", got)
+	}
+}

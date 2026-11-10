@@ -117,6 +117,9 @@ How it pixelates:
 - Each cell is the average of the original pixels in it. `--block 0` uses `max(4, ceil(long side / 100))` pixels; `1` leaves the image unchanged.
 - Every cell a region touches is filled, so a region's outline is covered. Regions can be rectangles, boxes, polygons, ellipses or masks.
 - Input is PNG, JPEG or WebP; output is PNG or JPEG (a WebP input is written as `<name>.png`).
+- `IMAGE` is a path below `<game-dir>/assets/`. Every subcommand reads it the same way: a leading `assets/` and a backslash as the separator are accepted, the asset comes before a file of the same name in the working directory, and a path to a file in `--out` stands for the asset it was made from.
+- A `--fix` file that does not exist is an error. The `--manual` file may be absent, because the manual subcommands create it.
+- When one image fails, `auto` stops with exit status 1 after recording the images it finished in `report.json`.
 - Class names of the `--model` output are read from `--classes a,b,c`, then a `labels.json` (a JSON array of strings) beside the model, then the ONNX metadata `names` (the Ultralytics export form `{0: 'a', 1: 'b'}`), then the built-in `nipple_f,penis,pussy` (`nipple_f` is a female nipple, the class name of deepghs/anime_censor_detection). `--face` models use the same lookup. `auto --dry-run` and `inspect` print the classes and where they came from (`--classes`, `labels.json`, `metadata` or `default`). An empty name, a duplicate, or a count that does not match the model output is an error.
 - `--labels` picks the classes to pixelate; the default is `penis,pussy`, because the Japanese distribution standard does not pixelate nipples by default. With `--classes`, or a model whose classes differ from the default, and no `--labels`, every class is pixelated. For example, `--model face.onnx --classes face` pixelates faces.
 - `--threshold` and `--sure` (default 0.5) set the detection confidence; detections below `--sure` are pixelated and also listed for review. Automatic detection does not replace a person looking at the result.
@@ -125,7 +128,7 @@ Run `gozen mosaic <subcommand> --help` for every option, including `--margin`, `
 
 ### Fetching models
 
-`gozen models fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 written in gozen; a mismatch deletes the download and fails. `gozen models list` shows the models and whether each is fetched.
+`gozen models fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 written in gozen; a mismatch deletes the download and fails. A model already in the cache with matching checksums is not downloaded again. A cached file is hashed once and recorded in `verified.json` beside it; after that only its size and modification time are compared, and a file that changed is hashed again. `gozen models list` shows the models and whether each is fetched.
 
 | Name | Source (license) | Classes | Use |
 |---|---|---|---|

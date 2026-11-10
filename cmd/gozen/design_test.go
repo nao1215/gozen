@@ -358,7 +358,7 @@ func TestDesignMarkdownEscapesTableHeadersAndCells(t *testing.T) {
 	}
 	cfg := &designeval.Config{Release: "gift", Rewards: []designeval.Rule{{Kind: "gift", Label: "Gift|label\ncontinued"}}}
 	sums := []designeval.Summary{{ID: "reader", Name: "Reader|guest\nname"}}
-	out := designReport(cfg, []*designeval.Run{{}}, sums, "run", "hash", "", nil)
+	out := designReport(cfg, []*designeval.Run{{}}, sums, "run", "hash", "runs/here", "", nil)
 	for _, want := range []string{`Gift\|label<br>continued`, `Reader\|guest<br>name (reader)`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("report lacks escaped cell %q", want)
@@ -543,5 +543,23 @@ func TestDesignLeavesOutNoteVariablesThatAreNotValues(t *testing.T) {
 	}
 	if found == 0 {
 		t.Error("the variable that is a number is still kept")
+	}
+}
+
+// The report names the directory --root was given when it finds no earlier run,
+// and a difference that cannot be formed (an ending reached in no time) is not
+// marked as within the target.
+func TestDesignReportNamesItsRootAndRejectsUnformedRatios(t *testing.T) {
+	if err := lang.Use(lang.English, nil); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &designeval.Config{Targets: designeval.Targets{Persona: "a", CloseTo: "b", Within: 0.2}}
+	sums := []designeval.Summary{{ID: "a", Name: "A", Cleared: true}, {ID: "b", Name: "B", Cleared: true}}
+	out := designReport(cfg, []*designeval.Run{{}, {}}, sums, "run", "hash", "runs/here", "", nil)
+	if !strings.Contains(out, "runs/here") || strings.Contains(out, "build/designeval") {
+		t.Errorf("the report names another directory than --root:\n%s", out)
+	}
+	if strings.Contains(out, "○") || !strings.Contains(out, "×") {
+		t.Errorf("a NaN difference passes:\n%s", out)
 	}
 }

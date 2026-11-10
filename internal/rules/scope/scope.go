@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/safeint"
+
 	"github.com/nao1215/gozen/internal/base/expr"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/rpg"
@@ -92,7 +94,7 @@ func (e env) cell(args []any) (any, error) {
 	if d == nil {
 		return nil, nil
 	}
-	c := dungeon.CellAt(d, e.st, int(x), int(y))
+	c := dungeon.CellAt(d, e.st, safeint.From(x), safeint.From(y))
 	w, h := d.Size()
 	shown := c.X >= 0 && c.Y >= 0 && c.X < w && c.Y < h && dungeon.Shown(e.db, e.st)[c.Y*w+c.X]
 	return expr.Map{

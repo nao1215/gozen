@@ -91,6 +91,7 @@ func TestCampaignGameErrors(t *testing.T) {
 		{"an unknown target word", "target: own", "target: mine", `target is border, own or any, not "mine"`},
 		{"an unknown fight", "general: ready, target: border, march: true}", "general: ready, target: border, march: true, fight: duel}", `fight is battle or clash_view, not "duel"`},
 		{"a fight without a march", "general: ready, target: border, march: true}", "general: ready, target: border, fight: battle}", "fight: battle decides a march"},
+		{"a battle of two generals", "general: ready, target: border, march: true}", "general: ready, target: border, march: true, fight: battle, generals: 2}", "fight: battle is the general alone"},
 		{"a march without a target", "general: ready, target: border, march: true", "general: ready, march: true", "a march needs a general and a target"},
 		{"an unknown region in an expression", `when: "gold >= 20"`, `when: "region.moat.troops > 0"`, `unknown region "moat"`},
 		{"an unknown field of a region", `when: "gold >= 20"`, `when: "region.home.gold > 0"`, `a region has no field "gold"`},
@@ -289,7 +290,8 @@ func TestCampaignConfigurationBoundaries(t *testing.T) {
 		{"calendar", "calendar: month", "calendar is week"},
 		{"count", "count: units", "count is actions or orders"},
 		{"defeat", "defeat: {out: -1}", "out is turns, 0 or more"},
-		{"rounds", "clash: {rounds: -1}", "rounds are 0"},
+		{"rounds below", "clash: {rounds: -1}", "rounds are 0"},
+		{"rounds above", "clash: {rounds: 101}", "rounds are 0 (5) to 100, not 101"},
 		{"capture below", "clash: {capture: -0.01}", "capture is a chance"},
 		{"capture above", "clash: {capture: 1.01}", "capture is a chance"},
 		{"garrison below", "clash: {garrison: -0.01}", "garrison is a share"},
@@ -531,4 +533,19 @@ func TestCampaignInvalidReferencesDoNotPanic(t *testing.T) {
 			t.Fatal("invalid capital was accepted")
 		}
 	})
+}
+
+// TestCampaignAreaInsideAnotherOverlaps: an area wholly inside another, and the same
+// area written twice, overlap although no edge of one crosses an edge of the other.
+func TestCampaignAreaInsideAnotherOverlaps(t *testing.T) {
+	const hill = "troops: 150}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}}"
+	for name, keep := range map[string]string{
+		"nested": "[[5, 5], [15, 5], [15, 15], [5, 15]]",
+		"same":   "[[0, 0], [20, 0], [20, 20], [0, 20]]",
+	} {
+		_, err := testgame.TryCampaign(hill, "troops: 150, area: [[0, 0], [20, 0], [20, 20], [0, 20]]}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}, area: "+keep+"}")
+		if err == nil || !strings.Contains(err.Error(), "the area overlaps hill's") {
+			t.Errorf("%s: want an overlap diagnostic, got %v", name, err)
+		}
+	}
 }

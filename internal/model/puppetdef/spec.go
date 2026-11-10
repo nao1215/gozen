@@ -10,6 +10,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/goccy/go-yaml"
 
@@ -360,6 +361,9 @@ func (s *Spec) Validate() error {
 		if name == "" {
 			return errors.New("faces: empty name")
 		}
+		if !faceName(name) {
+			return fmt.Errorf("faces: name %q must be one file name part, without / \\ : < > \" | ? * or control characters", name)
+		}
 		if f.Image != "" {
 			if err := checkPic(Pic{Image: f.Image, At: f.At, Area: f.Area}); err != nil {
 				return fmt.Errorf("faces.%s: %w", name, err)
@@ -481,7 +485,7 @@ func (m Motion) check() error {
 		}
 	}
 	if t := m.Talk; t != nil {
-		if err := nonNeg("talk", t.Nod); err != nil {
+		if err := nonNeg("talk", t.Nod, t.Bounce); err != nil {
 			return err
 		}
 	}
@@ -630,6 +634,18 @@ func checkPath(p string) error {
 		return fmt.Errorf("picture %q must be a relative PNG path with slashes", p)
 	}
 	return nil
+}
+
+// faceName reports whether a face's name is a single portable path component.
+// Packing a puppet writes pictures named after its faces, so a name must not
+// reach another directory or be refused by a supported file system.
+func faceName(name string) bool {
+	if name == "." || name == ".." {
+		return false
+	}
+	return !strings.ContainsFunc(name, func(r rune) bool {
+		return unicode.IsControl(r) || strings.ContainsRune(`/\:<>"|?*`, r)
+	})
 }
 
 func checkRange(name string, r []float64) error {

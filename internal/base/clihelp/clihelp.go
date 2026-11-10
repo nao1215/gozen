@@ -114,9 +114,11 @@ func Parse(fs *pflag.FlagSet, args []string) (help bool, err error) {
 		if err != nil {
 			return
 		}
-		if choices := f.Annotations["choices"]; len(choices) > 0 && !slices.Contains(choices, f.Value.String()) {
-			label := strings.Join(choices, ", ")
-			if len(choices) > 1 {
+		// An option left at its default is not checked, so a default outside the
+		// choices (an empty "not given") needs no empty entry in the list.
+		if choices := f.Annotations["choices"]; f.Changed && len(choices) > 0 && !slices.Contains(choices, f.Value.String()) {
+			label := strings.Join(choices, " or ")
+			if len(choices) > 2 {
 				label = strings.Join(choices[:len(choices)-1], ", ") + ", or " + choices[len(choices)-1]
 			}
 			err = diag.NotAChoice.Errorf("--%s must be %s, not %q", f.Name, label, f.Value.String())

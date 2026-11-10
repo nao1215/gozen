@@ -67,7 +67,7 @@ var topPage = clihelp.Page{
 		"Exit status: 0 for success and help, 1 when a check, I/O, simulation, or capture fails, 2 for " +
 			"invalid arguments. A diagnostic may end with a code such as [GZN1101] whose first digit is " +
 			"the exit status; gozen help GZN1101 explains it.",
-		"Requirements: check, sim, book, release, trial, trace, notes, and prompt need nothing beyond " +
+		"Requirements: new, check, sim, book, release, trial, trace, notes, theme, puppet, and prompt need nothing beyond " +
 			"the gozen binary; cgo is not required. export needs a matching prebuilt runtime bundle. run and capture launch a graphics game, and unattended " +
 			"capture on Linux needs Xvfb. mosaic inference and faces need a gozen built with cgo, " +
 			"an ONNX Runtime shared library, and user-supplied models. See " + clihelp.README,

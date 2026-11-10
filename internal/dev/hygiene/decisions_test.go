@@ -65,27 +65,6 @@ func parsed(t *testing.T, name string, b []byte) *ast.File {
 	return f
 }
 
-// hygienePackage holds the maintainer tests of the decision table.
-const hygienePackage = "internal/dev/hygiene"
-
-// unregisteredTests returns the declared tests of a package that no decision lists.
-func unregisteredTests(pkg string, declared []string, decisions []hygiene.Decision) []string {
-	listed := map[string]bool{}
-	for _, d := range decisions {
-		for _, test := range d.Tests {
-			listed[test.Package+"/"+test.Name] = true
-		}
-	}
-	var out []string
-	for _, name := range declared {
-		if !listed[pkg+"/"+name] {
-			out = append(out, name)
-		}
-	}
-	slices.Sort(out)
-	return out
-}
-
 // TestDecisionCoverage checks the table both ways: every test a decision lists exists
 // without a build tag, and every test of this package is listed by a decision, so dango
 // runs and explains it. A scanner's guard test is listed beside its scanner; the
@@ -802,180 +781,332 @@ func TestCommandExecutionGuard(t *testing.T) {
 	}
 }
 
-// packageUse is one reference to a member of a standard package, with the top-level
-// declaration that holds it (a method as Type.method, a package variable as "package").
-type packageUse struct{ fn, member string }
+// pictureDecodeAllowlist names the functions that decode a picture without a
+// picturelimit check of their own, by file and function, each with the bound that
+// holds there instead. An entry that no longer excuses a decode fails the test.
+var pictureDecodeAllowlist = map[string]string{
+	"cmd/internal/distribute/webfiles.go:toWebP":              "its only caller, shrinker.webP, checks DecodeConfig against the memory budget and takes that memory first",
+	"internal/mosaic/command/main.go:decode":                  "checks image.DecodeConfig against the same limits itself: the architecture policy keeps the mosaic tool from importing internal/base",
+	"internal/model/gamepackage/archive.go:validatePNG":       "checks png.DecodeConfig for a square of at most 1024 pixels before the decode",
+	"internal/screen/play/phone_packages.go:phonePackageIcon": "decodes Release.IconBytes: at most 64 KiB that validatePNG accepted, a square of at most 1024 pixels",
+}
 
-// packageUses lists a file's references to the named members of a standard package
-// under any import alias. A reference counts, not only a call, so assigning the
-// function to a variable does not hide it; a dot import hides every reference and is
-// reported as the member ".".
-func packageUses(f *ast.File, pkg string, members ...string) []packageUse {
-	var uses []packageUse
-	aliases := map[string]bool{}
+// pictureDecoders are the standard decoders of whole pictures, by import path.
+// Any package named webp is treated as one too.
+var pictureDecoders = map[string][]string{
+	"image":      {"Decode"},
+	"image/png":  {"Decode"},
+	"image/jpeg": {"Decode"},
+	"image/gif":  {"Decode", "DecodeAll"},
+}
+
+// unboundedPictureDecodes lists the references to a picture decoder in f that no
+// picturelimit.Header or picturelimit.Dimensions precedes in the same top-level
+// function. A reference counts, not only a call, so a decoder kept in a variable
+// is found. picturelimit.Read bounds the encoded bytes only, so it does not make
+// a decode bounded. internal/screen/picdecode is the checked decoder itself.
+func unboundedPictureDecodes(f *ast.File, name string) []string {
+	if strings.HasPrefix(name, "internal/screen/picdecode/") {
+		return nil
+	}
+	var violations []string
+	decoders := map[string][]string{}
+	limit := ""
 	for _, imp := range f.Imports {
-		if imported, err := strconv.Unquote(imp.Path.Value); err != nil || imported != pkg {
+		imported, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			violations = append(violations, "invalid import path")
 			continue
 		}
+		funcs := pictureDecoders[imported]
+		if path.Base(imported) == "webp" {
+			funcs = []string{"Decode"}
+		}
+		alias := path.Base(imported)
+		if imp.Name != nil {
+			alias = imp.Name.Name
+		}
 		switch {
-		case imp.Name == nil:
-			aliases[path.Base(pkg)] = true
-		case imp.Name.Name == ".":
-			uses = append(uses, packageUse{"import", "."})
+		case imported == module+"internal/base/picturelimit":
+			limit = alias
+		case funcs == nil || alias == "_":
+		case alias == ".":
+			violations = append(violations, "a dot import of "+imported+" hides its decoder from this check")
 		default:
-			aliases[imp.Name.Name] = true
+			decoders[alias] = funcs
 		}
 	}
-	for _, decl := range f.Decls {
-		holder := "package"
-		if fn, ok := decl.(*ast.FuncDecl); ok {
-			holder = fn.Name.Name
-			if fn.Recv != nil && len(fn.Recv.List) == 1 {
-				recv := fn.Recv.List[0].Type
-				if star, ok := recv.(*ast.StarExpr); ok {
-					recv = star.X
-				}
-				if index, ok := recv.(*ast.IndexExpr); ok {
-					recv = index.X
-				}
-				if id, ok := recv.(*ast.Ident); ok {
-					holder = id.Name + "." + holder
-				}
-			}
-		}
-		ast.Inspect(decl, func(n ast.Node) bool {
+	scan := func(owner string, body ast.Node) {
+		guard := token.NoPos
+		found := map[token.Pos]string{}
+		ast.Inspect(body, func(n ast.Node) bool {
 			sel, ok := n.(*ast.SelectorExpr)
 			if !ok {
 				return true
 			}
-			// A package name resolves to no object of the file; a local variable of the same name does.
-			if id, ok := sel.X.(*ast.Ident); ok && id.Obj == nil && aliases[id.Name] && slices.Contains(members, sel.Sel.Name) {
-				uses = append(uses, packageUse{holder, sel.Sel.Name})
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if limit != "" && pkg.Name == limit && (sel.Sel.Name == "Header" || sel.Sel.Name == "Dimensions") && (guard == token.NoPos || sel.Pos() < guard) {
+				guard = sel.Pos()
+			}
+			if slices.Contains(decoders[pkg.Name], sel.Sel.Name) {
+				found[sel.Pos()] = pkg.Name + "." + sel.Sel.Name
 			}
 			return true
 		})
+		for _, pos := range slices.Sorted(maps.Keys(found)) {
+			if guard == token.NoPos || pos < guard {
+				violations = append(violations, owner+" uses "+found[pos]+" before picturelimit.Header or picturelimit.Dimensions")
+			}
+		}
 	}
-	return uses
-}
-
-// allowedUses reports the uses of one file that the allowlist does not name, and marks
-// the entries it met. An entry is "file:holder" with its reason.
-func allowedUses(name, pkg string, uses []packageUse, allow map[string]string, met map[string]bool) []string {
-	var out []string
-	for _, u := range uses {
-		key := name + ":" + u.fn
-		if allow[key] != "" {
-			met[key] = true
+	for _, decl := range f.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			if fn.Body != nil {
+				scan(fn.Name.Name, fn.Body)
+			}
 			continue
 		}
-		out = append(out, fmt.Sprintf("%s: %s uses %s.%s", name, u.fn, path.Base(pkg), u.member))
+		scan("a package-level declaration", decl)
 	}
-	return out
+	return violations
 }
 
-// directOutputAllowlist names the functions of cmd/gozen that may create a file or a
-// directory with package os themselves, each with its reason. Every other output goes
-// through cmd/internal/cli (Publish, WriteNew, Destination), which refuses an existing
-// destination, stages the result and removes it on failure. The list may only shrink:
-// an entry whose function no longer writes directly must be deleted.
-var directOutputAllowlist = map[string]string{
-	"cmd/gozen/capture.go:writeShotIndex":            "writes shots.json and index.html into the stage directory cli.Publish gives the capture",
-	"cmd/gozen/capture_diff.go:compareShot":          "writes the previous and highlight pictures into that same stage directory",
-	"cmd/gozen/check_baseline.go:writeCheckBaseline": "creates --write-baseline with O_EXCL and reports an existing file as an existing output; to remove: cli.WriteNew does the same",
-	"cmd/gozen/curve.go:command.curve":               "creates --arrival-saves after cli.Destination and writes each floor's save into it; to remove: it is created before the options are validated and stays after a failure",
-	"cmd/gozen/design.go:command.design":             "creates --out itself after cli.Destination, removes it on failure, and writes debug.log, summary.json and report.md into it",
-	"cmd/gozen/design.go:writeBand":                  "writes band.png into the --out directory command.design created",
-	"cmd/gozen/design.go:writeTimeline":              "writes a persona's timeline into the --out directory command.design created",
-	"cmd/gozen/faces.go:command.faces":               "rewrites assets/faces.json inside the game: the file the command maintains, not a new output",
-	"cmd/gozen/main.go:startProfile":                 "writes the CPU profile to the path the developer set in GOZEN_CPUPROFILE: a diagnostic, not a command output",
-	"cmd/gozen/memos.go:command.renderMemos":         "writes index.html into the stage directory cli.Publish gives the memo page",
-	"cmd/gozen/memos.go:thumbnail":                   "writes a thumbnail into that same stage directory",
-	"cmd/gozen/simscript.go:command.executeScript":   "creates the --trace file and its parent; to remove: it overwrites an existing trace",
-	"cmd/gozen/trial.go:writeList":                   "creates the parent of --list before cli.WriteNew; to remove: WriteNew creates the parent itself",
-}
-
-// TestCommandOutputs keeps command outputs on the publication helper.
-func TestCommandOutputs(t *testing.T) {
-	met := map[string]bool{}
+// TestBoundedPictureDecode requires every decode of a whole picture outside
+// tests to follow a picturelimit check in the same function: a picture's header
+// decides how much memory its decode takes, and a small file may claim a huge one.
+func TestBoundedPictureDecode(t *testing.T) {
+	used := map[string]bool{}
 	sourceFiles(t, func(name string, b []byte) {
-		if !strings.HasPrefix(name, "cmd/gozen/") || strings.HasSuffix(name, "_test.go") {
+		if strings.HasSuffix(name, "_test.go") || strings.Contains(name, "/testdata/") {
 			return
 		}
-		uses := packageUses(parsed(t, name, b), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
-		for _, v := range allowedUses(name, "os", uses, directOutputAllowlist, met) {
-			t.Errorf("%s; publish the output through cmd/internal/cli (Publish, WriteNew) so it is new, staged and removed on failure", v)
+		for _, violation := range unboundedPictureDecodes(parsed(t, name, b), name) {
+			owner, _, _ := strings.Cut(violation, " uses ")
+			if _, ok := pictureDecodeAllowlist[name+":"+owner]; ok {
+				used[name+":"+owner] = true
+				continue
+			}
+			t.Errorf("%s: %s; check the header first (picturelimit.Header) or decode through picdecode", name, violation)
 		}
 	})
-	for _, key := range slices.Sorted(maps.Keys(directOutputAllowlist)) {
-		if !met[key] {
-			t.Errorf("%s: no direct output is left there; remove it from directOutputAllowlist", key)
+	for entry, reason := range pictureDecodeAllowlist {
+		if !used[entry] {
+			t.Errorf("%s no longer decodes a picture unchecked; remove it from pictureDecodeAllowlist", entry)
+		}
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("%s needs the reason its decode is bounded", entry)
 		}
 	}
 }
 
-// wallClockAllowlist names the functions under cmd/ that may read the wall clock, each
-// with its reason. A command's output otherwise depends on its inputs alone, so two
-// runs can be compared byte for byte. The list may only shrink.
-var wallClockAllowlist = map[string]string{
-	"cmd/gozen/capture.go:writeShotIndex": "prints the minute the capture was made into index.html for the author who opens the page; shots.json and the pictures carry no time",
-}
-
-// TestCommandClock keeps the wall clock out of command output.
-func TestCommandClock(t *testing.T) {
-	met := map[string]bool{}
-	sourceFiles(t, func(name string, b []byte) {
-		if !strings.HasPrefix(name, "cmd/") || strings.HasSuffix(name, "_test.go") {
-			return
-		}
-		uses := packageUses(parsed(t, name, b), "time", "Now", "Since", "Until")
-		for _, v := range allowedUses(name, "time", uses, wallClockAllowlist, met) {
-			t.Errorf("%s; take the time from the command's input so the same input gives the same output", v)
-		}
-	})
-	for _, key := range slices.Sorted(maps.Keys(wallClockAllowlist)) {
-		if !met[key] {
-			t.Errorf("%s: the wall clock is no longer read there; remove it from wallClockAllowlist", key)
-		}
-	}
-}
-
-// TestCommandUsesGuard proves the scanner behind TestCommandOutputs and
-// TestCommandClock: it sees a call, an alias, a stored reference and a dot import,
-// names the declaration that holds each, and passes the helper, reads and a local
-// variable that only shares the package's name.
-func TestCommandUsesGuard(t *testing.T) {
+func TestBoundedPictureDecodeGuard(t *testing.T) {
+	const limit = `import "github.com/nao1215/gozen/internal/base/picturelimit"; `
 	for _, tc := range []struct {
 		name, source string
-		want         []packageUse
+		bad          bool
 	}{
-		{"call", `package main; import "os"; func write() { _ = os.WriteFile("out", nil, 0o600) }`, []packageUse{{"write", "WriteFile"}}},
-		{"alias", `package main; import std "os"; func write() { _ = std.MkdirAll("out", 0o700) }`, []packageUse{{"write", "MkdirAll"}}},
-		{"reference", `package main; import "os"; func write() { create := os.Create; _, _ = create("out") }`, []packageUse{{"write", "Create"}}},
-		{"closure in a method", `package main; import "os"; type c struct{}; func (*c) run() { func() { _ = os.Mkdir("out", 0o700) }() }`, []packageUse{{"c.run", "Mkdir"}}},
-		{"package variable", `package main; import "os"; var open = os.OpenFile`, []packageUse{{"package", "OpenFile"}}},
-		{"dot import", `package main; import . "os"; func write() { _ = WriteFile("out", nil, 0o600) }`, []packageUse{{"import", "."}}},
-		{"helper", `package main; import "example.com/cli"; func write() { _ = cli.WriteNew("out", nil) }`, nil},
-		{"read", `package main; import "os"; func read() { _, _ = os.ReadFile("in"); _, _ = os.MkdirTemp("", "stage") }`, nil},
-		{"local variable", `package main; type files struct{}; func (files) Create(string) {}; func write() { os := files{}; os.Create("out") }`, nil},
+		{"unchecked png", `package p; import "image/png"; func f() { png.Decode(nil) }`, true},
+		{"unchecked image", `package p; import "image"; func f() { image.Decode(nil) }`, true},
+		{"unchecked jpeg alias", `package p; import j "image/jpeg"; func f() { j.Decode(nil) }`, true},
+		{"unchecked gif frames", `package p; import "image/gif"; func f() { gif.DecodeAll(nil) }`, true},
+		{"unchecked webp", `package p; import "golang.org/x/image/webp"; func f() { webp.Decode(nil) }`, true},
+		{"decoder kept in a variable", `package p; import "image/png"; func f() { d := png.Decode; d(nil) }`, true},
+		{"decoder in a closure", `package p; import "image/png"; func f() { func() { png.Decode(nil) }() }`, true},
+		{"decoder of a package variable", `package p; import "image/png"; var d = png.Decode`, true},
+		{"dot import", `package p; import . "image/png"; func f() { Decode(nil) }`, true},
+		{"encoded size alone", `package p; ` + limit + `import "image/png"; func f() { picturelimit.Read(nil, ""); png.Decode(nil) }`, true},
+		{"checked after the decode", `package p; ` + limit + `import "image/png"; func f() { png.Decode(nil); picturelimit.Header(nil) }`, true},
+		{"checked in another function", `package p; ` + limit + `import "image/png"; func g() { picturelimit.Header(nil) }; func f() { png.Decode(nil) }`, true},
+		{"header checked", `package p; ` + limit + `import "image/png"; func f() { if picturelimit.Header(nil) != nil { return }; png.Decode(nil) }`, false},
+		{"dimensions checked", `package p; ` + limit + `import "image"; func f() { picturelimit.Dimensions(1, 1); image.Decode(nil) }`, false},
+		{"limit alias", `package p; import lim "github.com/nao1215/gozen/internal/base/picturelimit"; import "image/gif"; func f() { lim.Header(nil); gif.DecodeAll(nil) }`, false},
+		{"header only", `package p; import "image/png"; func f() { png.DecodeConfig(nil); png.Encode(nil, nil) }`, false},
+		{"registered decoder", `package p; import _ "image/png"; func f() {}`, false},
+		{"another Decode", `package p; import "encoding/json"; func f() { json.NewDecoder(nil).Decode(nil) }`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := packageUses(parsed(t, tc.name, []byte(tc.source)), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
-			if !slices.Equal(got, tc.want) {
-				t.Fatalf("uses = %v, want %v", got, tc.want)
+			got := unboundedPictureDecodes(parsed(t, tc.name, []byte(tc.source)), "cmd/gozen/sample.go")
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
 			}
 		})
 	}
-	clock := packageUses(parsed(t, "clock", []byte(`package main; import "time"; func stamp() string { return time.Now().Format(time.RFC3339) + time.Since(time.Time{}).String() }`)), "time", "Now", "Since", "Until")
-	if !slices.Equal(clock, []packageUse{{"stamp", "Now"}, {"stamp", "Since"}}) {
-		t.Fatalf("clock uses = %v", clock)
+	sample := `package p; import "image"; func f() { image.Decode(nil) }`
+	if got := unboundedPictureDecodes(parsed(t, "decode.go", []byte(sample)), "internal/screen/picdecode/decode.go"); len(got) != 0 {
+		t.Fatalf("picdecode is the checked decoder: %v", got)
 	}
-	met := map[string]bool{}
-	allow := map[string]string{"cmd/gozen/a.go:stamp": "sample reason", "cmd/gozen/a.go:gone": "sample reason"}
-	if got := allowedUses("cmd/gozen/a.go", "time", clock, allow, met); len(got) != 0 || !met["cmd/gozen/a.go:stamp"] || met["cmd/gozen/a.go:gone"] {
-		t.Fatalf("allowed file: violations %v, met %v", got, met)
+}
+
+// usageErrorAllowlist names the option messages that are not argument errors,
+// by file and message. Each entry says why the command exits 1 instead of 2.
+var usageErrorAllowlist = map[string]string{
+	// The option is valid; the model it needs is a missing prerequisite (exit 1, with the requirements).
+	"internal/mosaic/command/main.go: --shape mask requires a user-supplied --seg model": "missing prerequisite",
+	// The option is valid; the file it names cannot be read (exit 1, an I/O failure).
+	"internal/mosaic/command/main.go: --fix: %w":    "unreadable file",
+	"internal/mosaic/command/main.go: --manual: %w": "unreadable file",
+}
+
+// usageErrorViolations reports errors about an option that a command handler
+// builds with errors.New or fmt.Errorf. Such an error exits 1 without a code or
+// the --help hint; an argument error is cliio.Invalid (exit 2, ADR 0042).
+func usageErrorViolations(f *ast.File, name string) []string {
+	if strings.HasSuffix(name, "_test.go") || (!strings.HasPrefix(name, "cmd/gozen/") && !strings.Contains(name, "/command/")) {
+		return nil
 	}
-	if got := allowedUses("cmd/gozen/b.go", "time", clock, allow, met); !slices.Equal(got, []string{"cmd/gozen/b.go: stamp uses time.Now", "cmd/gozen/b.go: stamp uses time.Since"}) {
-		t.Fatalf("other file: violations %v", got)
+	var violations []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		pkg, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		id := pkg.Name + "." + sel.Sel.Name
+		if id != "errors.New" && id != "fmt.Errorf" {
+			return true
+		}
+		lit, ok := call.Args[0].(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			return true
+		}
+		message, err := strconv.Unquote(lit.Value)
+		if err != nil || !strings.HasPrefix(message, "--") {
+			return true
+		}
+		if _, allowed := usageErrorAllowlist[name+": "+message]; !allowed {
+			violations = append(violations, fmt.Sprintf("%s(%q): an error about an option is cliio.Invalid", id, message))
+		}
+		return true
+	})
+	return violations
+}
+
+func TestUsageErrors(t *testing.T) {
+	used := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		f := parsed(t, name, b)
+		for _, v := range usageErrorViolations(f, name) {
+			t.Errorf("%s: %s", name, v)
+		}
+		for key := range usageErrorAllowlist {
+			file, message, _ := strings.Cut(key, ": ")
+			if file == name && bytes.Contains(b, []byte(strconv.Quote(message))) {
+				used[key] = true
+			}
+		}
+	})
+	for key, reason := range usageErrorAllowlist {
+		if !used[key] || reason == "" {
+			t.Errorf("usage error allowlist entry %q is stale or has no reason; remove it", key)
+		}
+	}
+}
+
+func TestUsageErrorsGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		bad                bool
+	}{
+		{"errorf", "cmd/gozen/x.go", `package main; import "fmt"; func h() error { return fmt.Errorf("--boss: unknown troop %q", "x") }`, true},
+		{"new", "internal/mosaic/command/x.go", `package command; import "errors"; func h() error { return errors.New("--labels cannot be empty") }`, true},
+		{"invalid", "cmd/gozen/x.go", `package main; func h() error { return cliio.Invalid(diag.BadValue, "--boss: unknown troop") }`, false},
+		{"not an option", "cmd/gozen/x.go", `package main; import "errors"; func h() error { return errors.New("the save is not valid JSON") }`, false},
+		{"library", "internal/model/rpg/x.go", `package rpg; import "errors"; func h() error { return errors.New("--flags is for tests") }`, false},
+		{"test file", "cmd/gozen/x_test.go", `package main; import "errors"; func h() error { return errors.New("--x") }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := usageErrorViolations(parsed(t, tc.file, []byte(tc.source)), tc.file)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}
+
+// choiceAllowlist names the handlers that reject a choice by hand, by file,
+// with the reason the set cannot be declared with clihelp.Choices.
+var choiceAllowlist = map[string]string{
+	"cmd/gozen/campaign.go": "--tactic is one of the tactics the game declares, known only after the game is read",
+}
+
+// choiceViolations reports a fixed choice set that is checked by hand instead
+// of being declared: clihelp.Choices validates the value, words the rejection
+// and lists the values in the machine-readable help from one list. An empty
+// string is never a choice; an option left at its default is not checked.
+func choiceViolations(f *ast.File, name string) []string {
+	if strings.HasSuffix(name, "_test.go") || strings.HasPrefix(name, "internal/base/") {
+		return nil
+	}
+	var violations []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.SelectorExpr:
+			if id, ok := n.X.(*ast.Ident); ok && id.Name == "diag" && n.Sel.Name == "NotAChoice" && choiceAllowlist[name] == "" {
+				violations = append(violations, "diag.NotAChoice by hand: declare the values with clihelp.Choices")
+			}
+		case *ast.CallExpr:
+			sel, ok := n.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Choices" {
+				return true
+			}
+			if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "clihelp" {
+				return true
+			}
+			for _, arg := range n.Args[min(1, len(n.Args)):] {
+				if lit, ok := arg.(*ast.BasicLit); ok && lit.Kind == token.STRING && (lit.Value == `""` || lit.Value == "``") {
+					violations = append(violations, "clihelp.Choices lists an empty value: leave the default out of the choices")
+				}
+			}
+		}
+		return true
+	})
+	return violations
+}
+
+func TestDeclaredChoices(t *testing.T) {
+	used := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		for _, v := range choiceViolations(parsed(t, name, b), name) {
+			t.Errorf("%s: %s", name, v)
+		}
+		if choiceAllowlist[name] != "" && bytes.Contains(b, []byte("diag.NotAChoice")) {
+			used[name] = true
+		}
+	})
+	for name := range choiceAllowlist {
+		if !used[name] {
+			t.Errorf("choice allowlist entry %q is stale; remove it", name)
+		}
+	}
+}
+
+func TestDeclaredChoicesGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		bad                bool
+	}{
+		{"by hand", "cmd/gozen/x.go", `package main; func h() error { return cliio.Invalid(diag.NotAChoice, "--as is a or b") }`, true},
+		{"empty choice", "cmd/gozen/x.go", `package main; func h() { clihelp.Choices(f.Lookup("only"), "", "structure") }`, true},
+		{"declared", "cmd/gozen/x.go", `package main; func h() { clihelp.Choices(f.Lookup("only"), "structure", "layout") }`, false},
+		{"allowed", "cmd/gozen/campaign.go", `package main; func h() error { return cliio.Invalid(diag.NotAChoice, "--tactic") }`, false},
+		{"parser", "internal/base/clihelp/clihelp.go", `package clihelp; func h() error { return diag.NotAChoice.Errorf("x") }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := choiceViolations(parsed(t, tc.file, []byte(tc.source)), tc.file)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
 	}
 }
 
@@ -1182,6 +1313,355 @@ func TestGraphicsTestSelection(t *testing.T) {
 		if !selected.Match(workflow) {
 			t.Errorf(".github/workflows/ci.yml: no go test line selects the TestGraphics tests of ./%s", pkg)
 		}
+	}
+}
+
+// TestCIGoTestRetry runs the unit job's script against a stand-in go command.
+// Only the known Windows runtime crash of a listed package is retried; ordinary
+// failures, other packages and other platforms fail on the first run.
+func TestCIGoTestRetry(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skipf("the unit job script requires bash: %v", err)
+	}
+	script, err := filepath.Abs("../../../scripts/ci_go_test.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const (
+		mosaic    = "github.com/nao1215/gozen/internal/mosaic"
+		promptgen = "github.com/nao1215/gozen/internal/promptgen"
+	)
+	ok := "ok  \tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"
+	gcCrash := func(pkg string) string {
+		return "runtime: marked free object in span\nfatal error: found pointer to free object\n\ngoroutine 3 [running]:\nruntime.throw()\n\tC:/go/src/runtime/panic.go:1243\nFAIL\t" + pkg + "\t0.1s\n"
+	}
+	exception := "Exception 0xc0000005 0x8 0x7ff704622728 0x7ff704622728\nPC=0x7ff704622728\nfatal error: runtime.goparkunlock(...)\nFAIL\t" + promptgen + "\t0.1s\n"
+	pass := func(pkg string) string { return "ok  \t" + pkg + "\t0.1s\n" }
+	for _, tc := range []struct {
+		name, goos string
+		runs       []string // output of each go test run; a run fails when it has FAIL
+		status     int
+		calls      []string
+	}{
+		{"success", "windows", []string{ok}, 0, []string{"test ./..."}},
+		{"GC crash retried", "windows", []string{ok + gcCrash(mosaic) + "FAIL\n", pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"index out of range in the collector", "windows", []string{strings.Replace(gcCrash(mosaic), "found pointer to free object", "index out of range", 1), pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"access violation retried", "windows", []string{exception, pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + promptgen}},
+		{"both packages retried together", "windows", []string{gcCrash(mosaic) + exception, pass(mosaic) + pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + mosaic + " " + promptgen}},
+		{"bounded retries", "windows", []string{gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic)}, 1, []string{"test ./...", "test -count=1 " + mosaic, "test -count=1 " + mosaic, "test -count=1 " + mosaic}},
+		{"ordinary failure after a retry", "windows", []string{gcCrash(mosaic), "--- FAIL: TestX (0.00s)\nFAIL\n" + "FAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./...", "test -count=1 " + mosaic}},
+		{"other platform", "linux", []string{gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"unlisted package", "windows", []string{gcCrash("github.com/nao1215/gozen/internal/screen/play")}, 1, []string{"test ./..."}},
+		{"crash beside an ordinary failure", "windows", []string{gcCrash(mosaic) + "--- FAIL: TestY (0.00s)\nFAIL\nFAIL\tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"}, 1, []string{"test ./..."}},
+		{"failed test in the crashed package", "windows", []string{"--- FAIL: TestZ (0.00s)\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"test panic", "windows", []string{"panic: boom\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
+		{"deadlock", "windows", []string{"fatal error: all goroutines are asleep - deadlock!\nFAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./..."}},
+		{"build failure", "windows", []string{"FAIL\t" + mosaic + " [build failed]\nFAIL\n"}, 1, []string{"test ./..."}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for i, out := range tc.runs {
+				if err := os.WriteFile(filepath.Join(dir, "out"+strconv.Itoa(i+1)), []byte(out), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			stand := filepath.Join(dir, "go")
+			body := `#!/usr/bin/env bash
+if [ "$1" = env ]; then echo "$FAKE_GOOS"; exit 0; fi
+n=$(( $(cat "$FAKE_DIR/count" 2>/dev/null || echo 0) + 1 ))
+echo "$n" > "$FAKE_DIR/count"
+echo "$*" >> "$FAKE_DIR/calls"
+[ -f "$FAKE_DIR/out$n" ] || exit 99
+cat "$FAKE_DIR/out$n"
+grep -q '^FAIL' "$FAKE_DIR/out$n" && exit 1
+exit 0
+`
+			if err := os.WriteFile(stand, []byte(body), 0o700); err != nil { //nolint:gosec // An executable stand-in inside the test temporary directory.
+				t.Fatal(err)
+			}
+			cmd := exec.CommandContext(t.Context(), "bash", script) //nolint:gosec // Repository script with a stand-in go command.
+			cmd.Dir = dir
+			cmd.Env = append(os.Environ(), "GO="+filepath.ToSlash(stand), "FAKE_GOOS="+tc.goos, "FAKE_DIR="+filepath.ToSlash(dir))
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			status := 0
+			if exit, isExit := err.(*exec.ExitError); isExit { //nolint:errorlint // Run returns the exit error itself.
+				status = exit.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			calls, err := os.ReadFile(filepath.Join(dir, "calls")) //nolint:gosec // Output inside the test temporary directory.
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Split(strings.TrimSuffix(string(calls), "\n"), "\n"); status != tc.status || !slices.Equal(got, tc.calls) {
+				t.Fatalf("status %d calls %q, want %d %q; stdout=%s stderr=%s", status, got, tc.status, tc.calls, &stdout, &stderr)
+			}
+		})
+	}
+}
+
+// TestSnapshotEngineTagSelection runs the workflow's real selection command with
+// engine and independent catalog tags both at HEAD and on nearer ancestors.
+func TestSnapshotEngineTagSelection(t *testing.T) {
+	for _, tool := range []string{"sh", "git"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("snapshot workflow requires %s: %v", tool, err)
+		}
+	}
+	b, err := os.ReadFile("../../../.github/workflows/release-smoke.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow struct {
+		Jobs map[string]struct{ Steps []struct{ Name, Run string } }
+	}
+	if err := yaml.Unmarshal(b, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	var script string
+	for _, job := range workflow.Jobs {
+		for _, step := range job.Steps {
+			if step.Name == "Select engine snapshot tag" {
+				script = step.Run
+			}
+		}
+	}
+	if script == "" {
+		t.Fatal("snapshot engine selection missing")
+	}
+	dir := t.TempDir()
+	run := func(binary string, args ...string) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Fixed workflow command and isolated test repository.
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com", "GITHUB_ENV="+filepath.Join(dir, "selected.env"))
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("%s %v: %v stdout=%s stderr=%s", binary, args, err, &stdout, &stderr)
+		}
+	}
+	commit := func() { run("git", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "fixture") }
+	check := func(want string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, "selected.env"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		run("sh", "-e", "-c", script)
+		got, err := os.ReadFile(filepath.Join(dir, "selected.env")) //nolint:gosec // Test-owned workflow output.
+		if err != nil || strings.TrimSpace(string(got)) != "GORELEASER_CURRENT_TAG="+want {
+			t.Fatalf("selected %q, want %s: %v", got, want, err)
+		}
+	}
+	run("git", "init", "-q")
+	commit()
+	run("git", "tag", "v0.22.0")
+	commit()
+	run("git", "tag", "game-catalog")
+	run("git", "tag", "phone-counter-v1.0.0")
+	check("v0.22.0")
+	commit()
+	check("v0.22.0")
+	run("git", "tag", "v0.23.0")
+	check("v0.23.0")
+}
+
+// hygienePackage holds the maintainer tests of the decision table.
+const hygienePackage = "internal/dev/hygiene"
+
+// unregisteredTests returns the declared tests of a package that no decision lists.
+func unregisteredTests(pkg string, declared []string, decisions []hygiene.Decision) []string {
+	listed := map[string]bool{}
+	for _, d := range decisions {
+		for _, test := range d.Tests {
+			listed[test.Package+"/"+test.Name] = true
+		}
+	}
+	var out []string
+	for _, name := range declared {
+		if !listed[pkg+"/"+name] {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// packageUse is one reference to a member of a standard package, with the top-level
+// declaration that holds it (a method as Type.method, a package variable as "package").
+type packageUse struct{ fn, member string }
+
+// packageUses lists a file's references to the named members of a standard package
+// under any import alias. A reference counts, not only a call, so assigning the
+// function to a variable does not hide it; a dot import hides every reference and is
+// reported as the member ".".
+func packageUses(f *ast.File, pkg string, members ...string) []packageUse {
+	var uses []packageUse
+	aliases := map[string]bool{}
+	for _, imp := range f.Imports {
+		if imported, err := strconv.Unquote(imp.Path.Value); err != nil || imported != pkg {
+			continue
+		}
+		switch {
+		case imp.Name == nil:
+			aliases[path.Base(pkg)] = true
+		case imp.Name.Name == ".":
+			uses = append(uses, packageUse{"import", "."})
+		default:
+			aliases[imp.Name.Name] = true
+		}
+	}
+	for _, decl := range f.Decls {
+		holder := "package"
+		if fn, ok := decl.(*ast.FuncDecl); ok {
+			holder = fn.Name.Name
+			if fn.Recv != nil && len(fn.Recv.List) == 1 {
+				recv := fn.Recv.List[0].Type
+				if star, ok := recv.(*ast.StarExpr); ok {
+					recv = star.X
+				}
+				if index, ok := recv.(*ast.IndexExpr); ok {
+					recv = index.X
+				}
+				if id, ok := recv.(*ast.Ident); ok {
+					holder = id.Name + "." + holder
+				}
+			}
+		}
+		ast.Inspect(decl, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			// A package name resolves to no object of the file; a local variable of the same name does.
+			if id, ok := sel.X.(*ast.Ident); ok && id.Obj == nil && aliases[id.Name] && slices.Contains(members, sel.Sel.Name) {
+				uses = append(uses, packageUse{holder, sel.Sel.Name})
+			}
+			return true
+		})
+	}
+	return uses
+}
+
+// allowedUses reports the uses of one file that the allowlist does not name, and marks
+// the entries it met. An entry is "file:holder" with its reason.
+func allowedUses(name, pkg string, uses []packageUse, allow map[string]string, met map[string]bool) []string {
+	var out []string
+	for _, u := range uses {
+		key := name + ":" + u.fn
+		if allow[key] != "" {
+			met[key] = true
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s: %s uses %s.%s", name, u.fn, path.Base(pkg), u.member))
+	}
+	return out
+}
+
+// directOutputAllowlist names the functions of cmd/gozen that may create a file or a
+// directory with package os themselves, each with its reason. Every other output goes
+// through cmd/internal/cli (Publish, WriteNew, Destination), which refuses an existing
+// destination, stages the result and removes it on failure. The list may only shrink:
+// an entry whose function no longer writes directly must be deleted.
+var directOutputAllowlist = map[string]string{
+	"cmd/gozen/capture.go:writeShotIndex":            "writes shots.json and index.html into the stage directory cli.Publish gives the capture",
+	"cmd/gozen/capture_diff.go:compareShot":          "writes the previous and highlight pictures into that same stage directory",
+	"cmd/gozen/check_baseline.go:writeCheckBaseline": "creates --write-baseline with O_EXCL and reports an existing file as an existing output; to remove: cli.WriteNew does the same",
+	"cmd/gozen/design.go:command.design":             "creates --out itself after cli.Destination, removes it on failure, and writes debug.log, summary.json and report.md into it",
+	"cmd/gozen/design.go:writeBand":                  "writes band.png into the --out directory command.design created",
+	"cmd/gozen/design.go:writeTimeline":              "writes a persona's timeline into the --out directory command.design created",
+	"cmd/gozen/faces.go:command.faces":               "rewrites assets/faces.json inside the game: the file the command maintains, not a new output",
+	"cmd/gozen/main.go:startProfile":                 "writes the CPU profile to the path the developer set in GOZEN_CPUPROFILE: a diagnostic, not a command output",
+	"cmd/gozen/memos.go:command.renderMemos":         "writes index.html into the stage directory cli.Publish gives the memo page",
+	"cmd/gozen/memos.go:thumbnail":                   "writes a thumbnail into that same stage directory",
+	"cmd/gozen/simscript.go:command.executeScript":   "creates the --trace file and its parent; to remove: it overwrites an existing trace",
+	"cmd/gozen/trial.go:writeList":                   "creates the parent of --list before cli.WriteNew; to remove: WriteNew creates the parent itself",
+}
+
+// TestCommandOutputs keeps command outputs on the publication helper.
+func TestCommandOutputs(t *testing.T) {
+	met := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "cmd/gozen/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		uses := packageUses(parsed(t, name, b), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
+		for _, v := range allowedUses(name, "os", uses, directOutputAllowlist, met) {
+			t.Errorf("%s; publish the output through cmd/internal/cli (Publish, WriteNew) so it is new, staged and removed on failure", v)
+		}
+	})
+	for _, key := range slices.Sorted(maps.Keys(directOutputAllowlist)) {
+		if !met[key] {
+			t.Errorf("%s: no direct output is left there; remove it from directOutputAllowlist", key)
+		}
+	}
+}
+
+// wallClockAllowlist names the functions under cmd/ that may read the wall clock, each
+// with its reason. A command's output otherwise depends on its inputs alone, so two
+// runs can be compared byte for byte. The list may only shrink.
+var wallClockAllowlist = map[string]string{
+	"cmd/gozen/capture.go:writeShotIndex": "prints the minute the capture was made into index.html for the author who opens the page; shots.json and the pictures carry no time",
+}
+
+// TestCommandClock keeps the wall clock out of command output.
+func TestCommandClock(t *testing.T) {
+	met := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasPrefix(name, "cmd/") || strings.HasSuffix(name, "_test.go") {
+			return
+		}
+		uses := packageUses(parsed(t, name, b), "time", "Now", "Since", "Until")
+		for _, v := range allowedUses(name, "time", uses, wallClockAllowlist, met) {
+			t.Errorf("%s; take the time from the command's input so the same input gives the same output", v)
+		}
+	})
+	for _, key := range slices.Sorted(maps.Keys(wallClockAllowlist)) {
+		if !met[key] {
+			t.Errorf("%s: the wall clock is no longer read there; remove it from wallClockAllowlist", key)
+		}
+	}
+}
+
+// TestCommandUsesGuard proves the scanner behind TestCommandOutputs and
+// TestCommandClock: it sees a call, an alias, a stored reference and a dot import,
+// names the declaration that holds each, and passes the helper, reads and a local
+// variable that only shares the package's name.
+func TestCommandUsesGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		want         []packageUse
+	}{
+		{"call", `package main; import "os"; func write() { _ = os.WriteFile("out", nil, 0o600) }`, []packageUse{{"write", "WriteFile"}}},
+		{"alias", `package main; import std "os"; func write() { _ = std.MkdirAll("out", 0o700) }`, []packageUse{{"write", "MkdirAll"}}},
+		{"reference", `package main; import "os"; func write() { create := os.Create; _, _ = create("out") }`, []packageUse{{"write", "Create"}}},
+		{"closure in a method", `package main; import "os"; type c struct{}; func (*c) run() { func() { _ = os.Mkdir("out", 0o700) }() }`, []packageUse{{"c.run", "Mkdir"}}},
+		{"package variable", `package main; import "os"; var open = os.OpenFile`, []packageUse{{"package", "OpenFile"}}},
+		{"dot import", `package main; import . "os"; func write() { _ = WriteFile("out", nil, 0o600) }`, []packageUse{{"import", "."}}},
+		{"helper", `package main; import "example.com/cli"; func write() { _ = cli.WriteNew("out", nil) }`, nil},
+		{"read", `package main; import "os"; func read() { _, _ = os.ReadFile("in"); _, _ = os.MkdirTemp("", "stage") }`, nil},
+		{"local variable", `package main; type files struct{}; func (files) Create(string) {}; func write() { os := files{}; os.Create("out") }`, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := packageUses(parsed(t, tc.name, []byte(tc.source)), "os", "Mkdir", "MkdirAll", "Create", "WriteFile", "OpenFile")
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("uses = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	clock := packageUses(parsed(t, "clock", []byte(`package main; import "time"; func stamp() string { return time.Now().Format(time.RFC3339) + time.Since(time.Time{}).String() }`)), "time", "Now", "Since", "Until")
+	if !slices.Equal(clock, []packageUse{{"stamp", "Now"}, {"stamp", "Since"}}) {
+		t.Fatalf("clock uses = %v", clock)
+	}
+	met := map[string]bool{}
+	allow := map[string]string{"cmd/gozen/a.go:stamp": "sample reason", "cmd/gozen/a.go:gone": "sample reason"}
+	if got := allowedUses("cmd/gozen/a.go", "time", clock, allow, met); len(got) != 0 || !met["cmd/gozen/a.go:stamp"] || met["cmd/gozen/a.go:gone"] {
+		t.Fatalf("allowed file: violations %v, met %v", got, met)
+	}
+	if got := allowedUses("cmd/gozen/b.go", "time", clock, allow, met); !slices.Equal(got, []string{"cmd/gozen/b.go: stamp uses time.Now", "cmd/gozen/b.go: stamp uses time.Since"}) {
+		t.Fatalf("other file: violations %v", got)
 	}
 }
 
@@ -1413,154 +1893,164 @@ on:
 	}
 }
 
-// TestCIGoTestRetry runs the unit job's script against a stand-in go command.
-// Only the known Windows runtime crash of a listed package is retried; ordinary
-// failures, other packages and other platforms fail on the first run.
-func TestCIGoTestRetry(t *testing.T) {
-	if _, err := exec.LookPath("bash"); err != nil {
-		t.Skipf("the unit job script requires bash: %v", err)
-	}
-	script, err := filepath.Abs("../../../scripts/ci_go_test.sh")
+// definitionFields are the exported fields of gamedata.DB, read from its source.
+func definitionFields(t *testing.T) map[string]bool {
+	t.Helper()
+	const name = "internal/model/gamedata/load.go"
+	b, err := fs.ReadFile(os.DirFS("../../.."), name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const (
-		mosaic    = "github.com/nao1215/gozen/internal/mosaic"
-		promptgen = "github.com/nao1215/gozen/internal/promptgen"
-	)
-	ok := "ok  \tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"
-	gcCrash := func(pkg string) string {
-		return "runtime: marked free object in span\nfatal error: found pointer to free object\n\ngoroutine 3 [running]:\nruntime.throw()\n\tC:/go/src/runtime/panic.go:1243\nFAIL\t" + pkg + "\t0.1s\n"
-	}
-	exception := "Exception 0xc0000005 0x8 0x7ff704622728 0x7ff704622728\nPC=0x7ff704622728\nfatal error: runtime.goparkunlock(...)\nFAIL\t" + promptgen + "\t0.1s\n"
-	pass := func(pkg string) string { return "ok  \t" + pkg + "\t0.1s\n" }
-	for _, tc := range []struct {
-		name, goos string
-		runs       []string // output of each go test run; a run fails when it has FAIL
-		status     int
-		calls      []string
-	}{
-		{"success", "windows", []string{ok}, 0, []string{"test ./..."}},
-		{"GC crash retried", "windows", []string{ok + gcCrash(mosaic) + "FAIL\n", pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
-		{"index out of range in the collector", "windows", []string{strings.Replace(gcCrash(mosaic), "found pointer to free object", "index out of range", 1), pass(mosaic)}, 0, []string{"test ./...", "test -count=1 " + mosaic}},
-		{"access violation retried", "windows", []string{exception, pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + promptgen}},
-		{"both packages retried together", "windows", []string{gcCrash(mosaic) + exception, pass(mosaic) + pass(promptgen)}, 0, []string{"test ./...", "test -count=1 " + mosaic + " " + promptgen}},
-		{"bounded retries", "windows", []string{gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic), gcCrash(mosaic)}, 1, []string{"test ./...", "test -count=1 " + mosaic, "test -count=1 " + mosaic, "test -count=1 " + mosaic}},
-		{"ordinary failure after a retry", "windows", []string{gcCrash(mosaic), "--- FAIL: TestX (0.00s)\nFAIL\n" + "FAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./...", "test -count=1 " + mosaic}},
-		{"other platform", "linux", []string{gcCrash(mosaic)}, 1, []string{"test ./..."}},
-		{"unlisted package", "windows", []string{gcCrash("github.com/nao1215/gozen/internal/screen/play")}, 1, []string{"test ./..."}},
-		{"crash beside an ordinary failure", "windows", []string{gcCrash(mosaic) + "--- FAIL: TestY (0.00s)\nFAIL\nFAIL\tgithub.com/nao1215/gozen/internal/model/rpg\t0.1s\n"}, 1, []string{"test ./..."}},
-		{"failed test in the crashed package", "windows", []string{"--- FAIL: TestZ (0.00s)\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
-		{"test panic", "windows", []string{"panic: boom\n" + gcCrash(mosaic)}, 1, []string{"test ./..."}},
-		{"deadlock", "windows", []string{"fatal error: all goroutines are asleep - deadlock!\nFAIL\t" + mosaic + "\t0.1s\n"}, 1, []string{"test ./..."}},
-		{"build failure", "windows", []string{"FAIL\t" + mosaic + " [build failed]\nFAIL\n"}, 1, []string{"test ./..."}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			for i, out := range tc.runs {
-				if err := os.WriteFile(filepath.Join(dir, "out"+strconv.Itoa(i+1)), []byte(out), 0o600); err != nil {
-					t.Fatal(err)
+	fields := map[string]bool{}
+	ast.Inspect(parsed(t, name, b), func(n ast.Node) bool {
+		spec, ok := n.(*ast.TypeSpec)
+		if !ok || spec.Name.Name != "DB" {
+			return true
+		}
+		if st, ok := spec.Type.(*ast.StructType); ok {
+			for _, f := range st.Fields.List {
+				for _, id := range f.Names {
+					if id.IsExported() {
+						fields[id.Name] = true
+					}
 				}
 			}
-			stand := filepath.Join(dir, "go")
-			body := `#!/usr/bin/env bash
-if [ "$1" = env ]; then echo "$FAKE_GOOS"; exit 0; fi
-n=$(( $(cat "$FAKE_DIR/count" 2>/dev/null || echo 0) + 1 ))
-echo "$n" > "$FAKE_DIR/count"
-echo "$*" >> "$FAKE_DIR/calls"
-[ -f "$FAKE_DIR/out$n" ] || exit 99
-cat "$FAKE_DIR/out$n"
-grep -q '^FAIL' "$FAKE_DIR/out$n" && exit 1
-exit 0
-`
-			if err := os.WriteFile(stand, []byte(body), 0o700); err != nil { //nolint:gosec // An executable stand-in inside the test temporary directory.
-				t.Fatal(err)
+		}
+		return false
+	})
+	if !fields["Actors"] || !fields["Game"] {
+		t.Fatalf("gamedata.DB not found in %s: %v", name, fields)
+	}
+	return fields
+}
+
+// definitionWrites lists the places of f that change the loaded definitions: a field of
+// gamedata.DB assigned, or a map or list in one written, deleted from, cleared or copied
+// into. The check is lexical: the definitions are recognized by the name every package
+// gives them, db or DB, as a variable or as a field (g.db, st.DB).
+func definitionWrites(f *ast.File, fields map[string]bool) []string {
+	// target is the DB field x writes into or under: db.F, db.F[k], db.F.G and
+	// db.F[k].G all change what every holder of the definitions reads.
+	target := func(x ast.Expr) string {
+		for {
+			switch e := x.(type) {
+			case *ast.IndexExpr:
+				x = e.X
+				continue
+			case *ast.StarExpr:
+				x = e.X
+				continue
+			case *ast.ParenExpr:
+				x = e.X
+				continue
+			case *ast.SelectorExpr:
+				owner := ""
+				switch o := e.X.(type) {
+				case *ast.Ident:
+					owner = o.Name
+				case *ast.SelectorExpr:
+					owner = o.Sel.Name
+				}
+				if (owner == "db" || owner == "DB") && fields[e.Sel.Name] {
+					return owner + "." + e.Sel.Name
+				}
+				x = e.X
+				continue
 			}
-			cmd := exec.CommandContext(t.Context(), "bash", script) //nolint:gosec // Repository script with a stand-in go command.
-			cmd.Dir = dir
-			cmd.Env = append(os.Environ(), "GO="+filepath.ToSlash(stand), "FAKE_GOOS="+tc.goos, "FAKE_DIR="+filepath.ToSlash(dir))
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout, cmd.Stderr = &stdout, &stderr
-			err := cmd.Run()
-			status := 0
-			if exit, isExit := err.(*exec.ExitError); isExit { //nolint:errorlint // Run returns the exit error itself.
-				status = exit.ExitCode()
-			} else if err != nil {
-				t.Fatal(err)
+			return ""
+		}
+	}
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.AssignStmt:
+			if n.Tok == token.DEFINE {
+				return true
 			}
-			calls, err := os.ReadFile(filepath.Join(dir, "calls")) //nolint:gosec // Output inside the test temporary directory.
-			if err != nil {
-				t.Fatal(err)
+			for _, l := range n.Lhs {
+				if w := target(l); w != "" {
+					out = append(out, "assigns "+w)
+				}
 			}
-			if got := strings.Split(strings.TrimSuffix(string(calls), "\n"), "\n"); status != tc.status || !slices.Equal(got, tc.calls) {
-				t.Fatalf("status %d calls %q, want %d %q; stdout=%s stderr=%s", status, got, tc.status, tc.calls, &stdout, &stderr)
+		case *ast.IncDecStmt:
+			if w := target(n.X); w != "" {
+				out = append(out, "changes "+w)
+			}
+		case *ast.CallExpr:
+			name := ""
+			switch fn := n.Fun.(type) {
+			case *ast.Ident:
+				name = fn.Name
+			case *ast.SelectorExpr:
+				if pkg, ok := fn.X.(*ast.Ident); ok {
+					name = pkg.Name + "." + fn.Sel.Name
+				}
+			}
+			if slices.Contains([]string{"delete", "clear", "maps.Copy", "maps.Insert", "maps.DeleteFunc"}, name) && len(n.Args) > 0 {
+				if w := target(n.Args[0]); w != "" {
+					out = append(out, name+" on "+w)
+				}
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// TestDefinitionsAreImmutable keeps the loaded definitions (gamedata.DB) read-only
+// outside internal/model/gamedata. Games, sessions and simulations share one DB; a
+// package that writes into it leaks one game's state into the next (a recruited
+// monster once defined another save's monster of the same id). What a game adds
+// goes through the view DB.ForState gives its state.
+func TestDefinitionsAreImmutable(t *testing.T) {
+	fields := definitionFields(t)
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || strings.HasPrefix(name, "internal/model/gamedata/") || slices.Contains(definitionWriteAllowlist, name) {
+			return
+		}
+		for _, w := range definitionWrites(parsed(t, name, b), fields) {
+			t.Errorf("%s %s: only internal/model/gamedata changes the definitions; use its methods on the state's view", name, w)
+		}
+	})
+}
+
+// definitionWriteAllowlist is the one file that writes the definitions today: the design
+// evaluation bot marks every event of the DB its command loaded for one play and puts
+// the commands back when the play ends. It may only shrink.
+var definitionWriteAllowlist = []string{"cmd/gozen/internal/designeval/bot.go"}
+
+func TestDefinitionWriteGuard(t *testing.T) {
+	if len(definitionWriteAllowlist) > 1 {
+		t.Fatal("the definition write allowlist may not grow")
+	}
+	fields := definitionFields(t)
+	for _, tc := range []struct {
+		name, body string
+		bad        bool
+	}{
+		{"map entry", `s.DB.Actors[id] = a`, true},
+		{"variable", `db.Items[id] = nil`, true},
+		{"nested field", `g.st.DB.Order["actors"] = nil`, true},
+		{"delete", `delete(s.DB.Actors, id)`, true},
+		{"clear", `clear(db.Events)`, true},
+		{"copy", `maps.Copy(r.db.Words, w)`, true},
+		{"whole field", `db.Breeding = nil`, true},
+		{"append", `db.Fusions = append(db.Fusions, f)`, true},
+		{"count", `db.Order["x"][0] += "y"`, true},
+		{"value inside", `db.Game.MaxParty = 2`, true},
+		{"definition", `g.db.Actors[id].Name = "x"`, true},
+		{"deep", `st.DB.Locations[id].Dungeon.Grid = nil`, true},
+		{"local copy", `game := db.Game; game.MaxParty = 2`, false},
+		{"read", `a := db.Actors[id]; _ = a`, false},
+		{"state map", `s.Actors[id] = a; delete(s.Actors, id)`, false},
+		{"copy from", `maps.Copy(out, db.Words[code])`, false},
+		{"method", `db.AddInstance(id, a)`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := definitionWrites(parsed(t, tc.name, []byte("package p; func f() { "+tc.body+" }")), fields)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("writes = %v, want rejection %v", got, tc.bad)
 			}
 		})
 	}
-}
-
-// TestSnapshotEngineTagSelection runs the workflow's real selection command with
-// engine and independent catalog tags both at HEAD and on nearer ancestors.
-func TestSnapshotEngineTagSelection(t *testing.T) {
-	for _, tool := range []string{"sh", "git"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Skipf("snapshot workflow requires %s: %v", tool, err)
-		}
-	}
-	b, err := os.ReadFile("../../../.github/workflows/release-smoke.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var workflow struct {
-		Jobs map[string]struct{ Steps []struct{ Name, Run string } }
-	}
-	if err := yaml.Unmarshal(b, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	var script string
-	for _, job := range workflow.Jobs {
-		for _, step := range job.Steps {
-			if step.Name == "Select engine snapshot tag" {
-				script = step.Run
-			}
-		}
-	}
-	if script == "" {
-		t.Fatal("snapshot engine selection missing")
-	}
-	dir := t.TempDir()
-	run := func(binary string, args ...string) {
-		t.Helper()
-		cmd := exec.CommandContext(t.Context(), binary, args...) //nolint:gosec // Fixed workflow command and isolated test repository.
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=", "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com", "GITHUB_ENV="+filepath.Join(dir, "selected.env"))
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("%s %v: %v stdout=%s stderr=%s", binary, args, err, &stdout, &stderr)
-		}
-	}
-	commit := func() { run("git", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "fixture") }
-	check := func(want string) {
-		t.Helper()
-		if err := os.WriteFile(filepath.Join(dir, "selected.env"), nil, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		run("sh", "-e", "-c", script)
-		got, err := os.ReadFile(filepath.Join(dir, "selected.env")) //nolint:gosec // Test-owned workflow output.
-		if err != nil || strings.TrimSpace(string(got)) != "GORELEASER_CURRENT_TAG="+want {
-			t.Fatalf("selected %q, want %s: %v", got, want, err)
-		}
-	}
-	run("git", "init", "-q")
-	commit()
-	run("git", "tag", "v0.22.0")
-	commit()
-	run("git", "tag", "game-catalog")
-	run("git", "tag", "phone-counter-v1.0.0")
-	check("v0.22.0")
-	commit()
-	check("v0.22.0")
-	run("git", "tag", "v0.23.0")
-	check("v0.23.0")
 }

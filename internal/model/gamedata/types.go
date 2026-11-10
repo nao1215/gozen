@@ -18,6 +18,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 
 	"github.com/nao1215/gozen/internal/base/expr"
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 // Expr is an expression of the expr language, parsed when the YAML is read. Its zero
@@ -919,7 +920,7 @@ func (c CG) FadeTicks() int {
 	if c.Fade == 0 {
 		return 0
 	}
-	return max(1, int(c.Fade*60))
+	return max(1, safeint.From(c.Fade*60))
 }
 
 // MusicCue is a song and the mood it starts in ("song" or "song/mood", or a map).

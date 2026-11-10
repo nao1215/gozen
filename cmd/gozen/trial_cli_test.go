@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/cmd/internal/distribute"
 	"github.com/nao1215/gozen/internal/base/diag"
 )
 
@@ -98,5 +99,64 @@ func TestPackTrialListsTheRangesOfVariables(t *testing.T) {
 	text := string(read(t, list))
 	if !strings.Contains(text, "# ranges of variables and flags\n") || !strings.Contains(text, "var.offer = ") || !strings.Contains(text, "<- ") {
 		t.Errorf("the ranges of the variables are listed with what sets them:\n%s", text)
+	}
+}
+
+// A trial made without --overlay is as unapproved as its game: it carries the
+// asset policy, so the export gate that stops the game stops the trial too. One
+// made with --overlay and --inspect is approved and carries none.
+func TestPackTrialCarriesTheAssetPolicyUnlessApproved(t *testing.T) {
+	dir := fixture(t)
+	const policy = "report: approvals.json\nextensions: [.png]\ninspection: {file: file, source: source, required: required, approved: approved}\nrecords: {file: file, source: source, required: required, approved: approved, output: output}\n"
+	write(t, filepath.Join(dir, "asset-policy.yaml"), policy)
+	if _, _, err := distribute.CopyGame(t.Context(), dir, t.TempDir()); err == nil {
+		t.Fatal("the fixture with a policy passes the export gate")
+	}
+	plain := filepath.Join(t.TempDir(), "trial")
+	invoke(t, 0, "trial", dir, "--out", plain)
+	if got := string(read(t, filepath.Join(plain, "asset-policy.yaml"))); got != policy {
+		t.Errorf("the policy in the trial: %q", got)
+	}
+	if _, _, err := distribute.CopyGame(t.Context(), plain, t.TempDir()); err == nil || !strings.Contains(err.Error(), "game has an asset policy") {
+		t.Errorf("an unapproved trial passes the export gate: %v", err)
+	}
+	top, inspect := approvals(t, dir, true)
+	approved := filepath.Join(t.TempDir(), "trial")
+	invoke(t, 0, "trial", dir, "--out", approved, "--overlay", top, "--inspect", inspect)
+	if _, _, err := distribute.CopyGame(t.Context(), approved, t.TempDir()); err != nil {
+		t.Errorf("an approved trial does not pass the export gate: %v", err)
+	}
+}
+
+// A trial that fails leaves nothing behind: no list to make the next run fail
+// with "output already exists", and no staging directory.
+func TestPackTrialFailureLeavesNothingBehind(t *testing.T) {
+	dir := fixture(t)
+	work, temp := t.TempDir(), t.TempDir()
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, temp)
+	}
+	list, out := filepath.Join(work, "list.txt"), filepath.Join(work, "trial")
+	missing := filepath.Join(work, "missing.yaml")
+	write(t, missing, "keep: [lost/file.png]\n")
+	top, inspect := approvals(t, dir, true)
+	for _, extra := range [][]string{nil, {"--overlay", top, "--inspect", inspect}} {
+		args := append([]string{"trial", dir, "--out", out, "--list", list, "--config", missing}, extra...)
+		if _, stderr := invoke(t, 1, args...); !strings.Contains(stderr, "lost/file.png") {
+			t.Fatalf("%v: stderr %q", extra, stderr)
+		}
+		for _, p := range []string{list, out} {
+			if _, err := os.Lstat(p); err == nil {
+				t.Errorf("%v: a failed trial left %s", extra, p)
+			}
+		}
+		if left, err := os.ReadDir(temp); err != nil || len(left) != 0 {
+			t.Errorf("%v: a failed trial left staging files: %v, %v", extra, left, err)
+		}
+	}
+	// The same destinations serve the run that succeeds.
+	invoke(t, 0, "trial", dir, "--out", out, "--list", list)
+	if !strings.Contains(string(read(t, list)), "# events: kept ") {
+		t.Error("the list of the trial that succeeded is not written")
 	}
 }

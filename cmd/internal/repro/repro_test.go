@@ -212,3 +212,19 @@ func traceFile(t *testing.T, lines ...string) string {
 	}
 	return p
 }
+
+// A trace Generate refuses leaves no bundle directory, which a second run would
+// then refuse as existing.
+func TestReproRefusedBundleLeavesNothing(t *testing.T) {
+	trace := traceFile(t,
+		`{"t":"start","tick":0,"exact_version":3,"game_dir":"/game","seed":7,"setup":{"save_data":{"../evil.json":"e30="}}}`,
+		`{"t":"input","tick":1,"press":["ok"]}`,
+		`{"t":"end","tick":120}`)
+	out := filepath.Join(t.TempDir(), "bundle")
+	if _, err := Generate(Config{Path: trace, Target: "60", Out: out}); err == nil {
+		t.Fatal("a save named ../evil.json was accepted")
+	}
+	if _, err := os.Stat(out); err == nil {
+		t.Fatalf("the refused bundle left %s behind", out)
+	}
+}

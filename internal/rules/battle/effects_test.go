@@ -37,6 +37,7 @@ skills:
 states:
   wake: {name: Light Sleep, turns: 9, restrict: skip, remove_on_damage: 1}
   thorny: {name: Thorns, turns: 3}
+  frail: {name: Frail, turns: 9, stats: {mhp: 0.5, mmp: 0.5}}
 enemies:
   caster:
     name: Caster
@@ -109,6 +110,28 @@ func TestManaDamageAndHealingStayInRange(t *testing.T) {
 	got = run(b, battle.Action{User: scout, Skill: "charge", Target: scout})
 	if h := steps(battle.Heal, got); len(h) != 0 && h[0].Amount != 0 {
 		t.Errorf("healing a full gauge healed %d", h[0].Amount)
+	}
+}
+
+// TestHealAboveLoweredMaximumTakesNothing: a state can lower the maximum below what the
+// unit has; a heal then gives nothing, it does not take the difference away.
+func TestHealAboveLoweredMaximumTakesNothing(t *testing.T) {
+	b := effectSetup(t, "caster")
+	scout := b.Party[0]
+	hp, mp := scout.HP, scout.MP
+	scout.States["frail"] = 9
+	if scout.MHP() >= hp || scout.MMP() >= mp {
+		t.Fatalf("frail leaves max HP %d of %d, max MP %d of %d", scout.MHP(), hp, scout.MMP(), mp)
+	}
+	for _, skill := range []string{"mend", "charge"} {
+		for _, s := range steps(battle.Heal, run(b, battle.Action{User: scout, Skill: skill, Target: scout})) {
+			if s.Amount < 0 {
+				t.Errorf("%s: a heal of %d: %q", skill, s.Amount, s.Text)
+			}
+		}
+	}
+	if scout.HP < hp || scout.MP < mp {
+		t.Errorf("HP %d -> %d, MP %d -> %d under max HP %d, max MP %d", hp, scout.HP, mp, scout.MP, scout.MHP(), scout.MMP())
 	}
 }
 

@@ -39,10 +39,10 @@ func Load(fsys fs.FS, name string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Parse(b)
+	return parse(b)
 }
 
-func Parse(b []byte) (*Config, error) {
+func parse(b []byte) (*Config, error) {
 	var c Config
 	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &c, yaml.Strict(), yaml.UseOrderedMap()) }); err != nil {
 		return nil, fmt.Errorf("trial: %s", yaml.FormatError(err, false, true))

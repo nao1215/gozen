@@ -287,7 +287,7 @@ events:
 
 ## Add voices
 
-A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`.
+A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`. A voice or a sound effect lasts at most 60 seconds; a longer file is skipped with a line in the log.
 
 <!-- verify: load group=voices as=game.yaml -->
 ```yaml
@@ -680,7 +680,7 @@ locations:
 
 ## Generate dungeon floors
 
-With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there.
+With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there. The `size` of `generate` and the `count` of `place` read `floor` and nothing else (no `var`, `flag`, `rand` or `chance`), because a loaded save builds the same floor again from its seed; a roamer's `count` may read the rest.
 
 <!-- verify: load group=generate -->
 ```yaml
@@ -1456,7 +1456,9 @@ inspection: {file: file, source: source, required: required, approved: approved}
 records: {file: file, source: source, required: required, approved: approved, output: output}
 ```
 
-The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release).
+A trial built without `--overlay` keeps the game's `asset-policy.yaml`, so `gozen export` refuses it until its assets are approved; with `--overlay` and `--inspect` the trial is an approved tree. Either way it holds the game's translations whole and its license notices.
+
+The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release), [Commands](/commands/#trial).
 
 ## Commands used by the recipes
 

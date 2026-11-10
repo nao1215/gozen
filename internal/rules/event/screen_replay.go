@@ -192,6 +192,12 @@ func (r *Runner) ReplayScreens(inputs []rpg.ReplayInput, pending Request) (Scree
 						}
 						f := &s.Frames[len(s.Frames)-1]
 						s.Runner = f.Runner
+						if r.st.Location != f.Origin {
+							// The action left the screen's place without a move (a set of
+							// location): the session and play close the screen there.
+							s.Frames = s.Frames[:len(s.Frames)-1]
+							continue
+						}
 						if f.Destination != "" && len(s.Frames) > 1 {
 							under := s.Frames[len(s.Frames)-2]
 							if ReturnsTo(r.db, f.Destination, under.Name, len(under.Args), f.Runner.Running()) {

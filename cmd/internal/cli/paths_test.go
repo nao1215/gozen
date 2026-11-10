@@ -46,7 +46,7 @@ func TestDestinationReportsTheCodeOfWhatIsWrong(t *testing.T) {
 }
 
 func TestCanonicalResolvesTheExistingPrefix(t *testing.T) {
-	if _, err := Canonical(""); err == nil {
+	if _, err := canonical(""); err == nil {
 		t.Error("an empty path was resolved")
 	}
 	root := t.TempDir()
@@ -54,7 +54,7 @@ func TestCanonicalResolvesTheExistingPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := Canonical(filepath.Join(root, "a", "b", "c"))
+	got, err := canonical(filepath.Join(root, "a", "b", "c"))
 	if err != nil || got != filepath.Join(want, "a", "b", "c") {
 		t.Errorf("a path that does not exist keeps its tail: %q %v", got, err)
 	}
@@ -67,8 +67,8 @@ func TestCanonicalResolvesTheExistingPrefix(t *testing.T) {
 		if err := os.Symlink(target, link); err != nil {
 			t.Fatal(err)
 		}
-		a, errA := Canonical(filepath.Join(link, "new"))
-		b, errB := Canonical(filepath.Join(target, "new"))
+		a, errA := canonical(filepath.Join(link, "new"))
+		b, errB := canonical(filepath.Join(target, "new"))
 		if errA != nil || errB != nil {
 			t.Fatal(errA, errB)
 		}
@@ -80,11 +80,11 @@ func TestCanonicalResolvesTheExistingPrefix(t *testing.T) {
 		if err := os.Symlink(loop, loop); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Canonical(filepath.Join(loop, "x")); err == nil {
+		if _, err := canonical(filepath.Join(loop, "x")); err == nil {
 			t.Error("a symlink loop was resolved")
 		}
 	}
-	rel, err := Canonical("some/relative")
+	rel, err := canonical("some/relative")
 	if err != nil || !filepath.IsAbs(rel) {
 		t.Errorf("a relative path becomes absolute: %q %v", rel, err)
 	}
@@ -249,5 +249,21 @@ func TestWriteNew(t *testing.T) {
 	b, err := os.ReadFile(p) //nolint:gosec // Test-owned path under t.TempDir.
 	if err != nil || !bytes.Equal(b, []byte("keep")) {
 		t.Fatalf("%s %v", b, err)
+	}
+}
+
+// A build that fails leaves nothing, the parent directories Publish made for the
+// destination among them; a parent that was already there stays.
+func TestFailedPublishRemovesTheParentsItMade(t *testing.T) {
+	root := t.TempDir()
+	err := Publish(filepath.Join(root, "a", "b", "out"), nil, func(string) error { return errors.New("build failed") })
+	if err == nil {
+		t.Fatal("want the build's error")
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "a")); statErr == nil {
+		t.Fatal("the failed Publish left the parent directories it made")
+	}
+	if _, statErr := os.Stat(root); statErr != nil {
+		t.Fatalf("the failed Publish removed a directory it did not make: %v", statErr)
 	}
 }

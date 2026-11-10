@@ -336,6 +336,10 @@ type Result struct {
 // If ins is given, the original hashes, approvals and required replacements are checked before distribution.
 func (t Tree) Build(ins []Approval) (Result, error) {
 	var res Result
+	// An empty path is the working directory: as Dst it would be deleted and rebuilt.
+	if t.Src == "" || t.Dst == "" {
+		return res, fmt.Errorf("assetfs: the source and the output must be named: %w", fs.ErrInvalid)
+	}
 	src, err := filepath.Abs(t.Src)
 	if err != nil {
 		return res, err

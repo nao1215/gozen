@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/nao1215/gozen/internal/base/safeint"
 )
 
 type node interface {
@@ -121,14 +123,14 @@ func (n *index) eval(env Env) (any, error) {
 		}
 	}
 	f, ok := ToNumber(i)
-	if !ok {
+	if !ok || math.IsNaN(f) {
 		return nil, fmt.Errorf("index %s is not a number", describe(i))
 	}
 	rv := reflect.ValueOf(x)
 	if rv.Kind() != reflect.Slice {
 		return nil, fmt.Errorf("%s cannot be indexed", describe(x))
 	}
-	k := int(f)
+	k := safeint.From(f) // an index beyond an int is out of range on every platform
 	if k < 0 || k >= rv.Len() {
 		return nil, nil // out of range is nil: "enemies[3].hp" fails, "enemies[3] == nil" holds
 	}
@@ -266,8 +268,10 @@ func (n *binop) eval(env Env) (any, error) {
 		if m == 0 {
 			return 0.0, nil
 		}
+		// The remainder is never negative and always smaller than the divisor's
+		// size, whichever signs the operands have: -7 % 3 and -7 % -3 are both 2.
 		if m < 0 {
-			m += bi
+			m += math.Abs(bi)
 		}
 		return m, nil
 	case "<":

@@ -1601,6 +1601,7 @@ func (g *Game) sfx(name string) {
 
 func (g *Game) newGame() {
 	g.st = rpg.New(g.db, g.stateRng())
+	g.db = g.st.DB
 	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	g.startState()
@@ -1613,6 +1614,7 @@ func (g *Game) newGame() {
 func (g *Game) testStart() error {
 	o := g.opts
 	g.st = rpg.New(g.db, g.stateRng())
+	g.db = g.st.DB
 	g.st.SetRecruitSeed(g.collectionSeed())
 	g.bannerFloor = 0
 	if o.Location != "" {
@@ -1683,6 +1685,7 @@ func (g *Game) restoreState(b []byte) bool {
 	}
 	st.Calm, st.Fighters = g.st.Calm, g.st.Fighters
 	*g.st = *st
+	g.db = st.DB
 	g.reportLoad(st.LoadReport)
 	return true
 }

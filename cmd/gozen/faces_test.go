@@ -166,3 +166,18 @@ func TestFaceCheckExtremeAspectRatios(t *testing.T) {
 		}
 	}
 }
+
+// A directory that is not a game is named with GZN1110, as every other command
+// does, and a --preview that cannot be written is refused before faces.json changes.
+func TestFacesRefusesBadDirectoriesFirst(t *testing.T) {
+	absent := filepath.Join(t.TempDir(), "absent")
+	_, stderr := invoke(t, 1, "faces", absent)
+	if !strings.Contains(stderr, "GZN1110") || !strings.Contains(stderr, "absent") {
+		t.Errorf("stderr: %q", stderr)
+	}
+	game := scenesGame(t)
+	_, stderr = invoke(t, 1, "faces", game, "--model", filepath.Join(t.TempDir(), "none.onnx"), "--preview", filepath.Join(game, "assets"))
+	if !strings.Contains(stderr, "GZN1501") {
+		t.Errorf("an existing --preview: %q", stderr)
+	}
+}

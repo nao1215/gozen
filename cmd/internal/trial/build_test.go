@@ -147,7 +147,7 @@ locations:
         width: 11
         height: 11
         start: S
-        place: [{char: '>', far: true}, {char: R, count: "var.rare_count"}]
+        place: [{char: '>', far: true}, {char: R, count: "0"}]
       tiles:
         S: {start: true}
         '>': {do: [{dive: depths, floor: var.floor + 1}]}
@@ -199,7 +199,7 @@ events:
 
 func build(t *testing.T, config string, extra map[string]string) *Result {
 	t.Helper()
-	cfg, err := Parse([]byte(config))
+	cfg, err := parse([]byte(config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,17 +296,17 @@ cut: [ending, finale]
 keep: ["cg/stage.*.jpg"]
 `, nil)
 	game := string(res.FS()["game.yaml"].Data)
-	for _, want := range []string{"title: Kept", "title: Opening", "title: Seen"} {
+	for _, want := range []string{`title: "Kept"`, `title: "Opening"`, `title: "Seen"`} {
 		if !strings.Contains(game, want) {
 			t.Errorf("gallery lacks %q:\n%s", want, game)
 		}
 	}
-	for _, gone := range []string{"title: Dropped", "title: Gone", "title: Unseen", "name: Never", "call: hidden"} {
+	for _, gone := range []string{`title: "Dropped"`, `title: "Gone"`, `title: "Unseen"`, `name: "Never"`, `call: "hidden"`} {
 		if strings.Contains(game, gone) {
 			t.Errorf("gallery still has %q:\n%s", gone, game)
 		}
 	}
-	if !strings.Contains(game, "call: chat") || !strings.Contains(game, "call: haunt") {
+	if !strings.Contains(game, `call: "chat"`) || !strings.Contains(game, `call: "haunt"`) {
 		t.Errorf("asides of a kept speaker are kept:\n%s", game)
 	}
 	if res.Gallery.CGs != 2 || res.Gallery.Scenes < 2 {
@@ -328,7 +328,7 @@ keep: ["missing/one.png"]
 	if !slices.Equal(res.Missing, []string{"missing/one.png"}) {
 		t.Fatalf("missing: %v", res.Missing)
 	}
-	err := res.Write("unused", t.TempDir())
+	err := res.Write(t.TempDir())
 	if err == nil || !strings.Contains(err.Error(), "missing assets") {
 		t.Fatalf("a copy that lacks an asset must not be written: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestResultWriteProducesALoadableCopy(t *testing.T) {
 	if err := os.CopyFS(src, trialGame(nil)); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := Parse([]byte("assume: {flag.locked_door: false, var.rare_count: 0, var.gold_seen: 0}\ncut: [ending, finale]\nkeep: [notes.txt]\n"))
+	cfg, err := parse([]byte("assume: {flag.locked_door: false, var.rare_count: 0, var.gold_seen: 0}\ncut: [ending, finale]\nkeep: [notes.txt]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +349,7 @@ func TestResultWriteProducesALoadableCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "out")
-	if err := res.Write(src, out); err != nil {
+	if err := res.Write(out); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := data.LoadDir(os.DirFS(out), "."); err != nil {
@@ -368,15 +368,15 @@ func TestResultWriteProducesALoadableCopy(t *testing.T) {
 	}
 	// A path that leaves the output is refused.
 	bad := &Result{Files: map[string][]byte{"../escape.yaml": nil}}
-	if err := bad.Write(src, filepath.Join(dir, "bad")); err == nil || !strings.Contains(err.Error(), "invalid file path") {
+	if err := bad.Write(filepath.Join(dir, "bad")); err == nil || !strings.Contains(err.Error(), "invalid file path") {
 		t.Errorf("escaping file: %v", err)
 	}
 	bad = &Result{Assets: []string{"../escape.png"}}
-	if err := bad.Write(src, filepath.Join(dir, "bad2")); err == nil || !strings.Contains(err.Error(), "invalid asset path") {
+	if err := bad.Write(filepath.Join(dir, "bad2")); err == nil || !strings.Contains(err.Error(), "invalid asset path") {
 		t.Errorf("escaping asset: %v", err)
 	}
 	bad = &Result{Assets: []string{"absent.png"}, src: os.DirFS(src)}
-	if err := bad.Write(src, filepath.Join(dir, "bad3")); err == nil {
+	if err := bad.Write(filepath.Join(dir, "bad3")); err == nil {
 		t.Error("an asset that does not exist in the source must fail the write")
 	}
 }
@@ -389,10 +389,10 @@ game:
   text: {b: changed, c: added}
 `, nil)
 	game := string(res.FS()["game.yaml"].Data)
-	if !strings.Contains(game, "title: Trial edition") || strings.Contains(game, "Full sample") {
+	if !strings.Contains(game, `title: "Trial edition"`) || strings.Contains(game, "Full sample") {
 		t.Errorf("title not replaced:\n%s", game)
 	}
-	for _, want := range []string{"a: one", "b: changed", "c: added"} {
+	for _, want := range []string{`a: "one"`, `b: "changed"`, `c: "added"`} {
 		if !strings.Contains(game, want) {
 			t.Errorf("text override lacks %q:\n%s", want, game)
 		}
@@ -416,7 +416,7 @@ func TestConfigParseRejectsBadSettings(t *testing.T) {
 		{"blocked entry is no command", "blocked: [0]\n", "blocked: each entry is a command"},
 		{"blocked entry is a list", "blocked: [[say]]\n", "blocked: each entry is a command"},
 	} {
-		_, err := Parse([]byte(tc.in))
+		_, err := parse([]byte(tc.in))
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: %v (want %q)", tc.name, err, tc.want)
 		}
@@ -426,7 +426,7 @@ func TestConfigParseRejectsBadSettings(t *testing.T) {
 		"assume: {var.x: 2.5, var.y: 7}\n",
 		"{}",
 	} {
-		if _, err := Parse([]byte(ok)); err != nil {
+		if _, err := parse([]byte(ok)); err != nil {
 			t.Errorf("%q: %v", ok, err)
 		}
 	}
@@ -444,7 +444,7 @@ func TestLoadReadsConfigFromTheFS(t *testing.T) {
 }
 
 func TestBuildFailsWithoutAGameOrWithBrokenYAML(t *testing.T) {
-	cfg, err := Parse([]byte("{}"))
+	cfg, err := parse([]byte("{}"))
 	if err != nil {
 		t.Fatal(err)
 	}

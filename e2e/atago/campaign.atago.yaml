@@ -87,7 +87,7 @@ scenarios:
   - assert:
       exit_code: 2
       stderr:
-        contains: '--as is greedy, random, ai, not "lazy"'
+        contains: '--as must be greedy, random, or ai, not "lazy" [GZN2202]'
 - name: check reports a border written on one side and an unknown owner
   steps:
   - fixture:

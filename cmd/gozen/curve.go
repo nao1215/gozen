@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -88,7 +87,7 @@ func (c *command) curve() clihelp.Operation {
 			return cliio.Invalid(diag.UnknownName, "unknown location %q", loc)
 		}
 		o.Bosses = map[int]string{}
-		for _, v := range split(*bosses) {
+		for _, v := range commaList(*bosses) {
 			a, b, ok := strings.Cut(v, ":")
 			f, err := strconv.Atoi(a)
 			if !ok || err != nil || f <= 0 || b == "" || o.Bosses[f] != "" {
@@ -107,24 +106,24 @@ func (c *command) curve() clihelp.Operation {
 			}
 		}
 		if o.RestEvent != "" && db.Events[o.RestEvent] == nil {
-			return fmt.Errorf("--rest-event: unknown event %q", o.RestEvent)
+			return cliio.Invalid(diag.UnknownName, "--rest-event: unknown event %q", o.RestEvent)
 		}
 		if o.SceneEvent != "" && db.Events[o.SceneEvent] == nil {
-			return fmt.Errorf("--scene-event: unknown event %q", o.SceneEvent)
+			return cliio.Invalid(diag.UnknownName, "--scene-event: unknown event %q", o.SceneEvent)
 		}
 		if (o.SceneEvent == "") != (o.SceneWhen == "") {
-			return errors.New("--scene-event and --scene-when go together")
+			return cliio.Invalid(diag.OptionNeedsAnother, "--scene-event and --scene-when go together")
 		}
 		if o.SceneWhen != "" {
 			if _, err := expr.Parse(o.SceneWhen); err != nil {
-				return fmt.Errorf("--scene-when: %w", err)
+				return cliio.Invalid(diag.BadValue, "--scene-when: %v", err)
 			}
 		}
 		if o.BackItem != "" && db.Items[o.BackItem] == nil {
-			return fmt.Errorf("--back-item: unknown item %q", o.BackItem)
+			return cliio.Invalid(diag.UnknownName, "--back-item: unknown item %q", o.BackItem)
 		}
 		o.Guards = map[int]string{}
-		for _, v := range split(*guards) {
+		for _, v := range commaList(*guards) {
 			a, b, ok := strings.Cut(v, ":")
 			f, err := strconv.Atoi(a)
 			if !ok || err != nil || f <= 0 || db.Troops[b] == nil || o.Guards[f] != "" {
@@ -136,31 +135,12 @@ func (c *command) curve() clihelp.Operation {
 			o.Guards = nil
 		}
 		if o.FloorEvent != "" && db.Events[o.FloorEvent] == nil {
-			return fmt.Errorf("--floor-event: unknown event %q", o.FloorEvent)
+			return cliio.Invalid(diag.UnknownName, "--floor-event: unknown event %q", o.FloorEvent)
 		}
-		if *saves != "" {
-			if err := cli.Destination(*saves, dir); err != nil {
-				return err
-			}
-			if err := os.Mkdir(*saves, 0o750); err != nil {
-				return err
-			}
-			var saveErr error
-			o.Arrive = func(floor int, st *rpg.State) {
-				b, err := st.Save()
-				if err == nil {
-					err = os.WriteFile(filepath.Join(*saves, fmt.Sprintf("floor-%d.json", floor)), b, 0o600)
-				}
-				saveErr = errors.Join(saveErr, err)
-			}
-			defer func() { err = errors.Join(err, saveErr) }()
-		}
-		if *shops != "" {
-			o.Shops = strings.Split(*shops, ",")
-			for _, id := range o.Shops {
-				if db.Shops[id] == nil {
-					return cliio.Invalid(diag.UnknownName, "unknown shop %q", id)
-				}
+		o.Shops = commaList(*shops)
+		for _, id := range o.Shops {
+			if db.Shops[id] == nil {
+				return cliio.Invalid(diag.UnknownName, "unknown shop %q", id)
 			}
 		}
 		if o.RestCost != "" {
@@ -168,7 +148,28 @@ func (c *command) curve() clihelp.Operation {
 				return cliio.Invalid(diag.BadValue, "--rest-cost: %v", err)
 			}
 		}
-		r, err := balance.Run(db, o)
+		if len(db.Locations[loc].Encounters.Troops) == 0 && len(o.Bosses) == 0 && len(o.Guards) == 0 {
+			return cliio.Invalid(diag.UnknownName, "location %q has no encounters to fight (encounters.troops), and no --boss or --guards was given", loc)
+		}
+		// Every option is valid by now, so a rejected command leaves no directory behind.
+		var r balance.Result
+		if *saves == "" {
+			r, err = balance.Run(db, o)
+		} else {
+			err = cli.Publish(*saves, []string{dir}, func(stage string) error {
+				var saveErr error
+				o.Arrive = func(floor int, st *rpg.State) {
+					b, err := st.Save()
+					if err == nil {
+						err = cli.WriteNew(filepath.Join(stage, fmt.Sprintf("floor-%d.json", floor)), b)
+					}
+					saveErr = errors.Join(saveErr, err)
+				}
+				var runErr error
+				r, runErr = balance.Run(db, o)
+				return errors.Join(runErr, saveErr)
+			})
+		}
 		if err != nil {
 			return err
 		}
@@ -227,17 +228,17 @@ func (c *command) curve() clihelp.Operation {
 
 func parseSupplies(db *gamedata.DB, s string) (map[string]int, error) {
 	out := map[string]int{}
-	for p := range strings.SplitSeq(s, ",") {
-		id, n, ok := strings.Cut(strings.TrimSpace(p), ":")
+	for _, p := range commaList(s) {
+		id, n, ok := strings.Cut(p, ":")
 		if !ok || id == "" || n == "" {
-			return nil, fmt.Errorf("--supplies %q: want item:count", p)
+			return nil, cliio.Invalid(diag.BadValue, "--supplies %q: want item:count", p)
 		}
 		if db.Items[id] == nil {
-			return nil, fmt.Errorf("--supplies %q: unknown item %q", p, id)
+			return nil, cliio.Invalid(diag.UnknownName, "--supplies %q: unknown item %q", p, id)
 		}
 		c, err := strconv.Atoi(n)
 		if err != nil || c <= 0 {
-			return nil, fmt.Errorf("--supplies %q: the count must be a positive integer", p)
+			return nil, cliio.Invalid(diag.BadValue, "--supplies %q: the count must be a positive integer", p)
 		}
 		out[id] += c
 	}

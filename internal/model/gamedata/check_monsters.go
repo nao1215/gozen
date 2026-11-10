@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/base/expr"
@@ -55,7 +54,7 @@ func (c *checker) monsters() {
 			if cl := db.Classes[classID]; cl != nil && !checkedClasses[classID] {
 				checkedClasses[classID] = true
 				prev := float64(0)
-				for level := 2; level <= cl.Max; level++ {
+				for level := 2; level <= min(cl.Max, MaxClassLevel); level++ {
 					n, err := cl.ExpFor.Number(expr.Map{"level": float64(level)})
 					if err == nil && (math.IsNaN(n) || math.IsInf(n, 0) || n <= prev) {
 						c.errorf(diag.MonsterGrowth, "classes."+classID+".exp_for", "experience must increase at level %d", level)
@@ -129,10 +128,7 @@ func (c *checker) monsters() {
 			c.errorf(diag.MonsterRules, w+".parents", "parents needs two enemy IDs")
 			continue
 		}
-		if p.Parents[0] > p.Parents[1] {
-			p.Parents[0], p.Parents[1] = p.Parents[1], p.Parents[0]
-		}
-		key := strings.Join(p.Parents, "/")
+		key := pairKey(p.Parents)
 		if prev, ok := seenPairs[key]; ok {
 			c.errorf(diag.MonsterRules, w, "pair %s is also defined at %s", key, prev)
 		}
@@ -154,6 +150,9 @@ func (c *checker) monsters() {
 		if p.MinLevel < 0 || p.MinPlus < 0 {
 			c.errorf(diag.MonsterRules, w, "min_level and min_plus cannot be negative")
 		}
+		if p.MinPlus > MaxBreedingPlus {
+			c.errorf(diag.OutOfRange, w+".min_plus", "want at most %d, got %d", MaxBreedingPlus, p.MinPlus)
+		}
 	}
 	seenFamilies := map[string]string{}
 	for i, f := range r.Families {
@@ -162,10 +161,7 @@ func (c *checker) monsters() {
 			c.errorf(diag.MonsterRules, w+".parents", "parents needs two family IDs")
 			continue
 		}
-		if f.Parents[0] > f.Parents[1] {
-			f.Parents[0], f.Parents[1] = f.Parents[1], f.Parents[0]
-		}
-		key := strings.Join(f.Parents, "/")
+		key := pairKey(f.Parents)
 		if prev, ok := seenFamilies[key]; ok {
 			c.errorf(diag.MonsterRules, w, "family pair %s is also defined at %s", key, prev)
 		}
@@ -229,4 +225,9 @@ func (db *DB) hasRecipe(id string) bool {
 		}
 	}
 	return false
+}
+
+// pairKey names two parents whichever way round they are written, leaving them as written.
+func pairKey(parents []string) string {
+	return min(parents[0], parents[1]) + "/" + max(parents[0], parents[1])
 }

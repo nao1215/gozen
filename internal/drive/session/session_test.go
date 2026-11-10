@@ -2898,3 +2898,52 @@ func FuzzLoad(f *testing.F) {
 		}
 	})
 }
+
+// TestScreenLeftBySetLocationRestores: an entry that sets the location (no
+// move effect) closes its screen in a session, so a save made in the opener's
+// next line must restore there too, not show the screen again.
+func TestScreenLeftBySetLocationRestores(t *testing.T) {
+	files := fstest.MapFS{
+		"game.yaml": {Data: []byte("schema_version: 10\nid: screen-set-location\nstart: {location: workshop}\nscreens:\n  stock:\n    title: Stock\n    entries:\n    - label: Leave\n      do:\n      - set: {location: yard}\n      - say: Moved.\n")},
+		"data/world.yaml": {Data: []byte(`locations: {workshop: {name: Workshop}, yard: {name: Yard}}
+events:
+  visit:
+    do:
+    - open: stock
+    - say: Back.
+    - say: Done.
+`)},
+	}
+	g, err := gozen.Load(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := session(t, g, gozen.Config{Seed: 17})
+	if err := s.Start("- call: visit"); err != nil {
+		t.Fatal(err)
+	}
+	if q := s.Next(); q.Kind != "open" {
+		t.Fatalf("open: %+v", q)
+	}
+	s.Answer(0)
+	if q := s.Next(); q.Text != "Moved." {
+		t.Fatalf("entry line: %+v", q)
+	}
+	if q := s.Next(); q.Text != "Back." {
+		t.Fatalf("the screen did not close on leaving its location: %+v", q)
+	}
+	save, err := s.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := gozen.Restore(g, save, gozen.Config{Seed: 17})
+	if err != nil {
+		t.Fatalf("a save the session wrote does not restore: %v", err)
+	}
+	if q := r.Next(); q.Text != "Back." {
+		t.Fatalf("restored at %+v, want the line Back.", q)
+	}
+	if q := r.Next(); q.Text != "Done." {
+		t.Fatalf("after the restored line: %+v", q)
+	}
+}

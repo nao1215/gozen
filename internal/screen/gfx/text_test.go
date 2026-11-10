@@ -130,8 +130,8 @@ func TestPaginateSplitsAtSentencesAndKeepsEverything(t *testing.T) {
 		if len(pages) < 2 {
 			t.Fatalf("lines %d: %d page", lines, len(pages))
 		}
-		if sz > 12 || sz < 12*PageShrink-1e-9 {
-			t.Fatalf("lines %d: size %v out of [%v, 12]", lines, sz, 12*PageShrink)
+		if sz > 12 || sz < 12*pageShrink-1e-9 {
+			t.Fatalf("lines %d: size %v out of [%v, 12]", lines, sz, 12*pageShrink)
 		}
 		var all strings.Builder
 		for _, p := range pages {
@@ -380,7 +380,7 @@ func TestPaginateWithRealFont(t *testing.T) {
 	text := strings.Repeat("The road goes on and on. ", 6)
 	width := TextWidth("The road goes on and on.", 20)
 	pages, sz := Paginate(text, 20, width, 2)
-	if len(pages) < 2 || sz > 20 || sz < 20*PageShrink-1e-9 {
+	if len(pages) < 2 || sz > 20 || sz < 20*pageShrink-1e-9 {
 		t.Fatalf("pages %d size %v", len(pages), sz)
 	}
 	for _, p := range pages {

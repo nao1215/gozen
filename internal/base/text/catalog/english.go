@@ -865,6 +865,7 @@ var english = map[string]string{
 	"層の定義が不正です。%s":                            "invalid layer definition: %s",
 	"既定の選択が不正です。%s/%s":                        "invalid default selection: %s/%s",
 	"既定の選択が上限を超えます。%s":                        "default selection exceeds the limit: %s",
+	"既定の選択が下限に届きません。%s":                       "default selection is below the minimum: %s",
 	"項目 ID が不正です。%s/%s":                       "invalid entry ID: %s/%s",
 	"語・強調・段が不正です。%s/%s %s":                    "invalid word, emphasis or tier: %s/%s %s",
 	"強調が上限を超えています。%s/%s %s":                   "emphasis exceeds the limit: %s/%s %s",

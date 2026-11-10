@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"github.com/nao1215/gozen/internal/base/cliio"
 
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/mosaic"
 )
 
 // fileSpec is one file of a pinned model. SHA256 and Size are checked after the download.
@@ -116,22 +118,68 @@ func (m modelSpec) dir() (string, error) {
 	return filepath.Join(root, m.Name), nil
 }
 
-// cachedModel returns the model.onnx path when the model is in the cache.
+// verifiedName is the record, beside the files of a cached model, of the files whose
+// SHA-256 has been checked.
+const verifiedName = "verified.json"
+
+// verifiedFile is the state a file had when its SHA-256 matched. A file with the same
+// size and modification time is the same file, as far as the cache can tell cheaply.
+type verifiedFile struct {
+	Size    int64  `json:"size"`
+	ModTime int64  `json:"mtime_ns"`
+	SHA256  string `json:"sha256"`
+}
+
+// cachedModel returns the model.onnx path when the model is in the cache: every required
+// file is there with the pinned size and SHA-256. Hashing a model on every command would
+// be slow, so a file is hashed once and recorded in verified.json; a later call only
+// compares its size and modification time with the record. A file that changed since, a
+// record made for another pinned SHA-256, and a cache without a record are hashed again.
 func (m modelSpec) cachedModel() (string, bool) {
 	d, err := m.dir()
 	if err != nil {
 		return "", false
 	}
+	var recorded map[string]verifiedFile
+	if b, err := os.ReadFile(filepath.Join(d, verifiedName)); err == nil { //nolint:gosec // inside the cache directory
+		if json.Unmarshal(b, &recorded) != nil {
+			recorded = nil
+		}
+	}
+	current := map[string]verifiedFile{}
+	hashed := false
 	for _, f := range m.Files {
 		if f.Optional {
 			continue
 		}
-		st, err := os.Stat(filepath.Join(d, f.Name))
+		p := filepath.Join(d, f.Name)
+		st, err := os.Stat(p)
 		if err != nil || !st.Mode().IsRegular() || st.Size() != f.Size {
 			return "", false
 		}
+		v := verifiedFile{st.Size(), st.ModTime().UnixNano(), f.SHA256}
+		if recorded[f.Name] != v {
+			if sum, err := fileSum(p); err != nil || sum != f.SHA256 {
+				return "", false
+			}
+			hashed = true
+		}
+		current[f.Name] = v
+	}
+	if hashed {
+		// The record only saves the next hash. A cache that cannot be written to still
+		// holds a checked model, so a failure here is not one of the command.
+		_ = writeVerified(d, current) //nolint:errcheck // see above
 	}
 	return filepath.Join(d, "model.onnx"), true
+}
+
+func writeVerified(dir string, files map[string]verifiedFile) error {
+	b, err := json.MarshalIndent(files, "", "  ")
+	if err != nil {
+		return err
+	}
+	return mosaic.WriteFile(filepath.Join(dir, verifiedName), func(w io.Writer) error { _, err := w.Write(b); return err })
 }
 
 func megabytes(n int64) string { return fmt.Sprintf("%.0f MB", float64(n)/1e6) }
@@ -160,14 +208,25 @@ func (m modelSpec) download(ctx context.Context, diag *cliio.Output) (err error)
 		}
 	}()
 	client := &http.Client{Timeout: httpTimes}
+	verified := map[string]verifiedFile{}
 	for _, f := range m.Files {
 		diag.Printf("fetching %s\n", m.url(f))
-		if err := fetchFile(ctx, client, m.url(f), filepath.Join(tmp, f.Name), f); err != nil {
+		dst := filepath.Join(tmp, f.Name)
+		if err := fetchFile(ctx, client, m.url(f), dst, f); err != nil {
 			if errors.Is(err, errSkipOptional) {
 				continue
 			}
 			return fmt.Errorf("%s/%s: %w", m.Name, f.Name, err)
 		}
+		// fetchFile checked the SHA-256; record it, so that the cache is not hashed again.
+		st, err := os.Stat(dst)
+		if err != nil {
+			return err
+		}
+		verified[f.Name] = verifiedFile{st.Size(), st.ModTime().UnixNano(), f.SHA256}
+	}
+	if err := writeVerified(tmp, verified); err != nil {
+		return err
 	}
 	if err := os.RemoveAll(dir); err != nil {
 		return err
@@ -227,7 +286,6 @@ func (cli *cli) fetchCmd(list bool) clihelp.Operation {
 	fs := newFlagSet("gozen " + name)
 	p := fetchPage
 	p.Name = "gozen " + name
-	p.Usage = []string{"gozen " + name + " [OPTIONS] [MODEL ...]"}
 	if list {
 		p.Usage = []string{"gozen models list [OPTIONS]"}
 		p.Summary = "list pinned models and their cache status"
@@ -260,12 +318,17 @@ func (cli *cli) fetchCmd(list bool) clihelp.Operation {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
+			path, cached := m.cachedModel()
 			if !list {
-				if err := m.download(ctx, cli.diag); err != nil {
-					return err
+				if cached {
+					cli.diag.Printf("%s is already in the cache with matching checksums; nothing to download\n", m.Name)
+				} else {
+					if err := m.download(ctx, cli.diag); err != nil {
+						return err
+					}
+					path, cached = m.cachedModel()
 				}
 			}
-			path, cached := m.cachedModel()
 			row := modelResult{m.Name, m.Repo, m.License, m.size(), cached, path, m.Summary}
 			rows = append(rows, row)
 			if cli.report.Format == "jsonl" {

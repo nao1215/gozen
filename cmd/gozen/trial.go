@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -68,67 +69,93 @@ func (c *command) trialCmd() clihelp.Operation {
 			return fmt.Errorf("the trial copy does not pass the engine's check: %w", err)
 		}
 		c.summary(res)
-		if !*dry && *list != "" {
-			if err := cli.Destination(*list, src, *overlay, out); err != nil {
-				return err
-			}
-			if err := writeList(*list, res); err != nil {
-				return err
-			}
-		}
 		if *dry {
 			return nil
 		}
+		if *list != "" {
+			if err := cli.Destination(*list, src, *overlay, out); err != nil {
+				return err
+			}
+		}
 		if *overlay == "" {
-			return cli.Publish(out, []string{src}, func(stage string) error { return res.Write(src, stage) })
+			err = publishUnapproved(src, out, res)
+		} else {
+			err = c.publishApproved(src, out, *overlay, *inspect, res)
 		}
-		if *inspect == "" {
-			return errors.New("replacing needs --inspect")
-		}
-
-		stage, err := os.MkdirTemp("", "gozen-trial-")
-		if err != nil {
+		if err != nil || *list == "" {
 			return err
 		}
-		if err := res.Write(src, stage); err != nil {
-			return err
+		// The list comes last, and a list that cannot be written takes the tree
+		// back, so a failed run leaves nothing for the next one to stumble on.
+		if err := writeList(*list, res); err != nil {
+			return errors.Join(err, os.RemoveAll(out))
 		}
-		defer func() { err = errors.Join(err, os.RemoveAll(stage)) }()
-		policy, ins, outputs, err := releaseInputs(src, overlay, *inspect)
-		if err != nil {
-			return err
-		}
-		in := map[string]bool{}
-		for _, a := range res.Assets {
-			in[a] = true
-		}
-		var mine []assetfs.Approval
-		for _, x := range ins {
-			if in[x.File] {
-				mine = append(mine, x)
-			}
-		}
-		if err := checkReferences(stage, *overlay, "assets", policy, mine, outputs); err != nil {
-			return err
-		}
-		var r assetfs.Result
-		err = cli.Publish(out, []string{src, *overlay}, func(dst string) error {
-			var e error
-			r, e = (assetfs.Tree{Src: stage, Top: *overlay, Prefix: "assets", Dst: dst, Outputs: outputs}).Build(mine)
-			return e
-		})
-		if err != nil {
-			return err
-		}
-		need := 0
-		for _, x := range mine {
-			if x.Required {
-				need++
-			}
-		}
-		c.out.Printf("%s: %d assets replaced (%d required for the trial)\n", out, len(r.Replaced), need)
 		return nil
 	}}
+}
+
+// publishUnapproved writes the trial as it is. The game's asset policy goes with
+// it: its pictures are as unapproved as the game's, so gozen export refuses the
+// trial as it refuses the game.
+func publishUnapproved(src, out string, res *trial.Result) error {
+	return cli.Publish(out, []string{src}, func(stage string) error {
+		if err := res.Write(stage); err != nil {
+			return err
+		}
+		const policy = "asset-policy.yaml"
+		err := cli.CopyFile(os.DirFS(src), policy, filepath.Join(stage, policy), 0o600)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return err
+	})
+}
+
+// publishApproved writes the trial with its assets replaced from the overlay,
+// as gozen release does for the whole game; the result needs no policy.
+func (c *command) publishApproved(src, out, overlay, inspect string, res *trial.Result) (err error) {
+	stage, err := os.MkdirTemp("", "gozen-trial-")
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, os.RemoveAll(stage)) }()
+	if err := res.Write(stage); err != nil {
+		return err
+	}
+	policy, ins, outputs, err := releaseInputs(src, &overlay, inspect)
+	if err != nil {
+		return err
+	}
+	in := map[string]bool{}
+	for _, a := range res.Assets {
+		in[a] = true
+	}
+	var mine []assetfs.Approval
+	for _, x := range ins {
+		if in[x.File] {
+			mine = append(mine, x)
+		}
+	}
+	if err := checkReferences(stage, overlay, "assets", policy, mine, outputs); err != nil {
+		return err
+	}
+	var r assetfs.Result
+	err = cli.Publish(out, []string{src, overlay}, func(dst string) error {
+		var e error
+		r, e = (assetfs.Tree{Src: stage, Top: overlay, Prefix: "assets", Dst: dst, Outputs: outputs}).Build(mine)
+		return e
+	})
+	if err != nil {
+		return err
+	}
+	need := 0
+	for _, x := range mine {
+		if x.Required {
+			need++
+		}
+	}
+	c.out.Printf("%s: %d assets replaced (%d required for the trial)\n", out, len(r.Replaced), need)
+	return nil
 }
 
 func (c *command) summary(res *trial.Result) {

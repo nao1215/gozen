@@ -332,16 +332,6 @@ func orDash(s string) string {
 	return s
 }
 
-func split(s string) []string {
-	var out []string
-	for f := range strings.SplitSeq(s, ",") {
-		if f = strings.TrimSpace(f); f != "" {
-			out = append(out, f)
-		}
-	}
-	return out
-}
-
 func shotRepeats(items []shotItem) []string {
 	var out []string
 	for i := 1; i < len(items); i++ {

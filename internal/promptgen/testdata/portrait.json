@@ -146,6 +146,6 @@
   "negative_limit": 2,
   "negative_count": 2,
   "fixed_negative_count": 2,
-  "diagnostics": null,
+  "diagnostics": [],
   "dialect": "sdxl"
 }

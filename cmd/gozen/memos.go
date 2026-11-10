@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"cmp"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/nao1215/gozen/cmd/internal/cli"
 
 	"github.com/nao1215/gozen/internal/base/memo"
+	"github.com/nao1215/gozen/internal/base/picturelimit"
 
 	lang "github.com/nao1215/gozen/internal/base/text"
 	"github.com/nao1215/gozen/internal/base/text/catalog"
@@ -357,19 +359,31 @@ func pinColor(kind string) string {
 	return "#e0a030"
 }
 
+// thumbnailAspect is the tallest a thumbnail is, in widths.
+const thumbnailAspect = 4
+
+// thumbnail writes the PNG src as a JPEG w pixels wide at dst. A picture past
+// the limits of picturelimit is refused before it is decoded. The height follows
+// the picture's shape up to thumbnailAspect widths; of a narrower picture only
+// the top that fits is shown, so no shape of the source makes the thumbnail large.
 func thumbnail(src, dst string, w int) error {
-	f, err := os.Open(src) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	b, err := picturelimit.Read(os.DirFS(filepath.Dir(src)), filepath.Base(src))
 	if err != nil {
 		return err
 	}
-	img, err := png.Decode(f)
-	closeErr := f.Close()
-	err = errors.Join(err, closeErr)
+	if err := picturelimit.Header(b); err != nil {
+		return err
+	}
+	img, err := png.Decode(bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	sb := img.Bounds()
-	h := max(1, sb.Dy()*w/max(1, sb.Dx()))
+	h := max(1, sb.Dy()*w/sb.Dx())
+	if most := thumbnailAspect * w; h > most {
+		h = most
+		sb.Max.Y = sb.Min.Y + max(1, sb.Dx()*thumbnailAspect)
+	}
 	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	draw.BiLinear.Scale(out, out.Bounds(), img, sb, draw.Src, nil)
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {

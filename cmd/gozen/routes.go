@@ -131,17 +131,7 @@ func (c *command) routes() clihelp.Operation {
 				}
 			}
 		})
-		for _, warning := range db.FlagWarnings() {
-			message := warning.Error()
-			const prefix, suffix = "flag.", " is set but nothing reads it"
-			if i := strings.LastIndex(message, prefix); i >= 0 && strings.Contains(message, suffix) {
-				name, _, _ := strings.Cut(message[i+len(prefix):], " ")
-				if name != "" {
-					report.FlagsSetNeverRead = append(report.FlagsSetNeverRead, name)
-				}
-			}
-		}
-		sort.Strings(report.FlagsSetNeverRead)
+		report.FlagsSetNeverRead = append(report.FlagsSetNeverRead, db.UnusedFlags()...)
 		sort.Slice(report.Endings, func(i, j int) bool { return report.Endings[i].Kind < report.Endings[j].Kind })
 		sort.Strings(report.UnreachableEndings)
 		sort.Slice(report.UnofferedOptions, func(i, j int) bool {
