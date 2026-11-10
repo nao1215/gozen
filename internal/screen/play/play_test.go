@@ -263,3 +263,43 @@ func BenchmarkShakenDraw(b *testing.B) {
 		g.Draw(screen)
 	}
 }
+
+// TestMoveAndNewPlaceAgreeOnTheScene: the data check refuses a location shown two
+// ways, but when one reaches the screen anyway, walking into it and loading into
+// it show the same scene. Here a dungeon that is also a stream lobby is a dungeon
+// for both, as it is for the rules.
+func TestMoveAndNewPlaceAgreeOnTheScene(t *testing.T) {
+	g := streamsGame(t, "0")
+	g.db.Locations["room"].Stream = "lobby"
+	g.Move("room")
+	if _, ok := g.stack[0].(*dungeonScene); !ok {
+		t.Fatalf("Move showed %T", g.stack[0])
+	}
+	if _, ok := g.newPlace().(*dungeonScene); !ok {
+		t.Fatal("newPlace did not show the dungeon")
+	}
+}
+
+// TestPlaceKindOfHasOnePrecedence: dungeon, then stage, then stream, then map.
+func TestPlaceKindOfHasOnePrecedence(t *testing.T) {
+	l := data.Location{Dungeon: &data.Dungeon{}, Stage: &data.Stage{}, Stream: "lobby", Map: &data.Atlas{}}
+	steps := []struct {
+		want placeKind
+		drop func()
+	}{
+		{placeDungeon, func() { l.Dungeon = nil }},
+		{placeStage, func() { l.Stage = nil }},
+		{placeStream, func() { l.Stream = "" }},
+		{placeMap, func() { l.Map = nil }},
+		{placeField, func() {}},
+	}
+	for _, s := range steps {
+		if got := placeKindOf(&l); got != s.want {
+			t.Fatalf("kind %d, want %d", got, s.want)
+		}
+		s.drop()
+	}
+	if placeKindOf(nil) != placeField {
+		t.Fatal("an unknown location is not a plain place")
+	}
+}

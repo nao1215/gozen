@@ -1743,33 +1743,33 @@ func (g *Game) Move(loc string) {
 	default:
 		return
 	}
-	switch cur := g.stack[0]; {
-	case l.Stream != "":
-		g.bannerFloor = 0
-		if _, ok := cur.(*streamLobby); !ok {
-			g.stack[0] = newStreamLobby(g, nil)
-		}
-	case l.Dungeon != nil:
+	switch cur, kind := g.stack[0], placeKindOf(l); kind {
+	case placeDungeon:
 		if ds, ok := cur.(*dungeonScene); ok {
 			ds.arrive()
 		} else {
 			g.stack[0] = newDungeonScene(g)
 		}
-	case l.Stage != nil:
+	case placeStage:
 		g.bannerFloor = 0
 		if ss, ok := cur.(*stageScene); ok {
 			ss.arrive(g)
 		} else {
 			g.stack[0] = newStageScene(g)
 		}
-	case l.Map != nil:
+	case placeStream:
+		g.bannerFloor = 0
+		if _, ok := cur.(*streamLobby); !ok {
+			g.stack[0] = newStreamLobby(g, nil)
+		}
+	case placeMap:
 		g.bannerFloor = 0
 		if as, ok := cur.(*atlasScene); ok {
 			as.arrive(g)
 		} else {
 			g.stack[0] = newAtlasScene(g)
 		}
-	default:
+	case placeField:
 		g.bannerFloor = 0
 		f, ok := cur.(*field)
 		if !ok {
@@ -1780,21 +1780,54 @@ func (g *Game) Move(loc string) {
 	}
 }
 
+// placeKind is the one way a location is shown.
+type placeKind int
+
+const (
+	placeField placeKind = iota
+	placeDungeon
+	placeStage
+	placeStream
+	placeMap
+)
+
+// placeKindOf picks the scene of a location for Move and newPlace alike. The
+// data check refuses a location shown two ways, so the order only matters for
+// data that skipped it; it is then the order the rules read a location in:
+// a dungeon first (world.Arrive, dungeon.Of), a stage before a map (atlas.Here,
+// atlas.Place, Location.Spotted). A stream is known to the screen alone and
+// stands between the two, where newPlace always had it.
+func placeKindOf(l *data.Location) placeKind {
+	switch {
+	case l == nil:
+		return placeField
+	case l.Dungeon != nil:
+		return placeDungeon
+	case l.Stage != nil:
+		return placeStage
+	case l.Stream != "":
+		return placeStream
+	case l.Map != nil:
+		return placeMap
+	}
+	return placeField
+}
+
 func (g *Game) newPlace() scene {
-	if dungeon.Of(g.db, g.st) != nil {
+	kind := placeKindOf(g.db.Locations[g.st.Location])
+	if kind != placeDungeon && kind != placeField {
+		g.enterAt = g.st.Location
+	}
+	switch kind {
+	case placeDungeon:
 		return newDungeonScene(g)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Stage != nil {
-		g.enterAt = g.st.Location
+	case placeStage:
 		return newStageScene(g)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Stream != "" {
-		g.enterAt = g.st.Location
+	case placeStream:
 		return newStreamLobby(g, nil)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Map != nil {
-		g.enterAt = g.st.Location
+	case placeMap:
 		return newAtlasScene(g)
+	case placeField:
 	}
 	return newField(g)
 }
