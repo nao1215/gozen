@@ -269,7 +269,7 @@ type Config struct {
 // It never executes replay. Existing output directories are refused. On failure,
 // callers must discard the result. A bundle that cannot be completed is removed,
 // so the same --out can be given again.
-func Generate(cfg Config) (_ Bundle, err error) {
+func Generate(cfg Config) (Bundle, error) {
 	path, target, out := cfg.Path, cfg.Target, cfg.Out
 	b, cut, err := readRepro(path, target)
 	if err != nil {
@@ -281,79 +281,78 @@ func Generate(cfg Config) (_ Bundle, err error) {
 	}
 	shots := path + fmt.Sprintf(".repro-%d", b.Tick)
 	if out != "" {
-		out, err = filepath.Abs(out)
-		if err != nil {
+		if out, err = filepath.Abs(out); err != nil {
 			return Bundle{}, err
 		}
-		// Check what the trace asks to write before anything is written.
-		var initial struct {
-			Save []byte `json:"save"`
-		}
-		hasInitial := len(b.InitialMemo) > 0 && string(b.InitialMemo) != "null"
-		if hasInitial {
-			if err := json.Unmarshal(b.InitialMemo, &initial); err != nil {
-				return Bundle{}, err
-			}
-		}
-		for name := range b.InitialSaves {
-			if filepath.Base(name) != name || name == "." || name == ".." || strings.ContainsAny(name, "/\\") {
-				return Bundle{}, errors.New("invalid save filename in trace")
-			}
-		}
-		// Never overwrite an earlier bundle or its screenshots.
-		if err := os.Mkdir(out, 0o700); err != nil {
-			return Bundle{}, err
-		}
-		defer func() {
-			if err != nil {
-				err = errors.Join(err, os.RemoveAll(out))
-			}
-		}()
-		path = filepath.Join(out, "trace.jsonl")
-		shots = filepath.Join(out, "shots")
-		if err := os.WriteFile(path, cut, 0o600); err != nil {
-			return Bundle{}, err
-		}
-
-		if hasInitial {
-			if err := os.WriteFile(filepath.Join(out, "initial.save"), initial.Save, 0o600); err != nil {
-				return Bundle{}, err
-			}
-		}
-		for name, data := range b.InitialSaves {
-			if err := os.MkdirAll(filepath.Join(out, "saves"), 0o700); err != nil {
-				return Bundle{}, err
-			}
-			if err := os.WriteFile(filepath.Join(out, "saves", name), data, 0o600); err != nil {
-				return Bundle{}, err
-			}
-		}
+		path, shots = filepath.Join(out, "trace.jsonl"), filepath.Join(out, "shots")
 	}
 	b.Trace = path
 	b.Screenshot = filepath.Join(shots, fmt.Sprintf("until_%06d.png", b.Until))
 	b.Argv = []string{"gozen", "run", b.GameDir, "--dev", "--mute", "--replay", path, "--until", strconv.Itoa(b.Until), "--shots", shots}
 	b.Command = reproCommand(b.Argv)
 	if out != "" {
-		// Resolve bundled artifacts relative to this script, so the bundle can move.
-		// The script changes directory, so a relative game directory (read, like the
-		// printed command, from the directory this ran in) is written in full.
-		gameDir, err := filepath.Abs(b.GameDir)
-		if err != nil {
-			return Bundle{}, err
-		}
-		args := []string{"gozen", "run", gameDir, "--dev", "--mute", "--replay", "trace.jsonl", "--until", strconv.Itoa(b.Until), "--shots", "shots"}
-		script := "#!/bin/sh\nset -eu\ncd -- \"$(dirname -- \"$0\")\"\nexec " + reproCommand(args) + "\n"
-		if err := os.WriteFile(filepath.Join(out, "repro.sh"), []byte(script), 0o600); err != nil {
-			return Bundle{}, err
-		}
 		b.Command = reproCommand([]string{"sh", filepath.Join(out, "repro.sh")})
-		data, err := json.MarshalIndent(b, "", "  ")
-		if err != nil {
-			return Bundle{}, err
-		}
-		if err := os.WriteFile(filepath.Join(out, "repro.json"), append(data, '\n'), 0o600); err != nil {
+		if err := writeBundle(out, b, cut); err != nil {
 			return Bundle{}, err
 		}
 	}
 	return b, nil
+}
+
+// writeBundle writes the cut trace, the saves it starts from, the script and
+// the description of b into the new directory out. It checks what the trace
+// asks to write before anything is written, and removes out when a write fails.
+func writeBundle(out string, b Bundle, cut []byte) (err error) {
+	var initial struct {
+		Save []byte `json:"save"`
+	}
+	hasInitial := len(b.InitialMemo) > 0 && string(b.InitialMemo) != "null"
+	if hasInitial {
+		if err := json.Unmarshal(b.InitialMemo, &initial); err != nil {
+			return err
+		}
+	}
+	for name := range b.InitialSaves {
+		if filepath.Base(name) != name || name == "." || name == ".." || strings.ContainsAny(name, "/\\") {
+			return errors.New("invalid save filename in trace")
+		}
+	}
+	// The script changes directory, so a relative game directory (read, like the
+	// printed command, from the directory this ran in) is written in full.
+	gameDir, err := filepath.Abs(b.GameDir)
+	if err != nil {
+		return err
+	}
+	// Bundled artifacts are named relative to the script, so the bundle can move.
+	args := []string{"gozen", "run", gameDir, "--dev", "--mute", "--replay", "trace.jsonl", "--until", strconv.Itoa(b.Until), "--shots", "shots"}
+	script := "#!/bin/sh\nset -eu\ncd -- \"$(dirname -- \"$0\")\"\nexec " + reproCommand(args) + "\n"
+	description, err := json.MarshalIndent(b, "", "  ")
+	if err != nil {
+		return err
+	}
+	files := map[string][]byte{"trace.jsonl": cut, "repro.sh": []byte(script), "repro.json": append(description, '\n')}
+	if hasInitial {
+		files["initial.save"] = initial.Save
+	}
+	for name, data := range b.InitialSaves {
+		files[filepath.Join("saves", name)] = data
+	}
+	// Never overwrite an earlier bundle or its screenshots.
+	if err := os.Mkdir(out, 0o700); err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, os.RemoveAll(out))
+		}
+	}()
+	for name, data := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(out, name)), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(out, name), data, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
