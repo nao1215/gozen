@@ -250,6 +250,12 @@ func (g *Catalog) validate() error {
 		if l.Max > 0 && len(l.Defaults) > l.Max {
 			return problem(lang.T("既定の選択が上限を超えます。%s"), l.ID)
 		}
+		// Defaults are what a plan gets when it does not select the layer, so defaults
+		// that are below the minimum can never be built. No defaults at all is allowed:
+		// that layer must be selected by the plan.
+		if len(l.Defaults) > 0 && len(l.Defaults) < l.Min {
+			return problem(lang.T("既定の選択が下限に届きません。%s"), l.ID)
+		}
 		for _, id := range sortedKeys(l.Items) {
 			it := l.Items[id]
 			if !identifier.MatchString(id) {
