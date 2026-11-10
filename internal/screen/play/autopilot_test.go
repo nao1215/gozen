@@ -284,12 +284,19 @@ func TestAutopilotReportFileFailure(t *testing.T) {
 	g.failure = nil // so that closing the game does not report it again
 }
 
-// TestAutopilotNoWayDown: a town without a dive makes it say so and stop.
+// TestAutopilotNoWayDown: a town without a dive makes it say so and stop, and the
+// report that was asked for is still written, with the problem in it.
 func TestAutopilotNoWayDown(t *testing.T) {
-	g, _ := btlOpen(t, Options{Location: "camp", Autopilot: &Autopilot{Seconds: 5}}, "", "")
+	var report bytes.Buffer
+	g, _ := btlOpen(t, Options{Location: "camp", Autopilot: &Autopilot{Seconds: 5}, Report: &report}, "", "")
 	g.st.Location = "camp"
 	g.auto.inTown(g)
 	if !g.quit || len(g.auto.problems) != 1 || !strings.Contains(g.auto.problems[0], "no way into the dungeon") {
 		t.Fatalf("quit %v problems %v", g.quit, g.auto.problems)
+	}
+	for _, want := range []string{"problems 1", "no way into the dungeon"} {
+		if !strings.Contains(report.String(), want) {
+			t.Errorf("report lacks %q:\n%s", want, report.String())
+		}
 	}
 }

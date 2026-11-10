@@ -442,6 +442,7 @@ func (a *autopilot) inTown(g *Game) {
 	}
 	if len(dives) == 0 {
 		a.problem(g, "no way into the dungeon from town (%s)", loc.Name)
+		a.finish(g) // the report asked for names the problem instead of being left unwritten
 		g.quit = true
 		return
 	}
