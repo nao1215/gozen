@@ -180,8 +180,10 @@ func (g *Catalog) build(p Plan, partial bool) (Result, error) {
 			}
 		}
 		if merged[best].Priority == merged[n].Priority {
-			ds := []Diagnostic{diagnostic("core.polarity", "error", fmt.Sprintf(lang.T("正負の優先度が同点です。%s"), word), []Word{merged[best], merged[n]})}
-			return Result{Diagnostics: ds}, &ValidationError{ds}
+			// The result keeps its shape (lists, never null; the dialect and the limit of
+			// the catalog), as for every other validation failure.
+			r.Diagnostics = []Diagnostic{diagnostic("core.polarity", "error", fmt.Sprintf(lang.T("正負の優先度が同点です。%s"), word), []Word{merged[best], merged[n]})}
+			return r, &ValidationError{r.Diagnostics}
 		}
 		if merged[best].Priority < merged[n].Priority {
 			removed[n] = merged[best].Sources
@@ -240,7 +242,8 @@ func (g *Catalog) build(p Plan, partial bool) (Result, error) {
 	r.Negative = g.dialect.Render([]Block{{Words: negatives}})
 	r.Words = append(r.Words, positives...)
 	r.Words = append(r.Words, negatives...)
-	r.Diagnostics = g.validateResult(r)
+	// Appended, so that no diagnostics stays the empty list and is not encoded as null.
+	r.Diagnostics = append(r.Diagnostics, g.validateResult(r)...)
 	if hasErrors(r.Diagnostics) {
 		r.Positive = ""
 		r.Negative = ""

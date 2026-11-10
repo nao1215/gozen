@@ -208,7 +208,7 @@ func voiceDir(db *gamedata.DB) string {
 // 33 dB on its lines (31 before) at a fifth of its PNG (a seventh before).
 const webQuality = 95
 
-// shrinkWeb rewrites the staged game files under dir (as copyGame listed them) to
+// shrinkWeb rewrites the staged game files under dir (as CopyGame listed them) to
 // download less: an 8-bit PNG or JPEG becomes a WebP of the same pixels (lossy, its
 // alpha lossless; a paletted PNG lossless), and another file that gzip makes at least a
 // tenth smaller is served gzipped. A file stays as it is when that does not make it

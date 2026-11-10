@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/format"
 	"go/parser"
 	"go/token"
@@ -922,6 +923,9 @@ func TestBoundedPictureDecodeGuard(t *testing.T) {
 var usageErrorAllowlist = map[string]string{
 	// The option is valid; the model it needs is a missing prerequisite (exit 1, with the requirements).
 	"internal/mosaic/command/main.go: --shape mask requires a user-supplied --seg model": "missing prerequisite",
+	// The option is valid; the file it names cannot be read (exit 1, an I/O failure).
+	"internal/mosaic/command/main.go: --fix: %w":    "unreadable file",
+	"internal/mosaic/command/main.go: --manual: %w": "unreadable file",
 }
 
 // usageErrorViolations reports errors about an option that a command handler
@@ -1227,6 +1231,66 @@ func TestCIChangeScope(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// graphicsOnly reports whether a file's build constraint needs the graphics tag.
+func graphicsOnly(b []byte) bool {
+	line := regexp.MustCompile(`(?m)^//go:build .*$`).Find(b)
+	if line == nil {
+		return false
+	}
+	expr, err := constraint.Parse(string(line))
+	if err != nil {
+		return false
+	}
+	return !expr.Eval(func(tag string) bool { return tag != "graphics" }) && expr.Eval(func(string) bool { return true })
+}
+
+// TestGraphicsTestSelection keeps every test of a graphics-tagged file inside what
+// make graphics and the graphics jobs select. They select by the TestGraphics
+// prefix, so a test with another name, or a package the CI workflow runs with a
+// narrower pattern only, would compile and never run.
+func TestGraphicsTestSelection(t *testing.T) {
+	packages := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		if !strings.HasSuffix(name, "_test.go") || !graphicsOnly(b) {
+			return
+		}
+		// The samples are modules of their own, run whole by make <sample>-graphics.
+		if !strings.HasPrefix(name, "examples/") {
+			packages[path.Dir(name)] = true
+		}
+		for _, decl := range parsed(t, name, b).Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv != nil || !strings.HasPrefix(fn.Name.Name, "Test") || fn.Name.Name == "TestMain" {
+				continue
+			}
+			if !strings.HasPrefix(fn.Name.Name, "TestGraphics") {
+				t.Errorf("%s: %s is in a graphics-tagged file; name it TestGraphics* so make graphics and CI select it", name, fn.Name.Name)
+			}
+		}
+	})
+	if len(packages) == 0 {
+		t.Fatal("no graphics-tagged test file was found")
+	}
+	root := os.DirFS("../../..")
+	makefile, err := fs.ReadFile(root, "Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow, err := fs.ReadFile(root, ".github/workflows/ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`(?m)^GRAPHICS_FILTER := -run TestGraphics$`).Match(makefile) {
+		t.Error("Makefile: make graphics must select by the TestGraphics prefix")
+	}
+	for _, pkg := range slices.Sorted(maps.Keys(packages)) {
+		selected := regexp.MustCompile(`(?m)^.*-tags=graphics.* \./` + regexp.QuoteMeta(pkg) + ` -run '?\^?TestGraphics.*$`)
+		if !selected.Match(workflow) {
+			t.Errorf(".github/workflows/ci.yml: no go test line selects the TestGraphics tests of ./%s", pkg)
+		}
 	}
 }
 

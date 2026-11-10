@@ -12,6 +12,12 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Add dango checks that an error about an option is a usage error (`TestUsageErrors`) and that a fixed set of option values is declared with `clihelp.Choices` instead of being checked by hand (`TestDeclaredChoices`).
 - Add a dango check that a whole picture is decoded only after its header was checked against the picture limits (`TestBoundedPictureDecode`), with a short list of the decodes bounded another way and the reason of each.
 
+### Changed
+
+- The manual subcommands of `gozen mosaic` (`list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear`) each have their own help: usage (`<game-dir> <IMAGE>`, and `<game-dir>` alone for `list`), summary, description, examples and option groups. An option that a subcommand does not read is no longer registered for it, so `list --rect`, `add --by`, `skip --rect` or `mark --size` is an unknown option with exit status 2 instead of being accepted and ignored. Breaking for scripts that passed such options; `grow --box` and `drop --poly`, which already failed with exit status 1, now fail with 2.
+- `gozen models fetch` does not download a model that is already in the cache with matching checksums. Its usage names the operand `[NAME ...]`, as its description does.
+- A `--fix` file that does not exist is an error for every `gozen mosaic` subcommand. It used to be read as no fixes, so `auto` exited 0 without the hand-written regions. A `--manual` file may still be absent.
+
 ### Fixed
 
 - The face-box warnings of `gozen check` name the command that exists, `gozen faces`, instead of the retired `gozen art faces`; the top-level help lists every `sim` command (`routes`, `breed`, `script` and `batch` were missing), and each `gozen mosaic` region command (`list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear`) has a summary of its own in its help instead of one shared line.
@@ -25,6 +31,15 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `gozen sim design` counts a troop that guards several floors on the same floor in every run (the shallowest); before, the floor changed from run to run with the same seed. Its report names the `--root` directory given instead of `build/designeval`, and a difference that cannot be formed is no longer marked as within the target.
 - `gozen sim script --trace FILE` refuses the `--script` file itself, which the trace would have replaced.
 - `gozen faces` names a directory that is not a game with GZN1110, refuses an existing `--preview` before it rewrites `assets/faces.json`, and reports two pictures that would share one preview name.
+- `gozen mosaic auto` processes an image whose file name contains a space; such a name in the YAML was skipped without a word, so the image was left unprocessed. A missing image with a space in its name is reported when it is written as a path.
+- `gozen mosaic inspect` reports the block size of a mosaic, not a divisor of it: a correct 16 pixel mosaic was measured as 4 and reported as `todo`. The measurement reads each pixel once; on a flat-colored region it did not finish in practice.
+- `gozen mosaic inspect`, `view` and the manual subcommands find the output of a WebP image (`<name>.webp.png`): `inspect --redetect` reported a finished WebP image as `todo`, and naming the output file failed.
+- Every `gozen mosaic` subcommand reads `IMAGE` the same way. The asset comes before a file of the same name in the working directory (the documented `gozen mosaic skip --manual edits.yaml game pattern.png` failed there), a backslash separates directories (`assets\a.png` was read as `assets/assets/a.png`), and `auto` accepts a leading `assets/` and a file path as `inspect` does.
+- `gozen mosaic auto` records the images it finished in `report.json` when a later image fails; they were left in `--out` without a report.
+- With several invalid options, `gozen mosaic` names the same one every time (`--threshold`, then `--sure`, then `--margin`).
+- A cached model is checked against its SHA-256, not only its size, before it is used as the default model. The check is made once and recorded in `verified.json`, so later commands compare only size and modification time.
+- `gozen prompt` rejects a catalog whose layer has defaults fewer than its `min`; `prompt lint` passed it and `gozen prompt` could not build it.
+- The JSON result of `gozen prompt` keeps one shape: `diagnostics` is `[]` instead of `null` when there are none, and a polarity tie keeps `words` and `dropped` as lists with the catalog's `dialect` and `negative_limit`.
 - `gozen sim routes` branches at a phone that keeps a result as it does at a choice: each page, home or contacts button a player can reach (not one hidden by `when`), a call's answer, decline or missed, and a feed liked all or nothing. Before, the phone was put down unanswered, so an ending reached only through a phone's button was reported unreachable. A home app that returns to its phone is opened once a path.
 - A phone that keeps a result in a troop's battle event is answered with its first result by automatic battles in `sim`, sessions and the balance runner, as a choice there takes its first option; before, its `set` ran only on the screen.
 - The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.

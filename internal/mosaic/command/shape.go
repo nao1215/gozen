@@ -114,7 +114,7 @@ func (c *config) autoShapes(img image.Image, regions []image.Rectangle, areas []
 			continue
 		}
 		g := a.Group.Rect
-		d := c.dilate(block, a.Label)
+		d := c.dilate(block)
 		limit := a.Rect.Union(g.Inset(-d))
 		var masks []*image.Alpha
 		for i, o := range objs {
@@ -134,7 +134,7 @@ func (c *config) autoShapes(img image.Image, regions []image.Rectangle, areas []
 			if len(zm) > 0 {
 				m = unionMask(limit, append(masks, zm...))
 				if zc := float64(m.Area(g)) / float64(max(1, g.Dx()*g.Dy())); zc >= segMinCover {
-					shapes = append(shapes, dryDilate(img, m, d, b).Clip(limit))
+					shapes = append(shapes, m.Dilate(d, b).Clip(limit))
 					kinds = append(kinds, fmt.Sprintf("mask（拡大して分割モデルの性器 %.2f が枠の %.0f%%）", zs, 100*zc))
 					continue
 				}
@@ -143,7 +143,7 @@ func (c *config) autoShapes(img image.Image, regions []image.Rectangle, areas []
 			kinds = append(kinds, fmt.Sprintf("box（分割モデルの性器が枠の %.0f%%）", 100*cover))
 			continue
 		}
-		shapes = append(shapes, dryDilate(img, m, d, b).Clip(limit))
+		shapes = append(shapes, m.Dilate(d, b).Clip(limit))
 		kinds = append(kinds, fmt.Sprintf("mask（分割モデルの性器が枠の %.0f%%）", 100*cover))
 	}
 	if len(shapes) == 0 && len(areas) > 0 && (tagMax(tags, penisTags) >= tagSure || tagMax(tags, pussyTags) >= tagSure) {
@@ -184,8 +184,8 @@ next:
 			continue
 		}
 		m := mosaic.Mask{Alpha: o.Mask}
-		d := c.dilate(block, o.Label)
-		shapes = append(shapes, dryDilate(img, m, d, b).Clip(o.Rect.Inset(-d)))
+		d := c.dilate(block)
+		shapes = append(shapes, m.Dilate(d, b).Clip(o.Rect.Inset(-d)))
 		kinds = append(kinds, fmt.Sprintf("mask（分割モデルだけ、%s）", o.Label))
 	}
 	return shapes, kinds, extra, nil
@@ -239,13 +239,9 @@ func maskPath(out, rel string) string {
 	return filepath.Join(out, "masks", filepath.FromSlash(rel)+".png")
 }
 
-func (c *config) dilate(block int, _ string) int {
+func (c *config) dilate(block int) int {
 	if c.opts.dilate >= 0 {
 		return c.opts.dilate
 	}
 	return block
-}
-
-func dryDilate(_ image.Image, m mosaic.Mask, d int, b image.Rectangle) mosaic.Mask {
-	return m.Dilate(d, b)
 }

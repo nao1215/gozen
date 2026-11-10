@@ -2,6 +2,7 @@ package promptgen
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -600,5 +601,64 @@ func TestAgeGuardsAreFixed(t *testing.T) {
 		if w.Fixed && w.Priority != -1 {
 			t.Errorf("fixed word %+v", w)
 		}
+	}
+}
+
+// TestDefaultsBelowTheMinimumAreRejected: defaults are used when a plan does not select the
+// layer, so a layer whose defaults are fewer than its minimum cannot be built. The catalog
+// used to load, and lint passed what gozen prompt then refused.
+func TestDefaultsBelowTheMinimumAreRejected(t *testing.T) {
+	y := strings.Replace(base, "  - id: hero\n    person: true\n    max: 2", "  - id: hero\n    person: true\n    min: 2\n    max: 2\n    defaults: [scout]", 1)
+	if _, err := Parse([]byte(y)); err == nil || !strings.Contains(err.Error(), "hero") {
+		t.Fatalf("defaults below the minimum: %v", err)
+	}
+	// Defaults that reach the minimum build, and so does a layer without defaults whose
+	// items the plan selects.
+	c := parse(t, strings.Replace(y, "defaults: [scout]", "defaults: [scout, knight]", 1))
+	if r := build(t, c, nil); len(r.Words) == 0 {
+		t.Fatal("defaults at the minimum built nothing")
+	}
+	c = parse(t, strings.Replace(y, "\n    defaults: [scout]", "", 1))
+	if _, err := c.Build(Plan{}); err == nil {
+		t.Fatal("a layer with a minimum and no defaults was built without a selection")
+	}
+	build(t, c, map[string][]string{"hero": {"knight", "scout"}})
+}
+
+// TestResultKeepsItsJSONShape: a result is encoded with the same fields of the same kinds
+// whether the build succeeds, fails its validation, or stops at a polarity tie. The
+// diagnostics of a clean build used to be null beside the [] of the other lists, and a tie
+// gave null lists, an empty dialect and a limit of 0.
+func TestResultKeepsItsJSONShape(t *testing.T) {
+	tie := strings.Replace(base, "{word: wind, priority: detail}", "{word: fog, priority: detail}", 1)
+	results := map[string]Result{"clean": build(t, parse(t, base), nil)}
+	r, err := parse(t, tie).Build(Plan{})
+	if _, ok := errors.AsType[*ValidationError](err); !ok {
+		t.Fatalf("tie: %v", err)
+	}
+	results["tie"] = r
+	for name, r := range results {
+		b, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "null") {
+			t.Errorf("%s: a list is null: %s", name, b)
+		}
+		var shape map[string]any
+		if err := json.Unmarshal(b, &shape); err != nil {
+			t.Fatal(err)
+		}
+		for _, list := range []string{"words", "dropped", "diagnostics"} {
+			if _, ok := shape[list].([]any); !ok {
+				t.Errorf("%s: %s is %T, want a list", name, list, shape[list])
+			}
+		}
+		if shape["dialect"] != "sdxl" || shape["negative_limit"] != float64(4) {
+			t.Errorf("%s: dialect %v, negative_limit %v", name, shape["dialect"], shape["negative_limit"])
+		}
+	}
+	if len(results["clean"].Diagnostics) != 0 || len(results["tie"].Diagnostics) != 1 || results["tie"].Positive != "" {
+		t.Fatalf("diagnostics: clean %+v, tie %+v", results["clean"].Diagnostics, results["tie"])
 	}
 }
