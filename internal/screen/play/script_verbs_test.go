@@ -47,7 +47,7 @@ func TestScriptHookVerbsRestOrRunOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.mark = func(name string) { got = append(got, name) }
-	s.jump = func(name string, line int) { got = append(got, name) }
+	s.jump = func(name string, _ int) { got = append(got, name) }
 	s.step(&input{})
 	if strings.Join(got, ",") != "a,b,intro" || s.wait != 2 || s.pc != 3 {
 		t.Fatalf("after the first tick: %v wait %d pc %d", got, s.wait, s.pc)

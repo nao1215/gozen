@@ -247,7 +247,6 @@ func (s *authorScreen) openCalendarDate(g *Game, date string) bool {
 }
 
 func (s *authorScreen) timelinePointerDate(g *Game) string {
-	w, _ := g.screen()
 	x, y, w, _ := g.surfaceChart()
 	for _, r := range timelineZoomBounds(x, y, w) {
 		if g.in.mouse.In(r) {

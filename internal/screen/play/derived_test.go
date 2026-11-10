@@ -13,7 +13,7 @@ func TestDerivedIsRemadeForNewData(t *testing.T) {
 	made := 0
 	build := func() int { made++; return made }
 	first, second := &data.DB{}, &data.DB{}
-	if d.of(first, build) != 1 || d.of(first, build) != 1 {
+	if once, twice := d.of(first, build), d.of(first, build); once != 1 || twice != 1 {
 		t.Fatalf("the value was made %d times for one DB", made)
 	}
 	if d.of(second, build) != 2 || made != 2 {
