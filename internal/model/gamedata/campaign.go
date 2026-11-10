@@ -220,8 +220,8 @@ type Clash struct {
 	// Hit is the troops a unit's strike takes in a clash shown as units (a strikes, b is
 	// struck; a.troops * 0.15 * (0.8 + rand() * 0.4)).
 	Hit Expr `yaml:"hit"`
-	// Rounds is the most rounds of a clash shown as units (5 when 0); when they run out,
-	// the region holds.
+	// Rounds is the most rounds of a clash shown as units (5 when 0, 100 at
+	// most); when they run out, the region holds.
 	Rounds int `yaml:"rounds"`
 	// Capture is the chance that a routed foe is caught (0.2 when unset).
 	Capture *float64 `yaml:"capture"`
@@ -352,7 +352,8 @@ type Order struct {
 	// (each general still marches once).
 	UntilTaken bool `yaml:"until_taken"`
 	// Generals is how many generals may march together (1 when 0): after the first, the
-	// order asks who else goes, until March is chosen or all are taken.
+	// order asks who else goes, until March is chosen or all are taken. A clash shown as
+	// units takes clash.units of them at most; a battle (fight: battle) is one general's.
 	Generals int `yaml:"generals"`
 	// OnWin, OnLose and OnDraw run after a march by how it went (won, lost: the generals
 	// were routed or held, draw: the rounds ran out), before do: a general's word on it.
@@ -392,6 +393,10 @@ var (
 // campaign's turn and actions, the generals, the order's general and target, and
 // next_to(region, faction).
 var CampaignNames = []string{"region", "faction", "campaign", "generals", "general", "target", "next_to", "orders"}
+
+// maxClashRounds is the most rounds clash.rounds takes: a clash is played to its end
+// before the screen shows it, so the rounds are bounded.
+const maxClashRounds = 100
 
 // The generated names of a campaign's state (var.<name>).
 const (
@@ -757,8 +762,8 @@ func (c *checker) campaign() {
 	}{{"power", cp.Clash.Power}, {"defense", cp.Clash.Defense}, {"won", cp.Clash.Won}, {"lost", cp.Clash.Lost}, {"held", cp.Clash.Held}} {
 		c.exprIn(w+".clash."+f.name, f.e, clash, clashOver)
 	}
-	if cp.Clash.Rounds < 0 {
-		c.errorf(diag.OutOfRange, w+".clash.rounds", "rounds are 0 (5) or more")
+	if cp.Clash.Rounds < 0 || cp.Clash.Rounds > maxClashRounds {
+		c.errorf(diag.OutOfRange, w+".clash.rounds", "rounds are 0 (5) to %d, not %d", maxClashRounds, cp.Clash.Rounds)
 	}
 	if p := cp.Clash.Capture; p != nil && (!finiteNumber(*p) || *p < 0 || *p > 1) {
 		c.errorf(diag.OutOfRange, w+".clash.capture", "capture is a chance from 0 to 1, not %g", *p)
@@ -885,6 +890,9 @@ func (c *checker) campaign() {
 		c.commands(ow+".on_draw", o.OnDraw, FieldNames)
 		if o.Fight != "" && !o.March {
 			c.errorf(diag.Shape, ow+".fight", "fight: battle decides a march: write march: true")
+		}
+		if o.Fight == "battle" && o.Generals > 1 {
+			c.errorf(diag.Shape, ow+".generals", "fight: battle is the general alone against the troop: generals is 1, not %d", o.Generals)
 		}
 		if o.March && (o.General == "" || o.Target == "") {
 			c.errorf(diag.Shape, ow+".march", "a march needs a general and a target")
