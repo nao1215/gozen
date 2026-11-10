@@ -141,7 +141,7 @@ func (s *profileScreen) gridStep(cells []gridCell, dir int) int {
 func (s *profileScreen) keepVisible(g *Game, cells []gridCell, height float64) {
 	_, _, _, h := s.gridArea(g)
 	for i, c := range cells {
-		if c.index != s.sel {
+		if c.index != s.sel || s.free {
 			continue
 		}
 		top := c.y
@@ -193,7 +193,30 @@ func (s *profileScreen) updateGrid(g *Game) {
 	cells, height := s.gridCells(g)
 	id := s.current()
 	faces := s.shownFaces(g, id)
+	was := s.sel
+	// A finger dragged over the grid scrolls it by its rows: the view begins at a row or
+	// a heading, as it does when the selection scrolls it.
+	gx, gy, gw, gh := s.gridArea(g)
+	if d := s.drag.rows(&g.in, inBox(float64(g.in.mouse.X), float64(g.in.mouse.Y), gx, gy, gw, gh), gridCardH+gridGap); d != 0 {
+		at := 0
+		for i, c := range cells {
+			if c.y <= s.scroll {
+				at = i
+			}
+		}
+		step := 1
+		if d < 0 {
+			step = -1
+		}
+		for ; d != 0 && at+step >= 0 && at+step < len(cells); at += step {
+			if cells[at+step].y != cells[at].y {
+				d -= step
+			}
+		}
+		s.scroll, s.free = cells[at].y, true
+	}
 	switch {
+	case s.drag.moving():
 	case g.in.inspect(g.in.pressed[btnLeft]) || g.in.inspect(g.in.pressed[btnLog]):
 		g.in.query(s.pick(g, (s.sel+n-1)%n))
 	case g.in.inspect(g.in.pressed[btnRight]) || !g.in.pressed[btnLeft] && g.in.inspect(g.in.pressed[btnAuto]):
@@ -221,6 +244,9 @@ func (s *profileScreen) updateGrid(g *Game) {
 				}
 			}
 		}
+	}
+	if s.sel != was {
+		s.free = false
 	}
 	s.keepVisible(g, cells, height)
 	if p := s.puppet(g); p != nil {

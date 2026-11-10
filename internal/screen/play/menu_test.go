@@ -831,3 +831,75 @@ func TestMenuMouseChoosesItemAndMember(t *testing.T) {
 		t.Fatalf("hp %d: the click did not heal the member under it", g.st.Members()[1].HP)
 	}
 }
+
+// A click outside the member cards while an item waits for its target uses nothing: only a
+// click on a card (or OK) spends the item.
+func TestMenuTargetClickOutsideCardsUsesNothing(t *testing.T) {
+	g, m := mnuMenu(t)
+	g.st.Members()[0].HP = 3
+	mnuTab(t, g, lang.T("どうぐ"))
+	m.items.sel = indexOf(m.ids, "potion")
+	mnuPress(g, btnOK)
+	if !m.targetOn {
+		t.Fatal("the potion did not ask for a target")
+	}
+	before := g.st.Items["potion"]
+	row := m.items.rowRect(0) // the item list, far from every member card
+	at := image.Pt(row.Min.X+5, row.Min.Y+5)
+	for i := range g.st.Members() {
+		if at.In(m.cardRect(g, i)) {
+			t.Fatalf("the test point %v is on card %d", at, i)
+		}
+	}
+	g.in.click, g.in.mouse = true, at
+	mnuTop(g).update(g)
+	g.in.click = false
+	if got := g.st.Items["potion"]; got != before {
+		t.Fatalf("a click outside the cards used the item: %d potions, want %d", got, before)
+	}
+}
+
+// A tap on the save that cannot be made here says why, as OK on it does.
+func TestMenuDisabledSaveTapSaysWhy(t *testing.T) {
+	g, m := mnuMenu(t)
+	row := -1
+	for i, it := range m.tabs.items {
+		if it.id == "save" && it.disabled {
+			row = i
+		}
+	}
+	if row < 0 {
+		t.Fatalf("no disabled save in %v", labels(m.tabs.items))
+	}
+	r := m.tabs.rowRect(row)
+	g.in = input{click: true, moved: true, mouse: image.Pt(r.Min.X+40, r.Min.Y+10)}
+	mnuTop(g).update(g)
+	g.in = input{}
+	if m.msgT == 0 || len(m.msgs) != 1 {
+		t.Fatalf("a tap on the disabled save said nothing: %v", m.msgs)
+	}
+}
+
+// The skill list opened after the item list starts at its first row, scrolled to it: the
+// item list's cursor is not the skills'.
+func TestMenuSkillListStartsOver(t *testing.T) {
+	g, m := mnuMenu(t)
+	for _, id := range g.db.Ordered("items") {
+		g.st.AddItem(id, 1)
+	}
+	mnuTab(t, g, lang.T("どうぐ"))
+	if len(m.items.items) < 2 {
+		t.Fatalf("items %v", labels(m.items.items))
+	}
+	m.items.sel = len(m.items.items) - 1
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("スキル"))
+	m.members(g)[m.member].Learnt = g.db.Ordered("skills")
+	mnuPress(g, btnOK)
+	if m.mode != "skill" || m.picker || len(m.items.items) < 2 {
+		t.Fatalf("mode %q picker %v skills %v", m.mode, m.picker, labels(m.items.items))
+	}
+	if m.items.sel != 0 || m.items.top != 0 {
+		t.Fatalf("the skill list opens on row %d (top %d), the item list's cursor", m.items.sel, m.items.top)
+	}
+}

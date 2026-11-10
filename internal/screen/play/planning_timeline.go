@@ -678,6 +678,20 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 			}
 		}
 	}
+	// A finger dragged over the groups scrolls them, as the keys do past the last lane.
+	if sw, sh := g.screen(); true {
+		rows := timelineGroups(g.db.Game.Planning, g.db.Game.Screens[s.name].View)
+		groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+		over := inBox(float64(g.in.mouse.X), float64(g.in.mouse.Y), 0, 108, sw, sh-226)
+		if d := s.scroll.drag.rows(&g.in, over, 56); d != 0 {
+			if top := max(0, min(s.timelineTop+d, len(rows)-len(groups))); top != s.timelineTop {
+				s.timelineTop, s.timelineFocus = top, 0
+			}
+		}
+		if s.scroll.drag.moving() {
+			return true
+		}
+	}
 	if g.in.inspect(g.in.click) && g.in.query(s.openCalendarDate(g, s.timelinePointerDate(g))) {
 		return true
 	}

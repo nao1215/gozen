@@ -23,7 +23,8 @@ import (
 // region's garrison, and the buttons to march and to cancel. Up and down move over the
 // generals and the buttons, OK puts a general in the first free slot or takes them out,
 // left and right change the tactic of a general put in; a click does the same, and a
-// click on a slot and then another swaps them. The first slot leads.
+// click on a slot and then another swaps them. The first slot leads. A finger dragged over
+// the generals scrolls them, as a tap on the arrow above or under them does.
 
 type sortieScene struct {
 	r       event.SortieScene
@@ -33,6 +34,7 @@ type sortieScene struct {
 	tactics map[string]string
 	cursor  int // over all, then march, then cancel
 	top     int // the first general's row shown (the list scrolls)
+	drag    swipe
 	swap    int // the slot clicked first for a swap (-1 none)
 	closed  bool
 }
@@ -145,12 +147,61 @@ func (s *sortieScene) follow(g *Game) {
 	s.top = max(0, min(s.top, len(s.all)-n))
 }
 
+// markPlaces are where the arrows of the generals' list are drawn: above its first row and
+// on the foot of its last.
+func (s *sortieScene) markPlaces(g *Game) (cx, up, down float64) {
+	first, last := s.shownRows(g)
+	x, y, w, _ := s.rowBox(g, first)
+	_, ly, _, lh := s.rowBox(g, last-1)
+	return x + w/2, y - sizeS, ly + lh - 4
+}
+
+// scroll moves the list by d rows; the cursor on a general stays on a row shown.
+func (s *sortieScene) scroll(g *Game, d int) {
+	n := s.rows(g)
+	s.top = max(0, min(s.top+d, len(s.all)-n))
+	if s.cursor < len(s.all) {
+		s.cursor = max(s.top, min(s.cursor, s.top+n-1))
+	}
+}
+
+// scrollByPointer scrolls the generals with a finger dragged over them or a tap on an
+// arrow (a page), and reports whether the pointer scrolled or scrolls now.
+func (s *sortieScene) scrollByPointer(g *Game) bool {
+	n := s.rows(g)
+	if len(s.all) <= n {
+		return false
+	}
+	x, y, w, _ := s.rowBox(g, s.top)
+	_, ly, _, lh := s.rowBox(g, s.top+n-1)
+	mx, my := float64(g.in.mouse.X), float64(g.in.mouse.Y)
+	d := s.drag.rows(&g.in, inBox(mx, my, x, y, w, ly+lh-y), lh+8)
+	cx, up, down := s.markPlaces(g)
+	tapped := false
+	switch {
+	case s.top > 0 && g.markTapped(cx, up):
+		d, tapped = -max(1, n-1), true
+	case s.top+n < len(s.all) && g.markTapped(cx, down):
+		d, tapped = max(1, n-1), true
+	}
+	if d != 0 {
+		s.scroll(g, d)
+	}
+	return tapped || s.drag.moving()
+}
+
+// slotBox is the place of slot k: the front's slots in a row, the back's in the row under
+// it, narrower when a march takes more than fit at the full width.
 func (s *sortieScene) slotBox(g *Game, k int) (x, y, w, h float64) {
 	sw, sh := g.screen()
 	front := min(campaign.Front, s.r.Cap)
-	w, h = sw*0.22, sh*0.27
-	col, row := k%front, k/front
-	return sw*0.5 + float64(col)*(w+sw*0.02), sh*0.17 + float64(row)*(h+sh*0.08), w, h
+	col, row, n := k, 0, front
+	if k >= front {
+		col, row, n = k-front, 1, s.r.Cap-front
+	}
+	gap := sw * 0.02
+	w, h = min(sw*0.22, (sw*0.46-float64(n-1)*gap)/float64(n)), sh*0.27
+	return sw*0.5 + float64(col)*(w+gap), sh*0.17 + float64(row)*(h+sh*0.08), w, h
 }
 
 func (s *sortieScene) buttonBox(g *Game, i int) (x, y, w, h float64) {
@@ -198,7 +249,7 @@ func (s *sortieScene) update(g *Game) {
 		}
 		return
 	}
-	if !in.inspect(in.click) {
+	if s.scrollByPointer(g) || !in.inspect(in.click) {
 		return
 	}
 	mx, my := float64(in.mouse.X), float64(in.mouse.Y)
@@ -308,14 +359,6 @@ func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 	}
 	// the generals, the rows that fit, with arrows when there are more
 	first, last := s.shownRows(g)
-	if first > 0 {
-		x, y, w, _ := s.rowBox(g, first)
-		gfx.DrawText(dst, "▲", x+w/2, y-sizeS, sizeS*0.8, g.th.cursor)
-	}
-	if last < len(s.all) {
-		x, y, w, h := s.rowBox(g, last-1)
-		gfx.DrawText(dst, "▼", x+w/2, y+h-4, sizeS*0.8, g.th.cursor)
-	}
 	for i := first; i < last; i++ {
 		id := s.all[i]
 		x, y, w, h := s.rowBox(g, i)
@@ -344,11 +387,19 @@ func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 			gfx.StrokeRoundRect(dst, float32(x+2), float32(y+2), float32(w-4), float32(h-4), 10, 3, g.th.cursor)
 		}
 	}
+	if cx, up, down := s.markPlaces(g); len(s.all) > 0 {
+		if first > 0 {
+			g.drawScrollMark(dst, "▲", cx, up)
+		}
+		if last < len(s.all) {
+			g.drawScrollMark(dst, "▼", cx, down)
+		}
+	}
 	// the slots
 	front := min(campaign.Front, s.r.Cap)
 	for k := range s.r.Cap {
 		x, y, w, h := s.slotBox(g, k)
-		if k%front == 0 {
+		if k == 0 || k == front {
 			gfx.DrawTextLeft(dst, s.slotName(k), x, y-sizeS*1.5, sizeS, g.th.text)
 		}
 		g.window(dst, x, y, w, h)
@@ -366,7 +417,7 @@ func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 		if k == 0 {
 			name = fmt.Sprintf(lang.T("%s（大将）"), name)
 		}
-		gfx.DrawText(dst, name, x+w/2, y+20+face, sizeS, g.th.text)
+		gfx.DrawText(dst, gfx.Ellipsis(name, sizeS, w-12), x+w/2, y+20+face, sizeS, g.th.text)
 		gfx.DrawText(dst, fmt.Sprintf(lang.T("兵 %d"), int(data.GeneralTroops(g.db, cs, id))), x+w/2, y+20+face+sizeS*1.4, sizeS*0.85, g.th.text)
 		t := g.db.Game.Campaign.Clash.DeclaredTactics()[s.tactics[id]]
 		label := s.tactics[id]
@@ -374,6 +425,9 @@ func (s *sortieScene) draw(g *Game, dst *ebiten.Image) {
 			label = lang.T(t.Label)
 		}
 		gfx.FillRoundRect(dst, float32(x+10), float32(y+h-54), float32(w-20), 44, 8, withAlpha(g.th.accent, 0x60))
+		if room := w - 24 - gfx.TextWidth("◀　　▶", sizeS*0.9); gfx.TextWidth(label, sizeS*0.9) > room {
+			label = gfx.Ellipsis(label, sizeS*0.9, max(room, sizeS))
+		}
 		gfx.DrawText(dst, "◀　"+label+"　▶", x+w/2, y+h-50, sizeS*0.9, g.th.text)
 	}
 	// the troops and the buttons

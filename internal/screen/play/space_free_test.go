@@ -193,3 +193,23 @@ func TestFreeSpaceHumanEmptyExamineResetsAcceleration(t *testing.T) {
 		})
 	}
 }
+
+// TestFreeSpacePointerMoves: a free-move space must be walkable without a keyboard. A
+// press held on the view (a finger, the left button) is the only pointer input there is.
+func TestFreeSpacePointerMoves(t *testing.T) {
+	g := wldOpenWith(t, Options{FS: freePlayFixture(t), Location: "inn"})
+	wldFrames(t, g, 25)
+	ds := mnuAs[*dungeonScene](t, g)
+	before := *g.st.SpacePose
+	sw, sh := g.screen()
+	for _, at := range [][2]float64{{sw / 2, sh / 2}, {sw / 6, sh / 2}, {sw * 5 / 6, sh / 2}, {sw / 2, sh * 0.9}} {
+		for i := range 20 {
+			g.in = input{pheld: true, pdown: i == 0, click: i == 0, moved: i == 0}
+			g.in.mouse.X, g.in.mouse.Y = int(at[0]), int(at[1])
+			ds.update(g)
+		}
+	}
+	if *g.st.SpacePose == before {
+		t.Fatalf("no pointer input moves or turns the party in a free-move space: %+v", before)
+	}
+}

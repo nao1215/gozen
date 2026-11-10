@@ -686,3 +686,44 @@ func TestOverlaySharesSectionTiming(t *testing.T) {
 		t.Fatal("closing overlay disturbed section counts")
 	}
 }
+
+// In the Command tab a letter that stands for left or right elsewhere is text of the
+// command: it does not change the tab. The arrows and a pad do.
+func TestDevPanelCommandTabKeepsTypedLetters(t *testing.T) {
+	g := btlPanel(t)
+	g.togglePanel()
+	g.panel.tab = tabCommand
+	g.in.pressed[btnLeft] = true
+	g.commandTabKeys(true)
+	if g.panel.tab != tabCommand {
+		t.Fatalf("a typed letter changed the tab to %d", g.panel.tab)
+	}
+	g.commandTabKeys(false)
+	g.in.pressed = [numButtons]bool{}
+	if g.panel.tab != tabScenes {
+		t.Fatalf("left went to tab %d, want the Scenes tab", g.panel.tab)
+	}
+}
+
+// The Flags tab keeps rows for the flags' numbers and names: its cursor stays on a row
+// drawn however far it goes down.
+func TestDevPanelFlagsCursorStaysShown(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("\nevents:\n")
+	for i := range 40 {
+		b.WriteString("  filler_" + string(rune('a'+i/26)) + string(rune('a'+i%26)) + ": {do: [{set: {flag.seen: true}}]}\n")
+	}
+	g, _ := btlOpen(t, Options{Location: "camp", Development: true}, "", b.String())
+	g.togglePanel()
+	g.panel.tab = tabState
+	state := g.panelShownRows()
+	g.panel.tab = tabFlags
+	if shown := g.panelShownRows(); shown != state-2 {
+		t.Fatalf("the Flags tab shows %d rows, the State tab %d: want two fewer", shown, state)
+	}
+	g.panel.sel = g.panelRows() - 1
+	g.Draw(btlImage())
+	if p := g.panel; p.sel < p.top || p.sel >= p.top+g.panelShownRows() {
+		t.Fatalf("the cursor on row %d is not drawn: rows %d to %d are", p.sel, p.top, p.top+g.panelShownRows()-1)
+	}
+}

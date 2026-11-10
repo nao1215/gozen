@@ -341,3 +341,24 @@ func TestDungeonExamineKeepsPreActionTiles(t *testing.T) {
 		t.Fatal("completed once-only examination acted twice")
 	}
 }
+
+// TestDungeonPointerOpensMenu: a player with only a pointer (a mouse's right click, a
+// finger's two-finger tap or long press) must be able to open the menu in a dungeon, as on
+// a field (the list's Menu entry), a map and a painted scene (openList).
+func TestDungeonPointerOpensMenu(t *testing.T) {
+	for name, press := range map[string]func(in *input){
+		"right click or two fingers": func(in *input) { in.rclick = true },
+		"long press":                 func(in *input) { in.longPress = true },
+	} {
+		t.Run(name, func(t *testing.T) {
+			g := wldMaze(t, "fx_maze", 1, 1, 1)
+			ds := mnuAs[*dungeonScene](t, g)
+			g.in = input{}
+			press(&g.in)
+			ds.update(g)
+			if len(g.stack) != 2 {
+				t.Fatalf("the pointer opened nothing in the dungeon: stack %d (the menu needs a key)", len(g.stack))
+			}
+		})
+	}
+}

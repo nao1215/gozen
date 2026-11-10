@@ -68,14 +68,14 @@ func TestEntityTableInlineDetailAndNavigation(t *testing.T) {
 		t.Fatal("cannot reach final resident")
 	}
 	s.refresh(g)
-	if s.residentTop == 0 {
+	if s.scroll.top == 0 {
 		t.Fatal("refresh lost scroll position")
 	}
 	g.in.wheel = 1
 	for range 20 {
 		s.updateEntityTable(g)
 	}
-	if s.residentTop != 0 {
+	if s.scroll.top != 0 {
 		t.Fatal("cannot return to first resident")
 	}
 	g.in.wheel = 0
@@ -166,7 +166,7 @@ func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
 	if !slices.Equal(notes, record) || len(tasks) != 13 || !strings.Contains(tasks[12], "task12") {
 		t.Fatalf("content truncated: %v %v", tasks, notes)
 	}
-	if s.residentPage != pages-1 || s.residentTop != 0 || s.target != "potter" {
+	if s.residentPage != pages-1 || s.scroll.top != 0 || s.target != "potter" {
 		t.Fatal("paging moved selection or overflowed")
 	}
 	s.refresh(g)
@@ -177,7 +177,7 @@ func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
 	for range 30 {
 		s.updateEntityTable(g)
 	}
-	if s.residentPage != 0 || s.residentTop != 0 {
+	if s.residentPage != 0 || s.scroll.top != 0 {
 		t.Fatal("detail wheel scrolled table or underflowed")
 	}
 	_, rows, _ := s.entityTableLayout(g)
@@ -192,5 +192,30 @@ func TestEntityTableSortingAndCompleteRecords(t *testing.T) {
 	}
 	if string(before) != string(after) {
 		t.Fatal("browsing changed saved state")
+	}
+}
+
+// A finger dragged up the residents' rows scrolls them as the wheel does, and its lift
+// opens no row.
+func TestEntityTableScrollsByTouchDrag(t *testing.T) {
+	db := testgame.Load(t, nil)
+	p := &data.Planning{Entities: map[string]data.Entity{}}
+	var order []string
+	for i := range 12 {
+		order = append(order, strconv.Itoa(i))
+		p.Entities[order[i]] = data.Entity{Name: order[i]}
+	}
+	db.Game.Planning = p
+	db.Game.Screens = map[string]*data.AuthorScreen{"roster": {Kind: "entities", View: data.PlanningView{Fullscreen: true, Order: order, Detail: "record"}}}
+	g := &Game{db: db, st: testgame.State(db, 1)}
+	s := newAuthorScreen(g, "roster", nil, nil)
+	_, cells, _ := s.entityTableLayout(g)
+	for _, in := range uiSwipe(cells[len(cells)-1].Min.Add(image.Pt(40, 20)), -3*56-6, 6) {
+		g.in = in
+		s.updateEntityTable(g)
+	}
+	g.in = input{}
+	if s.scroll.top != 3 || s.target != "" {
+		t.Fatalf("a finger dragged up three rows: first row %d, opened %q; want row 3 and nothing opened", s.scroll.top, s.target)
 	}
 }

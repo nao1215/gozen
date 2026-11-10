@@ -83,7 +83,7 @@ func (g *Game) novelButtons() []novelButton {
 // novelBarShown reports whether the buttons under the novel window show (and take clicks):
 // not while a choice is shown with ui.hide_bar_on_choice.
 func (g *Game) novelBarShown() bool {
-	return !g.db.Game.UI.HideBarOnChoice || g.talk.choice == nil
+	return !g.talk.bare && (!g.db.Game.UI.HideBarOnChoice || g.talk.choice == nil)
 }
 
 func (g *Game) novelButtonRects() []image.Rectangle {
@@ -578,7 +578,14 @@ func (g *Game) stagePicture(face string) bool {
 	return framed || g.pics.get(face).Bounds().Dy() >= 600
 }
 
-type backlogView struct{ top int }
+type backlogView struct {
+	top  int
+	drag swipe
+}
+
+// logRow is the height of a line of the log with one row of text: how far a finger drags
+// to go one line on.
+const logRow = sizeM*1.4 + 30
 
 func (g *Game) logEntryH(i int) float64 {
 	sw, _ := g.screen()
@@ -605,7 +612,11 @@ func (g *Game) logLastTop() int {
 
 func (v *backlogView) update(g *Game) {
 	last := g.logLastTop()
+	if d := v.drag.rows(&g.in, true, logRow); d != 0 {
+		v.top = max(0, min(last, v.top+d))
+	}
 	switch {
+	case v.drag.moving():
 	case g.in.cancel() || g.in.pressedKey(btnLog) || g.in.ok() || g.in.clicked():
 		g.logView = nil
 	case g.in.up():
@@ -623,7 +634,7 @@ func (v *backlogView) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	gfx.FillRoundRect(dst, 0, 0, float32(sw), float32(sh), 0, withAlpha(g.th.window, 0xf0))
 	g.text(dst, lang.T("バックログ"), 60, 30, sizeL, g.th.accent)
-	gfx.DrawTextRight(dst, lang.T("↑↓ ホイール: スクロール　X / クリック: もどる"), sw-60, 38, sizeS, g.th.dim)
+	gfx.DrawTextRight(dst, lang.T("↑↓ ホイール スワイプ: スクロール　X / クリック: もどる"), sw-60, 38, sizeS, g.th.dim)
 	y := 100.0
 	for i := v.top; i < len(g.backlog); i++ {
 		l := g.backlog[i]

@@ -102,6 +102,60 @@ func TestBacklogOpensOnOversizedLastEntry(t *testing.T) {
 	}
 }
 
+// A bare choice (no prompt, no line before it) draws no novel bar, so a click where the
+// bar would be presses none of its buttons.
+func TestNovelBareChoiceBarIsNotClickable(t *testing.T) {
+	g := wldNovel(t, "ev_bare")
+	if g.talk.choice == nil || !g.talk.bare {
+		t.Fatal("not a bare choice")
+	}
+	depth := len(g.stack)
+	rects := g.novelButtonRects()
+	r := rects[len(rects)-1] // Settings
+	g.in = input{mouse: image.Pt(r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2), click: true}
+	g.novelInput()
+	if len(g.stack) != depth {
+		t.Fatalf("a click on the undrawn bar opened %T", g.stack[len(g.stack)-1])
+	}
+}
+
+// The backlog scrolls with a finger: earlier lines follow a swipe down the screen, and the
+// finger lifting after it does not close the log (a tap does).
+func TestBacklogScrollsWithATouchSwipe(t *testing.T) {
+	g := wldNovel(t, "ev_auto")
+	g.backlog = nil
+	for i := range 40 {
+		g.remember(logLine{text: "Remembered line " + strconv.Itoa(i) + "."})
+	}
+	g.logView = &backlogView{top: g.logLastTop()}
+	top := g.logView.top
+	if top == 0 {
+		t.Fatal("the log fits one page; nothing to scroll")
+	}
+	// The finger goes down and drags 200 units down the screen: earlier lines follow it.
+	g.in = input{mouse: image.Pt(600, 300), touching: true, began: true, pdown: true, pheld: true, moved: true}
+	g.logView.update(g)
+	for range 10 {
+		if g.logView == nil {
+			t.Fatal("holding a finger on the log closed it")
+		}
+		g.in = input{mouse: image.Pt(600, g.in.mouse.Y+20), touching: true, pheld: true, moved: true, swipe: 20, swiped: true}
+		g.logView.update(g)
+	}
+	if g.logView == nil {
+		t.Fatal("swiping closed the log")
+	}
+	if g.logView.top >= top {
+		t.Errorf("a swipe of 200 units left the log at entry %d (was %d)", g.logView.top, top)
+	}
+	// The finger lifts: the end of a swipe is not a tap.
+	g.in = input{mouse: image.Pt(600, 500), pup: true, click: true, moved: true, swiped: true}
+	g.logView.update(g)
+	if g.logView == nil {
+		t.Error("lifting the finger after a swipe closed the log")
+	}
+}
+
 func TestNovelToolbarTraceReadiness(t *testing.T) {
 	for _, tc := range []struct {
 		name           string

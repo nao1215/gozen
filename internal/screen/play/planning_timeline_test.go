@@ -835,3 +835,52 @@ func TestTimelineGroupClickAcknowledgesExpansion(t *testing.T) {
 		})
 	}
 }
+
+// A finger dragged over a timeline scrolls it: the plain rows and the groups.
+func TestTimelineScrollsByTouchDrag(t *testing.T) {
+	t.Run("rows", func(t *testing.T) {
+		db := testgame.Load(t, nil)
+		db.Game.Planning = &data.Planning{Activities: map[string]data.Activity{}}
+		for i := range 28 {
+			db.Game.Planning.Activities[strconv.Itoa(i)] = data.Activity{Effort: 1}
+		}
+		db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: data.PlanningView{Fullscreen: true}}}
+		g := &Game{db: db, st: testgame.State(db, 1)}
+		s := newAuthorScreen(g, "tasks", nil, nil)
+		for _, in := range uiSwipe(image.Pt(600, 500), -4*56-6, 8) {
+			g.in = in
+			s.updateSurface(g)
+		}
+		g.in = input{}
+		if s.timelineTop != 4 {
+			t.Fatalf("a finger dragged up four rows left the timeline at row %d", s.timelineTop)
+		}
+	})
+	t.Run("groups", func(t *testing.T) {
+		db := testgame.Load(t, nil)
+		p := &data.Planning{Calendar: data.Calendar{Start: "2030-08-01", End: "2030-11-30", Phases: []string{"morning"}}, Activities: map[string]data.Activity{}}
+		v := data.PlanningView{Fullscreen: true}
+		for i := range 30 {
+			id := strconv.Itoa(i)
+			p.Activities[id] = data.Activity{Name: id, Effort: 10, From: p.Calendar.Start, To: p.Calendar.End}
+			v.Rows = append(v.Rows, data.TimelineRow{Label: id, Items: []data.TimelineItem{{Activity: id, Label: id}}})
+		}
+		db.Game.Planning = p
+		db.Game.Screens = map[string]*data.AuthorScreen{"tasks": {Kind: "timeline", View: v}}
+		g := &Game{db: db, st: testgame.State(db, 1)}
+		g.st.Planning.Date = "2030-09-01"
+		s := newAuthorScreen(g, "tasks", nil, nil)
+		sw, sh := g.screen()
+		if groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226); len(groups) >= 30 {
+			t.Fatalf("all %d groups fit: nothing to scroll", len(groups))
+		}
+		for _, in := range uiSwipe(image.Pt(600, 500), -3*56-6, 6) {
+			g.in = in
+			s.updateSurface(g)
+		}
+		g.in = input{}
+		if s.timelineTop != 3 {
+			t.Fatalf("a finger dragged up three rows left the groups at %d", s.timelineTop)
+		}
+	})
+}

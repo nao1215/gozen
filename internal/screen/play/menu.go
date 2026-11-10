@@ -171,7 +171,7 @@ func (m *menu) update(g *Game) {
 			g.pop()
 			return
 		}
-		if it := m.tabs.items[m.tabs.sel]; !chose && it.id == "save" && it.disabled && g.in.ok() {
+		if it := m.tabs.items[m.tabs.sel]; !chose && it.id == "save" && m.tabs.refused {
 			m.msgs, m.msgT, m.msgSoft = []string{lang.T("ここでは セーブ できない。安全な 場所で セーブ しよう。")}, 90, false
 			return
 		}
@@ -253,15 +253,20 @@ func (m *menu) updatePicker(g *Game) {
 		m.member = (m.member + 1) % len(ms)
 		g.sfx("cursor")
 	}
+	over := false
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
-			m.member = i
+		if g.in.mouse.In(m.cardRect(g, i)) {
+			over = true
+			if g.in.moved || g.in.inspect(g.in.click) {
+				m.member = i
+			}
 		}
 	}
-	if g.in.ok() || g.in.clicked() {
+	if g.in.ok() || over && g.in.clicked() {
 		g.sfx("decide")
 		m.picker = false
 		if m.mode == "skill" {
+			m.items = nil // the list before was the items' or another member's: the cursor starts over
 			m.openSkills(g)
 		} else {
 			m.openEquip(g)
@@ -357,12 +362,16 @@ func (m *menu) updateTarget(g *Game) {
 		m.tsel = (m.tsel + 1) % len(ms)
 		g.sfx("cursor")
 	}
+	over := false
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
-			m.tsel = i
+		if g.in.mouse.In(m.cardRect(g, i)) {
+			over = true
+			if g.in.moved || g.in.inspect(g.in.click) {
+				m.tsel = i
+			}
 		}
 	}
-	if g.in.ok() || g.in.clicked() {
+	if g.in.ok() || over && g.in.clicked() {
 		kind, id, _ := strings.Cut(m.using, ":")
 		skill, item := id, ""
 		if kind == "item" {
@@ -424,6 +433,7 @@ func (m *menu) openSkills(g *Game) {
 	m.items = newList(items, 300, 36, menuListW, int((sh-200)/44))
 	m.items.empty = lang.T("つかえる スキルが ない。")
 	m.items.sel = sel
+	m.items.scroll()
 }
 
 func (m *menu) updateSkills(g *Game) {

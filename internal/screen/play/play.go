@@ -1138,15 +1138,16 @@ func (g *Game) Update() error {
 	if !g.embedded && (inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter) {
 		g.toggleFullscreen()
 	}
-	if !g.embedded && inpututil.IsKeyJustPressed(ebiten.KeyM) {
-		g.audioSession().ToggleMute()
-	}
+	g.muteKey(inpututil.IsKeyJustPressed(ebiten.KeyM))
 	if g.st != nil {
 		g.st.Frames++
 	}
 	g.stepStreams()
 	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
 		g.sfx("lift")
+	}
+	if g.recruit != nil && g.recruit.leave != 0 && g.tick-g.recruit.leave >= recruitLeaveTicks {
+		g.recruit = nil // the view has left: the state changes in the update, not while drawing
 	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
@@ -2082,13 +2083,13 @@ func (g *Game) pump() bool {
 			if !g.in.inspect(g.in.held[btnOK] || g.in.pressed[btnOK]) {
 				b.ready = true
 			}
-			if b.age < b.duration() && b.skipT == 0 && b.ready && g.in.ok() {
+			if b.age < b.duration() && b.skipT == 0 && b.ready && (g.in.ok() || g.in.clicked()) {
 				b.skipT = 1
 				b.age = max(b.age, 120)
 				b.ready = false
 			}
 			g.waitT = max(1, b.duration()-b.age)
-			if b.age >= b.duration() && b.ready && !b.details && g.in.ok() {
+			if b.age >= b.duration() && b.ready && !b.details && (g.in.ok() || g.in.clicked()) {
 				g.waitT = 0
 				g.req = nil
 				b.ready = false

@@ -88,7 +88,7 @@ func (g *Game) standingOf(a *rpg.Actor) string {
 
 type formation struct {
 	ids  []string
-	sel  int
+	list *list
 	msg  string
 	msgT int
 	done func()
@@ -101,7 +101,40 @@ func newFormation(g *Game, done func()) *formation {
 			f.ids = append(f.ids, id)
 		}
 	}
+	_, sh := g.screen()
+	f.list = newList(nil, 40, 88, 540, max(1, int((sh-192)/44)))
+	f.refresh(g)
 	return f
+}
+
+// refresh writes the rows as the party is now: the place in the party, the name, the row
+// (front or back) and the level and class.
+func (f *formation) refresh(g *Game) {
+	items := make([]listItem, len(f.ids))
+	for i, id := range f.ids {
+		a := g.st.Actors[id]
+		mark := "　"
+		if in := slices.Index(g.st.Party, id); in >= 0 {
+			mark = strconv.Itoa(in + 1)
+		}
+		row, rc := lang.T("前列"), color.NRGBA{0xff, 0xc0, 0x80, 0xff}
+		if a.Back {
+			row, rc = lang.T("後列"), color.NRGBA{0x90, 0xc8, 0xff, 0xff}
+		}
+		items[i] = listItem{
+			label: mark + "　" + a.Name(), id: id, note: row, noteColor: rc,
+			right: fmt.Sprintf("%s%d　%s", g.db.Game.Terms.Level, a.Level, a.Class().Name),
+		}
+	}
+	f.list.items = items
+}
+
+// rowMark is where the row (front or back) of member i is written: a click there changes it.
+func (f *formation) rowMark(i int) image.Rectangle {
+	l, it := f.list, f.list.items[i]
+	r := l.rowRect(i)
+	right := float64(r.Max.X) - 22 - gfx.TextWidth(it.right, l.size) - 16
+	return image.Rect(int(right-gfx.TextWidth(it.note, l.size*0.78)-12), r.Min.Y, int(right+8), r.Max.Y)
 }
 
 func (f *formation) overlay() bool { return true }
@@ -110,9 +143,7 @@ func (f *formation) update(g *Game) {
 	if f.msgT > 0 {
 		f.msgT--
 	}
-	n := len(f.ids)
-	switch {
-	case g.in.cancel():
+	if g.in.cancel() {
 		if len(g.st.Party) == 0 {
 			f.msg, f.msgT = lang.T("だれか ひとりは つれていこう。"), 90
 			return
@@ -120,18 +151,20 @@ func (f *formation) update(g *Game) {
 		g.sfx("cancel")
 		g.pop()
 		f.done()
-	case g.in.up():
-		f.sel = (f.sel - 1 + n) % n
-		g.sfx("cursor")
-	case g.in.down():
-		f.sel = (f.sel + 1) % n
-		g.sfx("cursor")
-	case g.in.left() || g.in.right():
-		a := g.st.Actors[f.ids[f.sel]]
+		return
+	}
+	// The list moves the cursor (keys, wheel, pointer, a finger's swipe). A click on a row
+	// is OK on it, and one on its row mark (front or back) is left or right.
+	hit := f.list.browse(g)
+	sel := f.list.sel
+	clicked := hit >= 0 && g.in.clicked()
+	switch {
+	case g.in.left() || g.in.right() || clicked && g.in.mouse.In(f.rowMark(hit)):
+		a := g.st.Actors[f.ids[sel]]
 		a.Back = !a.Back
 		g.sfx("cursor")
-	case g.in.ok():
-		id := f.ids[f.sel]
+	case g.in.ok() || clicked:
+		id := f.ids[sel]
 		if slices.Contains(g.st.Party, id) {
 			if g.st.Leave(id) {
 				g.sfx("cancel")
@@ -145,6 +178,7 @@ func (f *formation) update(g *Game) {
 			g.sfx("buzzer")
 		}
 	}
+	f.refresh(g)
 }
 
 func (f *formation) draw(g *Game, dst *ebiten.Image) {
@@ -153,30 +187,10 @@ func (f *formation) draw(g *Game, dst *ebiten.Image) {
 	g.window(dst, 30, 30, 560, sh-60)
 	g.text(dst, fmt.Sprintf(lang.T("へんせい　（%d / %d にん）"), len(g.st.Party), g.db.Game.MaxParty), 56, 50, sizeM, g.th.accent)
 	g.text(dst, lang.T("Z: つれていく／はずす　←→: 前列／後列　X: おわる"), 56, sh-80, sizeS, g.th.dim)
-	for i, id := range f.ids {
-		a := g.st.Actors[id]
-		y := 100 + float64(i)*52
-		if i == f.sel {
-			rect(dst, 44, y-6, 532, 48, withAlpha(g.th.cursor, 0x60))
-		}
-		in := slices.Index(g.st.Party, id)
-		mark := "　"
-		if in >= 0 {
-			mark = strconv.Itoa(in + 1)
-		}
-		g.text(dst, mark, 60, y, sizeM, g.th.accent)
-		g.text(dst, a.Name(), 100, y, sizeM, g.th.text)
-		g.text(dst, fmt.Sprintf("%s%d", g.db.Game.Terms.Level, a.Level), 270, y+4, sizeS, g.th.dim)
-		row := lang.T("前列")
-		rc := color.NRGBA{0xff, 0xc0, 0x80, 0xff}
-		if a.Back {
-			row, rc = lang.T("後列"), color.NRGBA{0x90, 0xc8, 0xff, 0xff}
-		}
-		g.text(dst, row, 350, y+4, sizeS, rc)
-		g.text(dst, a.Class().Name, 430, y+4, sizeS, g.th.dim)
-	}
+	g.traceList(f.list)
+	f.list.drawRows(g, dst, true)
 
-	a := g.st.Actors[f.ids[f.sel]]
+	a := g.st.Actors[f.ids[f.list.sel]]
 	if p := g.standingOf(a); p != "" {
 		g.drawStanding(dst, p, sw*0.72, sh, sh*0.95, 1, false, nil)
 	}
@@ -595,7 +609,7 @@ func (f *fusion) update(g *Game) {
 		return
 	}
 	if !chose {
-		if f.list.sel < len(f.idx) && f.list.items[f.list.sel].disabled && g.in.ok() {
+		if f.list.sel < len(f.idx) && f.list.refused {
 			f.msg, f.msgT = lang.T("ざいりょうか おかねが たりない。"), 90
 		}
 		return

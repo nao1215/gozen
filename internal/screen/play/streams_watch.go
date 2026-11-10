@@ -242,6 +242,9 @@ func streamEntryBeat(g *Game, show *broadcast.Show) int {
 
 func (w *streamWatch) modal() bool { return true }
 
+// takesText reports whether the comment is being typed: the letters are no hotkeys then.
+func (w *streamWatch) takesText() bool { return w.typing }
+
 // watching is the watch view on top of the screens, or nil.
 func (g *Game) watching() *streamWatch {
 	if len(g.stack) == 0 {

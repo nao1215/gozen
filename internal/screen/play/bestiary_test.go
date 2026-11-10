@@ -1,6 +1,7 @@
 package play
 
 import (
+	"image"
 	"slices"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestBestiaryPictureLineageNavigationAndHistory(t *testing.T) {
 	g := ranchGame(t)
 	g.opts.Development = true
 	s := newBestiary(g, nil)
-	s.sel = slices.Index(s.ids, "boss")
+	s.list.sel = slices.Index(s.ids, "boss")
 	pressBestiary(g, s, btnOK)
 	if !s.inTree || s.root != "boss" {
 		t.Fatalf("tree not opened: %+v", s)
@@ -98,7 +99,7 @@ func TestBestiaryPictureLineageNavigationAndHistory(t *testing.T) {
 		t.Fatalf("back history = %+v", s)
 	}
 	pressBestiary(g, s, btnBack)
-	if s.inTree || s.ids[s.sel] != "mote" {
+	if s.inTree || s.ids[s.list.sel] != "mote" {
 		t.Fatalf("page key = %+v", s)
 	}
 }
@@ -255,7 +256,7 @@ func TestBestiaryMenuLanguageAndOverrides(t *testing.T) {
 func TestBestiaryLockedLineageOKRemainsPending(t *testing.T) {
 	g := ranchGame(t)
 	screen := newBestiary(g, nil)
-	screen.sel = slices.Index(screen.ids, "boss")
+	screen.list.sel = slices.Index(screen.ids, "boss")
 	s := sysScript(t, "press ok")
 	s.acknowledge = true
 	for range 3 {
@@ -274,5 +275,80 @@ func TestBestiaryLockedLineageOKRemainsPending(t *testing.T) {
 	g.in.finishOffer()
 	if s.pc != 1 || !screen.inTree {
 		t.Fatal("pending OK did not open the unlocked lineage")
+	}
+}
+
+// A click on a row of the monster book's list selects it.
+func TestBestiaryClickSelectsRow(t *testing.T) {
+	g := bookGame(t, Options{Location: "camp"}, "ui: {bestiary: true}\n")
+	s := newBestiary(g, nil)
+	g.push(s)
+	if len(s.ids) < 2 {
+		t.Skip("the test game has one enemy")
+	}
+	g.in = input{click: true, moved: true, mouse: image.Pt(42+60, 100+48+20)} // the second row as drawn
+	s.update(g)
+	g.in = input{}
+	if s.list.sel != 1 {
+		t.Fatalf("a click on the second row left the cursor on %d", s.list.sel)
+	}
+}
+
+// The book is used with a pointer alone: a tap on the row chosen opens its lineage, a tap
+// on a picture chooses it and a second views its ancestry, and the keys written on the
+// screen's foot are buttons.
+func TestBestiaryPointerOpensLineageAndHints(t *testing.T) {
+	g := ranchGame(t)
+	g.opts.Development = true
+	s := newBestiary(g, nil)
+	g.push(s)
+	click := func(at image.Point) {
+		g.in = input{click: true, moved: true, mouse: at}
+		s.update(g)
+		g.in = input{}
+	}
+	hint := func(key button) image.Point {
+		t.Helper()
+		for i, h := range s.hints() {
+			if h.tap && h.key == key {
+				r := s.hintRects(g)[i]
+				return image.Pt(r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)
+			}
+		}
+		t.Fatalf("no hint for button %d", key)
+		return image.Point{}
+	}
+	boss := slices.Index(s.ids, "boss")
+	row := s.list.rowRect(boss)
+	click(image.Pt(row.Min.X+60, row.Min.Y+20))
+	if s.inTree || s.list.sel != boss {
+		t.Fatalf("the first tap on a row: tree %v cursor %d, want the row chosen only", s.inTree, s.list.sel)
+	}
+	click(image.Pt(row.Min.X+60, row.Min.Y+20))
+	if !s.inTree || s.root != "boss" {
+		t.Fatalf("the second tap did not open the lineage: %+v", s)
+	}
+	sw, sh := g.screen()
+	tiles := s.lineageTiles(322, 104, sw-350, sh-185)
+	at := image.Pt(int(tiles[2].x+tiles[2].w/2), int(tiles[2].y+tiles[2].h/2))
+	click(at)
+	if s.cur != 2 || len(s.history) != 0 {
+		t.Fatalf("a tap on a picture: cursor %d history %d", s.cur, len(s.history))
+	}
+	click(at)
+	if s.root != tiles[2].node.Species || len(s.history) != 1 {
+		t.Fatalf("a tap on the picture chosen did not view its ancestry: root %q", s.root)
+	}
+	click(hint(btnCancel))
+	if s.root != "boss" || len(s.history) != 0 {
+		t.Fatalf("the back hint: root %q history %d", s.root, len(s.history))
+	}
+	click(hint(btnBack))
+	if s.inTree || s.ids[s.list.sel] != tiles[2].node.Species {
+		t.Fatalf("the page hint: tree %v page %q", s.inTree, s.ids[s.list.sel])
+	}
+	click(hint(btnCancel))
+	if _, open := g.stack[len(g.stack)-1].(*bestiaryScreen); open {
+		t.Fatal("the close hint left the book open")
 	}
 }

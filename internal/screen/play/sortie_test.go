@@ -148,6 +148,79 @@ func TestSortieSelectionAndConfirmation(t *testing.T) {
 	}
 }
 
+// TestSortieListScrollsByTouch: with more generals than rows, a player with a touch screen
+// only reaches the last general: by a tap on the arrow under the rows, or with a finger
+// dragged up the list (whose lift puts no general in a slot).
+func TestSortieListScrollsByTouch(t *testing.T) {
+	open := func(t *testing.T) (*Game, *sortieScene) {
+		g, _ := campaignOpen(t, nil)
+		s := &sortieScene{r: event.SortieScene{Cap: 3}, tactics: map[string]string{}, swap: -1}
+		for i := range 12 {
+			s.all = append(s.all, fmt.Sprintf("g%02d", i))
+		}
+		s.r.Ready = s.all
+		return g, s
+	}
+	t.Run("arrow", func(t *testing.T) {
+		g, s := open(t)
+		cx, up, down := s.markPlaces(g)
+		g.in = input{click: true, pdown: true, pup: true, moved: true, mouse: image.Pt(int(cx), int(down+sizeS/2))}
+		s.update(g)
+		if first, last := s.shownRows(g); first != s.rows(g)-1 || len(s.picked) != 0 {
+			t.Fatalf("a tap on ▼ shows rows %d to %d with %d picked, want a page on and nobody picked", first, last, len(s.picked))
+		}
+		g.in.mouse = image.Pt(int(cx), int(up+sizeS/2))
+		s.update(g)
+		g.in = input{}
+		if first, _ := s.shownRows(g); first != 0 {
+			t.Fatalf("a tap on ▲ left the list at row %d", first)
+		}
+	})
+	t.Run("drag", func(t *testing.T) {
+		g, s := open(t)
+		_, last := s.shownRows(g)
+		x, y, w, h := s.rowBox(g, last-1)
+		at := image.Pt(int(x+w/2), int(y+h/2))
+		g.in = input{mouse: at, moved: true, pdown: true, pheld: true}
+		s.update(g)
+		for range 3 {
+			at.Y -= int(h+8) + 1
+			g.in = input{mouse: at, moved: true, pheld: true}
+			s.update(g)
+		}
+		g.in = input{mouse: at, moved: true, pup: true, click: true}
+		s.update(g)
+		g.in = input{}
+		if first, _ := s.shownRows(g); first != 3 || len(s.picked) != 0 {
+			t.Fatalf("a finger dragged up three rows: the list is at row %d with %d picked, want 3 and nobody", first, len(s.picked))
+		}
+	})
+}
+
+// TestSortieSlotsStayClearOfTheButtons: a march takes as many generals as its order says
+// (generals has no upper limit outside clash_view), so every slot must stay on the screen
+// and off the buttons, which a click must still reach.
+func TestSortieSlotsStayClearOfTheButtons(t *testing.T) {
+	g, _ := campaignOpen(t, nil)
+	_, sh := g.screen()
+	ids := []string{"g0", "g1", "g2", "g3", "g4", "g5"}
+	done := 0
+	s := &sortieScene{r: event.SortieScene{Cap: 6, Ready: ids, March: func([]string, map[string]string) {}}, all: ids, picked: slices.Clone(ids), tactics: map[string]string{}, swap: -1, done: func() { done++ }}
+	g.push(s)
+	for k := range s.r.Cap {
+		if _, y, _, h := s.slotBox(g, k); y+h > sh {
+			t.Errorf("slot %d runs to %g, below the screen's %g", k, y+h, sh)
+		}
+	}
+	x, y, w, h := s.buttonBox(g, 1) // Cancel
+	g.in = input{click: true, moved: true, mouse: image.Pt(int(x+w/2), int(y+h/2))}
+	s.update(g)
+	g.in = input{}
+	if !s.closed || done != 1 {
+		t.Fatalf("a click on Cancel did not close the screen (swap %d): the sixth slot lies over the button and took it", s.swap)
+	}
+}
+
 func TestSortieEmptyFormationCannotMarch(t *testing.T) {
 	g, _ := campaignOpen(t, nil)
 	done := 0

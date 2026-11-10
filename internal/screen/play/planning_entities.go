@@ -112,12 +112,12 @@ func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, 
 	v := g.db.Game.Screens[s.name].View
 	all := s.tableResidents(g)
 	sw, sh := g.screen()
-	s.residentTop = min(s.residentTop, max(0, len(all)-1))
+	s.scroll.top = min(s.scroll.top, max(0, len(all)-1))
 	var ids []string
 	var cells []image.Rectangle
 	var detail image.Rectangle
 	y, bottom := 90, int(sh)-112
-	for _, id := range all[s.residentTop:] {
+	for _, id := range all[s.scroll.top:] {
 		if y+56 > bottom {
 			break
 		}
@@ -135,6 +135,14 @@ func (s *authorScreen) entityTableLayout(g *Game) ([]string, []image.Rectangle, 
 func (s *authorScreen) updateEntityTable(g *Game) {
 	v := g.db.Game.Screens[s.name].View
 	all := s.tableResidents(g)
+	// A finger dragged over the rows scrolls them, as the wheel does.
+	sw, sh := g.screen()
+	if d := s.scroll.drag.rows(&g.in, g.in.mouse.In(image.Rect(16, 90, int(sw)-16, int(sh)-112)), 56); d != 0 {
+		s.scroll.top = max(0, min(len(all)-1, s.scroll.top+d))
+	}
+	if s.scroll.drag.moving() {
+		return
+	}
 	if g.in.inspect(g.in.click) {
 		for i, r := range s.entityTableHeaders(g) {
 			if !g.in.mouse.In(r) {
@@ -148,7 +156,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 			} else {
 				s.residentSort = 0
 			}
-			s.residentTop, s.focus = 0, 0
+			s.scroll.top, s.focus = 0, 0
 			s.target, s.residentPage = "", 0
 			return
 		}
@@ -190,7 +198,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 		if g.in.wheel > 0 {
 			step = -1
 		}
-		s.residentTop = max(0, min(len(all)-1, s.residentTop+step))
+		s.scroll.top = max(0, min(len(all)-1, s.scroll.top+step))
 	}
 	s.focus = min(s.focus, count-1)
 	moved := g.in.wheel == 0 && (g.in.down() || g.in.up())
@@ -204,7 +212,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 	ids, cells, _ := s.entityTableLayout(g)
 	rowFocus := s.focus - len(actions)
 	if moved && rowFocus >= 0 && rowFocus < len(all) && !slices.Contains(ids, all[rowFocus]) {
-		s.residentTop = rowFocus
+		s.scroll.top = rowFocus
 	}
 	chosen := ""
 	confirmable := rowFocus < 0 || rowFocus < len(all) && v.Detail != "" || rowFocus >= len(all) && flow[rowFocus-len(all)].enabled
@@ -248,7 +256,7 @@ func (s *authorScreen) updateEntityTable(g *Game) {
 			// Reveal the whole detail even when opening the last visible row.
 			_, rows, detail := s.entityTableLayout(g)
 			if detail.Dy() < 180 || len(rows) == 0 {
-				s.residentTop = slices.Index(all, chosen)
+				s.scroll.top = slices.Index(all, chosen)
 			}
 		}
 	}
