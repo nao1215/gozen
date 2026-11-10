@@ -38,8 +38,7 @@ func Desktop(ctx context.Context, src, dst, bundle, target, version string) erro
 		if err != nil {
 			return err
 		}
-		source := filepath.Join(bundle, player)
-		if err := copyFile(source, filepath.Join(stage, player), 0o755); err != nil {
+		if err := cli.CopyFile(os.DirFS(bundle), player, filepath.Join(stage, player), 0o755); err != nil {
 			return err
 		}
 		if err := verifyPlayer(filepath.Join(stage, player), r); err != nil {
@@ -137,7 +136,7 @@ func copyLicenses(bundle, stage string) error {
 			if d.IsDir() {
 				return nil
 			}
-			return copyFile(p, filepath.Join(stage, "runtime-licenses", rel), 0o600)
+			return cli.CopyFile(os.DirFS(bundle), filepath.ToSlash(rel), filepath.Join(stage, "runtime-licenses", rel), 0o600)
 		}); err != nil {
 			return err
 		}

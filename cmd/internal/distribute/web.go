@@ -39,7 +39,7 @@ func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 		}
 		for _, file := range []struct{ name, hash string }{{"gozen-player.wasm", r.SHA256}, {"wasm_exec.js", r.WASMExecSHA256}} {
 			name, hash := file.name, file.hash
-			if err := copyFile(filepath.Join(bundle, name), filepath.Join(stage, name), 0o600); err != nil {
+			if err := cli.CopyFile(os.DirFS(bundle), name, filepath.Join(stage, name), 0o600); err != nil {
 				return err
 			}
 			if err := verifyChecksum(filepath.Join(stage, name), hash); err != nil {
