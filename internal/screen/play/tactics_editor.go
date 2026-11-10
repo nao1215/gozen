@@ -243,15 +243,8 @@ func (e *tacticEditor) update(g *Game) {
 		g.push(newTacticText(g, e.description(g)))
 		return
 	}
-	if g.in.inspect(g.in.click) {
-		for f, l := range []*list{e.fields, e.options} {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					e.choosing = f == 1
-				}
-			}
-		}
+	if f := g.clickedList(e.fields, e.options); f >= 0 {
+		e.choosing = f == 1
 	}
 	if g.in.left() {
 		e.choosing = false

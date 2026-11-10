@@ -255,15 +255,8 @@ func (s *tacticsScreen) update(g *Game) {
 	}
 
 	lists := []*list{s.members, s.rows, s.actions}
-	if g.in.inspect(g.in.click) {
-		for f, l := range lists {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					s.focus = f
-				}
-			}
-		}
+	if f := g.clickedList(lists...); f >= 0 {
+		s.focus = f
 	}
 	if len(s.ids) > 0 && g.in.inspect(g.in.pressed[btnNext]) {
 		d := g.in.tab()
@@ -374,15 +367,8 @@ func (s *tacticsScreen) updatePresets(g *Game) {
 		return
 	}
 	lists := []*list{s.members, s.presets}
-	if g.in.inspect(g.in.click) {
-		for f, l := range lists {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					s.focus = f
-				}
-			}
-		}
+	if f := g.clickedList(lists...); f >= 0 {
+		s.focus = f
 	}
 	chosen := lists[s.focus].updateChoice(g)
 	if chosen {
@@ -441,4 +427,23 @@ func (s *tacticsScreen) drawPresets(g *Game, dst *ebiten.Image) {
 	g.window(dst, 24, 552, sw-48, 100)
 	g.drawLinesFit(dst, desc+"\n"+lang.T("薬・MPが足りない行は飛ばします。誰に使うかは自動です。"), 44, 565, sw-88, sizeS, 3, g.th.text)
 	g.drawLinesFit(dst, lang.T("← → 欄を移動　↑ ↓ 選択　決定で型を選ぶ　取消で全変更を破棄　* は未確定"), 30, 674, sw-60, sizeS*0.85, 1, g.th.border)
+}
+
+// clickedList is the index of the list that has a shown row under a click, or
+// -1. A hit accepts the click; the tactics screens use it to move the focus to
+// the column the player pointed at before that column reads the same click.
+func (g *Game) clickedList(lists ...*list) int {
+	hit := -1
+	if !g.in.inspect(g.in.click) {
+		return hit
+	}
+	for f, l := range lists {
+		for _, i := range l.shown() {
+			if g.in.mouse.In(l.rowRect(i)) {
+				g.in.query(true)
+				hit = f
+			}
+		}
+	}
+	return hit
 }
