@@ -124,6 +124,8 @@ func (db *DB) BreedReach() map[string]BreedPath {
 	for _, pair := range db.Breeding.Pairs {
 		maxPlus = max(maxPlus, pair.MinPlus)
 	}
+	// Check refuses a larger requirement; the search stays bounded without it too.
+	maxPlus = min(maxPlus, MaxBreedingPlus)
 	type key struct {
 		species string
 		sex     string

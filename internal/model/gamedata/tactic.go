@@ -66,13 +66,6 @@ type TacticAction struct {
 	Item   string `yaml:"item,omitempty"`
 }
 
-// CheckTacticCatalog checks only the tactic definitions, with the same positioned diagnostics as DB.Check.
-func (db *DB) CheckTacticCatalog() []error {
-	c := &checker{db: db}
-	c.tacticCatalog()
-	return sortedDiagnostics(c.errs)
-}
-
 // CompileTactic checks a row and converts it into one rule of the existing AI. A disabled row returns nil.
 // skills are the ally's currently learned skills (including those from equipment). Only normal attack and guard may be omitted.
 // For an invalid row, the caller keeps the original text and diagnostics. It does not modify the DB, learned skills, randomness or inventory.
@@ -369,7 +362,7 @@ func (c *checker) tacticRow(row TacticRow) Rule {
 	// Copy without evaluating expressions. UnmarshalYAML on the return value cannot overwrite the catalog's expressions.
 	r.When, r.Chance = copyTacticExpr(r.When), copyTacticExpr(r.Chance)
 	r.Target.Where, r.Target.By = copyTacticExpr(r.Target.Where), copyTacticExpr(r.Target.By)
-	c.numericValues([]Rule{r}, "tactic.rule")
+	c.numericValues([]Rule{r}, "tactic.rule", false)
 	c.rules("tactic.rule", []Rule{r})
 	return r
 }

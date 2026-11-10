@@ -1564,3 +1564,165 @@ func TestSnapshotEngineTagSelection(t *testing.T) {
 	run("git", "tag", "v0.23.0")
 	check("v0.23.0")
 }
+
+// definitionFields are the exported fields of gamedata.DB, read from its source.
+func definitionFields(t *testing.T) map[string]bool {
+	t.Helper()
+	const name = "internal/model/gamedata/load.go"
+	b, err := fs.ReadFile(os.DirFS("../../.."), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := map[string]bool{}
+	ast.Inspect(parsed(t, name, b), func(n ast.Node) bool {
+		spec, ok := n.(*ast.TypeSpec)
+		if !ok || spec.Name.Name != "DB" {
+			return true
+		}
+		if st, ok := spec.Type.(*ast.StructType); ok {
+			for _, f := range st.Fields.List {
+				for _, id := range f.Names {
+					if id.IsExported() {
+						fields[id.Name] = true
+					}
+				}
+			}
+		}
+		return false
+	})
+	if !fields["Actors"] || !fields["Game"] {
+		t.Fatalf("gamedata.DB not found in %s: %v", name, fields)
+	}
+	return fields
+}
+
+// definitionWrites lists the places of f that change the loaded definitions: a field of
+// gamedata.DB assigned, or a map or list in one written, deleted from, cleared or copied
+// into. The check is lexical: the definitions are recognized by the name every package
+// gives them, db or DB, as a variable or as a field (g.db, st.DB).
+func definitionWrites(f *ast.File, fields map[string]bool) []string {
+	// target is the DB field x writes into or under: db.F, db.F[k], db.F.G and
+	// db.F[k].G all change what every holder of the definitions reads.
+	target := func(x ast.Expr) string {
+		for {
+			switch e := x.(type) {
+			case *ast.IndexExpr:
+				x = e.X
+				continue
+			case *ast.StarExpr:
+				x = e.X
+				continue
+			case *ast.ParenExpr:
+				x = e.X
+				continue
+			case *ast.SelectorExpr:
+				owner := ""
+				switch o := e.X.(type) {
+				case *ast.Ident:
+					owner = o.Name
+				case *ast.SelectorExpr:
+					owner = o.Sel.Name
+				}
+				if (owner == "db" || owner == "DB") && fields[e.Sel.Name] {
+					return owner + "." + e.Sel.Name
+				}
+				x = e.X
+				continue
+			}
+			return ""
+		}
+	}
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.AssignStmt:
+			if n.Tok == token.DEFINE {
+				return true
+			}
+			for _, l := range n.Lhs {
+				if w := target(l); w != "" {
+					out = append(out, "assigns "+w)
+				}
+			}
+		case *ast.IncDecStmt:
+			if w := target(n.X); w != "" {
+				out = append(out, "changes "+w)
+			}
+		case *ast.CallExpr:
+			name := ""
+			switch fn := n.Fun.(type) {
+			case *ast.Ident:
+				name = fn.Name
+			case *ast.SelectorExpr:
+				if pkg, ok := fn.X.(*ast.Ident); ok {
+					name = pkg.Name + "." + fn.Sel.Name
+				}
+			}
+			if slices.Contains([]string{"delete", "clear", "maps.Copy", "maps.Insert", "maps.DeleteFunc"}, name) && len(n.Args) > 0 {
+				if w := target(n.Args[0]); w != "" {
+					out = append(out, name+" on "+w)
+				}
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// TestDefinitionsAreImmutable keeps the loaded definitions (gamedata.DB) read-only
+// outside internal/model/gamedata. Games, sessions and simulations share one DB; a
+// package that writes into it leaks one game's state into the next (a recruited
+// monster once defined another save's monster of the same id). What a game adds
+// goes through the view DB.ForState gives its state.
+func TestDefinitionsAreImmutable(t *testing.T) {
+	fields := definitionFields(t)
+	sourceFiles(t, func(name string, b []byte) {
+		if strings.HasSuffix(name, "_test.go") || strings.HasPrefix(name, "internal/model/gamedata/") || slices.Contains(definitionWriteAllowlist, name) {
+			return
+		}
+		for _, w := range definitionWrites(parsed(t, name, b), fields) {
+			t.Errorf("%s %s: only internal/model/gamedata changes the definitions; use its methods on the state's view", name, w)
+		}
+	})
+}
+
+// definitionWriteAllowlist is the one file that writes the definitions today: the design
+// evaluation bot marks every event of the DB its command loaded for one play and puts
+// the commands back when the play ends. It may only shrink.
+var definitionWriteAllowlist = []string{"cmd/gozen/internal/designeval/bot.go"}
+
+func TestDefinitionWriteGuard(t *testing.T) {
+	if len(definitionWriteAllowlist) > 1 {
+		t.Fatal("the definition write allowlist may not grow")
+	}
+	fields := definitionFields(t)
+	for _, tc := range []struct {
+		name, body string
+		bad        bool
+	}{
+		{"map entry", `s.DB.Actors[id] = a`, true},
+		{"variable", `db.Items[id] = nil`, true},
+		{"nested field", `g.st.DB.Order["actors"] = nil`, true},
+		{"delete", `delete(s.DB.Actors, id)`, true},
+		{"clear", `clear(db.Events)`, true},
+		{"copy", `maps.Copy(r.db.Words, w)`, true},
+		{"whole field", `db.Breeding = nil`, true},
+		{"append", `db.Fusions = append(db.Fusions, f)`, true},
+		{"count", `db.Order["x"][0] += "y"`, true},
+		{"value inside", `db.Game.MaxParty = 2`, true},
+		{"definition", `g.db.Actors[id].Name = "x"`, true},
+		{"deep", `st.DB.Locations[id].Dungeon.Grid = nil`, true},
+		{"local copy", `game := db.Game; game.MaxParty = 2`, false},
+		{"read", `a := db.Actors[id]; _ = a`, false},
+		{"state map", `s.Actors[id] = a; delete(s.Actors, id)`, false},
+		{"copy from", `maps.Copy(out, db.Words[code])`, false},
+		{"method", `db.AddInstance(id, a)`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := definitionWrites(parsed(t, tc.name, []byte("package p; func f() { "+tc.body+" }")), fields)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("writes = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}

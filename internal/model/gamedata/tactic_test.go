@@ -30,7 +30,7 @@ func TestTacticCatalogValidation(t *testing.T) {
 	t.Run("旧新版で定義順を保持", func(t *testing.T) {
 		for _, version := range []string{"", "schema_version: 1\nid: neutral\n"} {
 			db := testgame.Load(t, map[string]string{"game.yaml": version + testgame.Game, "data/tactics.yaml": testgame.Tactics})
-			if errs := db.CheckTacticCatalog(); len(errs) != 0 {
+			if errs := db.Check(); len(errs) != 0 {
 				t.Fatal(errs)
 			}
 			if got := db.Ordered("tactic_conditions"); len(got) != 9 || got[0] != "any" || got[8] != "guard_complex" {
@@ -102,9 +102,6 @@ func TestTacticCatalogValidation(t *testing.T) {
 		db.TacticTargets["nil"] = nil
 		db.TacticActions["nil"] = nil
 		db.TacticConditions["complex"].Weight = math.Inf(1)
-		if errs := db.CheckTacticCatalog(); len(errs) != 4 {
-			t.Fatalf("全マップを検査していない %v", errs)
-		}
 		if errs := db.Check(); len(errs) != 4 {
 			t.Fatalf("DB 全体も同じ診断でない %v", errs)
 		}
@@ -439,7 +436,7 @@ func TestSimpleTacticCatalog(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := setup()
 			tc.change(db)
-			errs := db.CheckTacticCatalog()
+			errs := db.Check()
 			if (len(errs) > 0) != tc.bad {
 				t.Fatalf("定義検査 %v", errs)
 			}

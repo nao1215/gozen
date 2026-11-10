@@ -96,3 +96,29 @@ func TestRepeatedRowsAndSelectedLabelsStateUses(t *testing.T) {
 		}
 	}
 }
+
+// StateUses indexes every command list EachCommand walks: a flag set only on a dungeon
+// tile has its set in the index that gozen book and the --dev panel show.
+func TestStateUsesWalksDungeonTiles(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+locations:
+  deep:
+    name: Deep
+    dungeon:
+      map: "####\n#SL#\n####"
+      tiles:
+        S: {start: true}
+        L: {do: [{set: {flag.lever: true}}]}
+events:
+  lever_talk: {trigger: enter, location: camp, when: "flag.lever", do: [{say: "The lever moved."}]}
+`})
+	found := false
+	db.EachCommand(func(c *data.Command) { found = found || c.SetV["flag.lever"].Set() })
+	if !found {
+		t.Fatal("fixture: EachCommand does not reach the tile")
+	}
+	u := db.StateUses()["flag.lever"]
+	if u == nil || !slices.Equal(u.Sets, []string{"locations.deep.dungeon.tiles.L.do[0].set"}) {
+		t.Errorf("flag.lever is set on a dungeon tile but StateUses has the sets %+v", u)
+	}
+}

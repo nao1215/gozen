@@ -534,3 +534,18 @@ func TestCampaignInvalidReferencesDoNotPanic(t *testing.T) {
 		}
 	})
 }
+
+// TestCampaignAreaInsideAnotherOverlaps: an area wholly inside another, and the same
+// area written twice, overlap although no edge of one crosses an edge of the other.
+func TestCampaignAreaInsideAnotherOverlaps(t *testing.T) {
+	const hill = "troops: 150}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}}"
+	for name, keep := range map[string]string{
+		"nested": "[[5, 5], [15, 5], [15, 15], [5, 15]]",
+		"same":   "[[0, 0], [20, 0], [20, 20], [0, 20]]",
+	} {
+		_, err := testgame.TryCampaign(hill, "troops: 150, area: [[0, 0], [20, 0], [20, 20], [0, 20]]}\n  keep: {name: Keep, next: [field, hill], owner: red, troops: 500, values: {wealth: 15}, area: "+keep+"}")
+		if err == nil || !strings.Contains(err.Error(), "the area overlaps hill's") {
+			t.Errorf("%s: want an overlap diagnostic, got %v", name, err)
+		}
+	}
+}

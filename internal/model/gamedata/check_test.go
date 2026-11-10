@@ -534,3 +534,73 @@ func TestStatsByMustNotReadItsOwnStat(t *testing.T) {
 		}
 	}
 }
+
+// A flag read by a music rule of each context is warned of at the same place on every
+// load: the rules are checked in the order of their contexts, not of a map.
+func TestFlagWarningPlaceIsStable(t *testing.T) {
+	seen := map[string]bool{}
+	for range 40 {
+		db, err := testgame.TryLoad(map[string]string{
+			"data/review.yaml": `music: {rules: {field: [{when: "flag.unset_probe", mood: calm}], battle: [{when: "flag.unset_probe", mood: calm}]}}`,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, w := range db.FlagWarnings() {
+			if strings.Contains(w.Error(), "unset_probe") {
+				seen[w.Error()] = true
+			}
+		}
+	}
+	if len(seen) != 1 {
+		t.Errorf("the same game gave %d different warnings: %v", len(seen), seen)
+	}
+}
+
+// TestBattleNumbersAreFinite: the numbers of the battle and the music that have no
+// numeric contract are refused when they are NaN, an infinity or below zero.
+func TestBattleNumbersAreFinite(t *testing.T) {
+	const foe = "enemies: {nanmote: {name: N, image: x.png, stats: {mhp: 1, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, "
+	for name, extra := range map[string]string{
+		"enemy resist nan":               foe + "resist: {fire: .nan}}}",
+		"enemy state_resist nan":         foe + "state_resist: {sleep: .nan}}}",
+		"enemy drop chance nan":          foe + "drops: [{item: key, chance: .nan}]}}",
+		"enemy drop chance -5":           foe + "drops: [{item: key, chance: -5}]}}",
+		"state stats nan":                "states: {curse: {name: C, stats: {atk: .nan}}}",
+		"state stats -inf":               "states: {curse: {name: C, stats: {atk: -.inf}}}",
+		"state remove_on_damage nan":     "states: {curse: {name: C, remove_on_damage: .nan}}",
+		"state state_resist inf":         "states: {curse: {name: C, state_resist: {sleep: .inf}}}",
+		"item state_resist nan":          "items: {charm: {name: C, kind: hat, slot: armor, state_resist: {sleep: .nan}}}",
+		"skill drain inf":                "skills: {leech: {name: L, effects: [{damage: '5', drain: .inf}]}}",
+		"skill drain nan":                "skills: {leech: {name: L, effects: [{damage: '5', drain: .nan}]}}",
+		"encounter gauge nan":            "locations: {moor: {name: M, encounters: {rate: '1', gauge: .nan, troops: [{troop: one}]}, exits: [{to: camp}]}}",
+		"encounter gauge -inf":           "locations: {moor: {name: M, encounters: {rate: '1', gauge: -.inf, troops: [{troop: one}]}, exits: [{to: camp}]}}",
+		"track loop_start -1":            "music: {songs: {theme: {file: x.png, loop_start: -1}}}",
+		"skill hits beyond the bound":    "skills: {flurry: {name: F, hits: 2000000000, effects: [{damage: '5'}]}}",
+		"enemy actions beyond the bound": foe + "actions: 2000000000}}",
+		"track loop_start nan":           "music: {songs: {theme: {file: x.png, loop_start: .nan}}}",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := testgame.TryLoad(map[string]string{"data/review.yaml": extra}); err == nil {
+				t.Errorf("accepted: %s", extra)
+			}
+		})
+	}
+}
+
+// TestAmountsAreNotNegative: a price, experience, gold and an MP cost below zero are refused.
+func TestAmountsAreNotNegative(t *testing.T) {
+	const foe = "enemies: {nanmote: {name: N, image: x.png, stats: {mhp: 1, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, "
+	for name, extra := range map[string]string{
+		"item price": "items: {debt: {name: D, price: -100}}",
+		"enemy exp":  foe + "exp: -50}}",
+		"enemy gold": foe + "gold: -50}}",
+		"skill mp":   "skills: {gift: {name: G, mp: -5, effects: [{damage: '1'}]}}",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := testgame.TryLoad(map[string]string{"data/review.yaml": extra}); err == nil {
+				t.Errorf("accepted: %s", extra)
+			}
+		})
+	}
+}

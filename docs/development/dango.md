@@ -94,6 +94,12 @@ Dango also checks generated schemas against the Go types and translation keys ag
   files that no other file names. The existing misnamed test files form a fixed
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
+- `TestCommandWalkerCoverage` finds every `[]Command` field reachable from the game
+  data by reflection, plants a marked command in each, and requires `eachCommandList`
+  with `Command.branches` (`uses.go`) to reach it once, and `EachCommand`, `StateUses`
+  and `SourceTexts` to read it. A definition that gains a command list fails until the
+  shared walk knows it. It does not find a command list kept outside the game data or
+  behind an unexported field, and it does not check what a reader does with a command.
 - `TestTestFileStems` applies the other half of the naming rule under `cmd/` and
   `internal/`: a test file has an implementation file of its name beside it. A
   platform or build word may stand on either side (`faces_nocgo_test.go` belongs to
@@ -132,6 +138,33 @@ Dango also checks generated schemas against the Go types and translation keys ag
   `graphics` tag to be named `TestGraphics*`, `make graphics` to select by that
   prefix, and the CI workflow to have a `go test` line that selects each such
   package by it. It reads names and workflow text; it does not run the tests.
+- The YAML decode check parses the Go files of `internal/base` and `internal/model`
+  and rejects a call of the YAML library's decoders (`Unmarshal`,
+  `UnmarshalWithOptions`, `UnmarshalContext`, `NodeToValue`, `NewDecoder`) that is
+  not written inside the function given to `decodeguard.Run`. An `UnmarshalYAML`
+  method is exempt: it runs only under the decode that called it. The check is
+  lexical, so a decode reached through a helper outside these two levels is not
+  seen, and it does not prove that the guarded input is validated afterwards.
+- Definition checks keep the loaded game definitions (`gamedata.DB`) read-only outside
+  `internal/model/gamedata`: no assignment to a field of the DB or under one, and no
+  `delete`, `clear` or `maps.Copy` into its maps. A game's own additions (a recruited
+  monster's actor) go on the view `DB.ForState` gives each state, through
+  `AddInstance` and `RemoveInstance`. The check is lexical: it recognizes the definitions
+  by the name every package gives them (`db`, or a field `db` or `DB`), so a write
+  through another alias (`ev := db.Events[id]; ev.Do = ...`) is not seen. The one
+  allowed file, the design evaluation bot, marks events for a play and restores them;
+  the list may only shrink. Two state tests run with it: two games on the same
+  definitions number their monsters alone, and a loaded monster keeps its own species.
+
+- Number checks keep a game's numbers the same on every machine. `TestNumbersAreFinite`
+  (`internal/model/gamedata/numbers_test.go`) loads the example and fixture games, sets
+  each decimal number they define to NaN in turn and requires `Check` to add a
+  diagnostic; `finiteAllowed` in that file is the allow-list, and every entry needs a
+  reason. It reaches the fields those games define, not every field of the schema: a
+  field no game writes is not swept. `TestModelFloatToInt`
+  (`internal/dev/hygiene/floatint_test.go`) type-checks `internal/model` and rejects a
+  conversion of a non-constant decimal number to an integer type; use
+  `internal/base/safeint`. It does not cover the other levels.
 
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal

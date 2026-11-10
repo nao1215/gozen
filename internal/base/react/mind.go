@@ -549,13 +549,7 @@ func (m *Mind) fill(l string, e *env) string { return Fill(l, m.fields(l, e)) }
 // field.
 func (m *Mind) fields(l string, e *env) map[string]string {
 	out := map[string]string{}
-	for {
-		i := strings.IndexByte(l, '{')
-		j := strings.IndexByte(l, '}')
-		if i < 0 || j < i {
-			return out
-		}
-		f := l[i+1 : j]
+	scanFields(l, nil, func(f string) {
 		out[f] = ""
 		switch {
 		case f == "from":
@@ -571,25 +565,16 @@ func (m *Mind) fields(l string, e *env) map[string]string {
 				out[f] = format(v.Value)
 			}
 		}
-		l = l[j+1:]
-	}
+	})
+	return out
 }
 
 // Fill replaces each {NAME} of l with fields[NAME] (empty when it has none): a line of a
 // reaction, or its translation, with Reaction.Fields.
 func Fill(l string, fields map[string]string) string {
 	var b strings.Builder
-	for {
-		i := strings.IndexByte(l, '{')
-		j := strings.IndexByte(l, '}')
-		if i < 0 || j < i {
-			b.WriteString(l)
-			return b.String()
-		}
-		b.WriteString(l[:i])
-		b.WriteString(fields[l[i+1:j]])
-		l = l[j+1:]
-	}
+	scanFields(l, func(text string) { b.WriteString(text) }, func(f string) { b.WriteString(fields[f]) })
+	return b.String()
 }
 
 func format(v any) string {
@@ -692,9 +677,9 @@ func (m *Mind) Restore(b []byte) error {
 		return fmt.Errorf("react: restore: unknown ask %q", s.Asked)
 	}
 	for k, e := range s.Mem {
-		if f, ok := e.Value.(float64); ok {
-			e.Value = f
-		} else if _, ok := e.Value.(string); !ok {
+		switch e.Value.(type) {
+		case float64, string:
+		default:
 			return fmt.Errorf("react: restore: memory %q is not a string or number", k)
 		}
 	}

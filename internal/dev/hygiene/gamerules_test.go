@@ -167,7 +167,8 @@ func f(x float64, n int) (int, int64, int, int, float64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	found, err := unsafeIntConversions(fset, "p", []*ast.File{file}, importer.Default())
+	fillGOROOT()
+	found, err := unsafeIntConversions(fset, "p", []*ast.File{file}, importer.ForCompiler(fset, "source", nil))
 	if err != nil {
 		t.Fatal(err)
 	}

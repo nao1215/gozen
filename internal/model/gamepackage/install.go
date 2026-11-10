@@ -10,6 +10,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/nao1215/gozen/internal/base/savefile"
 )
 
 // Fetcher is supplied by desktop/browser startup. Fetch must enforce maxBytes
@@ -255,31 +257,11 @@ func (s FileStore) Save(ctx context.Context, sum string, b []byte) (err error) {
 	if !errors.Is(e, fs.ErrNotExist) {
 		return e
 	}
-	f, e := os.CreateTemp(s.Root, ".install-")
+	temp, e := savefile.Stage(s.Root, ".install-", b)
 	if e != nil {
 		return e
 	}
-	temp := f.Name()
-	closed := false
-	defer func() {
-		if !closed {
-			err = errors.Join(err, f.Close())
-		}
-		if e := os.Remove(temp); e != nil && !errors.Is(e, fs.ErrNotExist) {
-			err = errors.Join(err, e)
-		}
-	}()
-	if _, e = f.Write(b); e != nil {
-		return e
-	}
-	if e = f.Sync(); e != nil {
-		return e
-	}
-	e = f.Close()
-	closed = true
-	if e != nil {
-		return e
-	}
+	defer func() { err = errors.Join(err, savefile.Unstage(temp)) }()
 	if e = ctx.Err(); e != nil {
 		return e
 	}

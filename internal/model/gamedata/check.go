@@ -751,12 +751,18 @@ func (db *DB) Check() []error {
 	c.callLoops()
 	c.tacticCatalog()
 	c.profiles()
-	c.numericValues(&db.Game, "game.yaml")
+	c.numericValues(&db.Game, "game.yaml", true)
+	c.amounts()
 	c.numericValues(&file{
 		Classes: db.Classes, Actors: db.Actors, Items: db.Items, Skills: db.Skills,
 		States: db.States, Enemies: db.Enemies, Troops: db.Troops, Locations: db.Locations,
 		Events: db.Events, Shops: db.Shops, AI: db.AI, Music: &db.Music,
-	}, "")
+		StoneSets: db.StoneSets, Fusions: db.Fusions, Breeding: db.Breeding, Profiles: db.Profiles,
+		Regions: db.Regions, Factions: db.Factions,
+	}, "", true)
+	if db.Streams != nil {
+		c.numericValues(db.Streams, "streams", true)
+	}
 	g := &db.Game
 	_, ok := db.Locations[g.Start.Location]
 	c.ref("game.yaml start.location", "location", g.Start.Location, ok)
@@ -1530,7 +1536,8 @@ func (db *DB) Check() []error {
 	for _, id := range db.Ordered("ai") {
 		c.rules("ai."+id, db.AI[id])
 	}
-	for name, s := range db.Music.Songs {
+	for _, name := range slices.Sorted(maps.Keys(db.Music.Songs)) {
+		s := db.Music.Songs[name]
 		if s.File != "" { // a track
 			c.file("music.songs."+name+".file", s.File)
 			if len(s.Moods) > 0 {
@@ -1545,7 +1552,9 @@ func (db *DB) Check() []error {
 			c.errorf(diag.Shape, "music.songs."+name, "bpm is missing")
 		}
 	}
-	for ctx, rules := range db.Music.Rules {
+	// In a fixed order: the first read of a flag is the place its warning names.
+	for _, ctx := range slices.Sorted(maps.Keys(db.Music.Rules)) {
+		rules := db.Music.Rules[ctx]
 		names := FieldNames
 		switch ctx {
 		case "field":
