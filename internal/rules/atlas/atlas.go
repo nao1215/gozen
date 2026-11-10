@@ -147,7 +147,9 @@ type Choice struct {
 
 // Choices are the points of the party's map to choose now, in the order written: those the
 // open roads reach that lead somewhere (to) or have something to do (do, not yet done when
-// once), and the closed points next to them that say why (locked). Instant maps
+// once), and the closed points next to them that say why (locked). The point the party
+// stands on is offered for where it leads and for a once do not yet done (a move with at
+// or the start put the party there without running it), not for a do that repeats. Instant maps
 // offer actions independently of roads, including the current point.
 func Choices(db *data.DB, st *rpg.State) []Choice {
 	l := db.Locations[st.Location]
@@ -178,8 +180,8 @@ func Choices(db *data.DB, st *rpg.State) []Choice {
 		_, ok := routes.dist[id]
 		switch {
 		case ok && (p.To != "" || pending(st, st.Location, id, p)):
-			if id == here && p.To == "" {
-				continue // standing on it: its do has run
+			if id == here && p.To == "" && !p.Once {
+				continue // standing on it: its do has run (a once do not yet run was not: the party was put here)
 			}
 			way, _ := routes.path(id)
 			out = append(out, Choice{Point: id, Roads: way})

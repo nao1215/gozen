@@ -121,3 +121,35 @@ func visited(db *data.DB, st *rpg.State, loc, point string) bool {
 	m := st.Mapped[loc]
 	return i >= 0 && i < len(m) && m[i] != 0
 }
+
+// TestChoicesOfferOnceDoWhereThePartyWasPut: a party put on a point (a move with at, or
+// the start point) has not run its do, so a once do is offered there until it has run.
+func TestChoicesOfferOnceDoWhereThePartyWasPut(t *testing.T) {
+	db := testgame.LoadScenes(t, nil)
+	st := testgame.State(db, 1)
+	st.Location = "town"
+	atlas.Place(db, st, "world", "town", "sign")
+	if st.Spot != "sign" || st.Done[atlas.DoneKey("town", "sign")] {
+		t.Fatalf("spot %q, done %v", st.Spot, st.Done)
+	}
+	offered := func() *atlas.Choice {
+		for _, c := range atlas.Choices(db, st) {
+			if c.Point == "sign" {
+				return &c
+			}
+		}
+		return nil
+	}
+	c := offered()
+	if c == nil || len(c.Roads) != 0 {
+		t.Fatalf("the sign's once do has not run, yet it is not offered where the party stands: %+v", atlas.Choices(db, st))
+	}
+	cmds := atlas.Go(db, st, *c)
+	if len(cmds) != 1 || cmds[0].Reach != "sign" {
+		t.Fatalf("going to the sign from the sign: %+v", cmds)
+	}
+	atlas.Reach(db, st, cmds[0].Reach)
+	if !st.Done[atlas.DoneKey("town", "sign")] || offered() != nil {
+		t.Fatalf("after its do the sign is done %v and offered %+v", st.Done, offered())
+	}
+}
