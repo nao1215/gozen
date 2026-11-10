@@ -59,7 +59,7 @@ func (db *DB) loadLanguages() error {
 			continue
 		}
 		var f langFile
-		if err := decodeguard.Run(func() error {
+		if err := decodeguard.Run(b, func() error {
 			return yaml.NewDecoder(bytes.NewReader(b), yaml.Strict()).Decode(&f)
 		}); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %s", name, yaml.FormatError(err, false, true)))

@@ -65,7 +65,7 @@ func ValidGameID(id string) bool { return gameIDPattern.MatchString(id) && savef
 // Even if future fields exist, the unknown-version diagnostic takes priority, and null or strings are not rounded to 0.
 func checkVersionHeader(b []byte) error {
 	var raw yaml.MapSlice
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &raw, yaml.UseOrderedMap(), yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &raw, yaml.UseOrderedMap(), yaml.Strict()) }); err != nil {
 		return fmt.Errorf("game.yaml: %s", yaml.FormatError(err, false, true))
 	}
 	g := Game{}

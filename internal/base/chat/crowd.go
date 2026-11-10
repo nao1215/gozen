@@ -41,7 +41,7 @@ func (s *Script) YAML(path string) ([]byte, error) { return yamlpath.At(s.src, p
 // itself, such as a common script with a route's own lines added).
 func Parse(b []byte) (*Script, error) {
 	var s Script
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, &s.doc, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, &s.doc, yaml.Strict()) }); err != nil {
 		return nil, err
 	}
 	s.src = append([]byte(nil), b...)
