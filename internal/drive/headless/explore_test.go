@@ -66,6 +66,49 @@ events:
 }
 
 // Explore returns events that never end, moves to nonexistent places and broken calls as path errors (it does not hang).
+// TestExploreBranchesAtAPhone: a phone that keeps a result branches as a
+// choice does, so a route reached only through a page's button is tried; a
+// hidden button is not offered, a home app that returns to its phone is
+// opened once a path, and a feed is liked all or nothing.
+func TestExploreBranchesAtAPhone(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  app:
+    do: [{set: {var.opened: var.opened + 1}}]
+  root:
+    do:
+      - phone: {app: page, var: var.pick, rows: [{button: Approve, set: {var.ok: 1}}, {button: Deny}, {button: Secret, when: false, set: {var.secret: 1}}]}
+      - phone: {app: home, var: var.home, rows: [{button: Mail, event: app}]}
+      - phone: {app: feed, posts: [{picture: x.png, set: {var.liked: 1}}]}
+`})
+	paths := headless.Explore(db, testgame.State(db, 1), db.Events["root"].Do, headless.Config{})
+	seen := map[string]bool{}
+	for _, p := range paths {
+		if len(p.Errs) > 0 {
+			t.Fatalf("%s: %v", p.Log(), p.Errs)
+		}
+		st := p.St
+		seen[fmt.Sprint("pick=", st.Vars["pick"])] = true
+		if st.Vars["ok"] != nil {
+			seen["ok"] = true
+		}
+		if st.Vars["liked"] != nil {
+			seen["liked"] = true
+		}
+		if st.Vars["secret"] != nil {
+			t.Fatalf("a hidden button was taken: %s", p.Log())
+		}
+		if n, ok := st.Vars["opened"].(float64); ok && n > 1 {
+			t.Fatalf("a home app was opened %v times on one path: %s", n, p.Log())
+		}
+	}
+	for _, want := range []string{"pick=Approve", "pick=Deny", "ok", "liked"} {
+		if !seen[want] {
+			t.Errorf("no path reached %s (%d paths)", want, len(paths))
+		}
+	}
+}
+
 func TestExploreReportsBrokenEvents(t *testing.T) {
 	db := testgame.Load(t, map[string]string{"data/z.yaml": `
 events:

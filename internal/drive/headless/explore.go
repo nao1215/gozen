@@ -69,7 +69,7 @@ type Path struct {
 	Steps []Step
 }
 
-// Step is one occurrence on a path (Kind is say, image, music, move, choice, notice or sfx).
+// Step is one occurrence on a path (Kind is say, image, music, move, choice, notice, sfx or phone).
 type Step struct {
 	Kind    string
 	Prompt  string
@@ -132,6 +132,33 @@ type explorer struct {
 	opt   Config
 	p     *Path
 	moved bool
+	// phone is the phone last brought up, whose results a Tap asks for.
+	phone data.PhoneCue
+	// phones counts each phone's taps on this path: a home app returns to its
+	// phone, so a second visit only leaves, or the path would reopen it forever.
+	phones map[string]int
+}
+
+// phoneAnswers are the ways the phone shown can be put down, as branches: a
+// feed's likes as none or all of them (2^n answers would swamp the routes),
+// otherwise each result a player can reach, its ID the label. A row hidden by
+// its when is not offered, as the screen does not draw it.
+func (e *explorer) phoneAnswers(results int, again bool) (answers []int, labels []string) {
+	if e.phone.Liking() != nil {
+		return []int{0, 1<<results - 1}, []string{"nothing liked", "all liked"}
+	}
+	all := e.phone.Results()
+	for i := range min(results, len(all)) {
+		r := all[i]
+		hidden := r.Row >= 0 && r.Row < len(e.phone.Rows) && e.phone.Rows[r.Row].Hidden
+		if k := -(r.Row + 10); r.Row <= -10 && k < len(e.phone.Replies) {
+			hidden = e.phone.Replies[k].Hidden
+		}
+		if !hidden && (!again || r.Event == "") {
+			answers, labels = append(answers, i), append(labels, r.ID)
+		}
+	}
+	return answers, labels
 }
 
 func (e *explorer) move(loc string) {
@@ -175,7 +202,7 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 	}
 	dungeon.Remake(db, st)
 	p.St = st
-	e := &explorer{db: db, st: st, opt: opt, p: p}
+	e := &explorer{db: db, st: st, opt: opt, p: p, phones: map[string]int{}}
 	r := event.New(db, st, event.HostFunc(e.handle))
 	r.Log = func(err error) { p.Errs = append(p.Errs, err) }
 	r.Dev, r.UseItem = true, itemuse.For(db, st)
@@ -319,6 +346,32 @@ func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, op
 				if res == event.BattleWon {
 					r.Won()
 				}
+			case event.Tap:
+				if q.Results <= 0 {
+					break
+				}
+				// A phone that keeps a result branches as a choice does; left
+				// unanswered, the next request would put it down unread and a
+				// route reached only through a button would never be tried.
+				// The runner names no command for a phone, so its app, header
+				// and results tell it from another.
+				at := "phone:" + e.phone.App + "\x00" + e.phone.Title + "\x00" + e.phone.URL
+				for _, res := range e.phone.Results() {
+					at += "\x00" + res.ID
+				}
+				answers, labels := e.phoneAnswers(q.Results, e.phones[at] > 0)
+				e.phones[at]++
+				if len(answers) == 0 {
+					break
+				}
+				a := decide(at+strings.Join(labels, "\x00"), len(answers), func(a int) string { return "phone " + labels[a] })
+				if a < 0 {
+					return p, branches
+				}
+				p.Steps = append(p.Steps, Step{Kind: "phone", Text: labels[a]})
+				// Not a pick: a session puts its phones down unanswered, so its
+				// answers stay those of choices and battles.
+				r.Answer(answers[a])
 			case event.GameOver:
 				p.Over = true
 				p.Taken = append(p.Taken, "game over")
@@ -417,5 +470,7 @@ func (e *explorer) handle(eff event.Effect) {
 		e.p.Steps = append(e.p.Steps, Step{Kind: "stand", Who: eff.Who, Face: eff.Face})
 	case event.VoiceEffect:
 		e.p.Steps = append(e.p.Steps, Step{Kind: "voice", Who: eff.Who, File: eff.File})
+	case event.PhoneEffect:
+		e.phone = eff.Phone
 	}
 }

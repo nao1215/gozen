@@ -9,6 +9,14 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
 
+### Fixed
+
+- `gozen sim routes` branches at a phone that keeps a result as it does at a choice: each page, home or contacts button a player can reach (not one hidden by `when`), a call's answer, decline or missed, and a feed liked all or nothing. Before, the phone was put down unanswered, so an ending reached only through a phone's button was reported unreachable. A home app that returns to its phone is opened once a path.
+- A phone that keeps a result in a troop's battle event is answered with its first result by automatic battles in `sim`, sessions and the balance runner, as a choice there takes its first option; before, its `set` ran only on the screen.
+- The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.
+- A session's answer outside a choice's answers leaves the choice asked; before, the choice was passed over and a save made then could not be restored.
+- A party without MP (a game without magic) is never counted as worn by MP, so `sim dive --worn-mp`, the balance runner and the design evaluation bot no longer turn back on every floor and never face a boss.
+
 ## v0.23.2 - 2026-11-09
 
 ### Added

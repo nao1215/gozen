@@ -305,6 +305,38 @@ events:
 	}
 }
 
+// TestPhoneUnattended: a run without a player (a battle's own events, the
+// balance runner) answers a phone that keeps a result with its first one, as
+// it takes a choice's first option, so a phone in a troop's event keeps its
+// set there too; a feed is put down with nothing liked.
+func TestPhoneUnattended(t *testing.T) {
+	db := testgame.Load(t, map[string]string{"data/z.yaml": `
+events:
+  e:
+    do:
+      - phone: {app: feed, posts: [{picture: x.png, set: {flag.liked: true}}]}
+      - phone: {app: page, rows: [{button: Go, set: {flag.went: true}}, {button: Stay, set: {flag.stayed: true}}]}
+      - choice:
+          - {label: A, do: [{set: {flag.a: true}}]}
+          - {label: B, do: [{set: {flag.b: true}}]}
+`})
+	st := testgame.State(db, 1)
+	r := event.New(db, st, &phoneHost{})
+	r.Log = func(err error) { t.Error(err) }
+	r.Start(db.Events["e"].Do)
+	for range 20 {
+		if !r.Running() {
+			break
+		}
+		if r.Unattended(r.Next()) {
+			t.Fatal("a phone or a choice was reported as a battle")
+		}
+	}
+	if r.Running() || st.Flags["went"] != true || st.Flags["a"] != true || st.Flags["stayed"] == true || st.Flags["b"] == true || st.Flags["liked"] == true {
+		t.Fatalf("flags %v: want the page's first button and the first option, nothing liked", st.Flags)
+	}
+}
+
 // TestPhoneEmptyButtonLabelKeepsResults: a button whose label fills to
 // nothing is still a button on the screen, so the screen and the runner count
 // the same results and the second button keeps its own set.

@@ -278,12 +278,7 @@ func AutoBattle(db *data.DB, st *rpg.State, b *battle.Battle, host event.Host, m
 				sub.Extra = b.Env(nil)
 				sub.Start(s.Commands)
 				for sub.Running() {
-					switch sub.Next().(type) {
-					case event.Choice:
-						sub.Answer(0)
-					case event.Battle:
-						sub.Answer(event.BattleWon) // no battle inside a battle
-					}
+					sub.Unattended(sub.Next()) // no battle inside a battle
 				}
 			}
 		}

@@ -646,6 +646,27 @@ func (r *Runner) runLater(cmds []data.Command) {
 	}
 }
 
+// Unattended answers q as a run without a player does: a choice with its
+// first option, a phone that keeps a result with its first one (a feed with
+// nothing liked), a battle as won. It reports whether q was a battle, for a
+// caller that schedules battle.after_win with Won. A battle's own events, the
+// balance runner and the session's auto battle share it, so a phone in a
+// troop's event keeps a result there as it does on the screen.
+func (r *Runner) Unattended(q Request) (battle bool) {
+	switch q := q.(type) {
+	case Choice:
+		r.Answer(0)
+	case Tap:
+		if q.Results > 0 {
+			r.Answer(0)
+		}
+	case Battle:
+		r.Answer(BattleWon)
+		return true
+	}
+	return false
+}
+
 // Won is called when a battle is won. It schedules the game.yaml battle.after_win event
 // as independent processing after the current event (shared by the screen and headless).
 func (r *Runner) Won() {
