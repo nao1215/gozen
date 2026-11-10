@@ -50,6 +50,7 @@ func TestDocumentRoundTrip(t *testing.T) {
 		"merge after":   "base: &b {when: flag.x, say: hi}\nevents:\n  a:\n    do:\n      - say: other\n        <<: *b\n",
 		"merge list":    "b: &b {when: x, say: hi}\nc: &c {say: c, z: 1}\na:\n  <<: [*b, *c]\n  q: other\n",
 		"binary":        "a: !!binary aGVsbG8=\n",
+		"nested":        "a:\n  - - x\n    - y\n  - - k: 1\n      l: [2, {m: n}, []]\n  - []\n  - {}\n  - ~\n",
 		"float":         "v: 1.0\nw: 1e21\nx: -0.0\ny: 0.1\n",
 		"big int":       "v: 18446744073709551615\nw: -9223372036854775808\n",
 		"int keys":      "bosses:\n  5: troll\n  10: dragon\n",
