@@ -87,6 +87,11 @@ Dango also checks generated schemas against the Go types and translation keys ag
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
 
+- The graphics selection test requires every test of a file built only with the
+  `graphics` tag to be named `TestGraphics*`, `make graphics` to select by that
+  prefix, and the CI workflow to have a `go test` line that selects each such
+  package by it. It reads names and workflow text; it does not run the tests.
+
 The decision meta test finds unconditional enforcing test declarations and
 checks the lint/CI route. The runner additionally requires their actual terminal
 test and package events. No decision reads an ADR file to obtain its rule.

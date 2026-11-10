@@ -95,10 +95,14 @@ target = "data"
 source = "../data/schema/types.schema.json"
 target = "assets/schema/types.schema.json"
 
-# Screenshots served as-is.
+# Screenshots served as-is. The pages show the MP4 of a moving picture; its GIF is
+# for the README on GitHub and no page refers to one, so the GIFs (most of the
+# bytes of docs/images) are left out of the published site. make website-check
+# fails if a page comes to need one.
 [[module.mounts]]
 source = "../docs/images"
 target = "static/images"
+files = ["! **.gif"]
 
 # The same images, mounted again as processable assets so the layouts can read
 # their sizes and derive a social card and a favicon at build time without

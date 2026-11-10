@@ -17,9 +17,9 @@ import (
 	"github.com/nao1215/gozen/internal/rules/event"
 )
 
-// TestCallDrawsAtSeveralSizes draws the call, with a self view and named
+// TestGraphicsCallDrawsAtSeveralSizes draws the call, with a self view and named
 // controls, at several logical sizes without touching the simulation.
-func TestCallDrawsAtSeveralSizes(t *testing.T) {
+func TestGraphicsCallDrawsAtSeveralSizes(t *testing.T) {
 	g := callGame(t, `{address: call.example.test, self: potter, self_label: You,
   controls: [{label: Mic, icon: mic}, {label: Hand, icon: hand}, {label: Leave, icon: leave}],
   colors: {speaking: '#ffcc00', tile: '#202020'}}`)
@@ -47,10 +47,10 @@ func TestCallDrawsAtSeveralSizes(t *testing.T) {
 	}
 }
 
-// TestCallOverlayWindow lays the message window over a full call: it keeps the top and
+// TestGraphicsCallOverlayWindow lays the message window over a full call: it keeps the top and
 // the width of the plain window (the lines wrap and page as everywhere else), reaches
 // the screen's lower edge, and the call and its side list draw without changing state.
-func TestCallOverlayWindow(t *testing.T) {
+func TestGraphicsCallOverlayWindow(t *testing.T) {
 	g := callGame(t, "{address: call.example.test, layout: full, captions: overlay, others: side, others_title: People, window_opacity: 0.85, self: me.png, self_stage: true}")
 	g.db.Game.UI.QuickMenu = "inside"
 	sw, sh := g.screen()
