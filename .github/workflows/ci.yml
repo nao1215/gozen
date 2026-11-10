@@ -239,14 +239,14 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
+      # Before setup-ebitengine, so its apt calls read the mirror order this sets.
+      - name: Install recording tools on Linux
+        if: runner.os == 'Linux'
+        timeout-minutes: 15
+        run: ./scripts/ci_apt_install.sh ffmpeg
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         with:
           xvfb: true
-      - name: Install recording tools on Linux
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Install recording tools on macOS
         if: runner.os == 'macOS'
         run: |

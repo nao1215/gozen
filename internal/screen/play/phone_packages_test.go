@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,6 +79,88 @@ func TestPhonePackageSelectionCommitsAfterStorage(t *testing.T) {
 	var selected map[string]gamepackage.Release
 	if err = json.Unmarshal(b, &selected); err != nil || selected["game"].Version != "1.1.0" {
 		t.Fatalf("selection not persisted: %v", err)
+	}
+}
+
+// phoneStuckArchives serves real archives whose files report a failed Close,
+// as a disk does when it loses the file under an installed package.
+type phoneStuckArchives struct {
+	fs.FS
+	closed *int
+}
+
+type phoneStuckArchive struct {
+	*os.File
+	closed *int
+}
+
+func (f phoneStuckArchives) Open(name string) (fs.File, error) {
+	file, err := f.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	disk, ok := file.(*os.File)
+	if !ok {
+		return nil, errors.Join(fs.ErrInvalid, file.Close())
+	}
+	return phoneStuckArchive{disk, f.closed}, nil
+}
+
+func (f phoneStuckArchive) Close() error {
+	*f.closed++
+	return errors.Join(errors.New("archive close refused"), f.File.Close())
+}
+
+func TestPhonePackageSelectionSurvivesFailedArchiveClose(t *testing.T) {
+	catalogBytes, err := os.ReadFile("../../../examples/office/game/apps/catalog.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := gamepackage.Parse(catalogBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release, err := catalog.Resolve("fixtures/counter", "1.0.0", phoneEngineVersion())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := 0
+	old, err := gamepackage.OpenArchive(t.Context(), phoneStuckArchives{os.DirFS("../../../examples/office/game"), &closed}, "apps/counter.zip", release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	writer := log.Writer()
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(writer) })
+
+	next := release
+	next.Version = "1.1.0"
+	st := savefile.MemStore()
+	g := &Game{store: st, packages: &phonePackages{
+		selected:     map[string]gamepackage.Release{"counter": release},
+		opened:       map[string]*gamepackage.Installed{"counter": old},
+		iconReleases: map[string]gamepackage.Release{},
+	}}
+	if err = g.selectPhonePackage("counter", &gamepackage.Installed{Release: next}); err != nil {
+		t.Fatalf("a saved selection was reported as a failed installation: %v", err)
+	}
+	if closed != 1 {
+		t.Fatalf("replaced archive closed %d times, want 1", closed)
+	}
+	if g.packages.selected["counter"].Version != "1.1.0" || g.packages.opened["counter"] != nil {
+		t.Fatalf("selection not replaced: %+v", g.packages)
+	}
+	b, err := st.Read("phone-apps.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var selected map[string]gamepackage.Release
+	if err = json.Unmarshal(b, &selected); err != nil || selected["counter"].Version != "1.1.0" {
+		t.Fatalf("selection not persisted: %v", err)
+	}
+	if !strings.Contains(logs.String(), "archive close refused") {
+		t.Fatalf("close failure not logged: %q", logs.String())
 	}
 }
 

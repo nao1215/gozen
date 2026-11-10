@@ -64,7 +64,8 @@ jobs:
       # scripts/web/assets.py writes the samples' pictures as WebP with Pillow.
       - name: Install Pillow
         if: steps.scope.outputs.docs_runtime != 'false'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-pil
+        timeout-minutes: 15
+        run: ./scripts/ci_apt_install.sh python3-pil
 
       # make website also builds Go Zen, the novel and the campaign samples for the browser into
       # public/play/go-zen, public/play/novel and public/play/campaign.
