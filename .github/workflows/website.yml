@@ -128,22 +128,28 @@ jobs:
     if: ${{ github.event_name != 'pull_request' && (!github.event.repository.private || github.event_name == 'workflow_dispatch') }}
     needs: build
     runs-on: ubuntu-latest
-    # Pages took about nine minutes to sync the site and sometimes more, which
-    # canceled the deploy at the ten-minute defaults of this job and of the action
-    # (docs/development/ci.md). The action gives up first, with its own error.
-    timeout-minutes: 20
+    # A Pages deploy usually finishes within two minutes, but Pages sometimes
+    # stalls in syncing_files for longer than the ten minutes that deploy-pages
+    # allows (its timeout input is capped at 600000 ms). The action then cancels
+    # the deployment, so a second deployment of the same artifact is tried
+    # (docs/development/ci.md). The job bound covers both attempts.
+    timeout-minutes: 25
     permissions:
       pages: write
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.retry.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-        with:
-          timeout: 1080000 # 18 minutes, in milliseconds
+
+      - name: Deploy to GitHub Pages again after a stalled deployment
+        id: retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   # A green deploy step means the artifact was accepted, not that the site a
   # reader loads is the one just built. This fetches the live site and checks
