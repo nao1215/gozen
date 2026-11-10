@@ -2,9 +2,11 @@ package planning_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -1055,5 +1057,161 @@ func TestParentProgressUpdatesUnhiddenChildObservations(t *testing.T) {
 				t.Errorf("%s after %s: observed %g differs from unhidden progress %g", id, amount, a.Observed, a.Progress)
 			}
 		}
+	}
+}
+
+// splitWorkshop is the workshop with prepare split into mix (0.5) and knead (1.5, with the
+// after it is given).
+func splitWorkshop(t *testing.T, kneadAfter ...string) *rpg.State {
+	t.Helper()
+	s := state(t)
+	s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+	s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5, After: kneadAfter}
+	s.Planning.Activities["mix"] = &rpg.ActivityState{}
+	s.Planning.Activities["knead"] = &rpg.ActivityState{}
+	apply(t, s, data.PlanCommand{Op: "split", Activity: data.IDRef{ID: "prepare"}})
+	return s
+}
+
+// wantProgress compares the progress of prepare, mix and knead.
+func wantProgress(t *testing.T, s *rpg.State, step string, prepare, mix, knead float64) {
+	t.Helper()
+	a := s.Planning.Activities
+	for id, want := range map[string]float64{"prepare": prepare, "mix": mix, "knead": knead} {
+		if math.Abs(a[id].Progress-want) > 1e-9 {
+			t.Fatalf("%s: prepare %g, mix %g, knead %g, want %g, %g, %g", step, a["prepare"].Progress, a["mix"].Progress, a["knead"].Progress, prepare, mix, knead)
+		}
+	}
+}
+
+// TestParentProgressSkipsCancelledChildren: work and rework given to a split parent go
+// to its children that are not cancelled, as work given to a cancelled child is ignored.
+func TestParentProgressSkipsCancelledChildren(t *testing.T) {
+	s := splitWorkshop(t)
+	progress := func(id, amount string) {
+		apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: id}, Value: value(t, amount)})
+	}
+	progress("knead", "0.6")
+	apply(t, s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "knead"}, Value: value(t, "true")})
+	progress("prepare", "0.3")
+	wantProgress(t, s, "work with knead cancelled", 0.9, 0.3, 0.6)
+	progress("prepare", "-0.2")
+	wantProgress(t, s, "rework with knead cancelled", 0.7, 0.1, 0.6)
+	progress("prepare", "3")
+	wantProgress(t, s, "more work than mix has room for", 1.1, 0.5, 0.6)
+	apply(t, s, data.PlanCommand{Op: "cancel", Activity: data.IDRef{ID: "knead"}, Value: value(t, "false")})
+	progress("prepare", "0.3")
+	wantProgress(t, s, "work with knead back", 1.4, 0.5, 0.9)
+}
+
+// TestParentProgressSkipsChildrenWaitingOnDependency: work given to a split parent does
+// not reach a child whose after is not done, as work given to that child is ignored.
+func TestParentProgressSkipsChildrenWaitingOnDependency(t *testing.T) {
+	s := splitWorkshop(t, "mix")
+	progress := func(amount string) {
+		apply(t, s, data.PlanCommand{Op: "progress", Activity: data.IDRef{ID: "prepare"}, Value: value(t, amount)})
+	}
+	progress("0.4")
+	wantProgress(t, s, "mix not done", 0.4, 0.4, 0)
+	progress("1")
+	wantProgress(t, s, "mix done by this work", 0.5, 0.5, 0)
+	progress("1")
+	wantProgress(t, s, "mix done before this work", 1.5, 0.5, 1)
+	progress("-0.6")
+	wantProgress(t, s, "rework", 0.9, 0.3, 0.6)
+}
+
+// TestRandomDecomposition: random sequences of activity operations keep the split parent
+// the sum of its children, keep the state saveable, and give a cancelled child no work
+// (seed 9 once gave a cancelled child a share of its parent's work).
+func TestRandomDecomposition(t *testing.T) {
+	amounts := []string{"0", "1", "-1", "0.1", "0.3", "-0.3", "0.7", "2", "3", "0.05"}
+	ids := []string{"prepare", "mix", "knead"}
+	failures := map[string]bool{}
+	for seed := uint64(1); seed <= 20; seed++ {
+		rng := rand.New(rand.NewPCG(seed, 7)) //nolint:gosec // A seeded generator, so a failing sequence can be replayed.
+		s := state(t)
+		s.DB.Game.Planning.Activities["mix"] = data.Activity{Name: "Mix", Parent: "prepare", Effort: .5}
+		s.DB.Game.Planning.Activities["knead"] = data.Activity{Name: "Knead", Parent: "prepare", Effort: 1.5}
+		s.Planning.Activities["mix"] = &rpg.ActivityState{}
+		s.Planning.Activities["knead"] = &rpg.ActivityState{}
+		var log []string
+		for range 12 {
+			c := data.PlanCommand{Activity: data.IDRef{ID: ids[rng.IntN(len(ids))]}}
+			amount := amounts[rng.IntN(len(amounts))]
+			switch rng.IntN(6) {
+			case 0:
+				c.Op, c.Activity = "split", data.IDRef{ID: "prepare"}
+			case 1, 2:
+				c.Op, c.Value = "progress", value(t, amount)
+			case 3:
+				c.Op, c.Value = "effort", value(t, amount)
+			case 4:
+				c.Op, c.Value = "cancel", value(t, []string{"true", "false"}[rng.IntN(2)])
+			case 5:
+				c.Op = "observe"
+			}
+			log = append(log, c.Op+" "+c.Activity.ID+" "+amount)
+			was := map[string]rpg.ActivityState{}
+			for id, a := range s.Planning.Activities {
+				was[id] = *a
+			}
+			if _, err := applyUnbound(s, c); err != nil {
+				continue
+			}
+			report := func(kind, format string, args ...any) {
+				if !failures[kind] {
+					failures[kind] = true
+					t.Errorf("seed %d %s: %s\n  steps: %s", seed, kind, fmt.Sprintf(format, args...), strings.Join(log, "; "))
+				}
+			}
+			if _, err := s.Save(); err != nil {
+				report("unsaveable", "%v", err)
+			}
+			p := s.Planning.Activities["prepare"]
+			if p.Split {
+				sum := s.Planning.Activities["mix"].Progress + s.Planning.Activities["knead"].Progress
+				if math.Abs(sum-p.Progress) > 1e-9 {
+					report("parent is not the sum", "parent %g, children %g", p.Progress, sum)
+				}
+				for _, id := range []string{"mix", "knead"} {
+					a := s.Planning.Activities[id]
+					if w := was[id]; w.Cancelled && a.Cancelled && !was["prepare"].Cancelled && a.Progress > w.Progress+1e-12 && c.Op == "progress" {
+						report("cancelled child worked", "%s cancelled went %g -> %g", id, w.Progress, a.Progress)
+					}
+				}
+				if c.Op == "progress" && c.Activity.ID == "prepare" && !was["prepare"].Cancelled && was["prepare"].Split && !was["mix"].Cancelled && !was["knead"].Cancelled {
+					n, err := strconv.ParseFloat(amount, 64)
+					if err != nil {
+						t.Fatal(err)
+					}
+					want := math.Max(0, math.Min(s.ActivityEffort("prepare"), was["prepare"].Progress+n))
+					if math.Abs(p.Progress-want) > 1e-9 {
+						report("parent work lost", "parent %g -> %g by %s, want %g (mix %+v knead %+v; was mix %+v knead %+v)", was["prepare"].Progress, p.Progress, amount, want,
+							*s.Planning.Activities["mix"], *s.Planning.Activities["knead"], was["mix"], was["knead"])
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestDispatchMarksOfPastDaysAreDropped: the marks of the reservations dispatched on a
+// day are only read on that day, so the saved state keeps today's and no earlier day's.
+func TestDispatchMarksOfPastDaysAreDropped(t *testing.T) {
+	s := state(t)
+	s.DB.Game.Planning.Schedule = []data.Reservation{{ID: "daily", Phase: "morning", Event: "gather"}}
+	days := 0
+	for !s.Planning.Finished {
+		if s.Planning.Phase == 0 {
+			days++
+		}
+		if out := apply(t, s, data.PlanCommand{Op: "dispatch"}); (len(out) == 1) != (s.Planning.Phase == 0) {
+			t.Fatalf("%s phase %d: dispatched %v, want the reservation once a day", s.Planning.Date, s.Planning.Phase, out)
+		}
+		apply(t, s, data.PlanCommand{Op: "advance"})
+	}
+	if n := len(s.Planning.Dispatched); n > 1 {
+		t.Fatalf("%d dispatch marks saved after %d days; only today's can be read: %v", n, days, s.Planning.Dispatched)
 	}
 }
