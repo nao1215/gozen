@@ -11,8 +11,8 @@
 # again, up to three attempts; apt resumes the partial downloads. The packages
 # are unpacked only after every file is on disk, so the deadline never
 # interrupts dpkg. A healthy run fetches the index and ffmpeg in about ten
-# seconds each, so the deadlines are 60 and 90 seconds. Run it before any other step that uses apt, so that step
-# reads the same mirror order.
+# seconds each, so the deadlines are 60 and 90 seconds. Run it before any other
+# step that uses apt, so that step reads the same mirror order.
 set -euo pipefail
 
 if [ "$#" -eq 0 ]; then
