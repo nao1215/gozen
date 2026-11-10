@@ -61,7 +61,7 @@ The longest jobs are the pictures of the Docs workflow and graphics; most of the
 
 ## ONNX
 
-Normal CI fetches neither a model nor a shared library. `inference-build` runs `TestONNX` verbosely and logs whether the cgo compile succeeded and why tests without a model skipped. This does not mean inference ran. For an explicit local inference check, set the environment variables in [Production tools](production-tools.md#verification). A model that is set but cannot be read, or does not fit, fails (`internal/mosaic/command/inference_test.go:62`).
+Normal CI fetches neither a model nor a shared library. `inference-build` runs `TestONNX` verbosely and logs whether the cgo compile succeeded and why tests without a model skipped. This does not mean inference ran. For an explicit local inference check, set the environment variables in [Production tools](production-tools.md#verification). A model that is set but cannot be read, or does not fit, fails (the `TestONNX` tests of `internal/mosaic/command/inference_test.go`).
 
 ## Documentation site
 

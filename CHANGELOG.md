@@ -8,6 +8,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
 - A script's `pick` presses a button of a phone page, home or contacts by its label (those on the screen), and `look` lists them, so scripted play and captures reach phone apps as a tap does.
+- Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
 
 ### Fixed
 
@@ -16,6 +17,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.
 - A session's answer outside a choice's answers leaves the choice asked; before, the choice was passed over and a save made then could not be restored.
 - A party without MP (a game without magic) is never counted as worn by MP, so `sim dive --worn-mp`, the balance runner and the design evaluation bot no longer turn back on every floor and never face a boss.
+- `gozen help --format json` reports an empty default for `trial --config`, as for `sim design --config`, instead of `trial.yaml`, which read as a file in the working directory; the default stays `GAME/trial.yaml`.
 
 ## v0.23.2 - 2026-11-09
 

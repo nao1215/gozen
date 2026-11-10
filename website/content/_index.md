@@ -66,7 +66,7 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 | Home → contacts → chat → home | Read history → send a reply → reveal new information |
 |:--|:--|
-| ![Opening Contacts and a chat, then returning to the phone home](/images/phone-navigation.gif) | ![Reading earlier messages, choosing a fixed reply and revealing a message and feed post](/images/phone-history.gif) |
+| ![Opening Contacts and a chat, then returning to the phone home](/images/phone-navigation.mp4) | ![Reading earlier messages, choosing a fixed reply and revealing a message and feed post](/images/phone-history.mp4) |
 | Chat: a picture, times and a clip | Feed: scrolled, a clip post, likes |
 | ![a team chat on a phone: messages arrive one by one with times and a read mark, a picture opens over the screen, then a clip sent in the chat turns the phone on its side and plays a recorded call](/images/phone-chat.mp4) | ![a photo feed scrolled down a post at a time, a battle clip looping in its post and Mia's dance clip after it](/images/phone-feed.mp4) |
 | Video on its side: footage | Chat: a dance practice clip (a puppet) |
@@ -132,7 +132,7 @@ Enemies can change form at an HP threshold, combine with allies, change pictures
 |:--|:--|
 | ![The Tollkeeper changes into its second form](/images/go-zen-transform.mp4) | ![Drip Slimes gather into King Slime](/images/go-zen-merge.mp4) |
 | Pictures by HP | Motion and sway |
-| ![A damaged monster shows its low HP picture](/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](/images/go-zen-motion.mp4) |
+| ![Maren and the Drip Slime drop to low HP and their pictures switch](/images/go-zen-hp-pictures.mp4) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](/images/go-zen-motion.mp4) |
 
 See [the battle recipes](/cookbook/#transform-an-enemy).
 

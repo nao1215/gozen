@@ -150,7 +150,7 @@ Enemies can transform, merge, change appearance when hurt and react with animate
 |:--|:--|
 | ![The Tollkeeper changes into its second form](docs/images/go-zen-transform.gif) | ![Drip Slimes gather into King Slime](docs/images/go-zen-merge.gif) |
 | Pictures by HP | Motion and sway |
-| ![A damaged monster shows its low HP picture](docs/images/go-zen-hp-pictures.jpg) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](docs/images/go-zen-motion.gif) |
+| ![Maren and the Drip Slime drop to low HP and their pictures switch](docs/images/go-zen-hp-pictures.gif) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](docs/images/go-zen-motion.gif) |
 
 See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
 
