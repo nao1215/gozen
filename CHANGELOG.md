@@ -4,10 +4,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
-### Changed
-
-- Screens ask Yes or No only before something that cannot be taken back (a save written over, a load, the way back to the title, a monster released), and a tap outside that question is No. Elsewhere the thing itself is pressed: the phone has a home bar (and a chat's back chevron works) in place of the key hints under it; a second tap on the map point a selection panel shows travels; the ranch swaps at once with a notice that undoes it and asks once for a fusion; stronger equipment is offered by a notice that can be pressed instead of a question over the field; a fallen party chooses between Retry and Give up (a script's `pick` uses those labels); a tactic row turns on and off by its mark; the shop's quantity box has minus, plus, Buy or Sell and Cancel buttons; member cards, the status page, the skill tree, the picture review and the relation chart have something to press. Recordings made before this change that pass through a removed question no longer replay.
-- The ranch's greeting is the game's: `breeding.keeper: {name, text}` (translated by `lang/<code>.yaml`). The engine no longer names a keeper; without the field a neutral line shows under no name. The ranch's, the phone store's and a hosted game's words go through the language catalog.
+## v0.24.0 - 2026-11-10
 
 ### Added
 
@@ -20,6 +17,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Changed
 
+- Screens ask Yes or No only before something that cannot be taken back (a save written over, a load, the way back to the title, a monster released), and a tap outside that question is No. Elsewhere the thing itself is pressed: the phone has a home bar (and a chat's back chevron works) in place of the key hints under it; a second tap on the map point a selection panel shows travels; the ranch swaps at once with a notice that undoes it and asks once for a fusion; stronger equipment is offered by a notice that can be pressed instead of a question over the field; a fallen party chooses between Retry and Give up (a script's `pick` uses those labels); a tactic row turns on and off by its mark; the shop's quantity box has minus, plus, Buy or Sell and Cancel buttons; member cards, the status page, the skill tree, the picture review and the relation chart have something to press. Recordings made before this change that pass through a removed question no longer replay.
+- The ranch's greeting is the game's: `breeding.keeper: {name, text}` (translated by `lang/<code>.yaml`). The engine no longer names a keeper; without the field a neutral line shows under no name. The ranch's, the phone store's and a hosted game's words go through the language catalog.
 - The manual subcommands of `gozen mosaic` (`list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear`) each have their own help: usage (`<game-dir> <IMAGE>`, and `<game-dir>` alone for `list`), summary, description, examples and option groups. An option that a subcommand does not read is no longer registered for it, so `list --rect`, `add --by`, `skip --rect` or `mark --size` is an unknown option with exit status 2 instead of being accepted and ignored. Breaking for scripts that passed such options; `grow --box` and `drop --poly`, which already failed with exit status 1, now fail with 2.
 - `gozen models fetch` does not download a model that is already in the cache with matching checksums. Its usage names the operand `[NAME ...]`, as its description does.
 - A `--fix` file that does not exist is an error for every `gozen mosaic` subcommand. It used to be read as no fixes, so `auto` exited 0 without the hand-written regions. A `--manual` file may still be absent.

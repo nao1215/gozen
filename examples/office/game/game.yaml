@@ -167,7 +167,7 @@ ui:
 
 phone:
   catalog: apps/catalog.yaml
-  catalog_sha256: 69c9ba89b71f1c14520d94e6339da87dc932dce5a4c85ff4c4e79f1e004e95a9
+  catalog_sha256: 4cfcbf2c2fa1215ecbff42ff03a0902cc645273d4075ba3fe234a86c23227624
   apps:
     - id: counter
       package: fixtures/counter
