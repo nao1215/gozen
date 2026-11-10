@@ -4,6 +4,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Changed
+
+- Screens ask Yes or No only before something that cannot be taken back (a save written over, a load, the way back to the title, a monster released), and a tap outside that question is No. Elsewhere the thing itself is pressed: the phone has a home bar (and a chat's back chevron works) in place of the key hints under it; a second tap on the map point a selection panel shows travels; the ranch swaps at once with a notice that undoes it and asks once for a fusion; stronger equipment is offered by a notice that can be pressed instead of a question over the field; a fallen party chooses between Retry and Give up (a script's `pick` uses those labels); a tactic row turns on and off by its mark; the shop's quantity box has minus, plus, Buy or Sell and Cancel buttons; member cards, the status page, the skill tree, the picture review and the relation chart have something to press. Recordings made before this change that pass through a removed question no longer replay.
+- The ranch's greeting is the game's: `breeding.keeper: {name, text}` (translated by `lang/<code>.yaml`). The engine no longer names a keeper; without the field a neutral line shows under no name. The ranch's, the phone store's and a hosted game's words go through the language catalog.
+
 ### Added
 
 - A phone page chooses by a tap on the row itself: an `item`, or a single `picture`, may carry a `button` (with `id` and `set`), so a shop picks the product row and a supporter page the tier instead of a separate Yes or No button. The office sample's shop and supporter pages now work this way. Visual change: those sample pages lose their separate buttons.
@@ -14,6 +19,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 - The face-box warnings of `gozen check` name the command that exists, `gozen faces`, instead of the retired `gozen art faces`; the top-level help lists every `sim` command (`routes`, `breed`, `script` and `batch` were missing), and each `gozen mosaic` region command (`list`, `show`, `view`, `add`, `drop`, `grow`, `skip`, `mark`, `clear`) has a summary of its own in its help instead of one shared line.
 - The site no longer documents options and commands that do not exist: `--dir` of `gozen run` (live reload comes with `--dev`), `gozen routes` (`gozen sim routes`) and `gozen mosaic manual`; the expression functions `range`, `first`, `has`, `str` and `grouped`, the event name `roamers` and `gozen capture --against` are described.
+- A free item (price 0) can be bought without money: its count no longer falls to zero. The shop's message says when the rules refused a trade instead of reporting a purchase.
+- On the phone, a clip's thumbnail in a chat plays again by a tap, the part of a chat's picture under the header takes no tap, an app's launch error leaves the home screen once another app opens, and a home screen's installed apps and a store's rows rise with the phone instead of popping in.
 - `gozen sim routes` branches at a phone that keeps a result as it does at a choice: each page, home or contacts button a player can reach (not one hidden by `when`), a call's answer, decline or missed, and a feed liked all or nothing. Before, the phone was put down unanswered, so an ending reached only through a phone's button was reported unreachable. A home app that returns to its phone is opened once a path.
 - A phone that keeps a result in a troop's battle event is answered with its first result by automatic battles in `sim`, sessions and the balance runner, as a choice there takes its first option; before, its `set` ran only on the screen.
 - The balance runner (`sim dive`) runs `battle.after_win` after a battle won in an event, as play and the other headless runs do.
