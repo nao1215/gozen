@@ -223,12 +223,8 @@ func (s *State) bind() (*State, error) {
 			continue
 		}
 		if a.Sex == "" || !data.AllowsMonsterSex(db, a.Monster, a.Sex) {
-			var hash uint64 = 14695981039346656037
-			for i := range len(id) {
-				hash = (hash ^ uint64(id[i])) * 1099511628211
-			}
 			old := a.Sex
-			a.Sex = data.MonsterSex(db, a.Monster, float64(hash>>11)/float64(uint64(1)<<53))
+			a.Sex = data.MonsterSex(db, a.Monster, float64(idHash(id)>>11)/float64(uint64(1)<<53))
 			if old == "" {
 				s.changed("actors/"+id+"/sex", "", "assigned a stable sex to an older monster instance")
 			} else {
