@@ -142,7 +142,7 @@ scenarios:
   - {arguments: 'source extra --out out --runtime runtime', code: GZN2102}
   - {arguments: 'source --runtime runtime', code: GZN2303}
   - {arguments: 'source --out out', code: GZN2303}
-  - {arguments: 'source --out out --runtime runtime --target unknown', code: GZN2201}
+  - {arguments: 'source --out out --runtime runtime --target unknown', code: GZN2202}
   # --reuse belongs to the web target; the default target is a desktop one
   - {arguments: 'source --out out --runtime runtime --reuse earlier', code: GZN2201}
   steps:
