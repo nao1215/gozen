@@ -16,10 +16,6 @@ type Detector struct {
 	labels []string
 }
 
-func New(model, lib string, threads int) (*Detector, error) {
-	return NewWithLabels(model, lib, threads, Labels)
-}
-
 func NewWithLabels(model, lib string, threads int, labels []string) (result *Detector, err error) {
 	if model == "" {
 		return nil, errors.New("missing --model: supply a detection ONNX model")

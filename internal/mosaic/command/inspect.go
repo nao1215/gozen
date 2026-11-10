@@ -220,9 +220,7 @@ func inspect(ctx context.Context, c *config, arg string, report map[string]entry
 	allIn := len(groups) > 0
 	for _, g := range groups {
 		f := mosaic.Find(img, g.Rect)
-		in.Objects = append(in.Objects, object{g.Label, categoryJa[g.Label], g.Score, g.Passes, xywh(g.Rect), f.Mosaic, f.Block})
-		cats[g.Label] = true
-		in.Evidence = append(in.Evidence, fmt.Sprintf("検出 %s %.2f（見方 %d）", g.Label, g.Score, g.Passes))
+		in.found(object{g.Label, categoryJa[g.Label], g.Score, g.Passes, xywh(g.Rect), f.Mosaic, f.Block}, cats)
 		allIn = allIn && f.Mosaic
 	}
 	for _, g := range skipped {
@@ -230,25 +228,7 @@ func inspect(ctx context.Context, c *config, arg string, report map[string]entry
 		in.Candidates = append(in.Candidates, object{g.Label, categoryJa[g.Label], g.Score, g.Passes, xywh(g.Rect), f.Mosaic, f.Block})
 	}
 	nManual := len(fx.Add) + len(fx.Poly)
-	if nManual > 0 {
-		in.Evidence = append(in.Evidence, fmt.Sprintf("手の指示 %d 箇所", nManual))
-	}
-	if tags != nil {
-		if v := tagMax(tags, penisTags); v >= tagSure {
-			cats["penis"] = true
-			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 男性器 %.2f", v))
-		}
-		if v := tagMax(tags, pussyTags); v >= tagSure {
-			cats["pussy"] = true
-			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 女性器 %.2f", v))
-		}
-	}
-	for l := range cats {
-		if c.p.labels[l] {
-			in.Categories = append(in.Categories, categoryJa[l])
-		}
-	}
-	sort.Strings(in.Categories)
+	in.classify(c, cats, tags, nManual)
 	in.NeedsMosaic = len(groups) > 0 || nManual > 0 || len(in.Categories) > 0
 
 	in.Mosaicked.InImage = allIn
@@ -324,19 +304,7 @@ func inspect(ctx context.Context, c *config, arg string, report map[string]entry
 		in.Mosaicked.Note = "report.json が今の元の絵か手直しと合わない（auto を動かし直す）"
 	}
 
-	switch {
-	case len(in.Review) > 0 && !fx.Checked:
-		in.Status = "review"
-	case !in.NeedsMosaic:
-		in.Status = "none"
-	case in.Mosaicked.OutputCovers && in.Mosaicked.BlockOK || in.Mosaicked.InImage && in.Mosaicked.BlockOK:
-		in.Status = "done"
-	default:
-		in.Status = "todo"
-	}
-	if fx.Checked {
-		in.Review = []string{}
-	}
+	in.settle(fx.Checked)
 	return in, nil
 }
 
@@ -368,9 +336,7 @@ func fromReport(c *config, in *inspection, e entry, fx mosaic.Fix, tags map[stri
 			continue
 		}
 		o.Mosaic, o.Block = e.Output != "", e.Block
-		in.Objects = append(in.Objects, o)
-		cats[f.Label] = true
-		in.Evidence = append(in.Evidence, fmt.Sprintf("検出 %s %.2f（見方 %d）", f.Label, f.Score, f.Passes))
+		in.found(o, cats)
 	}
 	for _, f := range e.Skipped {
 		in.Candidates = append(in.Candidates, object{Label: f.Label, Category: categoryJa[f.Label], Score: f.Score, Passes: f.Passes, Rect: f.Rect})
@@ -384,25 +350,7 @@ func fromReport(c *config, in *inspection, e entry, fx mosaic.Fix, tags map[stri
 	if segOnly > 0 {
 		in.Evidence = append(in.Evidence, fmt.Sprintf("分割モデルだけで見つけた物 %d 箇所", segOnly))
 	}
-	if n := len(e.Adds) + len(e.Polys); n > 0 {
-		in.Evidence = append(in.Evidence, fmt.Sprintf("手の指示 %d 箇所", n))
-	}
-	if tags != nil {
-		if v := tagMax(tags, penisTags); v >= tagSure {
-			cats["penis"] = true
-			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 男性器 %.2f", v))
-		}
-		if v := tagMax(tags, pussyTags); v >= tagSure {
-			cats["pussy"] = true
-			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 女性器 %.2f", v))
-		}
-	}
-	for l := range cats {
-		if c.p.labels[l] {
-			in.Categories = append(in.Categories, categoryJa[l])
-		}
-	}
-	sort.Strings(in.Categories)
+	in.classify(c, cats, tags, len(e.Adds)+len(e.Polys))
 	in.Faces = e.Faces
 	painted := e.Output != ""
 	in.NeedsMosaic = painted || len(in.Categories) > 0
@@ -423,17 +371,54 @@ func fromReport(c *config, in *inspection, e entry, fx mosaic.Fix, tags map[stri
 	} else if in.NeedsMosaic {
 		in.Mosaicked.Note = "auto が塗った物が無い（性器が写っていれば manual で足す。写っていなければ check）"
 	}
+	in.settle(fx.Checked)
+}
+
+// found records a detected object that is pixelated, with its class and its evidence.
+func (in *inspection) found(o object, cats map[string]bool) {
+	in.Objects = append(in.Objects, o)
+	cats[o.Label] = true
+	in.Evidence = append(in.Evidence, fmt.Sprintf("検出 %s %.2f（見方 %d）", o.Label, o.Score, o.Passes))
+}
+
+// classify adds the evidence of the regions written by hand and of the tags, and names
+// the categories: the classes found by the detector or the tags that --labels pixelates.
+func (in *inspection) classify(c *config, cats map[string]bool, tags map[string]float32, manual int) {
+	if manual > 0 {
+		in.Evidence = append(in.Evidence, fmt.Sprintf("手の指示 %d 箇所", manual))
+	}
+	if tags != nil {
+		if v := tagMax(tags, penisTags); v >= tagSure {
+			cats["penis"] = true
+			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 男性器 %.2f", v))
+		}
+		if v := tagMax(tags, pussyTags); v >= tagSure {
+			cats["pussy"] = true
+			in.Evidence = append(in.Evidence, fmt.Sprintf("タグ 女性器 %.2f", v))
+		}
+	}
+	for l := range cats {
+		if c.p.labels[l] {
+			in.Categories = append(in.Categories, categoryJa[l])
+		}
+	}
+	sort.Strings(in.Categories)
+}
+
+// settle sets the status from what was found and what is pixelated. A picture marked as
+// checked has no open reasons to review.
+func (in *inspection) settle(checked bool) {
 	switch {
-	case len(in.Review) > 0 && !fx.Checked:
+	case len(in.Review) > 0 && !checked:
 		in.Status = "review"
 	case !in.NeedsMosaic:
 		in.Status = "none"
-	case in.Mosaicked.OutputCovers && in.Mosaicked.BlockOK:
+	case (in.Mosaicked.OutputCovers || in.Mosaicked.InImage) && in.Mosaicked.BlockOK:
 		in.Status = "done"
 	default:
 		in.Status = "todo"
 	}
-	if fx.Checked {
+	if checked {
 		in.Review = []string{}
 	}
 }

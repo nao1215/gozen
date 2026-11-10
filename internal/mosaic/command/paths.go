@@ -270,10 +270,13 @@ func protectView(c config, orig, dst string) error {
 	return nil
 }
 
-func validateReport(c config) error {
-	if err := filepath.WalkDir(c.out, func(p string, d fs.DirEntry, err error) error {
+// noSymlinks refuses an output tree that holds a symbolic link, the directory itself
+// included: a link could lead a write or a removal out of the tree. A directory that does
+// not exist yet has none.
+func noSymlinks(dir string) error {
+	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			if os.IsNotExist(err) && p == c.out {
+			if os.IsNotExist(err) && p == dir {
 				return nil
 			}
 			return err
@@ -282,7 +285,11 @@ func validateReport(c config) error {
 			return errors.New("output tree must not contain symlinks")
 		}
 		return nil
-	}); err != nil {
+	})
+}
+
+func validateReport(c config) error {
+	if err := noSymlinks(c.out); err != nil {
 		return err
 	}
 	b, err := os.ReadFile(filepath.Join(c.out, "report.json"))

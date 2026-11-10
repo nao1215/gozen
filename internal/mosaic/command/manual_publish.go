@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"image"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -25,15 +24,7 @@ func publishManual(ctx context.Context, c config, pic, orig, sub string, size, s
 		if !st.IsDir() {
 			return errors.New("output is not a directory")
 		}
-		if err = fs.WalkDir(os.DirFS(c.out), ".", func(_ string, d fs.DirEntry, e error) error {
-			if e != nil {
-				return e
-			}
-			if d.Type()&os.ModeSymlink != 0 {
-				return errors.New("output tree must not contain symlinks")
-			}
-			return nil
-		}); err != nil {
+		if err = noSymlinks(c.out); err != nil {
 			return err
 		}
 		if err = os.CopyFS(stage, os.DirFS(c.out)); err != nil {

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// These check what New refuses before any model is read. They need no ONNX Runtime: the
+// These check what NewWithLabels refuses before any model is read. They need no ONNX Runtime: the
 // library given is one that does not exist.
 
 func TestNewWithLabelsRefusals(t *testing.T) {
@@ -32,9 +32,6 @@ func TestNewWithLabelsRefusals(t *testing.T) {
 		if err == nil || d != nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: %v %v, want an error with %q", c.name, d, err, c.want)
 		}
-	}
-	if d, err := New("", "", 0); err == nil || d != nil {
-		t.Fatalf("New without a model: %v %v", d, err)
 	}
 	if names := metadataClasses(model, missingLib); names != nil {
 		t.Fatalf("metadata read without a runtime: %v", names)
