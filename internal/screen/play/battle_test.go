@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/event"
@@ -267,7 +268,7 @@ func TestBattleFastSkipsCharge(t *testing.T) {
 }
 
 // TestBattleLossAndRetry: a lost battle asks to retry from before it when the game allows,
-// and answering yes starts the same battle again from the saved state.
+// and choosing to retry starts the same battle again from the saved state.
 func TestBattleLossAndRetry(t *testing.T) {
 	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "doom", Level: 1}, "", "")
@@ -301,6 +302,10 @@ func TestBattleLossAndRetry(t *testing.T) {
 	}
 	if s.b.Result != battle.Lost {
 		t.Fatalf("result %v", s.b.Result)
+	}
+	// The two ways on are named: no Yes and No to read against the question.
+	if _, ways := g.scriptPickables(); len(ways) != 2 || ways[0].label != lang.T("やりなおす") || ways[1].label != lang.T("あきらめる") {
+		t.Fatalf("the fallen party is asked %+v, want Retry and Give up", ways)
 	}
 	for range 6 {
 		q.update(g)

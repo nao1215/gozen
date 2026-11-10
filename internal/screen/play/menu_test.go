@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"image"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -829,5 +830,69 @@ func TestMenuMouseChoosesItemAndMember(t *testing.T) {
 	g.in.click = false
 	if g.st.Members()[1].HP <= 3 {
 		t.Fatalf("hp %d: the click did not heal the member under it", g.st.Members()[1].HP)
+	}
+}
+
+// TestConfirmTapOutsideCancels: a tap beside the confirmation's window takes
+// the question back as Cancel does; a tap on the window that misses both
+// buttons answers nothing.
+func TestConfirmTapOutsideCancels(t *testing.T) {
+	g, m := mnuMenu(t)
+	accepted, refused := 0, 0
+	c := newConfirm("Overwrite slot 1?", func() { accepted++ })
+	c.onNo = func() { refused++ }
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	_, _, y, h, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y)+8)}
+	c.update(g)
+	if mnuTop(g) != scene(c) || accepted+refused != 0 {
+		t.Fatalf("a tap on the window beside the buttons answered: yes %d no %d", accepted, refused)
+	}
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y+h)+30)}
+	c.update(g)
+	if mnuTop(g) != scene(m) || accepted != 0 || refused != 1 {
+		t.Fatalf("a tap outside the window: top %T yes %d no %d, want the menu and one No", mnuTop(g), accepted, refused)
+	}
+}
+
+// TestChoiceNamesBothWays: a choice shows its own two labels, a script picks
+// them by those names, and a tap outside its window picks neither.
+func TestChoiceNamesBothWays(t *testing.T) {
+	g, _ := mnuMenu(t)
+	retried := 0
+	c := newChoice("The party has fallen.", "Retry", "Give up", func() { retried++ })
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	kind, items := g.scriptPickables()
+	if kind != "confirm" || len(items) != 2 || items[0].label != "Retry" || items[1].label != "Give up" {
+		t.Fatalf("pickables %s %+v", kind, items)
+	}
+	g.tr = &tracer{layout: &layoutFrame{}}
+	c.draw(g, covScreen())
+	var labels []string
+	for _, control := range g.tr.layout.controls {
+		if control.Enabled {
+			labels = append(labels, control.Label)
+		}
+	}
+	g.tr = nil
+	if !slices.Equal(labels, []string{"Retry", "Give up"}) {
+		t.Fatalf("the choice's controls on the screen: %v", labels)
+	}
+	g.in = input{click: true, mouse: image.Pt(4, 4)}
+	c.update(g)
+	if mnuTop(g) != scene(c) {
+		t.Fatal("a tap outside a choice answered it")
+	}
+	_, _, _, _, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: yes.Min.Add(image.Pt(yes.Dx()/2, yes.Dy()/2))}
+	c.update(g)
+	if retried != 1 || mnuTop(g) == scene(c) {
+		t.Fatalf("a tap on the first way: retried %d", retried)
 	}
 }

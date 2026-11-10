@@ -45,9 +45,10 @@ func (g *Game) scriptPickables() (kind string, items []pickable) {
 	}
 	top := g.stack[len(g.stack)-1]
 	if c, ok := top.(*confirm); ok {
+		accept, refuse := c.labels()
 		return "confirm", []pickable{
-			{target: c, label: lang.T("はい"), selectIt: func() { c.no = false }},
-			{target: c, label: lang.T("いいえ"), selectIt: func() { c.no = true }},
+			{target: c, label: accept, selectIt: func() { c.no = false }},
+			{target: c, label: refuse, selectIt: func() { c.no = true }},
 		}
 	}
 	if g.talk.active {
