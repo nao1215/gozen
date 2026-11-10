@@ -195,6 +195,7 @@ var fetchPage = clihelp.Page{
 	About: "Downloads fixed revisions of models from Hugging Face into the user cache directory " +
 		"(gozen/mosaic/<name>/ under os.UserCacheDir), checks each file against a SHA-256 written in gozen, " +
 		"and deletes the download with an error on a mismatch. Without NAME every model is fetched. " +
+		"A model already in the cache with matching checksums is not downloaded again. " +
 		"This command and the confirmed download prompt of gozen mosaic are the only places gozen uses the network. " +
 		"A model in the cache is used when --model is omitted: censor by gozen mosaic, face by gozen faces.",
 	Examples: []clihelp.Example{
