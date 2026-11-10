@@ -86,6 +86,12 @@ Dango also checks generated schemas against the Go types and translation keys ag
   files that no other file names. The existing misnamed test files form a fixed
   baseline that may only shrink as they are consolidated. Naming is lexical: a
   reference proves a file is mentioned, not that it is used.
+- `TestCommandWalkerCoverage` finds every `[]Command` field reachable from the game
+  data by reflection, plants a marked command in each, and requires `eachCommandList`
+  with `Command.branches` (`uses.go`) to reach it once, and `EachCommand`, `StateUses`
+  and `SourceTexts` to read it. A definition that gains a command list fails until the
+  shared walk knows it. It does not find a command list kept outside the game data or
+  behind an unexported field, and it does not check what a reader does with a command.
 
 - The graphics selection test requires every test of a file built only with the
   `graphics` tag to be named `TestGraphics*`, `make graphics` to select by that

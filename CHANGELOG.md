@@ -11,6 +11,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - Add a dango check that current documents cite Go files that exist and never by line (`TestCodeCitations`), after several architecture notes kept citing moved files and drifted lines.
 - Add a dango check that every YAML decode of `internal/base` and `internal/model` runs inside `decodeguard.Run` (`TestYAMLDecodesAreGuarded`); a theme's colors, a package catalog and a `YAML` path lookup were decoded outside it.
 - Add a dango check that keeps the loaded game definitions read-only outside `internal/model/gamedata` (`TestDefinitionsAreImmutable`): a game's own additions go on the view its state owns.
+- Add a dango check that every command list reachable from the game data is read by the one shared walk (`TestCommandWalkerCoverage`), so a definition that gains commands is resolved, indexed, translated and named alike.
 
 ### Fixed
 
@@ -34,6 +35,13 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A loaded save keeps HP within the member's maximum and HP and MP at 0 or more (a maximum lowered by an update, or equipment that no longer exists), and reports the correction.
 - Taking an item worn in several slots (`take`, a fusion's materials) empties the slots in the order of `game.yaml`, so the same play takes the same ones; the order came from a map before.
 - A copy of the definitions (a session, a state's view) shows the game's title and subtitle in the language it is shown in; before, changing the language translated only the first copy's.
+- A save or a note made in the middle of a person's talk or a place's action resumes after the language is changed: the command list is named from the name as written, not as shown. Before, the name followed the language, so the save found no commands in another language. A save made earlier while a translation was shown still resumes in that language.
+- Two people or actions of one place that share a name (the same person before and after a flag) have their own command lists by name: the second is `<place>.<name>#2`. Before, a save made in the second talk resumed the first one's commands. A save made before this change in such a second talk still resumes the first, as it did.
+- `gozen book` and the `--dev` panel index the flags and variables set and read in dungeon tiles, roamers, `complete` and `walked`, stage spots and things, map points and roads, and campaign orders, which the state index left out.
+- The lines of troop events, dungeon tiles, roamers, stage spots and things, and map points and roads are texts of the game for translation: `gozen check` reports them when untranslated and no longer warns that their translations are not a text of the game. The untranslated warnings of screen entries and campaign orders name the same paths as the other checks (`game.yaml.screens.<id>.entries[n].do`, `game.yaml campaign.orders.<id>.do`).
+- The warning of a flag read but never set names the same place on every run when rules of both `music.rules` contexts read it.
+- Checking `breeding` leaves `parents` in the order written, so `gozen book` and the lineage show them as authored; the same pair written in the other order is still a duplicate.
+- A `speech` word rule finds a token that overlaps its own earlier match (`!!` in `a!!!`).
 
 ## v0.23.2 - 2026-11-09
 

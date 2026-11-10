@@ -124,3 +124,18 @@ func TestCopiesTranslateTheirOwnTitle(t *testing.T) {
 		t.Error("RemoveInstance drops instances only")
 	}
 }
+
+// SourceTexts lists the lines of every command list, the events of troops among them, so
+// such a line is reported untranslated and its translation is a text of the game.
+func TestSourceTextsCoverTroopEvents(t *testing.T) {
+	db := testgame.Load(t, nil)
+	for _, st := range db.SourceTexts() {
+		if st.Text == "The bell rings." {
+			if st.Path != "troops.boss.events[0].do[0].say" {
+				t.Errorf("the line is at %q", st.Path)
+			}
+			return
+		}
+	}
+	t.Error(`troops.boss.events[0].do says "The bell rings." but SourceTexts does not list it`)
+}

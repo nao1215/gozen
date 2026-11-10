@@ -119,6 +119,16 @@ type shownText struct {
 	title, subtitle string
 }
 
+// written is the text of a name field as the game writes it: Show translates the names of
+// the definitions in place, so the text shown now is not the one a translation or a
+// saved name starts from.
+func (db *DB) written(p *string) string {
+	if s, ok := db.text.names[p]; ok {
+		return s
+	}
+	return *p
+}
+
 // EngineWords are the words game.yaml's text and lang/<code>.yaml give the engine's own
 // keys in a language (ADR 0019: one key space), for text.Use.
 func (db *DB) EngineWords(code string) map[string]string {
@@ -202,7 +212,7 @@ type SourceText struct {
 
 // SourceTexts are the texts of the game a translation covers: the names and descriptions
 // of the definitions, and the lines, speakers, choices, prompts and notices of the
-// commands of events and places, in a stable order.
+// commands of every command list of the game (eachCommandList), in a stable order.
 func (db *DB) SourceTexts() []SourceText {
 	var out []SourceText
 	add := func(p, s string) {
@@ -210,12 +220,7 @@ func (db *DB) SourceTexts() []SourceText {
 			out = append(out, SourceText{p, s})
 		}
 	}
-	src := func(p *string) string {
-		if s, ok := db.text.names[p]; ok {
-			return s
-		}
-		return *p
-	}
+	src := db.written
 	g := &db.Game
 	if db.text.names != nil {
 		add("game.yaml title", db.text.title)
@@ -371,16 +376,8 @@ func (db *DB) SourceTexts() []SourceText {
 			add(cw+".notice", c.Notice)
 			for j, o := range c.Choice {
 				add(fmt.Sprintf("%s.choice[%d].label", cw, j), o.Label)
-				cmds(fmt.Sprintf("%s.choice[%d].do", cw, j), o.Do)
 			}
-			if c.Muted != nil {
-				cmds(cw+".muted.do", c.Muted.Do)
-			}
-			cmds(cw+".then", c.Then)
-			cmds(cw+".else", c.Else)
-			cmds(cw+".on_win", c.OnWin)
-			cmds(cw+".on_lose", c.OnLose)
-			cmds(cw+".on_escape", c.OnRun)
+			c.branches(func(field string, option int, cs []Command) { cmds(branchPath(cw, field, option), cs) })
 		}
 	}
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Locations))) {
@@ -388,7 +385,6 @@ func (db *DB) SourceTexts() []SourceText {
 		w := "locations." + id
 		add(w+".name", src(&l.Name))
 		add(w+".desc", src(&l.Desc))
-		cmds(w+".on_enter", l.OnEnter)
 		if a := l.Map; a != nil {
 			for _, id := range a.PointIDs() {
 				p := a.Points[id]
@@ -405,26 +401,13 @@ func (db *DB) SourceTexts() []SourceText {
 
 		for i := range l.People {
 			add(fmt.Sprintf("%s.people[%d].name", w, i), src(&l.People[i].Name))
-			cmds(fmt.Sprintf("%s.people[%d].talk", w, i), l.People[i].Talk)
 		}
 		for i := range l.Actions {
 			add(fmt.Sprintf("%s.actions[%d].label", w, i), src(&l.Actions[i].Label))
-			cmds(fmt.Sprintf("%s.actions[%d].do", w, i), l.Actions[i].Do)
 		}
 		for i := range l.Exits {
 			add(fmt.Sprintf("%s.exits[%d].label", w, i), src(&l.Exits[i].Label))
-			cmds(fmt.Sprintf("%s.exits[%d].do", w, i), l.Exits[i].Do)
 		}
-	}
-	for _, name := range sorted(slices.Collect(maps.Keys(g.Screens))) {
-		if screen := g.Screens[name]; screen != nil {
-			for i, entry := range screen.Entries {
-				cmds(fmt.Sprintf("game.yaml screens.%s.entries[%d].do", name, i), entry.Do)
-			}
-		}
-	}
-	for _, id := range sorted(slices.Collect(maps.Keys(db.Events))) {
-		cmds("events."+id+".do", db.Events[id].Do)
 	}
 	if c := db.Game.Campaign; c != nil {
 		for _, id := range sorted(slices.Collect(maps.Keys(c.Clash.Tactics))) {
@@ -437,18 +420,11 @@ func (db *DB) SourceTexts() []SourceText {
 				add("campaign.clash.skills."+id+".label", src(&sk.Label))
 			}
 		}
-		for _, id := range c.OrderIDs() {
-			o := c.Orders[id]
-			if o == nil {
-				continue
-			}
-			w := "campaign.orders." + id
-			cmds(w+".do", o.Do)
-			cmds(w+".on_win", o.OnWin)
-			cmds(w+".on_lose", o.OnLose)
-			cmds(w+".on_draw", o.OnDraw)
-		}
 	}
+	db.eachCommandList(func(l commandList) bool {
+		cmds(l.where, l.cmds)
+		return false
+	})
 	return out
 }
 
