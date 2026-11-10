@@ -285,7 +285,6 @@ func (g *Game) checkpoint(q event.Checkpoint) error {
 	}
 	g.stopSkip("checkpoint")
 	g.pcg = p
-	g.talk = talk{}
 	g.loadGame(st)
 	g.enterAt = ""
 	g.events.Start(g.db.Events[st.Checkpoint.Event].Do)

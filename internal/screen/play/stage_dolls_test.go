@@ -108,3 +108,31 @@ func TestDollCaptureCompletedLoadWinsOverDeadline(t *testing.T) {
 		}
 	}
 }
+
+// TestDollBakeKeepsOffTheGame: a doll baking in the background must not read or make the
+// game's scene cache (g.scenes()) from its goroutine: a reload drops and remakes the cache
+// on the game's thread meanwhile. Run with -race.
+func TestDollBakeKeepsOffTheGame(t *testing.T) {
+	files := gameFiles(t)
+	files["assets/bake.png"] = &fstest.MapFile{Data: btlPNG(64, 128)}
+	g, err := New(Options{FS: files, Location: "camp", NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	for i := range 4 {
+		sp := newDollSpec("bake.png", nil, 30+float64(i))
+		g.dollSheet(sp) // starts the bake
+		c := g.sceneCache
+		c.mu.Lock()
+		done := c.pending[sp.k]
+		c.mu.Unlock()
+		g.closeScenes() // F5 while it bakes
+		g.scenes()
+		<-done
+	}
+}

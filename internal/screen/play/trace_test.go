@@ -2842,3 +2842,17 @@ func TestPhoneGameReplayClockAndIdentity(t *testing.T) {
 		t.Fatal("unrecorded launch accepted")
 	}
 }
+
+// TestActRunRefusesBadAction: a replayed run action with an index outside the location's
+// actions is refused, not a panic.
+func TestActRunRefusesBadAction(t *testing.T) {
+	g := wldWorld(t, "camp", Options{})
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("act run with a negative action panicked: %v", r)
+		}
+	}()
+	if g.act("run", traceLine{"location": "camp", "action": float64(-1)}) {
+		t.Fatal("a negative action ran")
+	}
+}

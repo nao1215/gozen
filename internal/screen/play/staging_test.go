@@ -5,6 +5,7 @@ import (
 	"testing/fstest"
 
 	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/event"
 )
 
@@ -189,5 +190,27 @@ func TestWldScreenFadesThroughAColorAndBack(t *testing.T) {
 	g.visual(event.VisualEffect{Name: "fade", Cue: data.EffectCue{Name: "fade"}})
 	if g.fadeColor != nil {
 		t.Fatal("a plain fade started a color fade")
+	}
+}
+
+// TestLoadEndsStagingEffects: the fade through a color, the long shake and a shaken
+// portrait belong to the event that asked for them; a game loaded meanwhile starts clean.
+func TestLoadEndsStagingEffects(t *testing.T) {
+	g := wldMusicGame(t)
+	black := data.Color{Valid: true}
+	g.visual(event.VisualEffect{Name: "fade", Cue: data.EffectCue{Name: "fade", Color: black, Seconds: 1, Hold: 30}})
+	g.visual(event.VisualEffect{Name: "shake", Cue: data.EffectCue{Name: "shake", Seconds: 30}})
+	g.visual(event.VisualEffect{Name: "shake", Cue: data.EffectCue{Name: "shake", Who: "scout", Seconds: 30}})
+	b, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, b, g.st.Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadGame(st)
+	if g.fadeColor != nil || g.shakeFor != 0 || len(g.figShake) != 0 {
+		t.Fatalf("the loaded game keeps the old event's staging: fade %+v shake %d portraits %v", g.fadeColor, g.shakeFor, g.figShake)
 	}
 }

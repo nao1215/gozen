@@ -7,6 +7,7 @@ import (
 	"testing/fstest"
 
 	lang "github.com/nao1215/gozen/internal/base/text"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // mnuTop is the scene on top of the stack.
@@ -759,5 +760,42 @@ func TestMenuMouseChoosesItemAndMember(t *testing.T) {
 	g.in.click = false
 	if g.st.Members()[1].HP <= 3 {
 		t.Fatalf("hp %d: the click did not heal the member under it", g.st.Members()[1].HP)
+	}
+}
+
+// An event item used in the item screen an event opened (open: item) lets that event go on.
+func TestMenuDirectItemEventItemReleasesTheOpener(t *testing.T) {
+	g := mnuEventGame(t)
+	g.st.AddItem("spare", 1)
+	g.events.Start([]data.Command{{Open: data.ScreenCall{Screen: "item"}}})
+	var m *menu
+	for range 30 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		if top, ok := mnuTop(g).(*menu); ok {
+			m = top
+			break
+		}
+	}
+	if m == nil {
+		t.Fatalf("open: item did not open the item screen (top %T)", mnuTop(g))
+	}
+	at := indexOf(m.ids, "spare")
+	if at < 0 {
+		t.Fatalf("no spare charm in %v", m.ids)
+	}
+	m.items.sel = at
+	mnuPress(g, btnOK)
+	if g.st.Items["spare"] != 0 || len(g.stack) != 1 {
+		t.Fatalf("the item was not used: spare %d stack %d", g.st.Items["spare"], len(g.stack))
+	}
+	for range 60 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !g.st.Flags["blessed"] || g.req != nil || g.events.Running() {
+		t.Fatalf("the play is stuck after the item screen closed: item event ran %v, request %T still waited for, running %v", g.st.Flags["blessed"], g.req, g.events.Running())
 	}
 }

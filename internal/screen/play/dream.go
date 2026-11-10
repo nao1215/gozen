@@ -26,6 +26,16 @@ type dreamState struct {
 	haze map[color.NRGBA]*ebiten.Image
 }
 
+// close frees the textures the dream look made (the game closes).
+func (d *dreamState) close() {
+	release(&d.buf)
+	release(&d.mask)
+	for _, img := range d.haze {
+		img.Deallocate()
+	}
+	d.haze = nil
+}
+
 func (g *Game) dreamShown(c data.CG) {
 	if c.Look != "dream" || c.File == "" {
 		return
@@ -62,12 +72,7 @@ func (g *Game) drawDream(dst *ebiten.Image, c data.CG, a float32) {
 	g.drawPicture(dst, back, x, y, w, h, a)
 
 	b := dst.Bounds()
-	if g.dream.buf == nil || g.dream.buf.Bounds().Size() != b.Size() {
-		if g.dream.buf != nil {
-			g.dream.buf.Deallocate()
-		}
-		g.dream.buf = ebiten.NewImage(b.Dx(), b.Dy())
-	}
+	g.dream.buf = sized(g.dream.buf, b.Dx(), b.Dy())
 	buf := g.dream.buf
 	buf.Clear()
 	g.drawPicture(buf, pic, x, y, w, h, 1)

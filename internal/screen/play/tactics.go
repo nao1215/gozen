@@ -167,10 +167,7 @@ func (s *tacticsScreen) refresh(g *Game) {
 }
 
 func (s *tacticsScreen) close(g *Game) {
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 }
 
 func (s *tacticsScreen) act(g *Game) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"io/fs"
 	"log"
 	"runtime"
 	"strconv"
@@ -147,7 +148,7 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 	if !done && c.pending[key] == nil {
 		loaded := make(chan struct{})
 		c.pending[key] = loaded
-		wait := g.waitsForDolls()
+		wait, fsys := g.waitsForDolls(), g.opts.FS
 		if !wait {
 			g.emit("async_picture", nil)
 		}
@@ -169,7 +170,7 @@ func (g *Game) dollSheet(sp dollSpec) *ebiten.Image {
 			}
 			var found *[4]int
 			if pic != nil {
-				found = g.foundFace(sp.picture, pic.Bounds().Size())
+				found = c.foundFace(fsys, sp.picture, pic.Bounds().Size())
 			}
 			out := baked{sheet: bakeDoll(pic, sp), face: faceIcon(pic, sp, found)}
 			if sp.doll != nil && sp.doll.Icon != "" { // a face drawn for the balloons
@@ -242,13 +243,14 @@ func faceIcon(pic image.Image, sp dollSpec, found *[4]int) *image.RGBA {
 }
 
 // foundFace is the face box gozen faces wrote for a picture of the size, or nil.
-func (g *Game) foundFace(picture string, size image.Point) *[4]int {
-	c := g.scenes()
+// A bake calls it off the game's thread, so it is the cache's own and never the game's
+// (g.scenes() makes the cache a reload dropped again, on the game's thread only).
+func (c *sceneCache) foundFace(fsys fs.FS, picture string, size image.Point) *[4]int {
 	c.facesMu.Lock()
 	defer c.facesMu.Unlock()
 	if !c.facesRead {
 		c.facesRead = true
-		f, _, err := data.ReadFaceBoxes(g.opts.FS)
+		f, _, err := data.ReadFaceBoxes(fsys)
 		if err != nil {
 			log.Print(err)
 		}

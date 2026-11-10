@@ -62,15 +62,13 @@ func (s *saveMenu) update(g *Game) {
 		s.msgT--
 		if s.msgT == 0 || g.in.advance() {
 			s.msgT = 0
-			g.pop()
-			s.done()
+			g.leave(s.done)
 		}
 		return
 	}
 	chose, cancel := s.slots.update(g)
 	if cancel {
-		g.pop()
-		s.done()
+		g.leave(s.done)
 		return
 	}
 	if !chose {

@@ -315,10 +315,7 @@ func (s *configScreen) update(g *Game) {
 			return
 		}
 		g.sfx("cancel")
-		g.pop()
-		if s.done != nil {
-			s.done()
-		}
+		g.leave(s.done)
 	}
 }
 

@@ -118,8 +118,7 @@ func (f *formation) update(g *Game) {
 			return
 		}
 		g.sfx("cancel")
-		g.pop()
-		f.done()
+		g.leave(f.done)
 	case g.in.up():
 		f.sel = (f.sel - 1 + n) % n
 		g.sfx("cursor")
@@ -228,8 +227,7 @@ func (t *treeView) update(g *Game) {
 	}
 	if len(t.ids) == 0 || g.in.cancel() {
 		g.sfx("cancel")
-		g.pop()
-		t.done()
+		g.leave(t.done)
 		return
 	}
 	a := t.actor(g)
@@ -590,8 +588,7 @@ func (f *fusion) update(g *Game) {
 	chose, cancel := f.list.update(g)
 	if cancel || (chose && f.list.sel == len(f.idx)) {
 		g.sfx("cancel")
-		g.pop()
-		f.done()
+		g.leave(f.done)
 		return
 	}
 	if !chose {

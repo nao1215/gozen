@@ -651,10 +651,7 @@ func (r *sceneReplay) update(g *Game) {
 		return
 	}
 
-	g.st, g.events, g.req = r.saved, r.events, nil
-	g.backlog, g.logView = r.log, nil
-	g.replaying = false
-	g.autoRead = r.autoRead
+	r.restore(g)
 	if g.fast != nil && g.fast.page {
 		g.fast = nil
 	}
@@ -663,6 +660,14 @@ func (r *sceneReplay) update(g *Game) {
 		g.Music(c)
 	}
 	g.pop()
+}
+
+// restore gives the play back as it was before the recollection.
+func (r *sceneReplay) restore(g *Game) {
+	g.st, g.events, g.req = r.saved, r.events, nil
+	g.backlog, g.logView = r.log, nil
+	g.replaying = false
+	g.autoRead = r.autoRead
 }
 
 func (g *Game) startReplayPage(page data.GalleryPage) {

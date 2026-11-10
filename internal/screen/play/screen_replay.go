@@ -124,7 +124,6 @@ func (g *Game) saveScreen() ([]byte, error) {
 // installScreenReplay only runs after reconstruction succeeded on private state.
 func (g *Game) installScreenReplay(probe *savedReplay, replay event.ScreenReplay, root screenTranscript) {
 	g.pcg = probe.pcg
-	g.talk = talk{}
 	g.loadGame(probe.st)
 	g.enterAt = ""
 	probe.target = g

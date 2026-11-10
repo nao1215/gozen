@@ -384,10 +384,7 @@ func (s *authorScreen) update(g *Game) {
 		g.evName, g.evLines, g.evArrival = "", 0, false
 		g.evAnswers, g.evHist, g.evOpened = nil, nil, nil
 		if g.st.Location != s.origin {
-			g.pop()
-			if s.done != nil {
-				s.done()
-			}
+			g.leave(s.done)
 			return
 		}
 		if s.destination != "" {
@@ -445,10 +442,7 @@ func (s *authorScreen) update(g *Game) {
 		if s.leave(g) {
 			return
 		}
-		g.pop()
-		if s.done != nil {
-			s.done()
-		}
+		g.leave(s.done)
 		return
 	}
 	if chose {
@@ -725,10 +719,7 @@ func (s *authorScreen) returnTo(g *Game, name string) bool {
 	if !ok || !event.ReturnsTo(g.db, name, under.name, len(under.args), under.running) {
 		return false
 	}
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 	switch {
 	case under.running:
 	case under.flowGivesWay(g):
@@ -773,10 +764,7 @@ func (s *authorScreen) closeSurface(g *Game) {
 	if s.leave(g) {
 		return
 	}
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 }
 
 func (s *authorScreen) updateSurface(g *Game) {

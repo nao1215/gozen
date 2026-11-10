@@ -82,8 +82,7 @@ func (s *shop) update(g *Game) {
 	if s.mode == "" {
 		chose, cancel := s.top.update(g)
 		if cancel || (chose && s.top.sel == 2) {
-			g.pop()
-			s.done()
+			g.leave(s.done)
 			return
 		}
 		if chose {
