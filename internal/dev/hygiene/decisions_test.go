@@ -780,15 +780,14 @@ func usageErrorViolations(f *ast.File, name string) []string {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		pkg, isIdent := ast.Expr(nil), false
-		if ok {
-			pkg = sel.X
-			_, isIdent = pkg.(*ast.Ident)
-		}
-		if !ok || !isIdent {
+		if !ok {
 			return true
 		}
-		id := pkg.(*ast.Ident).Name + "." + sel.Sel.Name
+		pkg, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		id := pkg.Name + "." + sel.Sel.Name
 		if id != "errors.New" && id != "fmt.Errorf" {
 			return true
 		}

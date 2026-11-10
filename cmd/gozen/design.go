@@ -495,7 +495,6 @@ func designDuels(w *md.Markdown, cfg *designeval.Config, sums []designeval.Summa
 
 // designPersonaSection writes one persona's section.
 func designPersonaSection(w *md.Markdown, cfg *designeval.Config, r *designeval.Run, s designeval.Summary) {
-
 	w.H3f(lang.T("%s（%s）"), s.Name, s.ID)
 
 	w.PlainTextf("%s", r.Persona.Desc)

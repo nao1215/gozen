@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nao1215/gozen/internal/base/cliio"
-	"github.com/nao1215/gozen/internal/base/diag"
 	"io/fs"
 	"math"
 	"os"
@@ -13,6 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/nao1215/gozen/internal/base/cliio"
+	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/mosaic/detect"
 )
 
