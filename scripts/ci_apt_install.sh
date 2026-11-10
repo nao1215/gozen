@@ -10,7 +10,8 @@
 # the download, with a deadline. A phase that passes its deadline is started
 # again, up to three attempts; apt resumes the partial downloads. The packages
 # are unpacked only after every file is on disk, so the deadline never
-# interrupts dpkg. Run it before any other step that uses apt, so that step
+# interrupts dpkg. A healthy run fetches the index and ffmpeg in about ten
+# seconds each, so the deadlines are 60 and 90 seconds. Run it before any other step that uses apt, so that step
 # reads the same mirror order.
 set -euo pipefail
 
@@ -30,8 +31,8 @@ apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::http
 install=(install -y --no-install-recommends)
 
 for attempt in 1 2 3; do
-  if sudo timeout --kill-after=10 120 apt-get "${apt_options[@]}" update &&
-    sudo timeout --kill-after=10 240 apt-get "${apt_options[@]}" "${install[@]}" --download-only "$@"; then
+  if sudo timeout --kill-after=10 60 apt-get "${apt_options[@]}" update &&
+    sudo timeout --kill-after=10 90 apt-get "${apt_options[@]}" "${install[@]}" --download-only "$@"; then
     sudo apt-get "${apt_options[@]}" "${install[@]}" "$@"
     exit 0
   fi
