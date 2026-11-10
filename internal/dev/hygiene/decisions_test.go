@@ -759,6 +759,174 @@ func TestCommandExecutionGuard(t *testing.T) {
 	}
 }
 
+// usageErrorAllowlist names the option messages that are not argument errors,
+// by file and message. Each entry says why the command exits 1 instead of 2.
+var usageErrorAllowlist = map[string]string{
+	// The option is valid; the model it needs is a missing prerequisite (exit 1, with the requirements).
+	"internal/mosaic/command/main.go: --shape mask requires a user-supplied --seg model": "missing prerequisite",
+}
+
+// usageErrorViolations reports errors about an option that a command handler
+// builds with errors.New or fmt.Errorf. Such an error exits 1 without a code or
+// the --help hint; an argument error is cliio.Invalid (exit 2, ADR 0042).
+func usageErrorViolations(f *ast.File, name string) []string {
+	if strings.HasSuffix(name, "_test.go") || (!strings.HasPrefix(name, "cmd/gozen/") && !strings.Contains(name, "/command/")) {
+		return nil
+	}
+	var violations []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		pkg, isIdent := ast.Expr(nil), false
+		if ok {
+			pkg = sel.X
+			_, isIdent = pkg.(*ast.Ident)
+		}
+		if !ok || !isIdent {
+			return true
+		}
+		id := pkg.(*ast.Ident).Name + "." + sel.Sel.Name
+		if id != "errors.New" && id != "fmt.Errorf" {
+			return true
+		}
+		lit, ok := call.Args[0].(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			return true
+		}
+		message, err := strconv.Unquote(lit.Value)
+		if err != nil || !strings.HasPrefix(message, "--") {
+			return true
+		}
+		if _, allowed := usageErrorAllowlist[name+": "+message]; !allowed {
+			violations = append(violations, fmt.Sprintf("%s(%q): an error about an option is cliio.Invalid", id, message))
+		}
+		return true
+	})
+	return violations
+}
+
+func TestUsageErrors(t *testing.T) {
+	used := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		f := parsed(t, name, b)
+		for _, v := range usageErrorViolations(f, name) {
+			t.Errorf("%s: %s", name, v)
+		}
+		for key := range usageErrorAllowlist {
+			file, message, _ := strings.Cut(key, ": ")
+			if file == name && bytes.Contains(b, []byte(strconv.Quote(message))) {
+				used[key] = true
+			}
+		}
+	})
+	for key, reason := range usageErrorAllowlist {
+		if !used[key] || reason == "" {
+			t.Errorf("usage error allowlist entry %q is stale or has no reason; remove it", key)
+		}
+	}
+}
+
+func TestUsageErrorsGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		bad                bool
+	}{
+		{"errorf", "cmd/gozen/x.go", `package main; import "fmt"; func h() error { return fmt.Errorf("--boss: unknown troop %q", "x") }`, true},
+		{"new", "internal/mosaic/command/x.go", `package command; import "errors"; func h() error { return errors.New("--labels cannot be empty") }`, true},
+		{"invalid", "cmd/gozen/x.go", `package main; func h() error { return cliio.Invalid(diag.BadValue, "--boss: unknown troop") }`, false},
+		{"not an option", "cmd/gozen/x.go", `package main; import "errors"; func h() error { return errors.New("the save is not valid JSON") }`, false},
+		{"library", "internal/model/rpg/x.go", `package rpg; import "errors"; func h() error { return errors.New("--flags is for tests") }`, false},
+		{"test file", "cmd/gozen/x_test.go", `package main; import "errors"; func h() error { return errors.New("--x") }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := usageErrorViolations(parsed(t, tc.file, []byte(tc.source)), tc.file)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}
+
+// choiceAllowlist names the handlers that reject a choice by hand, by file,
+// with the reason the set cannot be declared with clihelp.Choices.
+var choiceAllowlist = map[string]string{
+	"cmd/gozen/campaign.go": "--tactic is one of the tactics the game declares, known only after the game is read",
+}
+
+// choiceViolations reports a fixed choice set that is checked by hand instead
+// of being declared: clihelp.Choices validates the value, words the rejection
+// and lists the values in the machine-readable help from one list. An empty
+// string is never a choice; an option left at its default is not checked.
+func choiceViolations(f *ast.File, name string) []string {
+	if strings.HasSuffix(name, "_test.go") || strings.HasPrefix(name, "internal/base/") {
+		return nil
+	}
+	var violations []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.SelectorExpr:
+			if id, ok := n.X.(*ast.Ident); ok && id.Name == "diag" && n.Sel.Name == "NotAChoice" && choiceAllowlist[name] == "" {
+				violations = append(violations, "diag.NotAChoice by hand: declare the values with clihelp.Choices")
+			}
+		case *ast.CallExpr:
+			sel, ok := n.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Choices" {
+				return true
+			}
+			if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "clihelp" {
+				return true
+			}
+			for _, arg := range n.Args[min(1, len(n.Args)):] {
+				if lit, ok := arg.(*ast.BasicLit); ok && lit.Kind == token.STRING && (lit.Value == `""` || lit.Value == "``") {
+					violations = append(violations, "clihelp.Choices lists an empty value: leave the default out of the choices")
+				}
+			}
+		}
+		return true
+	})
+	return violations
+}
+
+func TestDeclaredChoices(t *testing.T) {
+	used := map[string]bool{}
+	sourceFiles(t, func(name string, b []byte) {
+		for _, v := range choiceViolations(parsed(t, name, b), name) {
+			t.Errorf("%s: %s", name, v)
+		}
+		if choiceAllowlist[name] != "" && bytes.Contains(b, []byte("diag.NotAChoice")) {
+			used[name] = true
+		}
+	})
+	for name := range choiceAllowlist {
+		if !used[name] {
+			t.Errorf("choice allowlist entry %q is stale; remove it", name)
+		}
+	}
+}
+
+func TestDeclaredChoicesGuard(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		bad                bool
+	}{
+		{"by hand", "cmd/gozen/x.go", `package main; func h() error { return cliio.Invalid(diag.NotAChoice, "--as is a or b") }`, true},
+		{"empty choice", "cmd/gozen/x.go", `package main; func h() { clihelp.Choices(f.Lookup("only"), "", "structure") }`, true},
+		{"declared", "cmd/gozen/x.go", `package main; func h() { clihelp.Choices(f.Lookup("only"), "structure", "layout") }`, false},
+		{"allowed", "cmd/gozen/campaign.go", `package main; func h() error { return cliio.Invalid(diag.NotAChoice, "--tactic") }`, false},
+		{"parser", "internal/base/clihelp/clihelp.go", `package clihelp; func h() error { return diag.NotAChoice.Errorf("x") }`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := choiceViolations(parsed(t, tc.file, []byte(tc.source)), tc.file)
+			if (len(got) > 0) != tc.bad {
+				t.Fatalf("violations = %v, want rejection %v", got, tc.bad)
+			}
+		})
+	}
+}
+
 // TestDeadcodeGate rejects tool/filter failures while allowing only explicitly
 // exempted findings. Diagnostics must remain on stderr, outside the filter.
 func TestDeadcodeGate(t *testing.T) {

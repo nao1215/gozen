@@ -46,6 +46,18 @@ Dango also checks generated schemas against the Go types and translation keys ag
 - Command checks reject root dispatch, direct parser entry and subprocess
   execution from handlers. Shared flag registration for an external input
   adapter is not another handler invocation. Typed operations remain reusable.
+- Usage-error checks (`TestUsageErrors`) read the command handlers (`cmd/gozen`
+  and the `command` packages) and reject an `errors.New` or `fmt.Errorf` whose
+  message starts with an option name (`--boss: unknown troop`): such an error
+  exits 1 without a code, while an argument error is `cliio.Invalid` (exit 2 with
+  a code and the `--help` hint). A missing prerequisite that names an option is
+  allowlisted with its reason. The check is lexical: it does not find an
+  argument error whose message starts with other words.
+- Choice checks (`TestDeclaredChoices`) reject `diag.NotAChoice` raised outside
+  the option parser and an empty string among `clihelp.Choices`. A fixed set of
+  values is declared once, so the check, the rejection and `gozen help --format
+  json` read the same list; a set known only after the game is read is
+  allowlisted by file.
 - The phone puppet clip test observes actual file reads while advancing headless
   playback. It runs without a window. Trace checks exercise extreme observation
   values and require no diagnostic or failure status for layout and state measurements.
