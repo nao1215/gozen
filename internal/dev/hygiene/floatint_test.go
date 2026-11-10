@@ -1,6 +1,7 @@
 package hygiene_test
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"go/build"
@@ -10,9 +11,15 @@ import (
 	"go/types"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
+
+// sourceGOROOT fills build.Default.GOROOT once for the source importer.
+var sourceGOROOT sync.Once
 
 // floatToIntConversions lists the conversions of a decimal number to an integer type
 // in the packages under dir (a path from the repository root), as "file:line: text".
@@ -23,6 +30,16 @@ import (
 func floatToIntConversions(t *testing.T, dir string) []string {
 	t.Helper()
 	const root = "../../.."
+	sourceGOROOT.Do(func() {
+		// A binary built with -trimpath (as the dango E2E builds it) knows no
+		// GOROOT, and the source importer reads the standard library from there.
+		if build.Default.GOROOT == "" {
+			out, err := exec.CommandContext(context.Background(), "go", "env", "GOROOT").Output()
+			if err == nil {
+				build.Default.GOROOT = strings.TrimSpace(string(out))
+			}
+		}
+	})
 	fset := token.NewFileSet()
 	imp := importer.ForCompiler(fset, "source", nil)
 	var found []string
