@@ -108,7 +108,7 @@ func Add(name, gameDir string, force bool) (r Files, err error) {
 		if err := root.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 			return r, err
 		}
-		if err := root.WriteFile(dst, b, 0o644); err != nil { //nolint:gosec // A game's asset, read by the game and its players.
+		if err := root.WriteFile(dst, b, 0o644); err != nil {
 			return r, err
 		}
 		r.Written = append(r.Written, rel)

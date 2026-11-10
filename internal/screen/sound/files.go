@@ -158,7 +158,11 @@ var errSoundFileTooLarge = fmt.Errorf("sound file exceeds %d encoded bytes", max
 // it, before anything is decoded. The claim is a field of the file, so a
 // negative (wrapped) one is refused too.
 func openSound(b []byte, ext string, maxBytes int64) (r effectStream, err error) {
-	defer decoderFailure(&err)
+	defer func() {
+		if p := recover(); p != nil {
+			r, err = nil, decoderFailure(p)
+		}
+	}()
 	if ext == ".wav" {
 		r, err = wav.DecodeWithSampleRate(SampleRate, bytes.NewReader(b))
 	} else {
@@ -180,14 +184,16 @@ func openSound(b []byte, ext string, maxBytes int64) (r effectStream, err error)
 type guarded struct{ effectStream }
 
 func (g guarded) Read(p []byte) (n int, err error) {
-	defer decoderFailure(&err)
+	defer func() {
+		if r := recover(); r != nil {
+			n, err = 0, decoderFailure(r)
+		}
+	}()
 	return g.effectStream.Read(p)
 }
 
-func decoderFailure(err *error) {
-	if r := recover(); r != nil {
-		*err = fmt.Errorf("sound decoder failed: %v", r)
-	}
+func decoderFailure(recovered any) error {
+	return fmt.Errorf("sound decoder failed: %v", recovered)
 }
 
 // DecodeEffect decodes an effect or a voice (ext is ".wav" or ".ogg") into

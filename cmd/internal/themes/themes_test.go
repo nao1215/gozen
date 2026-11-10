@@ -148,7 +148,8 @@ func TestAddStaysInTheGame(t *testing.T) {
 	if _, err := Add("cave", game, true); err != nil {
 		t.Fatal(err)
 	}
-	if b, err := os.ReadFile(target); err != nil || string(b) != "theirs" {
+	b, err := os.ReadFile(target) //nolint:gosec // Test-owned path under t.TempDir.
+	if err != nil || string(b) != "theirs" {
 		t.Fatalf("--force wrote through a link to %q (%v)", b, err)
 	}
 	if info, err := os.Lstat(wall); err != nil || !info.Mode().IsRegular() || info.Size() < 1000 {
