@@ -44,7 +44,7 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Battle | Cut-in |
 | ![four against the Brass Warden, with damage numbers](/images/go-zen-battle.mp4) | ![Ox's Shield Rush cut-in](/images/go-zen-cutin.mp4) |
 | Shop | Skill tree |
-| ![the shop's goods](/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](/images/go-zen-tree.jpg) |
+| ![the shop's goods](/images/go-zen-shop.jpg) | ![Maren's skill tree: Z raises Chart and Ink Burst as the SP left count down, then Tab goes to Ox](/images/go-zen-tree.mp4) |
 | Title | |
 | ![the title screen](/images/go-zen-title.jpg) | |
 
@@ -94,7 +94,7 @@ Workspace, call, calendar and timeline screens with a day `flow` (schema 10) mak
 
 | Standup: busts, meters, dots, signs, burnup | People: press for a peek |
 |:--|:--|
-| ![six team cards with busts, progress meters, status dots and a burnup chart](/images/workboard-cards.jpg) | ![the team with Daniel's peek open](/images/workboard-peek.jpg) |
+| ![six team cards with busts, progress meters, status dots and a burnup chart](/images/workboard-cards.jpg) | ![Daniel's peek opens when his card is pressed and closes when it is pressed again](/images/workboard-peek.mp4) |
 | Hand out work by dragging (or with keys) | Tickets, dependencies and a carousel |
 | ![Acceptance tests is refused by Daniel, then Payments is handed to him](/images/workboard-drag.mp4) | ![tickets joined by a dependency line, and the help carousel turning to an unavailable choice](/images/workboard-carousel.mp4) |
 | A message asks for a decision | Video call |
@@ -154,7 +154,7 @@ Start the game with `--dev` and these keys work while you play.
 | F8 Command: run a line of YAML | F8 Frames: ticks, frames, the slowest Update and Draw |
 | ![a set typed into the Command tab, then the State tab shows the flag](/images/playtest-command.mp4) | ![the frame meter over the tavern](/images/playtest-frames.jpg) |
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
-| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart with face icons and coloured connections](/images/go-zen-relations.jpg) |
+| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart: the cursor moves to Ox, and Z gathers his neighbors in a circle around him](/images/go-zen-relations.mp4) |
 
 More on each key in [the edit–play loop](/edit-play-loop/).
 

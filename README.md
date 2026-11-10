@@ -62,7 +62,7 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | Battle | Cut-in |
 | ![four against the Brass Warden, with damage numbers](docs/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.gif) |
 | Shop | Skill tree |
-| ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree with Ink Burst chosen](docs/images/go-zen-tree.jpg) |
+| ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree: Z raises Chart and Ink Burst as the SP left count down, then Tab goes to Ox](docs/images/go-zen-tree.gif) |
 | Title | |
 | ![the title screen](docs/images/go-zen-title.jpg) | |
 
@@ -112,7 +112,7 @@ Run a team through workspaces, calls, calendars and timelines. From [Harbor app 
 
 | Standup: busts, meters, dots, signs, burnup | People: press for a peek |
 |:--|:--|
-| ![six team cards with busts, progress meters, status dots and a burnup chart](docs/images/workboard-cards.jpg) | ![the team with Daniel's peek open](docs/images/workboard-peek.jpg) |
+| ![six team cards with busts, progress meters, status dots and a burnup chart](docs/images/workboard-cards.jpg) | ![Daniel's peek opens when his card is pressed and closes when it is pressed again](docs/images/workboard-peek.gif) |
 | Hand out work by dragging (or with keys) | Tickets, dependencies and a carousel |
 | ![Acceptance tests is refused by Daniel, then Payments is handed to him](docs/images/workboard-drag.gif) | ![tickets joined by a dependency line, and the help carousel turning to an unavailable choice](docs/images/workboard-carousel.gif) |
 | A message asks for a decision | Video call |
@@ -174,7 +174,7 @@ Reload edits while playing, inspect state, record a playthrough and reproduce a 
 | F8 Command: run a line of YAML | F8 Frames: scene state, control boxes, Update and Draw |
 | ![a set typed into the Command tab, then the State tab shows the flag](docs/images/playtest-command.gif) | ![the Frames overlay over the tavern](docs/images/playtest-frames.jpg) |
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
-| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Ox focused at the center of the relationship chart with his neighbors in a circle](docs/images/go-zen-relations-focus.jpg) |
+| ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](docs/images/novel-characters.jpg) | ![Go Zen's relationship chart: the cursor moves to Ox, and Z gathers his neighbors in a circle around him](docs/images/go-zen-relations.gif) |
 
 ## Install
 

@@ -56,6 +56,13 @@ dependencies, materials and optional character voice checks.
 | [Measure battles with sim battle and sim dive](#measure-battles-with-sim-battle-and-sim-dive) | `gozen sim battle`, `gozen sim dive` |
 | [Check and measure in CI](#check-and-measure-in-ci) | `setup-gozen`, `gozen check`, `gozen sim` in GitHub Actions |
 | [Cut a release and a trial](#cut-a-release-and-a-trial) | `trial.yaml`, `gozen release`, `gozen trial` |
+| [Wear stone sets and fuse stones](#wear-stone-sets-and-fuse-stones) | `stone_sets`, `fusions`, `equip_stones`, `stone_suggest`, `open: fusion` |
+| [Set a retry point with a checkpoint](#set-a-retry-point-with-a-checkpoint) | `checkpoint`, `restore_checkpoint` |
+| [Insert a thought after a speaker's lines](#insert-a-thought-after-a-speakers-lines) | `asides` |
+| [Dress the title screen](#dress-the-title-screen) | `title_background`, `title_art`, `title_figures` |
+| [Review pictures and scenes while writing](#review-pictures-and-scenes-while-writing) | `cg_review`, `scene_review`, `--review-log` |
+| [Tune a place, the windows and the battle pace](#tune-a-place-the-windows-and-the-battle-pace) | `no_menu`, `outfit`, `resume_to`, `talk_on_enter`, `ui.hide_gold`, `battle.tempo`, `battle.passives` |
+| [Change states, duels and skill points from an event](#change-states-duels-and-skill-points-from-an-event) | `affect`, `fighters`, `reset_tree`, `sp_suggest`, `open_wall` |
 
 ## Start a new game
 
@@ -209,6 +216,9 @@ Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [
 
 In the novel window, the player can step back a line with the "Back" button, Q or the mouse wheel: the flags, variables, items and the answers given go back too, and a choice comes back to be answered again. Read lines, the gallery and the settings stay. Rolling back stops at a battle, a shop, a save command, a screen, a move or the end, and reaches up to 8 earlier events; `ui.rollback` changes that number, and 0 turns rolling back off. "Save" and "Load" on the band save in the middle of a scene: loading begins the event again from its start and reads on to the line, with the same answers and the same random numbers.
 
+![Back goes over two lines and a choice, with the state](/images/novel-back.mp4)
+![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4)
+
 <!-- verify: load group=rollback as=game.yaml -->
 ```yaml
 # game.yaml
@@ -240,6 +250,8 @@ The game resumes a save made in the middle of an event at its saved line. Use a 
 ## Stage portraits and effects
 
 In the novel window, portraits come and go with the speakers by themselves. An event that uses `stand` places them as written instead: who stands where, how they come in (`fade` or `slide`) and when they leave. A line's `face` still changes the expression of a portrait standing. `effect` shakes one portrait or the screen, plays a reaction of a moving portrait, or fades the screen through a color; `music` fades in and out; a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
+
+![Brenna slides in and her portrait shakes](/images/novel-stage.mp4)
 
 <!-- verify: load group=staging as=game.yaml -->
 ```yaml
@@ -491,6 +503,8 @@ The rows are keyed by the AI they replace. In an event, `set: {actor.sela.tactic
 
 A boss is an enemy with `boss: true`. Its troop can forbid running away, say a line at the start, and run commands mid-battle; the `battle` command decides what winning and losing do.
 
+![Ox's Shield Rush cut-in](/images/go-zen-cutin.mp4)
+
 <!-- verify: load group=boss -->
 ```yaml
 skills:
@@ -531,7 +545,7 @@ locations:
 
 ## Send the party home instead of game over
 
-`game_over.event` runs instead of the game over screen; `battle.retry` offers to fight a lost battle again.
+`game_over.event` runs after the game over screen, in place of the return to the title: the screen shows, and on the next press the party is recovered and the event runs. `battle.retry` offers to fight a lost battle again.
 
 <!-- verify: load group=gameover as=game.yaml -->
 ```yaml
@@ -779,6 +793,8 @@ The thirteen themes in the same corridor, `cave`, `ice`, `ruins`, `castle`, `cry
 
 A location with `map` is a picture with points on it (`schema_version: 3`). The party walks the open roads from point to point; a point with `to` leads into that location, and one with only `do` runs its commands there.
 
+![the party's face walks the road to the well](/images/go-zen-map.mp4)
+
 <!-- verify: load group=map -->
 ```yaml
 locations:
@@ -803,6 +819,8 @@ Paint the roads in the picture: the lines in the YAML are what the token walks, 
 ## Make a campaign
 
 A campaign is a war of regions over turns (`schema_version: 5`): factions hold regions, the player gives a few orders a turn with the generals (actors of the game), and the other factions move by their `ai` rules when the turn ends. Its place is a map whose points are named like the regions.
+
+![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.mp4)
 
 <!-- verify: load as=game.yaml group=campaign -->
 ```yaml
@@ -923,6 +941,8 @@ Gold, items, flags, experience and HP are one state: what the party finds in the
 
 A location with `stage` shows its background as a painting the party walks as a small doll (`schema_version: 3`). The stage says where one can walk, how tall people are at two depths, where the location's people stand, and what can be looked at; `bubbles` are lines said now and then in balloons.
 
+![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.mp4)
+
 <!-- verify: load group=stage -->
 ```yaml
 locations:
@@ -956,6 +976,8 @@ locations:
 ## Give a character faces and a moving portrait
 
 `faces` is a directory with one picture per expression; a line picks one with `face`. A `puppet` makes the talk portrait blink, move its mouth while the text runs and sway; its faces use the same names.
+
+![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.mp4)
 
 <!-- verify: load group=puppet -->
 ```yaml
@@ -1124,6 +1146,8 @@ Use `open: bestiary` to open the book from an event. `gozen check` warns with GZ
 ## Collect, raise and breed monsters
 
 Use schema version 6. Give each species a family, a positive rank and a class that defines its growth and level skills. Add `recruit` only to species that may ask to join after a won battle. This short data file assumes `attack` and `guard` are already defined, and that the two pictures exist under `assets/`.
+
+![the party wins, and a Drip Slime rises and asks to join, with Yes and No](/images/go-zen-recruit.mp4)
 
 <!-- verify: parse a complete data fragment for a game with the pictured assets -->
 ```yaml
@@ -1326,6 +1350,8 @@ text:
 ## Offer the game in two languages
 
 Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `text` from each text as written to its translation, with the `{expressions}` kept. `languages` lets the player choose in the settings; the choice is kept with the settings.
+
+![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4)
 
 <!-- verify: load group=languages as=game.yaml -->
 ```yaml
@@ -1573,3 +1599,249 @@ playback without speech synthesis, including the existing loading deadline and
 question-answer hold. It does not change recording playback or timeout logs.
 The speaker ON/OFF button controls recorded audio when `voices` is configured;
 without recorded audio it is hidden. The captions button remains independent.
+
+## Wear stone sets and fuse stones
+
+A stone is an item with a `slot`; an item of slot `stone` fits the equip slots `stone1`, `stone2` and so on. A `stone_sets` entry names stones worn together by one member: while all of them are worn, the member has the set's `stats` and its `skill`. `for` lists the members a set suits, and `only: true` makes it work for those members alone.
+
+<!-- verify: load group=stones as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 11
+equip_slots:
+  - {id: weapon, name: Weapon}
+  - {id: stone1, name: Stone 1, manual: true}
+  - {id: stone2, name: Stone 2, manual: true}
+```
+
+<!-- verify: load group=stones -->
+```yaml
+classes:
+  gemwright:
+    name: Gemwright
+    stats: {mhp: 20, mmp: 4, atk: 4, def: 2, mat: 2, mdf: 2, agi: 4, luk: 1}
+    exp_for: level * 20
+    equip: [stone]
+actors:
+  sage: {name: Sage, class: gemwright}
+items:
+  amber: {name: Amber, kind: stone, slot: stone, stats: {def: 2}}
+  jet: {name: Jet, kind: stone, slot: stone, stats: {mat: 3}}
+  flint: {name: Flint, kind: stone, slot: stone, price: 6, stats: {atk: 1}}
+  spark: {name: Spark, kind: stone, slot: stone, stats: {atk: 4}}
+stone_sets:
+  dusk: {name: Dusk, desc: Amber and jet together., stones: [amber, jet], stats: {mdf: 4}, for: [sage]}
+fusions:
+  - {from: [flint, flint], to: spark, price: 10}
+locations:
+  workshop:
+    name: Workshop
+    safe: true
+    actions:
+      - {label: Fuse stones, do: [{open: fusion}]}
+      - {label: Wear Dusk, do: [{equip_stones: {actor: '"sage"', set: '"dusk"'}}]}
+      - label: Ask for advice
+        do:
+          - stone_suggest: tip
+          - if: var.tip > 0
+            then:
+              - say: "{var.tip_page1}"
+              - stone_apply: tip
+            else:
+              - say: Your stones are already at their best.
+    exits: [{to: field, label: Out to the field}]
+```
+
+`manual: true` keeps the menu's best-equipment choice and its offers away from a slot, which suits stones: a set is worth more than the numbers of its stones. `equip_stones` takes the stones from the bag, or from members not using them; `actor` and `set` are expressions, so a fixed ID is quoted. `stone_suggest: tip` looks for the strongest way to wear every owned stone and writes `var.tip`, the number of members whose stones would change (0 when the party already wears the best), with one text per member in `var.tip_page1`, `var.tip_page2` and so on; `stone_apply: tip` then re-equips everyone that way. `stone_choose`, `stone_wearer` and `stone_decline` let the player pick a set and its wearer, or refuse the advice until the owned stones change.
+
+`open: fusion` opens the screen of the `fusions`: a recipe takes the stones of `from` and the `price`, and gives the stone `to`. Reference: [StoneSet](/schema/#stoneset), [Fusion](/schema/#fusion), [EquipStones](/schema/#equipstones), [Slot](/schema/#slot).
+
+## Set a retry point with a checkpoint
+
+`checkpoint: EVENT` keeps the state and the random numbers of that moment as the retry point, replacing the one before (schema version 9). `restore_checkpoint: true` gives up what happened since, goes back to that state and runs the event the checkpoint named. A save holds the retry point, so restoring also works after loading.
+
+<!-- verify: load group=checkpoint as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 11
+```
+
+<!-- verify: load group=checkpoint -->
+```yaml
+locations:
+  trailhead:
+    name: Trailhead
+    on_enter:
+      - checkpoint: back_at_the_trailhead
+    actions:
+      - {label: Go back to the trailhead, do: [{restore_checkpoint: true}]}
+    exits: [{to: field, label: Up the trail}]
+events:
+  back_at_the_trailhead:
+    do:
+      - say: You are back where the trail begins.
+```
+
+Everything changed after the checkpoint is undone, flags and variables included: keep what must survive a retry (a count of attempts, say) in the checkpoint's event. Reference: [Command](/schema/#command).
+
+## Insert a thought after a speaker's lines
+
+`asides` in `game.yaml` insert an event right after a line by a given speaker is shown, while `when` holds; the conversation goes on when the inserted event ends. Name the speaker by `actor`, by the line's `name`, or by a pattern for its `face`.
+
+<!-- verify: load group=asides as=game.yaml -->
+```yaml
+# game.yaml
+asides:
+  - {actor: walker, when: "!flag.walker_wondered", call: walker_wonders, skip: ["finale*"]}
+```
+
+<!-- verify: load group=asides -->
+```yaml
+events:
+  walker_wonders:
+    do:
+      - say: (Why does the trail feel shorter today?)
+      - set: {flag.walker_wondered: true}
+```
+
+An aside is not inserted during a battle, inside another aside, or while an event matching `skip` (or one it calls) runs. How often it comes is yours to write: the engine does not count, so set a flag or a variable in the event and test it in `when`. Reference: [Aside](/schema/#aside).
+
+## Dress the title screen
+
+`title_background` is the picture behind the title, and `title_art` a logo or key art drawn over it. `title_figures` stand pictures on the title screen instead, the later ones in front; with figures, `title_art` is not drawn.
+
+<!-- verify: load group=title as=game.yaml -->
+```yaml
+# game.yaml
+title_background: title/sky.jpg
+title_figures:
+  - {file: title/guide.png, x: 0.3}
+  - {file: title/walker.png, x: 0.62, height: 0.8, bottom: 0.98}
+```
+
+`x` is the horizontal center as a fraction of the screen width; `height` (default 0.95) and `bottom` (default 1, the bottom edge) are fractions of the screen height. Reference: [Game](/schema/#game), [TitleFigure](/schema/#titlefigure).
+
+## Review pictures and scenes while writing
+
+`cg_review` and `scene_review` in `game.yaml` set up the tags of two review tools for authors. Start the game with `--review-log FILE`: with `cg_review` written, pictures can be tagged, and with `--gallery-all` too the gallery gains a column that lists the `gallery.scenes` to tag. `gozen run game --dev --review --review-log review.jsonl` starts by showing the pictures of every event one by one.
+
+<!-- verify: load group=review as=game.yaml -->
+```yaml
+# game.yaml
+gallery:
+  cgs:
+    - {title: Sunrise, file: cg/sunrise.jpg}
+cg_review:
+  tags:
+    - {id: ok, label: OK, ok: true}
+    - {id: redraw, label: Redraw}
+  extra: [cg/draft_*.jpg]
+  groups:
+    - {label: Sketches, files: [cg/sketch_*.jpg]}
+scene_review:
+  title: Scene check
+  tags:
+    - {id: ok, label: OK, ok: true}
+    - {id: pacing, label: Pacing}
+```
+
+The first ten tags are attached with the number keys. A tag with `ok: true` marks a picture as done, and the filter that hides finished pictures leaves it out. `extra` adds pictures the gallery does not list, and a `groups` entry is a set of pictures that is left out until it is chosen before the review. Picture tags are written to the review log as JSON Lines; scene tags go to `scene-review.jsonl` beside it. Reference: [CGReviewCfg](/schema/#cgreviewcfg), [SceneReviewCfg](/schema/#scenereviewcfg).
+
+## Tune a place, the windows and the battle pace
+
+A few single keys change how a place, the windows or every battle behave.
+
+<!-- verify: load group=tuning as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 11
+battle:
+  tempo: 1.5          # battle messages and moves go by half as fast again
+  back_weight: 0.5    # the weight of one back-row member as a target (default 1)
+  passives:
+    - {actor: walker, state: steady, when: flag.trained}
+ui:
+  battle_message: fixed    # always three lines tall; fit (the default) is as tall as its lines
+  choice_position: center  # the novel window's choices in the middle of the screen
+  field_notices: false     # no small notices on the field
+  hide_gold: [field, map]  # no money window in these kinds of place
+```
+
+<!-- verify: load group=tuning -->
+```yaml
+states:
+  steady: {name: Steady, stats: {def: 1.2}}
+locations:
+  snow_town:
+    name: Snow town
+    outfit: winter          # actors talking here wear <faces>/winter/<face>.png when there is one
+    no_menu: true           # the menu cannot be opened here
+    talk_on_enter: true     # one person's talk plays on each entry instead of a list of people
+    people:
+      - {name: Porter, talk: [{say: Mind the ice.}]}
+    exits: [{to: snow_inn, label: The inn}]
+  snow_inn:
+    name: Snow inn
+    safe: true
+    resume_to: snow_town    # a save made here starts from the town when it is loaded
+    actions:
+      - {label: Train, do: [{set: {flag.trained: true}}]}
+    exits: [{to: snow_town, label: Back outside}]
+```
+
+A `passives` state is put on the member at the start of each battle while its `when` holds, and does not last after the battle. An enemy aims at one front-row member with weight 4 and at one back-row member with weight 1 unless `front_weight` and `back_weight` say otherwise. `hide_gold` takes `field`, `dungeon`, `map` and `stage`. With `talk_on_enter`, people who have something new to say come first. Reference: [BattleCfg](/schema/#battlecfg), [Passive](/schema/#passive), [UIStyle](/schema/#uistyle), [Location](/schema/#location).
+
+## Change states, duels and skill points from an event
+
+These commands reach what the menus and battles usually own.
+
+<!-- verify: load group=eventverbs -->
+```yaml
+states:
+  chilled: {name: Chilled, turns: 3, stats: {agi: 0.8}}
+actors:
+  guide: {name: Guide, class: mender}
+locations:
+  pass:
+    name: Mountain pass
+    on_enter:
+      - affect: {who: all, add: chilled, resist: true}   # each member's state resistance may keep it off
+    actions:
+      - {label: Warm up, do: [{affect: {who: all, remove: chilled}}]}
+      - label: Duel the mote alone
+        do:
+          - battle: wolves
+            fighters: [walker]     # only these actors fight, not the whole party
+            on_win: [{say: The mote backs away.}]
+            on_lose: [{say: You step back to the fire.}]
+      - {label: Unlearn, do: [{reset_tree: all}]}
+      - label: Ask how to spend skill points
+        do:
+          - sp_suggest: plan
+          - if: var.plan > 0
+            then: [{say: "{var.plan_page1}"}, {sp_apply: plan}]
+    exits: [{to: field, label: Down to the field}]
+```
+
+`affect` puts a state on party members outside a battle (`who` is an actor's ID or `all`), for the state's own `turns` unless `turns` is given, or takes one off with `remove` (`remove: bad` takes off every bad state). A battle with `on_lose` goes on with those commands after a defeat instead of the game over. `reset_tree` gives back the SP spent in the skill tree of one actor or of `all`. `sp_suggest: plan` plans how each member's spare SP would be spent and writes `var.plan`, the number of members with a plan, and a text per member in `var.plan_page1` and so on, without spending anything; `sp_apply: plan` spends it.
+
+In a dungeon, `open_wall: H` turns the wall beside the party's cell (the one it faces first) into the tile `H` and turns the party to it; the floor and saves keep it. Written under the dungeon's `complete`, it makes a stair appear once every cell has been seen:
+
+<!-- verify: load group=eventverbs -->
+```yaml
+locations:
+  cellar:
+    name: Cellar
+    dungeon:
+      map: |
+        #####
+        #S..#
+        #####
+      tiles:
+        S: {start: true, facing: east}
+        H: {name: Hidden stair, look: door, solid: "true", do: [{move: field}]}
+      complete:
+        - open_wall: H
+```
+
+Reference: [Affect](/schema/#affect), [Command](/schema/#command), [Dungeon](/schema/#dungeon).

@@ -483,7 +483,7 @@ func (db *DB) readStrict(name string, v any) error {
 	if err != nil {
 		return err
 	}
-	if err := decodeguard.Run(func() error { return yaml.UnmarshalWithOptions(b, v, yaml.Strict()) }); err != nil {
+	if err := decodeguard.Run(b, func() error { return yaml.UnmarshalWithOptions(b, v, yaml.Strict()) }); err != nil {
 		return doc.yamlError(err)
 	}
 	return nil
