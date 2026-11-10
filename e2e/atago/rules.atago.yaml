@@ -145,10 +145,10 @@ scenarios:
         do battle: wall
         wait 10
         play 400
-        pick Yes
+        pick Retry
         wait 10
         play 400
-        pick No
+        pick Give up
         wait 100
         press ok
         wait 30
@@ -158,7 +158,7 @@ scenarios:
         do [{battle: wall, on_lose: [{set: {flag.lost: true}}]}]
         wait 10
         play 400
-        pick No
+        pick Give up
         wait 30
         quit
   - run:
