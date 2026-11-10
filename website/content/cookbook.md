@@ -216,6 +216,9 @@ Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [
 
 In the novel window, the player can step back a line with the "Back" button, Q or the mouse wheel: the flags, variables, items and the answers given go back too, and a choice comes back to be answered again. Read lines, the gallery and the settings stay. Rolling back stops at a battle, a shop, a save command, a screen, a move or the end, and reaches up to 8 earlier events; `ui.rollback` changes that number, and 0 turns rolling back off. "Save" and "Load" on the band save in the middle of a scene: loading begins the event again from its start and reads on to the line, with the same answers and the same random numbers.
 
+![Back goes over two lines and a choice, with the state](/images/novel-back.mp4)
+![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4)
+
 <!-- verify: load group=rollback as=game.yaml -->
 ```yaml
 # game.yaml
@@ -247,6 +250,8 @@ The game resumes a save made in the middle of an event at its saved line. Use a 
 ## Stage portraits and effects
 
 In the novel window, portraits come and go with the speakers by themselves. An event that uses `stand` places them as written instead: who stands where, how they come in (`fade` or `slide`) and when they leave. A line's `face` still changes the expression of a portrait standing. `effect` shakes one portrait or the screen, plays a reaction of a moving portrait, or fades the screen through a color; `music` fades in and out; a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
+
+![Brenna slides in and her portrait shakes](/images/novel-stage.mp4)
 
 <!-- verify: load group=staging as=game.yaml -->
 ```yaml
@@ -497,6 +502,8 @@ The rows are keyed by the AI they replace. In an event, `set: {actor.sela.tactic
 ## Stage a boss fight
 
 A boss is an enemy with `boss: true`. Its troop can forbid running away, say a line at the start, and run commands mid-battle; the `battle` command decides what winning and losing do.
+
+![Ox's Shield Rush cut-in](/images/go-zen-cutin.mp4)
 
 <!-- verify: load group=boss -->
 ```yaml
@@ -786,6 +793,8 @@ The thirteen themes in the same corridor, `cave`, `ice`, `ruins`, `castle`, `cry
 
 A location with `map` is a picture with points on it (`schema_version: 3`). The party walks the open roads from point to point; a point with `to` leads into that location, and one with only `do` runs its commands there.
 
+![the party's face walks the road to the well](/images/go-zen-map.mp4)
+
 <!-- verify: load group=map -->
 ```yaml
 locations:
@@ -810,6 +819,8 @@ Paint the roads in the picture: the lines in the YAML are what the token walks, 
 ## Make a campaign
 
 A campaign is a war of regions over turns (`schema_version: 5`): factions hold regions, the player gives a few orders a turn with the generals (actors of the game), and the other factions move by their `ai` rules when the turn ends. Its place is a map whose points are named like the regions.
+
+![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.mp4)
 
 <!-- verify: load as=game.yaml group=campaign -->
 ```yaml
@@ -930,6 +941,8 @@ Gold, items, flags, experience and HP are one state: what the party finds in the
 
 A location with `stage` shows its background as a painting the party walks as a small doll (`schema_version: 3`). The stage says where one can walk, how tall people are at two depths, where the location's people stand, and what can be looked at; `bubbles` are lines said now and then in balloons.
 
+![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.mp4)
+
 <!-- verify: load group=stage -->
 ```yaml
 locations:
@@ -963,6 +976,8 @@ locations:
 ## Give a character faces and a moving portrait
 
 `faces` is a directory with one picture per expression; a line picks one with `face`. A `puppet` makes the talk portrait blink, move its mouth while the text runs and sway; its faces use the same names.
+
+![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.mp4)
 
 <!-- verify: load group=puppet -->
 ```yaml
@@ -1131,6 +1146,8 @@ Use `open: bestiary` to open the book from an event. `gozen check` warns with GZ
 ## Collect, raise and breed monsters
 
 Use schema version 6. Give each species a family, a positive rank and a class that defines its growth and level skills. Add `recruit` only to species that may ask to join after a won battle. This short data file assumes `attack` and `guard` are already defined, and that the two pictures exist under `assets/`.
+
+![the party wins, and a Drip Slime rises and asks to join, with Yes and No](/images/go-zen-recruit.mp4)
 
 <!-- verify: parse a complete data fragment for a game with the pictured assets -->
 ```yaml
@@ -1332,6 +1349,8 @@ text:
 ## Offer the game in two languages
 
 Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `text` from each text as written to its translation, with the `{expressions}` kept. `languages` lets the player choose in the settings; the choice is kept with the settings.
+
+![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4)
 
 <!-- verify: load group=languages as=game.yaml -->
 ```yaml
