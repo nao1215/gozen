@@ -33,8 +33,8 @@ func TestFormationScreen(t *testing.T) {
 	}
 	mnuDrawAll(g)
 	mnuPress(g, btnUp) // wraps to the last
-	if f.sel != len(f.ids)-1 {
-		t.Fatalf("sel %d of %d", f.sel, len(f.ids))
+	if f.list.sel != len(f.ids)-1 {
+		t.Fatalf("sel %d of %d", f.list.sel, len(f.ids))
 	}
 	mnuPress(g, btnDown)
 	mnuPress(g, btnRight) // swaps the row of the first
@@ -57,7 +57,7 @@ func TestFormationScreen(t *testing.T) {
 		t.Fatalf("party %v", g.st.Party)
 	}
 	// a fifth cannot join a full party: refused with a message
-	f.sel = indexOf(f.ids, "fourth")
+	f.list.sel = indexOf(f.ids, "fourth")
 	mnuPress(g, btnOK)
 	if f.msgT == 0 || len(g.st.Party) != g.db.Game.MaxParty || slices.Contains(g.st.Party, "fourth") {
 		t.Fatalf("a party over the limit: %v msg %q", g.st.Party, f.msg)
@@ -258,5 +258,83 @@ func TestOpenScreenDispatch(t *testing.T) {
 	g.openScreen("tactics", func() {})
 	if len(g.stack) != 2 {
 		t.Fatalf("tactics pushed %d", len(g.stack)-1)
+	}
+}
+
+// A click on a row of the formation screen moves the cursor to it.
+func TestFormationClickSelectsRow(t *testing.T) {
+	g := openGame(t, Options{Location: "camp", Seed: 3})
+	g.st.Join("guide")
+	f := newFormation(g, func() {})
+	g.push(f)
+	if len(f.ids) < 2 {
+		t.Fatalf("actors %v", f.ids)
+	}
+	g.in = input{click: true, moved: true, mouse: image.Pt(120, 100+52+10)} // the second row as drawn
+	f.update(g)
+	g.in = input{}
+	if f.list.sel != 1 {
+		t.Fatalf("a click on the second row left the cursor on %d", f.list.sel)
+	}
+}
+
+// A tap on a member's row mark (front or back) changes the row, as left and right do, and
+// leaves the party as it is.
+func TestFormationRowMarkClick(t *testing.T) {
+	g := openGame(t, Options{Location: "camp", Seed: 3})
+	g.st.Join("guide")
+	f := newFormation(g, func() {})
+	g.push(f)
+	party := len(g.st.Party)
+	a := g.st.Actors[f.ids[1]]
+	back := a.Back
+	r := f.rowMark(1)
+	g.in = input{click: true, moved: true, mouse: image.Pt(r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)}
+	f.update(g)
+	g.in = input{}
+	if a.Back == back || len(g.st.Party) != party || f.list.sel != 1 {
+		t.Fatalf("a tap on the row mark: back %v -> %v, party %d -> %d, cursor %d", back, a.Back, party, len(g.st.Party), f.list.sel)
+	}
+	if f.list.items[1].note == f.list.items[0].note {
+		t.Fatalf("the row written did not change: %q", f.list.items[1].note)
+	}
+}
+
+// A tap on a fusion that cannot be made says why, as OK on it does.
+func TestFusionRefusedTapSaysWhy(t *testing.T) {
+	g := mnuExtraGame(t)
+	g.st.Gold = 100
+	g.st.AddItem("shard", 3)
+	g.openScreen("fusion", func() {})
+	f := mnuAs[*fusion](t, g)
+	if !f.list.items[1].disabled {
+		t.Fatalf("rows %+v", f.list.items)
+	}
+	r := f.list.rowRect(1)
+	g.in = input{click: true, moved: true, mouse: image.Pt(r.Min.X+40, r.Min.Y+10)}
+	f.update(g)
+	g.in = input{}
+	if f.msgT == 0 || g.st.Gold != 100 {
+		t.Fatalf("a tap on the refused fusion: message %d gold %d", f.msgT, g.st.Gold)
+	}
+}
+
+// TestSkillTreeMemberButtons: the tree's previous and next buttons change the
+// member whose tree shows, as C and Tab do.
+func TestSkillTreeMemberButtons(t *testing.T) {
+	g := mnuExtraGame(t)
+	g.st.Join("sage")
+	g.openScreen("skills", func() {})
+	tv := mnuAs[*treeView](t, g)
+	tv.ids = []string{"sage", "sage", "sage"} // three pages of the one fixture with a tree
+	prev, next := stepButtons(tv.steps(g))
+	mnuTap(g, next)
+	if tv.member != 1 {
+		t.Fatalf("the next button: member %d", tv.member)
+	}
+	mnuTap(g, prev)
+	mnuTap(g, prev)
+	if tv.member != 2 {
+		t.Fatalf("the previous button twice from the second: member %d, want the last", tv.member)
 	}
 }

@@ -238,6 +238,13 @@ func timelineForecast(from, today, start, end time.Time, reported float64, cance
 	return finish / days, label + " " + start.AddDate(0, 0, int(finish)-1).Format(time.DateOnly)
 }
 
+// surfaceTimeline lays the grouped timeline out where drawSurface draws it.
+func (s *authorScreen) surfaceTimeline(g *Game) []timelineGroup {
+	x, y, w, h := g.surfaceChart()
+	groups, _, _ := s.groupedTimeline(g, x, y, w, h)
+	return groups
+}
+
 func (s *authorScreen) drawGroupedTimeline(g *Game, dst *ebiten.Image, x, y, w, h float64) {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
@@ -510,7 +517,8 @@ func (s *authorScreen) updateTimelineFilter(g *Game) bool {
 	if len(ids) == 0 || !g.in.inspect(g.in.click) {
 		return false
 	}
-	for i, r := range timelineFilterBounds(0, 108) {
+	x, y, _, _ := g.surfaceChart()
+	for i, r := range timelineFilterBounds(x, y) {
 		if !g.in.mouse.In(r) {
 			continue
 		}
@@ -531,8 +539,7 @@ func (s *authorScreen) updateTimelineFilter(g *Game) bool {
 }
 
 func (s *authorScreen) timelineLanes(g *Game) []timelineLane {
-	sw, sh := g.screen()
-	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+	groups := s.surfaceTimeline(g)
 	var lanes []timelineLane
 	for _, group := range groups {
 		lanes = append(lanes, group.lanes...)
@@ -543,7 +550,6 @@ func (s *authorScreen) timelineLanes(g *Game) []timelineLane {
 func (s *authorScreen) timelineDescription(g *Game) string {
 	p := g.db.Game.Planning
 	v := g.db.Game.Screens[s.name].View
-	sw, _ := g.screen()
 	if date := s.timelinePointerDate(g); date != "" {
 		labels := []string{planningDate(date, "", v)}
 		d, err := time.Parse(time.DateOnly, date)
@@ -558,8 +564,7 @@ func (s *authorScreen) timelineDescription(g *Game) string {
 		return strings.Join(labels, " · ")
 	}
 	if g.in.mouse.X >= 16 && g.in.mouse.X < 248 {
-		_, sh := g.screen()
-		groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+		groups := s.surfaceTimeline(g)
 		for _, group := range groups {
 			headerHeight := group.height
 			if group.expanded {
@@ -621,8 +626,8 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 	if !g.in.inspect(g.in.click) || g.in.mouse.X < 16 || g.in.mouse.X >= 248 {
 		return false
 	}
-	sw, sh := g.screen()
-	groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+	_, top, _, height := g.surfaceChart()
+	groups := s.surfaceTimeline(g)
 	for i, group := range groups {
 		if float64(g.in.mouse.Y) < group.y || float64(g.in.mouse.Y) >= group.y+36 {
 			continue
@@ -632,18 +637,18 @@ func (s *authorScreen) toggleTimelineGroup(g *Game) bool {
 			s.timelineTop = 0
 		} else {
 			// Very large authored groups retain the compact representation.
-			if 40+float64(len(group.lanes))*group.laneHeight > sh-282 {
+			if 40+float64(len(group.lanes))*group.laneHeight > height-56 {
 				return true
 			}
 			s.timelineExpanded = group.key
-			if group.y+40+float64(len(group.lanes))*group.laneHeight > sh-118 {
+			if group.y+40+float64(len(group.lanes))*group.laneHeight > top+height {
 				s.timelineTop += i
 			}
 		}
 		g.in.query(true)
 		s.timelineFocus = 0
 		if s.timelineExpanded != "" {
-			visible, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+			visible := s.surfaceTimeline(g)
 			for _, row := range visible {
 				if row.expanded {
 					break
@@ -669,13 +674,27 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 		return true
 	}
 	if g.in.inspect(g.in.click) {
-		w, _ := g.screen()
-		for i, r := range timelineZoomBounds(0, 108, w) {
+		x, y, w, _ := g.surfaceChart()
+		for i, r := range timelineZoomBounds(x, y, w) {
 			if g.in.mouse.In(r) {
 				g.in.query(true)
 				s.timelineZoom = i == 0
 				return true
 			}
+		}
+	}
+	// A finger dragged over the groups scrolls them, as the keys do past the last lane.
+	if cx, cy, cw, ch := g.surfaceChart(); true {
+		rows := timelineGroups(g.db.Game.Planning, g.db.Game.Screens[s.name].View)
+		groups, _, _ := s.groupedTimeline(g, cx, cy, cw, ch)
+		over := inBox(float64(g.in.mouse.X), float64(g.in.mouse.Y), cx, cy, cw, ch)
+		if d := s.scroll.drag.rows(&g.in, over, 56); d != 0 {
+			if top := max(0, min(s.timelineTop+d, len(rows)-len(groups))); top != s.timelineTop {
+				s.timelineTop, s.timelineFocus = top, 0
+			}
+		}
+		if s.scroll.drag.moving() {
+			return true
 		}
 	}
 	if g.in.inspect(g.in.click) && g.in.query(s.openCalendarDate(g, s.timelinePointerDate(g))) {
@@ -711,8 +730,7 @@ func (s *authorScreen) updateGroupedTimeline(g *Game) bool {
 			s.timelineFocus++
 		} else {
 			rows := timelineGroups(g.db.Game.Planning, g.db.Game.Screens[s.name].View)
-			sw, sh := g.screen()
-			groups, _, _ := s.groupedTimeline(g, 0, 108, sw, sh-226)
+			groups := s.surfaceTimeline(g)
 			if s.timelineTop+len(groups) < len(rows) {
 				s.timelineTop++
 				s.timelineFocus = 0

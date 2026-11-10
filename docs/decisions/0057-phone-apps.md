@@ -86,3 +86,11 @@ put down. The command records nothing in a save but the result it was put
 down with (a button's index, a call's answer, a feed's likes), kept among the
 event's answers as a choice's is: Back over it shows the phone again from its
 start, with no post liked.
+
+The phone's screen draws a home bar at its bottom, and a chat a back chevron in
+its header. A press on either goes back one step as Esc does (from an opened
+picture or clip to the chat, else the phone is put down with the dismissal's
+result), so every app can be left with one finger. A game hosted on the phone
+keeps the whole screen and its own Back strip; the bar returns when a game fails
+to open. A tap on the veil around the phone does nothing. No key hints are drawn
+under the phone.

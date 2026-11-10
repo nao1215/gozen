@@ -357,6 +357,7 @@ func (g *Game) updatePhone() bool {
 	if p.cue.App == "feed" && p.watch == nil {
 		g.stepFeedClips(p)
 	}
+	g.preparePhoneRows(p)
 	if !p.ready() {
 		return false
 	}
@@ -378,7 +379,17 @@ func (g *Game) updatePhone() bool {
 		g.toggleSkip()
 		return false
 	}
-	if in.cancel() || in.esc {
+	// The finger that pressed the home bar is still down: its lift is no tap.
+	if p.grab == phoneGrabBack {
+		lifted := in.inspect(in.pup)
+		if held := in.inspect(in.pheld) && !lifted; !held {
+			p.grab = -1
+		}
+		if p.grab == phoneGrabBack || lifted {
+			return false
+		}
+	}
+	if in.cancel() || in.esc || g.phoneBackTapped(p) {
 		if p.watchMsg >= 0 {
 			g.stopWatching(p)
 			return false
@@ -582,10 +593,6 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 			return x / k, y / k
 		})
 	}
-
-	if p.ready() {
-		g.screenText(dst, g.phoneHint(p), sw/2, sh-24, 14, alphaColor(phoneOnVideo, 0.8))
-	}
 }
 
 func sized(img *ebiten.Image, w, h int) *ebiten.Image {
@@ -599,34 +606,50 @@ func sized(img *ebiten.Image, w, h int) *ebiten.Image {
 	return ebiten.NewImage(w, h)
 }
 
-func (g *Game) phoneHint(p *phoneView) string {
-	switch {
-	case p.viewPic != "":
-		return lang.T("クリック・Esc: チャットに戻る")
-	case p.watchMsg >= 0:
-		return lang.T("クリック: 一時停止　Esc: チャットに戻る")
-	case p.watch != nil:
-		return lang.T("クリック: 一時停止　Esc: 閉じる")
-	case p.cue.App == "feed" && p.across() && p.cue.Browse:
-		return lang.T("左右・ホイール・横にドラッグ: 送る　Esc: 閉じる")
-	case p.cue.App == "feed" && p.across():
-		return lang.T("左右・ホイール・横にドラッグ: 送る　写真をクリック: いいね　Esc: 閉じる")
-	case p.cue.App == "feed" && p.cue.Browse:
-		return lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる")
-	case p.cue.App == "feed":
-		return lang.T("上下・ホイール・ドラッグ: スクロール　写真をクリック: いいね　Esc: 閉じる")
-	case p.calling():
-		return lang.T("Enter: 応答　Esc: 拒否")
-	case p.cue.App == "lock":
-		return lang.T("クリック: 次の通知　Esc: 閉じる")
-	case p.cue.App == "home" || p.cue.App == "contacts" || p.cue.App == "chat" && (p.cue.History || len(p.cue.Replies) > 0):
-		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
-	case p.cue.App == "page" && len(pageButtons(p.cue.Rows)) > 0:
-		return lang.T("上下・ドラッグ: スクロール　左右・Tab: ボタン　Enter: 押す　Esc: 閉じる")
-	case p.cue.App == "page":
-		return lang.T("上下・ホイール・ドラッグ: スクロール　Esc: 閉じる")
+// phoneHomeBar is the height of the strip at the bottom of the phone's screen
+// that holds the home bar, in UI units.
+const phoneHomeBar = 22
+
+// phoneGrabBack in a phone's grab tells that the pointer went down on the home
+// bar (or the back chevron) and has not lifted yet: it drags nothing.
+const phoneGrabBack = -2.0
+
+// hasHomeBar tells that the phone's screen shows the home bar. A game on
+// the phone keeps its whole screen and has its own way back; a game that did
+// not open leaves only its error, and the bar to put the phone down.
+func (p *phoneView) hasHomeBar() bool {
+	return p.child == nil && (p.cue.App != "game" || p.gameError != "")
+}
+
+// phoneBackTapped tells that the player pressed the phone's home bar, or the
+// back chevron of a chat's header: the pointer's way to go back, as Esc does
+// with keys.
+func (g *Game) phoneBackTapped(p *phoneView) bool {
+	in := &g.in
+	if !in.inspect(in.pdown) || !p.hasHomeBar() {
+		return false
 	}
-	return lang.T("クリック: 次のメッセージ　Esc: 閉じる")
+	sx, sy, w, h := g.phoneScreenRect(p.side)
+	x, y := float64(in.mouse.X)-sx, float64(in.mouse.Y)-sy
+	bar := x >= 0 && x < w && y >= h-phoneHomeBar && y < h
+	chevron := p.chatChevron() && x >= 0 && x < phoneChevron && y >= phoneChevronTop && y < phoneFeedTop
+	if !bar && !chevron {
+		return false
+	}
+	p.grab = phoneGrabBack
+	return in.query(true)
+}
+
+// drawPhoneHomeBar draws the home bar at the bottom of the phone's screen,
+// light on dark screens.
+func (g *Game) drawPhoneHomeBar(dst *ebiten.Image, p *phoneView, w, h float64, dark bool) {
+	ink := alphaColor(phoneInk, 0.55)
+	if dark {
+		ink = alphaColor(phoneOnVideo, 0.75)
+	}
+	bw := math.Min(w*0.36, 140)
+	gfx.FillRoundRect(dst, float32((w-bw)/2), float32(h-phoneHomeBar/2-2.5), float32(bw), 5, 2.5, ink)
+	g.traceControl(lang.T("もどる"), roundRect(0, h-phoneHomeBar, w, phoneHomeBar), p.ready(), false, "transition")
 }
 
 // drawPhoneBody draws the phone (its body, its screen and the app) into the
@@ -647,8 +670,6 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	switch {
 	case p.child != nil || p.cue.App == "game":
 		g.drawPhoneGame(p, screen, scw, sch)
-	case p.cue.App == "store":
-		g.drawPhoneStore(p, screen, scw, sch)
 	case p.viewPic != "":
 		g.drawPhonePicture(p, screen, scw, sch)
 	case p.watch != nil && p.side:
@@ -659,7 +680,7 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 		g.drawPhoneFeed(p, screen, scw, sch)
 	case p.cue.App == "home":
 		g.drawPhoneHome(p, screen, scw, sch)
-	case p.cue.App == "page" || p.cue.App == "contacts":
+	case p.cue.App == "page" || p.cue.App == "contacts" || p.cue.App == "store":
 		g.drawPhonePage(p, screen, scw, sch)
 	case p.cue.App == "lock":
 		g.drawPhoneLock(p, screen, scw, sch)
@@ -672,6 +693,9 @@ func (g *Game) drawPhoneBody(p *phoneView, dst *ebiten.Image, w, h float64) {
 	if !p.side && p.child == nil && p.cue.App != "game" {
 		_, bar := g.pageAccent(p)
 		g.drawPhoneStatus(screen, scw, p.clock(g), p.viewPic != "" || p.cue.App == "video" || p.cue.App == "lock" || p.cue.App == "page" && bar && p.cue.URL == "")
+	}
+	if p.hasHomeBar() {
+		g.drawPhoneHomeBar(screen, p, scw, sch, p.side || p.viewPic != "" || p.watch != nil || p.cue.App == "video" || p.cue.App == "lock")
 	}
 	if g.controlFrame() != nil {
 		g.clipScreenRecords(textStart, controlStart, 0, scw, sch)

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/rules/event"
 	world "github.com/nao1215/gozen/internal/rules/field"
 )
 
@@ -128,6 +130,31 @@ func TestTitleHideDisabledLeavesOutWhatCannotBeChosen(t *testing.T) {
 		t.Errorf("the second row opened %T, want the settings", g.stack[len(g.stack)-1])
 	}
 	newTitle(g).draw(g, btlImage())
+}
+
+// Going back to the title ends the play but keeps what the play
+// left over the scene: a phone banner still slides over the title (and its click
+// queues its event on the dead state's runner), and the notices and the backlog
+// of the play stay.
+func TestToTitleDropsThePlaysOverlays(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "camp"}, "ui: {message: novel}\n", "")
+	g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "banner", Notices: []data.PhoneNotice{{App: "Chat", Title: "Ann", Text: "Lunch?", Event: "nope"}}}})
+	g.notices.add("Got a key.")
+	g.remember(logLine{text: "A line of the play."})
+	g.autoRead = true
+	g.toTitle()
+	if _, ok := g.stack[0].(*title); !ok || g.st != nil {
+		t.Fatalf("not at the title: %T", g.stack[0])
+	}
+	if len(g.banners) != 0 {
+		t.Errorf("%d phone banner(s) of the ended play stay over the title", len(g.banners))
+	}
+	if len(g.notices.list) != 0 {
+		t.Errorf("%d notice(s) of the ended play stay over the title", len(g.notices.list))
+	}
+	if len(g.backlog) != 0 || g.autoRead {
+		t.Errorf("the ended play's backlog (%d lines) or auto mode (%v) stays", len(g.backlog), g.autoRead)
+	}
 }
 
 // Script input stays pending throughout the end screen's input lockout.

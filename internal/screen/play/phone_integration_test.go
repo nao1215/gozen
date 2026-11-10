@@ -560,6 +560,43 @@ func TestPhoneInstalledHomePreservesResults(t *testing.T) {
 	}
 }
 
+// TestPhoneHomeErrorClearedByNextLaunch: the error of an app that failed to
+// open leaves the home screen once another app has opened well.
+func TestPhoneHomeErrorClearedByNextLaunch(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "home", Rows: []data.PhoneRow{{Button: "Contacts", ID: "contacts"}}})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0", Title: "Child"}}}}
+	p := parent.phone
+	phoneTicks(parent, phoneRise)
+	p.selectedApp = "missing"
+	parent.in = input{}
+	parent.updatePhoneHome(p)
+	if p.gameError == "" {
+		t.Fatal("an unknown app opened without an error")
+	}
+	p.selectedApp = "child"
+	parent.updatePhoneHome(p)
+	if p.child == nil {
+		t.Fatalf("the installed app did not open: %s", p.gameError)
+	}
+	if p.gameError != "" {
+		t.Fatalf("the earlier app's error stays over the home screen: %q", p.gameError)
+	}
+}
+
+// TestPhoneHomeShowsInstalledAppsWhileRising: the installed apps are on the
+// home screen from the first frame drawn, not only once the phone has risen.
+func TestPhoneHomeShowsInstalledAppsWhileRising(t *testing.T) {
+	parent := phoneGame(t, data.PhoneCue{App: "home", Rows: []data.PhoneRow{{Button: "Contacts", ID: "contacts"}}})
+	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}
+	parent.packages = &phonePackages{opened: map[string]*gamepackage.Installed{"child": {FS: gameFiles(t), Release: gamepackage.Release{ID: "neutral/child", Version: "1.0.0", Title: "Child"}}}}
+	p := parent.phone
+	phoneTicks(parent, 2) // drawn from here on, while it rises
+	if len(p.cue.Rows) != 2 {
+		t.Fatalf("the rising home screen shows %d rows, want the authored row and the installed app", len(p.cue.Rows))
+	}
+}
+
 func TestPhoneChildFailurePreservesHost(t *testing.T) {
 	parent := phoneGame(t, data.PhoneCue{App: "game", Game: "child"})
 	parent.db.Game.Phone = &data.PhoneApps{Apps: []data.PhoneApp{{ID: "child"}}}

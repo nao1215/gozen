@@ -292,6 +292,10 @@ func (db *DB) SourceTexts() []SourceText {
 	for _, id := range RegionIDs(db) {
 		add("regions."+id+".name", src(&db.Regions[id].Name))
 	}
+	if b := db.Breeding; b != nil {
+		add("breeding.keeper.name", b.Keeper.Name)
+		add("breeding.keeper.text", b.Keeper.Text)
+	}
 	for _, id := range FactionIDs(db) {
 		add("factions."+id+".name", src(&db.Factions[id].Name))
 	}

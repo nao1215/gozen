@@ -292,8 +292,7 @@ func (s *clashScene) update(g *Game) {
 	}
 	if s.over {
 		if in.ok() || in.clicked() || (s.auto && s.wait <= 0) || g.replaying || g.skipping {
-			g.pop()
-			s.done()
+			g.leave(s.done)
 			return
 		}
 		s.wait--

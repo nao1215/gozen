@@ -35,10 +35,7 @@ func (g *Game) startFromMemo(path string) error {
 }
 
 func (g *Game) startMemo(path string, m memo.Memo, save []byte) error {
-	p := rand.NewPCG(1, 2)
-	if len(m.Rand) == 0 || p.UnmarshalBinary(m.Rand) != nil {
-		p = g.newPCG()
-	}
+	p := g.pcgFrom(m.Rand)
 	st, err := rpg.ParseWithConfig(g.db, save, rand.New(p), rpg.Config{AllowLegacy: g.opts.AllowLegacySave}) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)

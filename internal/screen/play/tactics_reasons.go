@@ -190,15 +190,8 @@ func (s *tacticReasons) update(g *Game) {
 		return
 	}
 	lists := []*list{s.history, s.rules}
-	if g.in.inspect(g.in.click) {
-		for f, l := range lists {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					s.focus = f
-				}
-			}
-		}
+	if f := g.clickedList(lists...); f >= 0 {
+		s.focus = f
 	}
 	if g.in.left() || g.in.right() {
 		s.focus = 1 - s.focus

@@ -58,7 +58,7 @@ func TestSurfaceNoticesWaitTheirTurn(t *testing.T) {
 	for range g.notices.list[0].t {
 		g.notices.update(g.noticeVisible())
 	}
-	if len(g.notices.list) != 1 || g.notices.list[0] != second {
+	if len(g.notices.list) != 1 || g.notices.list[0].text != second.text || g.notices.list[0].t != second.t {
 		t.Fatalf("unread result expired in queue: %+v", g.notices.list)
 	}
 	g.talk.active = true

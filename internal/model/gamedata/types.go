@@ -1341,8 +1341,17 @@ type Breeding struct {
 	MinLevel   int           `yaml:"min_level"`
 	SkillSlots int           `yaml:"skill_slots"`
 	Staging    BreedStaging  `yaml:"staging"`
+	Keeper     BreedKeeper   `yaml:"keeper"`
 	Pairs      []BreedPair   `yaml:"pairs"`
 	Families   []BreedFamily `yaml:"families"`
+}
+
+// BreedKeeper is who greets the player in the ranch's message window. Both
+// fields are optional: without a text the engine's own neutral line shows,
+// under no name.
+type BreedKeeper struct {
+	Name string `yaml:"name"`
+	Text string `yaml:"text"`
 }
 
 // BreedStaging maps child ranks to the rare and legendary birth effects.

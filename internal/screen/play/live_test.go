@@ -467,3 +467,17 @@ func TestWldLiveLeavesDefinitionsToF5(t *testing.T) {
 		t.Fatalf("the definitions were swapped without F5: %q", g.db.Locations["camp"].Name)
 	}
 }
+
+// A reload asked for while the stack is empty (reloadWait lets it through) has no place to
+// make again: it reads the data and keeps the state.
+func TestWldLiveReloadWithoutAScene(t *testing.T) {
+	dir := wldDisk(t, "", nil)
+	g := wldLive(t, dir, "camp")
+	st := g.st
+	g.stack = nil
+	g.reload()
+	if g.failure != nil || g.st != st {
+		t.Fatalf("the reload failed (%v) or replaced the state (%v)", g.failure, g.st != st)
+	}
+	g.stack = []scene{g.newPlace()}
+}

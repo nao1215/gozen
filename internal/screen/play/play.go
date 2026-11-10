@@ -406,8 +406,7 @@ type Game struct {
 	// the end of the events (ADR 0026).
 	skipping bool
 	// sceneLines caches the lines of each event for scene skip and the read rate.
-	sceneLines   map[string][]uint64
-	sceneLinesDB *data.DB
+	sceneLines derived[map[string][]uint64]
 
 	// Rolling back and the cursor of a save (ADR 0025, rollback.go): the commands of the
 	// running event, the backlog when it began, whether it passed a boundary, whether it is
@@ -428,10 +427,9 @@ type Game struct {
 	// event places them only as written), the shaken portraits, a long shake of the
 	// screen, and a fade through a color.
 	// panel is the development panel (F8 under --dev, devpanel.go); uses is the index of
-	// names it shows, made for usesDB.
-	panel  *devPanel
-	uses   map[string]*data.NameUse
-	usesDB *data.DB
+	// names it shows.
+	panel *devPanel
+	uses  derived[map[string]*data.NameUse]
 
 	cast      []castFigure
 	castOn    bool
@@ -916,6 +914,24 @@ func (g *Game) newPCG() *rand.PCG {
 	return rand.NewPCG(rand.Uint64(), rand.Uint64()) //nolint:gosec // Gameplay randomness is not used for security.
 }
 
+// savedPCG reads back a random stream that a save, a memo, a rollback point or
+// a battle record kept with MarshalBinary.
+func savedPCG(b []byte) (*rand.PCG, error) {
+	p := rand.NewPCG(1, 2)
+	if err := p.UnmarshalBinary(b); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// pcgFrom is the recorded stream b, or a new one when b holds none.
+func (g *Game) pcgFrom(b []byte) *rand.PCG {
+	if p, err := savedPCG(b); err == nil {
+		return p
+	}
+	return g.newPCG()
+}
+
 func (g *Game) rng() *rand.Rand {
 	if g.opts.Seed != 0 {
 		return rand.New(g.newPCG()) //nolint:gosec // Gameplay randomness is not used for security.
@@ -1138,15 +1154,16 @@ func (g *Game) Update() error {
 	if !g.embedded && (inpututil.IsKeyJustPressed(ebiten.KeyF11) || altEnter) {
 		g.toggleFullscreen()
 	}
-	if !g.embedded && inpututil.IsKeyJustPressed(ebiten.KeyM) {
-		g.audioSession().ToggleMute()
-	}
+	g.muteKey(inpututil.IsKeyJustPressed(ebiten.KeyM))
 	if g.st != nil {
 		g.st.Frames++
 	}
 	g.stepStreams()
 	if g.recruit != nil && g.recruit.leave == 0 && g.tick-g.recruit.start == 12 {
 		g.sfx("lift")
+	}
+	if g.recruit != nil && g.recruit.leave != 0 && g.tick-g.recruit.leave >= recruitLeaveTicks {
+		g.recruit = nil // the view has left: the state changes in the update, not while drawing
 	}
 	g.shake = max(0, g.shake-1)
 	g.flash = max(0, g.flash-1)
@@ -1187,9 +1204,11 @@ func (g *Game) Update() error {
 		return nil
 	}
 	g.in.observing = true
-	if g.logView != nil {
+	switch {
+	case g.logView != nil:
 		g.logView.update(g)
-	} else if len(g.stack) > 0 {
+	case g.tapNotice():
+	case len(g.stack) > 0:
 		g.stack[len(g.stack)-1].update(g)
 	}
 	g.traceTick()
@@ -1295,12 +1314,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	dst := screen
 	var shaken *ebiten.Image
 	if g.shake > 0 {
-		if g.shaken == nil || g.shaken.Bounds().Dx() != int(pw) || g.shaken.Bounds().Dy() != int(ph) {
-			if g.shaken != nil {
-				g.shaken.Deallocate()
-			}
-			g.shaken = ebiten.NewImage(int(pw), int(ph))
-		}
+		g.shaken = sized(g.shaken, int(pw), int(ph))
 		shaken = g.shaken
 		shaken.Clear()
 		dst = shaken
@@ -1344,9 +1358,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		dst.DrawImage(g.freeze, op)
 	}
 	if g.fadeT == 0 && g.freezeT == 0 {
-		if b := dst.Bounds(); g.lastView == nil || g.lastView.Bounds().Size() != b.Size() {
-			g.lastView = ebiten.NewImage(b.Dx(), b.Dy())
-		}
+		g.lastView = sized(g.lastView, dst.Bounds().Dx(), dst.Bounds().Dy())
 		g.lastView.Clear()
 		g.lastView.DrawImage(dst, nil)
 	}
@@ -1530,12 +1542,55 @@ func (g *Game) pop() {
 	}
 }
 
+// leave closes the scene on top and tells the one that opened it, when it waits for it.
+func (g *Game) leave(done func()) {
+	g.pop()
+	if done != nil {
+		done()
+	}
+}
+
 func (g *Game) replace(s scene) {
-	g.closeEnemyPuppets()
+	g.closeLobbies(s)
 	g.stack = []scene{s}
+	g.resetPlay(false)
+}
+
+// closeLobbies frees the puppets of the stream lobbies the stack drops for next.
+func (g *Game) closeLobbies(next scene) {
+	for _, s := range g.stack {
+		if l, ok := s.(*streamLobby); ok && s != next {
+			l.close()
+		}
+	}
+}
+
+// resetPlay is the one place that drops what the scenes left over the screen and in the
+// run. A replaced scene (an ending, a game over) drops what was shown with it; over tells
+// that the play itself ends (the title, a new or a loaded game), which also drops what
+// belonged to it. What only one caller keeps or drops stays with that caller.
+func (g *Game) resetPlay(over bool) {
+	g.closeEnemyPuppets()
 	g.talk = talk{}
 	g.recruit = nil
 	g.cg, g.cgOldT, g.cgUnder = data.CG{}, 0, data.CG{}
+	if !over {
+		return
+	}
+	g.closePhone()
+	g.banners = nil
+	g.notices = noticeBoard{}
+	g.backlog, g.logView = nil, nil
+	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
+	g.clearCast()
+	g.clearStage()
+	g.fadeColor, g.shakeFor, g.figShake = nil, 0, nil
+	g.req = nil
+	g.replaying = false
+	if !g.rollingBack { // a roll back reads the same play again
+		g.backRing = nil
+		g.autoBattle = false
+	}
 }
 
 func (g *Game) sfx(name string) {
@@ -1668,22 +1723,13 @@ func (g *Game) newEventRunner() *event.Runner {
 }
 
 func (g *Game) startState() {
-	g.closePhone()
-	g.banners = nil
+	g.resetPlay(true)
 	g.screenTrace = screenTranscript{}
 	g.st.Calm = g.opts.Calm
-	g.backlog, g.logView = nil, nil
-	g.evCmds, g.evNoBack, g.evHist = nil, false, nil
-	g.clearCast()
-	g.clearStage()
-	if !g.rollingBack {
-		g.backRing = nil
-	}
 	g.events = g.newEventRunner()
 	if g.sortieTactics == nil {
 		g.sortieTactics = map[string]string{}
 	}
-	g.req = nil
 	g.replace(g.newPlace())
 	g.songOverride, g.moodOverride = "", ""
 	g.playLocationMusic()
@@ -1728,33 +1774,40 @@ func (g *Game) Move(loc string) {
 	default:
 		return
 	}
-	switch cur := g.stack[0]; {
-	case l.Stream != "":
-		g.bannerFloor = 0
-		if _, ok := cur.(*streamLobby); !ok {
-			g.stack[0] = newStreamLobby(g, nil)
-		}
-	case l.Dungeon != nil:
+	if old, ok := g.stack[0].(*streamLobby); ok {
+		defer func() {
+			if g.stack[0] != scene(old) { // the place took the lobby's room: its puppets go with it
+				old.close()
+			}
+		}()
+	}
+	switch cur, kind := g.stack[0], placeKindOf(l); kind {
+	case placeDungeon:
 		if ds, ok := cur.(*dungeonScene); ok {
 			ds.arrive()
 		} else {
 			g.stack[0] = newDungeonScene(g)
 		}
-	case l.Stage != nil:
+	case placeStage:
 		g.bannerFloor = 0
 		if ss, ok := cur.(*stageScene); ok {
 			ss.arrive(g)
 		} else {
 			g.stack[0] = newStageScene(g)
 		}
-	case l.Map != nil:
+	case placeStream:
+		g.bannerFloor = 0
+		if _, ok := cur.(*streamLobby); !ok {
+			g.stack[0] = newStreamLobby(g, nil)
+		}
+	case placeMap:
 		g.bannerFloor = 0
 		if as, ok := cur.(*atlasScene); ok {
 			as.arrive(g)
 		} else {
 			g.stack[0] = newAtlasScene(g)
 		}
-	default:
+	case placeField:
 		g.bannerFloor = 0
 		f, ok := cur.(*field)
 		if !ok {
@@ -1765,21 +1818,54 @@ func (g *Game) Move(loc string) {
 	}
 }
 
+// placeKind is the one way a location is shown.
+type placeKind int
+
+const (
+	placeField placeKind = iota
+	placeDungeon
+	placeStage
+	placeStream
+	placeMap
+)
+
+// placeKindOf picks the scene of a location for Move and newPlace alike. The
+// data check refuses a location shown two ways, so the order only matters for
+// data that skipped it; it is then the order the rules read a location in:
+// a dungeon first (world.Arrive, dungeon.Of), a stage before a map (atlas.Here,
+// atlas.Place, Location.Spotted). A stream is known to the screen alone and
+// stands between the two, where newPlace always had it.
+func placeKindOf(l *data.Location) placeKind {
+	switch {
+	case l == nil:
+		return placeField
+	case l.Dungeon != nil:
+		return placeDungeon
+	case l.Stage != nil:
+		return placeStage
+	case l.Stream != "":
+		return placeStream
+	case l.Map != nil:
+		return placeMap
+	}
+	return placeField
+}
+
 func (g *Game) newPlace() scene {
-	if dungeon.Of(g.db, g.st) != nil {
+	kind := placeKindOf(g.db.Locations[g.st.Location])
+	if kind != placeDungeon && kind != placeField {
+		g.enterAt = g.st.Location
+	}
+	switch kind {
+	case placeDungeon:
 		return newDungeonScene(g)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Stage != nil {
-		g.enterAt = g.st.Location
+	case placeStage:
 		return newStageScene(g)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Stream != "" {
-		g.enterAt = g.st.Location
+	case placeStream:
 		return newStreamLobby(g, nil)
-	}
-	if l := g.db.Locations[g.st.Location]; l != nil && l.Map != nil {
-		g.enterAt = g.st.Location
+	case placeMap:
 		return newAtlasScene(g)
+	case placeField:
 	}
 	return newField(g)
 }
@@ -1938,9 +2024,7 @@ func (g *Game) freezeView(t int) {
 	if g.lastView == nil {
 		return
 	}
-	if b := g.lastView.Bounds(); g.freeze == nil || g.freeze.Bounds().Size() != b.Size() {
-		g.freeze = ebiten.NewImage(b.Dx(), b.Dy())
-	}
+	g.freeze = sized(g.freeze, g.lastView.Bounds().Dx(), g.lastView.Bounds().Dy())
 	g.freeze.Clear()
 	g.freeze.DrawImage(g.lastView, nil)
 	g.freezeT = t
@@ -2085,13 +2169,13 @@ func (g *Game) pump() bool {
 			if !g.in.inspect(g.in.held[btnOK] || g.in.pressed[btnOK]) {
 				b.ready = true
 			}
-			if b.age < b.duration() && b.skipT == 0 && b.ready && g.in.ok() {
+			if b.age < b.duration() && b.skipT == 0 && b.ready && (g.in.ok() || g.in.clicked()) {
 				b.skipT = 1
 				b.age = max(b.age, 120)
 				b.ready = false
 			}
 			g.waitT = max(1, b.duration()-b.age)
-			if b.age >= b.duration() && b.ready && !b.details && g.in.ok() {
+			if b.age >= b.duration() && b.ready && !b.details && (g.in.ok() || g.in.clicked()) {
 				g.waitT = 0
 				g.req = nil
 				b.ready = false
@@ -2261,6 +2345,10 @@ func (g *Game) begin(r event.Request) {
 		}
 		g.push(newSaveMenu(g, true, done))
 	case event.Open:
+		if g.replaying {
+			done()
+			return
+		}
 		if g.goingHome(r) {
 			done()
 			return
@@ -2273,11 +2361,15 @@ func (g *Game) begin(r event.Request) {
 	case event.Clear:
 		g.req = nil
 		g.events.Stop()
-		g.replace(newEnding(g))
+		if !g.replaying { // a recollection ends here: its scene takes the play back (sceneReplay.update)
+			g.replace(newEnding(g))
+		}
 	case event.GameOver:
 		g.req = nil
 		g.events.Stop()
-		g.replace(newGameOver(g))
+		if !g.replaying {
+			g.replace(newGameOver(g))
+		}
 	case event.ClashScene:
 		if g.replaying {
 			done()
@@ -2555,6 +2647,14 @@ func (g *Game) Handle(e event.Effect) {
 	}
 }
 
+// release frees an image the game owns and forgets it.
+func release(img **ebiten.Image) {
+	if *img != nil {
+		(*img).Deallocate()
+		*img = nil
+	}
+}
+
 // Close releases this run's resources. Call on the game thread after its loop stops.
 func (g *Game) Close() error {
 	defer func() {
@@ -2589,14 +2689,12 @@ func (g *Game) Close() error {
 	if g.tr != nil {
 		err = errors.Join(err, g.tr.err)
 	}
-	if g.recordView != nil {
-		g.recordView.Deallocate()
-		g.recordView = nil
+	for _, img := range []**ebiten.Image{&g.recordView, &g.shaken, &g.lastView, &g.freeze} {
+		release(img)
 	}
-	if g.shaken != nil {
-		g.shaken.Deallocate()
-		g.shaken = nil
-	}
+	g.dream.close()
+	g.closeLobbies(nil)
+	g.closeScenes()
 	g.closePuppets()
 	if g.drawn != nil { // no first frame to wait for any more
 		g.drawnOnce.Do(func() { close(g.drawn) })

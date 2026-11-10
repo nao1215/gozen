@@ -14,6 +14,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
@@ -36,6 +37,8 @@ func (g *Game) startPhoneGame(p *phoneView, id string) error {
 	if p.child != nil {
 		return errors.New("a phone game is already running")
 	}
+	// An earlier app's failure is not this launch's.
+	p.gameError = ""
 	installed, err := g.phoneInstalled(id)
 	if err != nil {
 		return err
@@ -186,7 +189,7 @@ func (g *Game) phoneGameResult(p *phoneView, beforeTick int, err error) error {
 	}
 	if err != nil {
 		closeErr := g.stopPhoneGame(p)
-		p.gameError = fmt.Sprintf("Game stopped: %v", errors.Join(err, closeErr))
+		p.gameError = fmt.Sprintf(lang.T("ゲームが止まりました: %v"), errors.Join(err, closeErr))
 		if p.store != nil {
 			p.store.message = p.gameError
 			p.store.ready = false
@@ -246,7 +249,7 @@ func (g *Game) drawPhoneGame(p *phoneView, dst *ebiten.Image, w, h float64) {
 	gfx.StrokeLine(dst, 20, 18, 28, 10, 2, phoneOnVideo, true)
 	gfx.StrokeLine(dst, 20, 18, 28, 26, 2, phoneOnVideo, true)
 	gfx.StrokeLine(dst, 20, 18, 40, 18, 2, phoneOnVideo, true)
-	gfx.DrawText(dst, "Back (Shift+Esc)", w/2+12, 10, 16, phoneOnVideo)
+	gfx.DrawText(dst, lang.T("もどる (Shift+Esc)"), w/2+12, 10, 16, phoneOnVideo)
 }
 
 func (g *Game) openPhoneGame(p *phoneView) {
@@ -255,7 +258,7 @@ func (g *Game) openPhoneGame(p *phoneView) {
 	}
 	p.gameOpened = true
 	if err := g.startPhoneGame(p, p.cue.Game); err != nil {
-		p.gameError = fmt.Sprintf("Cannot open game: %v", err)
+		p.gameError = fmt.Sprintf(lang.T("ゲームを開けません: %v"), err)
 	}
 }
 
@@ -284,7 +287,7 @@ func drawPhoneGameError(dst *ebiten.Image, w, h float64, message string) {
 		return
 	}
 	lines, size := gfx.FitLines(message, 16, w-24, 3)
-	top := h - float64(len(lines))*gfx.LineHeight(size) - 18
+	top := h - float64(len(lines))*gfx.LineHeight(size) - 18 - phoneHomeBar
 	gfx.FillRect(dst, 0, float32(top-8), float32(w), float32(h-top+8), phoneScreen, false)
 	for i, line := range lines {
 		gfx.DrawText(dst, line, w/2, top+float64(i)*gfx.LineHeight(size), size, phoneInk)

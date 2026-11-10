@@ -391,7 +391,6 @@ func scalar(n ast.Node) (string, int, bool) {
 func inspectMapping(gm *gamedata.Game, file string, n ast.Node, tr func(string) string) []msgIssue {
 	var out []msgIssue
 	var prompt ast.Node
-	var options []string
 	for _, kv := range pairs(n) {
 		key := kv.Key.String()
 		switch key {
@@ -409,25 +408,13 @@ func inspectMapping(gm *gamedata.Game, file string, n ast.Node, tr func(string) 
 			}
 		case "prompt":
 			prompt = kv.Value
-		case "choice":
-			if seq, ok := kv.Value.(*ast.SequenceNode); ok {
-				for _, it := range seq.Values {
-					for _, w := range pairs(it) {
-						if w.Key.String() == "label" {
-							if s, _, ok := scalar(w.Value); ok {
-								options = append(options, embedRe.ReplaceAllString(tr(s), "〇〇〇"))
-							}
-						}
-					}
-				}
-			}
 		}
 	}
 	if prompt != nil {
 		if text, line, ok := scalar(prompt); ok {
 			text = embedRe.ReplaceAllString(tr(text), "〇〇〇")
 			n := len(play.MessageWrap(gm, text))
-			if _, _, cut := play.PromptLines(gm, text, options); cut {
+			if _, _, cut := play.PromptLines(gm, text); cut {
 				out = append(out, msgIssue{file, line, n, "cut", text})
 			} else if n > play.MessageLines() {
 				out = append(out, msgIssue{file, line, n, "shrink", text})

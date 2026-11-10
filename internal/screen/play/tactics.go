@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"image"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -167,21 +168,28 @@ func (s *tacticsScreen) refresh(g *Game) {
 }
 
 func (s *tacticsScreen) close(g *Game) {
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 }
 
 func (s *tacticsScreen) act(g *Game) {
 	id := s.actorID()
 	switch s.actions.sel {
 	case tacticAccept:
+		// All the drafts are taken or none: one refused puts back those taken before it.
+		before := map[string]*rpg.ActorTactics{}
 		for _, id := range s.ids {
-			if s.dirty[id] {
-				if err := g.st.Actors[id].SetTactics(s.drafts[id]); err != nil {
-					return
+			if !s.dirty[id] {
+				continue
+			}
+			a := g.st.Actors[id]
+			before[id] = a.Tactics
+			if err := a.SetTactics(s.drafts[id]); err != nil {
+				for done, old := range before {
+					g.st.Actors[done].Tactics = old
 				}
+				g.events.Log(fmt.Errorf("tactics: %s: %w", id, err))
+				g.sfx("buzzer")
+				return
 			}
 		}
 		s.close(g)
@@ -239,6 +247,44 @@ func (s *tacticsScreen) act(g *Game) {
 	s.refresh(g)
 }
 
+// tacticMark is how wide a row's ON/OFF mark takes a tap: the word at the
+// row's right end or, with simple tactics, the mark before its text.
+const tacticMark = 76
+
+// markAt is the row whose ON/OFF mark is under a tap.
+func (s *tacticsScreen) markAt(g *Game) (int, bool) {
+	in := &g.in
+	if !in.inspect(in.click) {
+		return 0, false
+	}
+	for _, i := range s.rows.shown() {
+		if in.mouse.In(s.markRect(g, i)) {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// markRect is where row i's ON/OFF mark takes a tap.
+func (s *tacticsScreen) markRect(g *Game, i int) image.Rectangle {
+	r := s.rows.rowRect(i)
+	if g.db.Game.Battle.SimpleTactics {
+		return image.Rect(r.Min.X, r.Min.Y, r.Min.X+tacticMark, r.Max.Y)
+	}
+	return image.Rect(r.Max.X-tacticMark, r.Min.Y, r.Max.X, r.Max.Y)
+}
+
+// toggleRow turns row i on or off as the ON / OFF action does, leaving the
+// cursor of the actions where it was.
+func (s *tacticsScreen) toggleRow(g *Game, i int) {
+	keep := s.actions.sel
+	s.focus, s.rows.sel, s.actions.sel = 1, i, tacticToggle
+	s.act(g)
+	s.actions.sel = keep
+	s.refresh(g)
+	g.sfx("cursor")
+}
+
 func (s *tacticsScreen) update(g *Game) {
 	if s.presets != nil && !s.editing {
 		s.updatePresets(g)
@@ -255,15 +301,13 @@ func (s *tacticsScreen) update(g *Game) {
 	}
 
 	lists := []*list{s.members, s.rows, s.actions}
-	if g.in.inspect(g.in.click) {
-		for f, l := range lists {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					s.focus = f
-				}
-			}
-		}
+	if i, ok := s.markAt(g); ok {
+		g.in.query(true)
+		s.toggleRow(g, i)
+		return
+	}
+	if f := g.clickedList(lists...); f >= 0 {
+		s.focus = f
 	}
 	if len(s.ids) > 0 && g.in.inspect(g.in.pressed[btnNext]) {
 		d := g.in.tab()
@@ -326,6 +370,12 @@ func (s *tacticsScreen) draw(g *Game, dst *ebiten.Image) {
 			l.draw(g, dst, s.focus == i || i < 2)
 		}
 	}
+	if g.controlFrame() != nil {
+		for _, i := range s.rows.shown() {
+			r := s.markRect(g, i)
+			g.traceControl(lang.T("ON / OFF"), roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), true, false, "")
+		}
+	}
 	if len(s.rows.items) == 0 {
 		text := lang.T("作戦の行がありません。通常攻撃を使います。おまかせ未定義の場合は従来の AI を使います。")
 		if s.presets != nil {
@@ -374,15 +424,8 @@ func (s *tacticsScreen) updatePresets(g *Game) {
 		return
 	}
 	lists := []*list{s.members, s.presets}
-	if g.in.inspect(g.in.click) {
-		for f, l := range lists {
-			for i := l.top; i < min(len(l.items), l.top+l.rows); i++ {
-				if g.in.mouse.In(l.rowRect(i)) {
-					g.in.query(true)
-					s.focus = f
-				}
-			}
-		}
+	if f := g.clickedList(lists...); f >= 0 {
+		s.focus = f
 	}
 	chosen := lists[s.focus].updateChoice(g)
 	if chosen {
@@ -441,4 +484,23 @@ func (s *tacticsScreen) drawPresets(g *Game, dst *ebiten.Image) {
 	g.window(dst, 24, 552, sw-48, 100)
 	g.drawLinesFit(dst, desc+"\n"+lang.T("薬・MPが足りない行は飛ばします。誰に使うかは自動です。"), 44, 565, sw-88, sizeS, 3, g.th.text)
 	g.drawLinesFit(dst, lang.T("← → 欄を移動　↑ ↓ 選択　決定で型を選ぶ　取消で全変更を破棄　* は未確定"), 30, 674, sw-60, sizeS*0.85, 1, g.th.border)
+}
+
+// clickedList is the index of the list that has a shown row under a click, or
+// -1. A hit accepts the click; the tactics screens use it to move the focus to
+// the column the player pointed at before that column reads the same click.
+func (g *Game) clickedList(lists ...*list) int {
+	hit := -1
+	if !g.in.inspect(g.in.click) {
+		return hit
+	}
+	for f, l := range lists {
+		for _, i := range l.shown() {
+			if g.in.mouse.In(l.rowRect(i)) {
+				g.in.query(true)
+				hit = f
+			}
+		}
+	}
+	return hit
 }

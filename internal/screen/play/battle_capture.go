@@ -86,8 +86,8 @@ func (c *battleCapture) validate(g *Game) error {
 
 func (g *Game) restoreBattleCapture() error {
 	c := g.rep.capture
-	p := rand.NewPCG(1, 2)
-	if err := p.UnmarshalBinary(c.Rand); err != nil {
+	p, err := savedPCG(c.Rand)
+	if err != nil {
 		return fmt.Errorf(lang.T("戦闘記録の乱数状態が不正: %w"), err)
 	}
 	st, err := rpg.Parse(g.db, c.Save, rand.New(p)) //nolint:gosec // Reproducible gameplay, not cryptographic randomness.

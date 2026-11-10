@@ -9,7 +9,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	lang "github.com/nao1215/gozen/internal/base/text"
+	"github.com/nao1215/gozen/internal/drive/headless"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/battle"
 	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/testgame"
@@ -267,7 +270,7 @@ func TestBattleFastSkipsCharge(t *testing.T) {
 }
 
 // TestBattleLossAndRetry: a lost battle asks to retry from before it when the game allows,
-// and answering yes starts the same battle again from the saved state.
+// and choosing to retry starts the same battle again from the saved state.
 func TestBattleLossAndRetry(t *testing.T) {
 	covSlow(t)
 	g, out := btlOpen(t, Options{Battle: "doom", Level: 1}, "", "")
@@ -301,6 +304,10 @@ func TestBattleLossAndRetry(t *testing.T) {
 	}
 	if s.b.Result != battle.Lost {
 		t.Fatalf("result %v", s.b.Result)
+	}
+	// The two ways on are named: no Yes and No to read against the question.
+	if _, ways := g.scriptPickables(); len(ways) != 2 || ways[0].label != lang.T("やりなおす") || ways[1].label != lang.T("あきらめる") {
+		t.Fatalf("the fallen party is asked %+v, want Retry and Give up", ways)
 	}
 	for range 6 {
 		q.update(g)
@@ -637,5 +644,115 @@ func TestBattleFoeNamesAndFittedMessage(t *testing.T) {
 	}
 	if h := s.messageHeight(g); h != 132 {
 		t.Errorf("the fixed window is %g tall, want 132", h)
+	}
+}
+
+// TestBattleWeaknessIsLearnedWithoutAScreen: var.known_<enemy>_<element> is a name the data
+// may read (gamedata state names), so the same weak hit must leave it in the state whether
+// the battle is shown or not. Only the screen's hit effect writes it now (damageHit).
+func TestBattleWeaknessIsLearnedWithoutAScreen(t *testing.T) {
+	g, _ := btlOpen(t, Options{}, "", "")
+	b := battle.New(g.db, g.st, "one")
+	b.Begin()
+	b.StartTurn([]battle.Action{{User: b.Party[0], Skill: "fire", Target: b.Foes[0]}, {User: b.Party[1], Pass: true}})
+	weak := false
+	for {
+		steps, done := b.Next()
+		for _, st := range steps {
+			weak = weak || st.Kind == battle.Damage && st.Weak && st.Element == "fire" && st.Target == b.Foes[0]
+		}
+		if done {
+			break
+		}
+	}
+	if !weak {
+		t.Fatal("the fire skill did not land a weak hit on the mote")
+	}
+	if g.st.Vars["known_mote_fire"] == nil {
+		t.Fatal("a weak fire hit fought by the rules alone (headless, session, sim) left var.known_mote_fire unset: only the battle screen's hit effect sets it")
+	}
+}
+
+// TestBattleEventBattleMatchesHeadless: a troop's event that asks for a battle is answered as
+// won without a screen (AutoBattle) and runs its on_win; the screen must end in the same state.
+func TestBattleEventBattleMatchesHeadless(t *testing.T) {
+	const troops = `  nested:
+    members: [mote]
+    can_escape: false
+    events:
+      - when: "turn == 1"
+        do:
+          - battle: one
+            on_win: [{set: {flag.nested_won: true}}]
+`
+	g, _ := btlOpen(t, Options{Battle: "nested"}, "", troops)
+	s := btlAsk(t, g)
+	screen := g.st.Flags["nested_won"]
+
+	// the same state, fought without a screen
+	saved, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := rpg.Parse(g.db, saved, g.st.Rand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	headless.AutoBattle(g.db, st, battle.New(g.db, st, "nested"), nil, 1, nil)
+	if !st.Flags["nested_won"] {
+		t.Fatal("the run without a screen did not take the battle of the event as won")
+	}
+	if !screen {
+		t.Fatalf("on the screen (phase %d) the battle of the troop's event was dropped: on_win never ran, without a screen it does", s.phase)
+	}
+}
+
+// TestBattleAutoStopsWithATap: AUTO lasts over the battles that follow, so a player with a
+// touch screen only must be able to stop it where the screen says it is on.
+func TestBattleAutoStopsWithATap(t *testing.T) {
+	g, _ := btlOpen(t, Options{Battle: "doom"}, "", "")
+	s := btlAsk(t, g)
+	btlChoose(g, s, 4) // AUTO
+	if !s.auto || !g.autoBattle {
+		t.Fatalf("AUTO did not start: scene %v game %v", s.auto, g.autoBattle)
+	}
+	sw, _ := g.screen()
+	// the middle of the "AUTO" label the battle draws (battleScene.draw)
+	g.in = input{click: true, moved: true, mouse: image.Pt(int(sw-150), 164+int(sizeS/2))}
+	g.tick++
+	s.update(g)
+	g.in = input{}
+	if s.auto || g.autoBattle {
+		t.Fatal("a tap on the AUTO label left AUTO on: only the cancel key or a second finger stops it")
+	}
+}
+
+// AUTO is turned on by one code: the player's own AUTO lasts over the battles that follow,
+// a script's act is for the battle it is given in, and both begin the turn that waited.
+func TestBattleStartAutoPaths(t *testing.T) {
+	for name, tc := range map[string]struct {
+		start   func(g *Game, s *battleScene)
+		lasting bool
+	}{
+		"command": {func(g *Game, s *battleScene) { btlChoose(g, s, 4) }, true},
+		"act": {func(g *Game, _ *battleScene) {
+			if !g.act("battle_auto", nil) {
+				t.Fatal("battle_auto was refused while the battle asked for a command")
+			}
+		}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			g, _ := btlOpen(t, Options{Battle: "doom"}, "", "")
+			s := btlAsk(t, g)
+			tc.start(g, s)
+			if !s.auto || s.phase != bpPlay || g.autoBattle != tc.lasting {
+				t.Fatalf("auto %v phase %v lasting %v, want auto in play and lasting %v", s.auto, s.phase, g.autoBattle, tc.lasting)
+			}
+			for _, m := range s.b.Party {
+				if !m.Auto {
+					t.Fatalf("%s does not act by itself", m.Name)
+				}
+			}
+		})
 	}
 }

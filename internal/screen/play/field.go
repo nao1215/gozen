@@ -147,8 +147,6 @@ func (f *field) standTalker(g *Game, p *data.Person) {
 }
 
 func (f *field) personX(g *Game, p *data.Person) (float64, bool) {
-	sw, _ := g.screen()
-	_ = sw
 	people := f.people(g)
 	for i, q := range people {
 		if q == p {

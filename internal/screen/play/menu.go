@@ -136,10 +136,7 @@ func (m *menu) update(g *Game) {
 		return
 	}
 	if m.direct != "" && m.mode == "" && !m.picker {
-		g.pop()
-		if m.done != nil {
-			m.done()
-		}
+		g.leave(m.done)
 		return
 	}
 	switch {
@@ -153,13 +150,20 @@ func (m *menu) update(g *Game) {
 		m.updateEquip(g)
 	case m.mode == "status":
 		ms := m.members(g)
-		if g.in.left() || g.in.up() || g.in.tab() < 0 {
+		step := 0
+		if len(ms) > 1 {
+			step = g.stepTapped(m.statusSteps())
+		}
+		if g.in.left() || g.in.up() || g.in.tab() < 0 || step < 0 {
 			m.member = (m.member - 1 + len(ms)) % len(ms)
 			g.sfx("cursor")
 		}
-		if g.in.right() || g.in.down() || g.in.tab() > 0 {
+		if g.in.right() || g.in.down() || g.in.tab() > 0 || step > 0 {
 			m.member = (m.member + 1) % len(ms)
 			g.sfx("cursor")
+		}
+		if step != 0 {
+			break // the tap turned the page; it does not close it too
 		}
 		if g.in.cancel() || g.in.ok() || g.in.clicked() {
 			g.sfx("cancel")
@@ -171,7 +175,7 @@ func (m *menu) update(g *Game) {
 			g.pop()
 			return
 		}
-		if it := m.tabs.items[m.tabs.sel]; !chose && it.id == "save" && it.disabled && g.in.ok() {
+		if it := m.tabs.items[m.tabs.sel]; !chose && it.id == "save" && m.tabs.refused {
 			m.msgs, m.msgT, m.msgSoft = []string{lang.T("ここでは セーブ できない。安全な 場所で セーブ しよう。")}, 90, false
 			return
 		}
@@ -187,7 +191,7 @@ func (m *menu) update(g *Game) {
 			if it.Consumed() {
 				g.st.AddItem(m.cmds[m.tabs.sel], -1)
 			}
-			g.pop()
+			g.leave(m.done)
 			g.events.Start(g.db.Events[it.Event].Do)
 			return
 		}
@@ -253,15 +257,20 @@ func (m *menu) updatePicker(g *Game) {
 		m.member = (m.member + 1) % len(ms)
 		g.sfx("cursor")
 	}
+	over := false
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
-			m.member = i
+		if g.in.mouse.In(m.cardRect(g, i)) {
+			over = true
+			if g.in.moved || g.in.inspect(g.in.click) {
+				m.member = i
+			}
 		}
 	}
-	if g.in.ok() || g.in.clicked() {
+	if g.in.ok() || over && g.in.clicked() {
 		g.sfx("decide")
 		m.picker = false
 		if m.mode == "skill" {
+			m.items = nil // the list before was the items' or another member's: the cursor starts over
 			m.openSkills(g)
 		} else {
 			m.openEquip(g)
@@ -320,7 +329,7 @@ func (m *menu) updateItems(g *Game) {
 		if it.Consumed() {
 			g.st.AddItem(id, -1)
 		}
-		g.pop()
+		g.leave(m.done) // the event that opened the item screen goes on after the item's event
 		g.events.Start(g.db.Events[it.Event].Do)
 		return
 	}
@@ -357,12 +366,16 @@ func (m *menu) updateTarget(g *Game) {
 		m.tsel = (m.tsel + 1) % len(ms)
 		g.sfx("cursor")
 	}
+	over := false
 	for i := range ms {
-		if g.in.mouse.In(m.cardRect(g, i)) && (g.in.moved || g.in.clicked()) {
-			m.tsel = i
+		if g.in.mouse.In(m.cardRect(g, i)) {
+			over = true
+			if g.in.moved || g.in.inspect(g.in.click) {
+				m.tsel = i
+			}
 		}
 	}
-	if g.in.ok() || g.in.clicked() {
+	if g.in.ok() || over && g.in.clicked() {
 		kind, id, _ := strings.Cut(m.using, ":")
 		skill, item := id, ""
 		if kind == "item" {
@@ -424,16 +437,35 @@ func (m *menu) openSkills(g *Game) {
 	m.items = newList(items, 300, 36, menuListW, int((sh-200)/44))
 	m.items.empty = lang.T("つかえる スキルが ない。")
 	m.items.sel = sel
+	m.items.scroll()
+}
+
+// statusSteps is where the status page's previous and next buttons stand.
+func (m *menu) statusSteps() (x, y float64) { return 300 + 680 - 20, 36 + 16 }
+
+// cardTapped is the member whose card a tap landed on, other than the one
+// shown: the skill and equipment pages change member by it, as Tab does.
+func (m *menu) cardTapped(g *Game) (int, bool) {
+	for i := range m.members(g) {
+		if i != m.member && g.tapped(m.cardRect(g, i)) {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 func (m *menu) updateSkills(g *Game) {
-	if g.in.tab() != 0 {
+	tapped, byTap := m.cardTapped(g)
+	if g.in.tab() != 0 || byTap {
 		ms := m.members(g)
 		d := 1
 		if g.in.tab() < 0 {
 			d = len(ms) - 1
 		}
 		m.member = (m.member + d) % len(ms)
+		if byTap {
+			m.member = tapped
+		}
 		g.sfx("cursor")
 		m.items.sel = 0
 		m.openSkills(g)
@@ -493,14 +525,18 @@ func (m *menu) candidates(g *Game) {
 }
 
 func (m *menu) updateEquip(g *Game) {
+	tapped, byTap := m.cardTapped(g)
 	if m.cands != nil {
-		if g.in.tab() != 0 {
+		if g.in.tab() != 0 || byTap {
 			ms := m.members(g)
 			d := 1
 			if g.in.tab() < 0 {
 				d = len(ms) - 1
 			}
 			m.member = (m.member + d) % len(ms)
+			if byTap {
+				m.member = tapped
+			}
 			g.sfx("cursor")
 			m.openEquip(g)
 			m.candidates(g)
@@ -529,13 +565,16 @@ func (m *menu) updateEquip(g *Game) {
 		m.picker = true
 		return
 	}
-	if g.in.left() || g.in.right() || g.in.tab() != 0 {
+	if g.in.left() || g.in.right() || g.in.tab() != 0 || byTap {
 		ms := m.members(g)
 		d := 1
 		if g.in.left() || g.in.tab() < 0 {
 			d = len(ms) - 1
 		}
 		m.member = (m.member + d) % len(ms)
+		if byTap {
+			m.member = tapped
+		}
 		g.sfx("cursor")
 		m.openEquip(g)
 		return
@@ -630,11 +669,11 @@ func (m *menu) draw(g *Game, dst *ebiten.Image) {
 	case m.picker:
 		gfx.DrawTextOutlineColor(dst, lang.T("だれの？"), hx, hy, sizeM, g.th.text, g.th.window, 1)
 	case m.mode == "skill" && m.items != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	case m.mode == "equip" && m.cands != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("Tab / Shift+Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	case m.mode == "equip" && m.slots != nil:
-		gfx.DrawTextOutlineColor(dst, lang.T("← → / Tab でメンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
+		gfx.DrawTextOutlineColor(dst, lang.T("← → / Tab / カードを おして メンバーを かえる"), hx, hy, sizeS*0.9, g.th.text, g.th.window, 1)
 	}
 	if m.msgT > 0 {
 		h := float64(len(m.msgs))*36 + 40
@@ -687,6 +726,10 @@ func (m *menu) drawStatus(g *Game, dst *ebiten.Image, a *rpg.Actor) {
 	}
 	x, y, w := 300.0, 36.0, 680.0
 	g.window(dst, x, y, w, sh-72)
+	if len(m.members(g)) > 1 {
+		sx, sy := m.statusSteps()
+		g.drawStepButtons(dst, sx, sy)
+	}
 	t := g.db.Game.Terms
 	g.text(dst, a.Name()+sexSign(a.Sex), x+30, y+20, sizeXL*0.8, d.Color.Or(g.th.text))
 	g.text(dst, fmt.Sprintf("%s  %s %d", a.Class().Name, t.Level, a.Level), x+30, y+74, sizeM, g.th.border)
@@ -732,102 +775,4 @@ func (m *menu) drawStatus(g *Game, dst *ebiten.Image, a *rpg.Actor) {
 		g.drawLines(dst, d.Profile, x+30, py, w-60, sizeS*0.85, withAlpha(g.th.text, 0xd0))
 	}
 	gfx.DrawTextOutlineColor(dst, lang.T("← → / Tab: メンバー   X: もどる"), x+w/2, sh-70, sizeS*0.85, g.th.text, g.th.window, 1)
-}
-
-type confirm struct {
-	msg  string
-	yes  func()
-	onNo func()
-	age  int
-	no   bool
-}
-
-func newConfirm(msg string, yes func()) *confirm { return &confirm{msg: msg, yes: yes} }
-
-func (c *confirm) overlay() bool { return true }
-
-func (c *confirm) layout(g *Game) (lines []string, size, y, h float64, yes, no image.Rectangle) {
-	sw, sh := g.screen()
-	width := min(720.0, sw-32)
-	maxLines := 2
-	if width < 720 {
-		// Compact viewports need more wrapped lines, while keeping the controls
-		// below the message and the whole dialog inside the screen.
-		maxLines = max(2, int((sh-32-104)/gfx.LineHeight(sizeM)))
-	}
-	lines, size = gfx.FitLines(c.msg, sizeM, min(640, width-40), maxLines)
-	h = 104 + float64(len(lines))*gfx.LineHeight(size)
-	y = sh/2 - h/2
-	by := int(y + h - 66)
-	buttonWidth := min(150.0, (width-60)/2)
-	yes = image.Rect(int(sw/2-20-buttonWidth), by, int(sw/2-20), by+44)
-	no = image.Rect(int(sw/2+20), by, int(sw/2+20+buttonWidth), by+44)
-	return
-}
-
-func (c *confirm) update(g *Game) {
-	c.age++
-	if c.age < 6 {
-		return
-	}
-	_, _, _, _, yes, no := c.layout(g)
-	if g.in.moved {
-		if g.in.mouse.In(yes) {
-			c.no = false
-		} else if g.in.mouse.In(no) {
-			c.no = true
-		}
-	}
-	if g.in.left() || g.in.right() {
-		c.no = !c.no
-		g.sfx("cursor")
-	}
-	g.in.receivePick(c)
-	accept, refuse := false, g.in.cancel()
-	if g.in.ok() {
-		accept, refuse = !c.no, c.no
-	}
-	if g.in.inspect(g.in.click) {
-		accept, refuse = g.in.mouse.In(yes), g.in.mouse.In(no)
-		g.in.query(accept || refuse)
-	}
-	switch {
-	case accept:
-		g.sfx("decide")
-		g.pop()
-		c.yes()
-	case refuse:
-		g.sfx("cancel")
-		g.pop()
-		if c.onNo != nil {
-			c.onNo()
-		}
-	}
-}
-
-func (c *confirm) draw(g *Game, dst *ebiten.Image) {
-	sw, _ := g.screen()
-	fill(dst, withAlpha(colorBlack, 0x70))
-	ls, sz, y, h, yes, no := c.layout(g)
-	width := min(720.0, sw-32)
-	g.window(dst, (sw-width)/2, y, width, h)
-	for i, ln := range ls {
-		gfx.DrawText(dst, ln, sw/2, y+20+float64(i)*gfx.LineHeight(sz), sz, g.th.text)
-	}
-	for i, r := range []image.Rectangle{yes, no} {
-		label := lang.T("はい")
-		if i == 1 {
-			label = lang.T("いいえ")
-		}
-		on := (i == 1) == c.no
-		if on {
-			gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x70))
-		}
-		gfx.StrokeRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, 2, g.th.border)
-		c2 := g.th.dim
-		if on {
-			c2 = g.th.text
-		}
-		gfx.DrawText(dst, label, float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y)+(float64(r.Dy())-sizeM*1.3)/2, sizeM, c2)
-	}
 }

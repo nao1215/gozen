@@ -31,13 +31,15 @@ type authorScreen struct {
 	// ghostImg holds the dragged copy of a card between frames.
 	ghostImg *ebiten.Image
 
-	chart              workChart
-	args               map[string]any
-	timelineContext    *authorScreen
-	timelineActivity   string
-	candidatePage      int
-	calendarMonth      string
-	residentTop        int
+	chart            workChart
+	args             map[string]any
+	timelineContext  *authorScreen
+	timelineActivity string
+	candidatePage    int
+	calendarMonth    string
+	// scroll is the residents' table scrolled by the wheel or a finger; the timelines
+	// share its finger.
+	scroll             rowScroll
 	residentSort       int
 	residentDescending bool
 	residentPage       int
@@ -71,6 +73,12 @@ type authorScreen struct {
 	rows         []event.ScreenRow
 	list         *list
 	done         func()
+}
+
+// rowScroll is a run of rows that scrolls: the first row shown and the finger dragging them.
+type rowScroll struct {
+	top  int
+	drag swipe
 }
 
 // openAuthorScreen owns the depth check for both event and navigation opens.
@@ -227,7 +235,8 @@ func (s *authorScreen) drawTimelineCandidates(g *Game, dst *ebiten.Image) {
 		fill(dst, light.paper)
 	}
 	parent.drawPlanningHeader(g, dst)
-	parent.drawGroupedTimeline(g, dst, 0, 108, sw-360, sh-226)
+	cx, cy, cw, ch := g.surfaceChart()
+	parent.drawGroupedTimeline(g, dst, cx, cy, cw-360, ch)
 	g.window(dst, sw-360, 48, 360, sh-48)
 	g.drawPlanningText(dst, s.title, sw-348, 60, 336, 18, 2, g.th.accent)
 	if len(s.entries) > 0 {
@@ -333,7 +342,7 @@ func (s *authorScreen) refreshed(g *Game) *authorScreen {
 	n.ringAt, n.ringAnim, n.keyed = s.ringAt, s.ringAnim, s.keyed
 	n.keepRing(s.ringKey())
 	n.calendarMonth = s.calendarMonth
-	n.residentTop = s.residentTop
+	n.scroll.top = s.scroll.top
 	n.residentSort, n.residentDescending, n.residentPage = s.residentSort, s.residentDescending, s.residentPage
 	n.timelineTop = s.timelineTop
 	n.timelineFocus = s.timelineFocus
@@ -383,10 +392,7 @@ func (s *authorScreen) update(g *Game) {
 		g.evName, g.evLines, g.evArrival = "", 0, false
 		g.evAnswers, g.evHist, g.evOpened = nil, nil, nil
 		if g.st.Location != s.origin {
-			g.pop()
-			if s.done != nil {
-				s.done()
-			}
+			g.leave(s.done)
 			return
 		}
 		if s.destination != "" {
@@ -444,10 +450,7 @@ func (s *authorScreen) update(g *Game) {
 		if s.leave(g) {
 			return
 		}
-		g.pop()
-		if s.done != nil {
-			s.done()
-		}
+		g.leave(s.done)
 		return
 	}
 	if chose {
@@ -724,10 +727,7 @@ func (s *authorScreen) returnTo(g *Game, name string) bool {
 	if !ok || !event.ReturnsTo(g.db, name, under.name, len(under.args), under.running) {
 		return false
 	}
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 	switch {
 	case under.running:
 	case under.flowGivesWay(g):
@@ -772,10 +772,7 @@ func (s *authorScreen) closeSurface(g *Game) {
 	if s.leave(g) {
 		return
 	}
-	g.pop()
-	if s.done != nil {
-		s.done()
-	}
+	g.leave(s.done)
 }
 
 func (s *authorScreen) updateSurface(g *Game) {
@@ -949,7 +946,8 @@ func (s *authorScreen) drawSurface(g *Game, dst *ebiten.Image) {
 		g.desktopFrame(dst, sh-16, 38, color.NRGBA{})
 		g.drawPlanningText(dst, data.Render(g.db.Tr(v.Window), s.env(g)), 36, 26, sw-200, 15, 1, g.chrome().title)
 	}
-	s.drawPlanning(g, dst, def.Kind, 0, 48, sw, sh-156)
+	fx, fy, fw, fh := planningFrame(sw, sh)
+	s.drawPlanning(g, dst, def.Kind, fx, fy, fw, fh)
 	s.drawPlanningHeader(g, dst)
 	g.prepareMaterial(dst, "")
 	ring := s.ringMembers()
@@ -1252,6 +1250,8 @@ func (s *authorScreen) drawTabs(g *Game, dst *ebiten.Image) {
 }
 
 func (s *authorScreen) scrollTimeline(g *Game, height float64) {
+	sw, _ := g.screen()
+	s.timelineTop += s.scroll.drag.rows(&g.in, inBox(float64(g.in.mouse.X), float64(g.in.mouse.Y), 0, 108, sw, height), 56)
 	if g.in.down() {
 		s.timelineTop++
 	}

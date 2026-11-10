@@ -301,10 +301,7 @@ func (s *profileScreen) updateChart(g *Game) {
 			g.sfx("cancel")
 		} else {
 			g.sfx("cancel")
-			g.pop()
-			if s.done != nil {
-				s.done()
-			}
+			g.leave(s.done)
 			return
 		}
 	}
@@ -341,9 +338,9 @@ func (s *profileScreen) updateChart(g *Game) {
 		g.in.query(s.chartMove(points, -1, 0))
 	case g.in.inspect(g.in.pressed[btnRight]):
 		g.in.query(s.chartMove(points, 1, 0))
-	case g.in.inspect(g.in.pressed[btnUp]) || g.in.wheel > 0:
+	case g.in.inspect(g.in.pressed[btnUp]):
 		g.in.query(s.chartMove(points, 0, -1))
-	case g.in.inspect(g.in.pressed[btnDown]) || g.in.wheel < 0:
+	case g.in.inspect(g.in.pressed[btnDown]):
 		g.in.query(s.chartMove(points, 0, 1))
 	}
 	if old != s.sel {

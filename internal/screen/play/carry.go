@@ -102,10 +102,17 @@ func (g *Game) applyCarry(st *rpg.State) {
 	maps.Copy(st.Flags, g.carry.Flags)
 }
 
-// filterCarry applies the current allowlist even after a live definition reload.
+// filterCarry applies the current allowlist even after a live definition reload, and
+// gives a record read without its maps (a carry.json with null in their place) empty ones.
 func (g *Game) filterCarry() {
 	if g.carry == nil {
 		return
+	}
+	if g.carry.Vars == nil {
+		g.carry.Vars = map[string]any{}
+	}
+	if g.carry.Flags == nil {
+		g.carry.Flags = map[string]bool{}
 	}
 	for k, v := range g.carry.Vars {
 		name := "var." + k

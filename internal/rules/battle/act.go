@@ -375,6 +375,9 @@ func (b *Battle) effect(u, t *Unit, e *data.Effect, use *data.Usage, skill strin
 		if isCrit {
 			text = lang.T("かいしんの いちげき！ ") + text
 		}
+		if t.Enemy && el != "" && (weak || resisted) { // learned by the hit, with or without a screen
+			b.St.Vars[VarKnown+t.EID+"_"+el] = 1.0
+		}
 		steps = append(steps, Step{Kind: Damage, User: u, Target: t, Amount: n, Stat: stat, Crit: isCrit, Weak: weak, Resisted: resisted, Element: el, Text: b.text(text, u, t, skill, n), HP: t.HP, MP: t.MP})
 		if endured {
 			steps = append(steps, Step{Kind: Message, Target: t, Text: b.text(lang.T("{target}は ふみとどまった！"), u, t, skill, 0), HP: t.HP, MP: t.MP})

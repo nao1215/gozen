@@ -7,8 +7,7 @@ import (
 	"io/fs"
 	"log"
 
-	"github.com/hajimehoshi/ebiten/v2"
-
+	lang "github.com/nao1215/gozen/internal/base/text"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/model/gamepackage"
 )
@@ -35,6 +34,22 @@ type phoneStoreAction struct {
 	refresh bool
 }
 
+// preparePhoneRows adds the rows the engine makes (a home screen's installed
+// apps, a store's games) before the phone is first drawn, so they rise with it.
+func (g *Game) preparePhoneRows(p *phoneView) {
+	switch p.cue.App {
+	case "home":
+		g.addPhoneGameApps(p)
+	case "store":
+		if p.store == nil {
+			p.store = &phoneStore{}
+		}
+		if !p.store.ready {
+			g.phoneStoreRows(p)
+		}
+	}
+}
+
 func (g *Game) phoneStoreRows(p *phoneView) {
 	s := p.store
 	p.cue.Rows = nil
@@ -43,7 +58,7 @@ func (g *Game) phoneStoreRows(p *phoneView) {
 	p.rowsW = 0
 	p.focus = -1
 	if p.cue.Title == "" {
-		p.cue.Title = "Games"
+		p.cue.Title = lang.T("ゲーム")
 	}
 	add := func(r data.PhoneRow) { p.cue.Rows = append(p.cue.Rows, r) }
 	if s.message != "" {
@@ -56,7 +71,7 @@ func (g *Game) phoneStoreRows(p *phoneView) {
 	}
 	if g.db.Game.Phone.CatalogURL != "" && s.done == nil {
 		s.actions[len(p.cue.Rows)] = phoneStoreAction{refresh: true}
-		add(data.PhoneRow{Button: "Check for updates"})
+		add(data.PhoneRow{Button: lang.T("更新を確認")})
 	}
 	for _, a := range g.db.Game.Phone.Apps {
 		if _, err := g.phoneApp(a.ID); err != nil {
@@ -72,7 +87,7 @@ func (g *Game) phoneStoreRows(p *phoneView) {
 		installed, openErr := g.phoneListed(a.ID)
 		if openErr == nil {
 			s.actions[len(p.cue.Rows)] = phoneStoreAction{id: a.ID, release: installed, launch: true}
-			add(data.PhoneRow{Button: "Play " + r.Title})
+			add(data.PhoneRow{Button: fmt.Sprintf(lang.T("%s をプレイ"), r.Title)})
 			if installed.Version == r.Version {
 				continue
 			}
@@ -82,10 +97,10 @@ func (g *Game) phoneStoreRows(p *phoneView) {
 		if a.Install == "bundled" && openErr != nil {
 			continue
 		}
-		label := "Install " + r.Title
+		label := fmt.Sprintf(lang.T("%s をインストール"), r.Title)
 		if openErr == nil {
-			label = "Update " + r.Title + " to " + r.Version
-			add(data.PhoneRow{Text: "Each version has separate saves. Your earlier saves are kept."})
+			label = fmt.Sprintf(lang.T("%s を %s に更新"), r.Title, r.Version)
+			add(data.PhoneRow{Text: lang.T("セーブは版ごとに別です。以前のセーブは残ります。")})
 		}
 		if s.done == nil {
 			s.actions[len(p.cue.Rows)] = phoneStoreAction{id: a.ID, release: r}
@@ -93,15 +108,12 @@ func (g *Game) phoneStoreRows(p *phoneView) {
 		}
 	}
 	if len(p.cue.Rows) == 0 {
-		add(data.PhoneRow{Text: "No games are available yet."})
+		add(data.PhoneRow{Text: lang.T("遊べるゲームはまだありません。")})
 	}
 	s.ready = true
 }
 
 func (g *Game) updatePhoneStore(p *phoneView) {
-	if p.store == nil {
-		p.store = &phoneStore{}
-	}
 	s := p.store
 	if s.done != nil {
 		select {
@@ -110,9 +122,7 @@ func (g *Game) updatePhoneStore(p *phoneView) {
 		default:
 		}
 	}
-	if !s.ready {
-		g.phoneStoreRows(p)
-	}
+	g.preparePhoneRows(p)
 	g.updatePhonePage(p)
 	if !s.selected {
 		return
@@ -151,12 +161,12 @@ func (s *phoneStore) finish(g *Game, result phoneInstallResult) {
 		if result.installed != nil && g.packages.opened[result.id] != result.installed {
 			err = errors.Join(err, result.installed.Close())
 		}
-		s.message = "Installation: " + err.Error()
+		s.message = fmt.Sprintf(lang.T("インストール: %v"), err)
 	} else {
 		if result.catalog != nil {
-			s.message = "Game catalog updated"
+			s.message = lang.T("ゲームの一覧を更新しました")
 		} else {
-			s.message = "Installed " + result.installed.Release.Title
+			s.message = fmt.Sprintf(lang.T("%s をインストールしました"), result.installed.Release.Title)
 		}
 	}
 	s.ready = false
@@ -167,9 +177,9 @@ func (g *Game) beginPhoneInstall(s *phoneStore, action phoneStoreAction) {
 	done := make(chan phoneInstallResult)
 	s.cancel = cancel
 	s.done = done
-	s.message = "Installing " + action.release.Title + "…"
+	s.message = fmt.Sprintf(lang.T("%s をインストール中…"), action.release.Title)
 	if action.refresh {
-		s.message = "Checking for updates…"
+		s.message = lang.T("更新を確認中…")
 	}
 	s.ready = false
 	g.emit("unsupported_script", traceLine{"command": "phone_install", "reason": "network installation is not deterministic"})
@@ -194,13 +204,6 @@ func (g *Game) beginPhoneInstall(s *phoneStore, action phoneStoreAction) {
 			}
 		}
 	}()
-}
-
-func (g *Game) drawPhoneStore(p *phoneView, dst *ebiten.Image, w, h float64) {
-	if p.store == nil {
-		p.store = &phoneStore{}
-	}
-	g.drawPhonePage(p, dst, w, h)
 }
 
 func (s *phoneStore) close() {

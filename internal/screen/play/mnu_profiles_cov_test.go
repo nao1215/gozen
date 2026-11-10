@@ -82,13 +82,13 @@ func TestProfilesNavigation(t *testing.T) {
 	mnuDrawAll(g)
 	// up from the first wraps to the last, and the list scrolls to show it
 	mnuPress(g, btnUp)
-	if s.sel != 15 || s.top != 15-s.rows(g)+1 {
-		t.Fatalf("sel %d top %d rows %d", s.sel, s.top, s.rows(g))
+	if s.sel != 15 || s.rowList(g).top != 15-s.rows(g)+1 {
+		t.Fatalf("sel %d top %d rows %d", s.sel, s.rowList(g).top, s.rows(g))
 	}
 	mnuDrawAll(g)
 	mnuPress(g, btnRight) // wraps to the first
-	if s.sel != 0 || s.top != 0 {
-		t.Fatalf("sel %d top %d", s.sel, s.top)
+	if s.sel != 0 || s.rowList(g).top != 0 {
+		t.Fatalf("sel %d top %d", s.sel, s.rowList(g).top)
 	}
 	mnuPress(g, btnLeft)
 	if s.sel != 15 {
@@ -149,10 +149,10 @@ func TestProfilesNavigation(t *testing.T) {
 	if s.sel != 3 {
 		t.Fatalf("a swipe that should not count moved to %d", s.sel)
 	}
-	// a press that begins over the picture starts a swipe
-	g.in.click, g.in.mouse = true, image.Pt(400, 300)
+	// a press that begins over the picture starts a swipe (a finger going down does not click)
+	g.in.pdown, g.in.pheld, g.in.mouse = true, true, image.Pt(400, 300)
 	mnuTop(g).update(g)
-	g.in.click = false
+	g.in.pdown, g.in.pheld = false, false
 	if !s.pressed || s.press != image.Pt(400, 300) {
 		t.Fatalf("press %v %v", s.pressed, s.press)
 	}
@@ -304,16 +304,16 @@ func TestProfilesLiveKeepAndEmptyBook(t *testing.T) {
 	g := mnuBookGame(t, Options{})
 	s := newProfiles(g, nil)
 	g.push(s)
-	s.sel, s.top = 14, 9
+	s.sel, s.rowList(g).top = 14, 9
 	n := mnuKeep[*profileScreen](t, s.liveKeep(g))
-	if n.sel != 14 || n.top != 9 {
-		t.Fatalf("sel %d top %d", n.sel, n.top)
+	if n.sel != 14 || n.rowList(g).top != 9 {
+		t.Fatalf("sel %d top %d", n.sel, n.rowList(g).top)
 	}
 	// the book shrank on a reload: the selection is kept inside
 	g.db.Order["profiles"] = g.db.Order["profiles"][:3]
 	n = mnuKeep[*profileScreen](t, s.liveKeep(g))
-	if n.sel != 2 || n.top > n.sel {
-		t.Fatalf("sel %d top %d", n.sel, n.top)
+	if n.sel != 2 || n.rowList(g).top > n.sel {
+		t.Fatalf("sel %d top %d", n.sel, n.rowList(g).top)
 	}
 	// an empty book shows nothing and only closes
 	g.db.Order["profiles"] = nil

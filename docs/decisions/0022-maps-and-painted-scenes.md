@@ -162,9 +162,10 @@ Conditions and text templates read the usual field state. Preview expressions us
 an isolated random source and do not advance gameplay randomness. Text wraps and
 truncates within the fixed panel; camera movement and text length do not move it.
 
-With a panel, hovering, clicking a point, directions and Tab select advice. Clicking
-the same point again still only previews it. Confirm or the panel's Confirm button
-activates it. Back dismisses the panel; confirming after dismissal first restores
+With a panel, hovering, clicking a point, directions and Tab select advice. A press
+on the point whose advice already shows activates it (a second tap on a touch
+screen, a click on the hovered point with a mouse), as Confirm and the panel's
+Confirm button do; a press on another point only selects that one. Back dismisses the panel; confirming after dismissal first restores
 it. The existing entry list also offers explicit activation. Without a panel, the
 existing point-click behavior remains unchanged.
 

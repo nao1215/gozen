@@ -510,6 +510,12 @@ func (b *Battle) text(msg string, user, target *Unit, skill string, amount int) 
 	return data.Render(msg, expr.Chain{m, b.Env(user)})
 }
 
+// VarKnown is the prefix of the variables telling that an element's effect on an enemy
+// was seen (var.known_<enemy ID>_<element>). A hit that was weak or resisted sets it where
+// the damage is dealt, so a battle fought without a screen learns what one on the screen
+// does; the battle screen reads it to show what the party knows, and the data may read it.
+const VarKnown = "known_"
+
 // VarLastKill is the prefix of the variables holding the number of enemies defeated in the
 // previous battle
 // (var.last_kill_<enemy ID>; an enemy not defeated is absent, meaning 0).

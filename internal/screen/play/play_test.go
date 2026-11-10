@@ -11,6 +11,7 @@ import (
 
 	"github.com/nao1215/gozen/internal/base/savefile"
 	data "github.com/nao1215/gozen/internal/model/gamedata"
+	"github.com/nao1215/gozen/internal/model/rpg"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -261,5 +262,139 @@ func BenchmarkShakenDraw(b *testing.B) {
 	for b.Loop() {
 		g.shake = 10
 		g.Draw(screen)
+	}
+}
+
+// TestMoveAndNewPlaceAgreeOnTheScene: the data check refuses a location shown two
+// ways, but when one reaches the screen anyway, walking into it and loading into
+// it show the same scene. Here a dungeon that is also a stream lobby is a dungeon
+// for both, as it is for the rules.
+func TestMoveAndNewPlaceAgreeOnTheScene(t *testing.T) {
+	g := streamsGame(t, "0")
+	g.db.Locations["room"].Stream = "lobby"
+	g.Move("room")
+	if _, ok := g.stack[0].(*dungeonScene); !ok {
+		t.Fatalf("Move showed %T", g.stack[0])
+	}
+	if _, ok := g.newPlace().(*dungeonScene); !ok {
+		t.Fatal("newPlace did not show the dungeon")
+	}
+}
+
+// TestPlaceKindOfHasOnePrecedence: dungeon, then stage, then stream, then map.
+func TestPlaceKindOfHasOnePrecedence(t *testing.T) {
+	l := data.Location{Dungeon: &data.Dungeon{}, Stage: &data.Stage{}, Stream: "lobby", Map: &data.Atlas{}}
+	steps := []struct {
+		want placeKind
+		drop func()
+	}{
+		{placeDungeon, func() { l.Dungeon = nil }},
+		{placeStage, func() { l.Stage = nil }},
+		{placeStream, func() { l.Stream = "" }},
+		{placeMap, func() { l.Map = nil }},
+		{placeField, func() {}},
+	}
+	for _, s := range steps {
+		if got := placeKindOf(&l); got != s.want {
+			t.Fatalf("kind %d, want %d", got, s.want)
+		}
+		s.drop()
+	}
+	if placeKindOf(nil) != placeField {
+		t.Fatal("an unknown location is not a plain place")
+	}
+}
+
+// Close frees what the game drew into and kept: the painted scenes' textures as a reload
+// does (closeScenes), the frames kept for the fades, and the dream look's buffers.
+func TestCloseReleasesScenesAndKeptFrames(t *testing.T) {
+	g, err := New(Options{FS: gameFiles(t), Location: "camp", NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.scenes()
+	g.lastView = ebiten.NewImage(8, 8)
+	g.freezeView(moveFade)
+	g.dream.buf = ebiten.NewImage(8, 8)
+	g.dreamMask()
+	g.dreamHazeImage(dreamHaze)
+	if g.freeze == nil || g.dream.mask == nil || len(g.dream.haze) != 1 {
+		t.Fatalf("the frames were not made: freeze %v mask %v haze %d", g.freeze, g.dream.mask, len(g.dream.haze))
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if g.sceneCache != nil {
+		t.Error("Close left the scene cache (renderers, doll sheets and faces) allocated")
+	}
+	if g.lastView != nil || g.freeze != nil {
+		t.Errorf("Close left the frames kept for the fades: last %v frozen %v", g.lastView, g.freeze)
+	}
+	if g.dream.buf != nil || g.dream.mask != nil || g.dream.haze != nil {
+		t.Errorf("Close left the dream look's buffers: %+v", g.dream)
+	}
+}
+
+// AUTO and the recollection mode belong to the play that turned them on: a new game and a
+// loaded one start without them. A roll back reads the same play again, so it keeps AUTO
+// as it keeps its ring.
+func TestNewPlayEndsAutoBattleAndRecollectionMode(t *testing.T) {
+	g := wldWorld(t, "camp", Options{})
+	saved, err := g.st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	load := func() {
+		t.Helper()
+		st, err := rpg.Parse(g.db, saved, g.st.Rand)
+		if err != nil {
+			t.Fatal(err)
+		}
+		g.loadGame(st)
+	}
+	g.autoBattle, g.replaying = true, true
+	g.newGame()
+	if g.autoBattle || g.replaying {
+		t.Fatalf("a new game kept AUTO (%v) or the recollection mode (%v) of the play before", g.autoBattle, g.replaying)
+	}
+	g.autoBattle, g.replaying = true, true
+	load()
+	if g.autoBattle || g.replaying {
+		t.Fatalf("a loaded game kept AUTO (%v) or the recollection mode (%v) of the play before", g.autoBattle, g.replaying)
+	}
+	g.autoBattle, g.rollingBack, g.backRing = true, true, []backEvent{{name: "kept"}}
+	load()
+	g.rollingBack = false
+	if !g.autoBattle || len(g.backRing) != 1 {
+		t.Fatalf("a roll back lost AUTO (%v) or its ring (%d)", g.autoBattle, len(g.backRing))
+	}
+}
+
+// A stream lobby the stack drops is closed: its cards' puppets and voice loads are the
+// lobby's own, and nothing else frees them once the place takes its room.
+func TestDroppedLobbyIsClosed(t *testing.T) {
+	for name, drop := range map[string]func(*Game){
+		"a new root scene":                func(g *Game) { g.replace(newGameOver(g)) },
+		"a move to another kind of place": func(g *Game) { g.Move("camp") },
+	} {
+		t.Run(name, func(t *testing.T) {
+			g := streamsGame(t, "0")
+			l, ok := g.stack[0].(*streamLobby)
+			if !ok || len(l.cards) == 0 {
+				t.Fatalf("no lobby with cards at the booth (%T)", g.stack[0])
+			}
+			for _, c := range l.cards {
+				c.opening = &streamWatch{}
+			}
+			drop(g)
+			if g.stack[0] == scene(l) {
+				t.Fatal("the lobby is still the root scene")
+			}
+			for _, c := range l.cards {
+				if c.opening != nil {
+					t.Fatal("the dropped lobby was not closed (it keeps its loads and puppets)")
+				}
+			}
+		})
 	}
 }

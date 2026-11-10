@@ -11,6 +11,49 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
+// tapped tells that a click landed on r, and takes it.
+func (g *Game) tapped(r image.Rectangle) bool {
+	in := &g.in
+	return in.inspect(in.click) && in.mouse.In(r) && in.query(true)
+}
+
+// drawTapButton draws a framed button a pointer can press and records it as a
+// control; one that cannot be pressed now is dimmed.
+func (g *Game) drawTapButton(dst *ebiten.Image, r image.Rectangle, label string, size float64, enabled bool) {
+	ink := g.th.text
+	if !enabled {
+		ink = g.th.dim
+	}
+	gfx.FillRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, withAlpha(g.th.accent, 0x40))
+	gfx.StrokeRoundRect(dst, float32(r.Min.X), float32(r.Min.Y), float32(r.Dx()), float32(r.Dy()), 10, 2, g.th.border)
+	gfx.DrawText(dst, label, float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y)+(float64(r.Dy())-size*1.3)/2, size, ink)
+	g.traceControl(label, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), enabled, false, "limit")
+}
+
+// stepButtons are the previous and next buttons of a screen that shows one
+// party member at a time, with the pair's top right corner at x, y.
+func stepButtons(x, y float64) (prev, next image.Rectangle) {
+	return image.Rect(int(x)-104, int(y), int(x)-56, int(y)+44), image.Rect(int(x)-48, int(y), int(x), int(y)+44)
+}
+
+// stepTapped is the step a tap on the pair asks for: -1, 1, or 0 for none.
+func (g *Game) stepTapped(x, y float64) int {
+	prev, next := stepButtons(x, y)
+	switch {
+	case g.tapped(prev):
+		return -1
+	case g.tapped(next):
+		return 1
+	}
+	return 0
+}
+
+func (g *Game) drawStepButtons(dst *ebiten.Image, x, y float64) {
+	prev, next := stepButtons(x, y)
+	g.drawTapButton(dst, prev, "◀", sizeM, true)
+	g.drawTapButton(dst, next, "▶", sizeM, true)
+}
+
 type theme struct {
 	window, border, text, accent, cursor, shadow, nameTag, dim, disabled color.NRGBA
 }
@@ -112,6 +155,101 @@ type list struct {
 	pin bool
 	// empty is said in the first row while there are no items.
 	empty string
+	// drag is the finger that scrolls the rows, and free tells that the pointer scrolled
+	// them last: the row of a heading is then not brought back until the cursor moves.
+	drag swipe
+	free bool
+	// refused tells that the last update pressed a row that cannot be chosen (OK or a
+	// click): the screen may say why.
+	refused bool
+	// press makes the pointer move the cursor with a click only, not as it passes over the
+	// rows: the lists of a book, where a row shows a page of its own.
+	press bool
+}
+
+// swipe is a finger dragged over a part that scrolls: a list's rows, a log, a grid. A
+// finger is a pointer that goes down without a click (a mouse clicks as it presses, a
+// finger as it lifts), so a mouse dragged over the part scrolls nothing. Only the pointer
+// is read (down, held, up and where it is), which a trace records: a recorded run scrolls
+// the same when it is played again.
+type swipe struct {
+	on         bool    // a finger went down on the part and has not lifted
+	x, y       float64 // where it was last
+	far        float64 // how far it has gone since it went down
+	rest       float64 // the part of a row it has gone that is not yet scrolled
+	fromX, toX float64 // where it went down and where it is now (across)
+}
+
+// drag is how far the finger went down the screen this tick (UI units), 0 until it has
+// gone farther than a tap. over tells whether the pointer is on the part: a finger that
+// goes down elsewhere scrolls nothing. The lift of a finger that went farther than a tap
+// is no click.
+func (s *swipe) drag(in *input, over bool) float64 {
+	x, y := float64(in.mouse.X), float64(in.mouse.Y)
+	if in.inspect(in.pdown) && !in.click {
+		*s = swipe{on: over, x: x, y: y, fromX: x, toX: x}
+		return 0
+	}
+	if !s.on {
+		return 0
+	}
+	if !in.pheld && !in.pup {
+		s.on = false
+		return 0
+	}
+	was := s.far > swipeFrom
+	d := y - s.y
+	s.far += math.Hypot(x-s.x, d)
+	s.x, s.y, s.toX = x, y, x
+	if in.pup {
+		s.on = false
+		if s.far > swipeFrom {
+			in.click = false
+		}
+	}
+	if s.far <= swipeFrom {
+		return 0
+	}
+	if !was {
+		in.query(true)
+	}
+	return d
+}
+
+// moving reports whether a finger is down and has gone farther than a tap.
+func (s *swipe) moving() bool { return s.on && s.far > swipeFrom }
+
+// rows is how many rows of height h the part goes on by this tick: forward as the finger
+// goes up the screen.
+func (s *swipe) rows(in *input, over bool, h float64) int {
+	d := s.drag(in, over)
+	if h <= 0 {
+		return 0
+	}
+	s.rest -= d / h
+	n := int(s.rest)
+	s.rest -= float64(n)
+	return n
+}
+
+// The room a finger needs around a ▲ or ▼ (UI units).
+const markW, markH = 96.0, 34.0
+
+// scrollMark is the place of a ▲ or ▼ drawn at cx, y: the mark and the room around it.
+func scrollMark(cx, y float64) image.Rectangle {
+	return image.Rect(int(cx-markW/2), int(y+sizeS*0.5-markH/2), int(cx+markW/2), int(y+sizeS*0.5+markH/2))
+}
+
+// drawScrollMark draws a ▲ or ▼ at cx, y: a control that scrolls when it is tapped.
+func (g *Game) drawScrollMark(dst *ebiten.Image, mark string, cx, y float64) {
+	gfx.DrawText(dst, mark, cx, y, sizeS*0.8, g.th.cursor)
+	r := scrollMark(cx, y)
+	g.traceControl(mark, roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), true, false, "")
+}
+
+// markTapped reports whether the pointer clicked the ▲ or ▼ drawn at cx, y.
+func (g *Game) markTapped(cx, y float64) bool {
+	return g.in.mouse.In(scrollMark(cx, y)) && g.in.clicked()
 }
 
 func newList(items []listItem, x, y, w float64, rows int) *list {
@@ -182,34 +320,16 @@ func (l *list) update(g *Game) (chose, cancel bool) {
 // updateChoice handles selection when the caller has no cancel action.
 func (l *list) updateChoice(g *Game) bool {
 	in := &g.in
-	n := len(l.items)
-	if n == 0 {
+	if len(l.items) == 0 {
 		return false
 	}
-	old := l.sel
-	if in.up() {
-		l.step(-1)
-	}
-	if in.down() {
-		l.step(1)
-	}
-	hit := -1
-	for _, i := range l.shown() {
-		if in.mouse.In(l.rowRect(i)) && !l.items[i].heading {
-			hit = i
-		}
-	}
-	if hit >= 0 && (in.moved || in.clicked()) {
-		l.sel = hit
-	}
-	if l.sel != old {
-		g.sfx("cursor")
-	}
-	l.scroll()
+	l.refused = false
+	hit := l.browse(g)
 	in.receivePick(l)
 	if in.ok() || (hit >= 0 && in.clicked()) {
 		if l.items[l.sel].disabled || l.items[l.sel].heading {
 			g.sfx("buzzer")
+			l.refused = true
 			return false
 		}
 		g.sfx("decide")
@@ -219,6 +339,82 @@ func (l *list) updateChoice(g *Game) bool {
 		return true
 	}
 	return false
+}
+
+// browse moves the cursor with the keys, the wheel and the pointer, scrolls the rows with a
+// finger or the arrows, and returns the row the pointer is on (-1 for none): the part of a
+// list a screen with choosing of its own shares.
+func (l *list) browse(g *Game) int {
+	in := &g.in
+	if len(l.items) == 0 {
+		return -1
+	}
+	old := l.sel
+	if in.up() {
+		l.step(-1)
+	}
+	if in.down() {
+		l.step(1)
+	}
+	if l.sel != old {
+		l.free = false
+	}
+	hit := -1
+	if !l.scrollByPointer(g) {
+		for _, i := range l.shown() {
+			if in.mouse.In(l.rowRect(i)) && !l.items[i].heading {
+				hit = i
+			}
+		}
+	}
+	if hit >= 0 && (in.moved && !l.press || in.clicked()) {
+		l.sel = hit
+	}
+	if l.sel != old {
+		g.sfx("cursor")
+	}
+	l.scroll()
+	return hit
+}
+
+// markPlaces are where the ▲ and the ▼ of a list longer than its rows are drawn.
+func (l *list) markPlaces() (cx, up, down float64) {
+	down = l.y + l.height() - 22
+	if l.pinned() {
+		down = float64(l.rowRect(len(l.items)-1).Min.Y) - 16
+	}
+	return l.x + l.w/2, l.y - 4, down
+}
+
+// scrollByPointer scrolls the rows of a list longer than them with a finger dragged over
+// them or a tap on ▲ or ▼ (a page), and reports whether the pointer scrolls now: it then
+// points at no row.
+func (l *list) scrollByPointer(g *Game) bool {
+	n, rows := l.scrolled()
+	if n <= rows || rows <= 0 {
+		return false
+	}
+	in := &g.in
+	over := in.mouse.In(image.Rect(int(l.x), int(l.y), int(l.x+l.w), int(l.y+l.height())))
+	d := l.drag.rows(in, over, l.rowH)
+	cx, up, down := l.markPlaces()
+	tapped := false
+	switch {
+	case l.top > 0 && g.markTapped(cx, up):
+		d, tapped = -max(1, rows-1), true
+	case l.top+rows < n && g.markTapped(cx, down):
+		d, tapped = max(1, rows-1), true
+	}
+	if top := max(0, min(l.top+d, n-rows)); top != l.top {
+		l.top, l.free = top, true
+		if l.sel < n {
+			l.sel = max(top, min(l.sel, top+rows-1))
+			for l.items[l.sel].heading && l.sel < top+rows-1 {
+				l.sel++
+			}
+		}
+	}
+	return tapped || l.drag.moving()
 }
 
 func (l *list) scroll() {
@@ -233,7 +429,7 @@ func (l *list) scroll() {
 		l.top = l.sel - rows + 1
 	}
 	// the heading of the first row shown, when there is room for it
-	if l.top > 0 && l.items[l.top-1].heading && l.sel < l.top+rows-1 {
+	if !l.free && l.top > 0 && l.items[l.top-1].heading && l.sel < l.top+rows-1 {
 		l.top--
 	}
 }
@@ -316,16 +512,18 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			gfx.DrawTextRight(dst, it.right, float64(r.Max.X)-22, ty, l.size, c)
 		}
 	}
+	l.drawMarks(g, dst)
+}
+
+// drawMarks draws the ▲ and the ▼ of a list with rows above or under the ones shown.
+func (l *list) drawMarks(g *Game, dst *ebiten.Image) {
 	n, rows := l.scrolled()
+	cx, up, down := l.markPlaces()
 	if l.top > 0 {
-		gfx.DrawText(dst, "▲", l.x+l.w/2, l.y-4, sizeS*0.8, g.th.cursor)
+		g.drawScrollMark(dst, "▲", cx, up)
 	}
 	if l.top+rows < n {
-		y := l.y + l.height() - 22
-		if l.pinned() {
-			y = float64(l.rowRect(len(l.items)-1).Min.Y) - 16
-		}
-		gfx.DrawText(dst, "▼", l.x+l.w/2, y, sizeS*0.8, g.th.cursor)
+		g.drawScrollMark(dst, "▼", cx, down)
 	}
 }
 

@@ -1,14 +1,14 @@
 package play
 
 import (
-	"fmt"
 	"image"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	lang "github.com/nao1215/gozen/internal/base/text"
-	"github.com/nao1215/gozen/internal/screen/gfx"
+	data "github.com/nao1215/gozen/internal/model/gamedata"
 )
 
 // mnuTop is the scene on top of the stack.
@@ -693,74 +693,6 @@ func TestMenuSaveAndLoadSlots(t *testing.T) {
 	}
 }
 
-func TestSaveMenuReportsBrokenSlots(t *testing.T) {
-	g := openGame(t, Options{Location: "camp", Seed: 3})
-	if err := g.store.Write(g.slotPath(0), []byte("not json")); err != nil {
-		t.Fatal(err)
-	}
-	sm := newSaveMenu(g, false, func() {})
-	g.push(sm)
-	if !sm.slots.items[0].disabled {
-		t.Fatal("a broken save is offered")
-	}
-	sm.slots.items[0].disabled = false
-	sm.slots.sel = 0
-	mnuPress(g, btnOK)
-	if sm.msgT == 0 || sm.msg == "" {
-		t.Fatal("no message about the broken save")
-	}
-	mnuDrawAll(g)
-	done := 0
-	sm.done = func() { done++ }
-	for range 100 {
-		mnuPress(g)
-	}
-	if done != 1 {
-		t.Fatalf("done called %d times", done)
-	}
-}
-
-func TestConfirmFitsPortraitAndLandscape(t *testing.T) {
-	for _, dims := range []image.Point{image.Pt(960, 540), image.Pt(360, 540), image.Pt(640, 360)} {
-		t.Run(fmt.Sprintf("%dx%d", dims.X, dims.Y), func(t *testing.T) {
-			g, _ := mnuMenu(t)
-			g.view.w, g.view.h = dims.X, dims.Y
-			const warning = "Loading this saved game will replace your current progress. Any progress since your last save will be lost. Do you want to continue?"
-			accepted, refused := 0, 0
-			c := newConfirm(warning, func() { accepted++ })
-			c.onNo = func() { refused++ }
-			lines, size, y, h, yes, no := c.layout(g)
-			if y < 0 || y+h > float64(dims.Y) {
-				t.Fatalf("dialog outside screen: y=%v h=%v", y, h)
-			}
-			for _, line := range lines {
-				if gfx.TextWidth(line, size) > float64(dims.X-40) {
-					t.Fatalf("warning outside screen: %q", line)
-				}
-			}
-			if dims.X < 720 && strings.Contains(strings.Join(lines, ""), "…") {
-				t.Fatal("compact warning was truncated instead of wrapped")
-			}
-			bounds := image.Rect(0, 0, dims.X, dims.Y)
-			if !yes.In(bounds) || !no.In(bounds) || yes.Overlaps(no) {
-				t.Fatalf("buttons outside screen: %v %v", yes, no)
-			}
-			for _, button := range []image.Rectangle{no, yes} {
-				c.age = 6
-				g.push(c)
-				g.in = input{click: true, mouse: button.Min.Add(image.Pt(button.Dx()/2, button.Dy()/2))}
-				c.update(g)
-				if mnuTop(g) == scene(c) {
-					t.Fatal("pointer did not close confirmation")
-				}
-			}
-			if accepted != 1 || refused != 1 {
-				t.Fatalf("wrong callbacks yes=%d no=%d", accepted, refused)
-			}
-		})
-	}
-}
-
 // The field menu offers the character book when the game asks for it, and the entries
 // after it keep working (Settings, Title, Close are numbered past the extra row).
 func TestMenuCharactersEntryKeepsOtherEntries(t *testing.T) {
@@ -829,5 +761,230 @@ func TestMenuMouseChoosesItemAndMember(t *testing.T) {
 	g.in.click = false
 	if g.st.Members()[1].HP <= 3 {
 		t.Fatalf("hp %d: the click did not heal the member under it", g.st.Members()[1].HP)
+	}
+}
+
+// An event item used in the item screen an event opened (open: item) lets that event go on.
+func TestMenuDirectItemEventItemReleasesTheOpener(t *testing.T) {
+	g := mnuEventGame(t)
+	g.st.AddItem("spare", 1)
+	g.events.Start([]data.Command{{Open: data.ScreenCall{Screen: "item"}}})
+	var m *menu
+	for range 30 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		if top, ok := mnuTop(g).(*menu); ok {
+			m = top
+			break
+		}
+	}
+	if m == nil {
+		t.Fatalf("open: item did not open the item screen (top %T)", mnuTop(g))
+	}
+	at := indexOf(m.ids, "spare")
+	if at < 0 {
+		t.Fatalf("no spare charm in %v", m.ids)
+	}
+	m.items.sel = at
+	mnuPress(g, btnOK)
+	if g.st.Items["spare"] != 0 || len(g.stack) != 1 {
+		t.Fatalf("the item was not used: spare %d stack %d", g.st.Items["spare"], len(g.stack))
+	}
+	for range 60 {
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !g.st.Flags["blessed"] || g.req != nil || g.events.Running() {
+		t.Fatalf("the play is stuck after the item screen closed: item event ran %v, request %T still waited for, running %v", g.st.Flags["blessed"], g.req, g.events.Running())
+	}
+}
+
+// A click outside the member cards while an item waits for its target uses nothing: only a
+// click on a card (or OK) spends the item.
+func TestMenuTargetClickOutsideCardsUsesNothing(t *testing.T) {
+	g, m := mnuMenu(t)
+	g.st.Members()[0].HP = 3
+	mnuTab(t, g, lang.T("どうぐ"))
+	m.items.sel = indexOf(m.ids, "potion")
+	mnuPress(g, btnOK)
+	if !m.targetOn {
+		t.Fatal("the potion did not ask for a target")
+	}
+	before := g.st.Items["potion"]
+	row := m.items.rowRect(0) // the item list, far from every member card
+	at := image.Pt(row.Min.X+5, row.Min.Y+5)
+	for i := range g.st.Members() {
+		if at.In(m.cardRect(g, i)) {
+			t.Fatalf("the test point %v is on card %d", at, i)
+		}
+	}
+	g.in.click, g.in.mouse = true, at
+	mnuTop(g).update(g)
+	g.in.click = false
+	if got := g.st.Items["potion"]; got != before {
+		t.Fatalf("a click outside the cards used the item: %d potions, want %d", got, before)
+	}
+}
+
+// A tap on the save that cannot be made here says why, as OK on it does.
+func TestMenuDisabledSaveTapSaysWhy(t *testing.T) {
+	g, m := mnuMenu(t)
+	row := -1
+	for i, it := range m.tabs.items {
+		if it.id == "save" && it.disabled {
+			row = i
+		}
+	}
+	if row < 0 {
+		t.Fatalf("no disabled save in %v", labels(m.tabs.items))
+	}
+	r := m.tabs.rowRect(row)
+	g.in = input{click: true, moved: true, mouse: image.Pt(r.Min.X+40, r.Min.Y+10)}
+	mnuTop(g).update(g)
+	g.in = input{}
+	if m.msgT == 0 || len(m.msgs) != 1 {
+		t.Fatalf("a tap on the disabled save said nothing: %v", m.msgs)
+	}
+}
+
+// The skill list opened after the item list starts at its first row, scrolled to it: the
+// item list's cursor is not the skills'.
+func TestMenuSkillListStartsOver(t *testing.T) {
+	g, m := mnuMenu(t)
+	for _, id := range g.db.Ordered("items") {
+		g.st.AddItem(id, 1)
+	}
+	mnuTab(t, g, lang.T("どうぐ"))
+	if len(m.items.items) < 2 {
+		t.Fatalf("items %v", labels(m.items.items))
+	}
+	m.items.sel = len(m.items.items) - 1
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("スキル"))
+	m.members(g)[m.member].Learnt = g.db.Ordered("skills")
+	mnuPress(g, btnOK)
+	if m.mode != "skill" || m.picker || len(m.items.items) < 2 {
+		t.Fatalf("mode %q picker %v skills %v", m.mode, m.picker, labels(m.items.items))
+	}
+	if m.items.sel != 0 || m.items.top != 0 {
+		t.Fatalf("the skill list opens on row %d (top %d), the item list's cursor", m.items.sel, m.items.top)
+	}
+}
+
+// TestConfirmTapOutsideCancels: a tap beside the confirmation's window takes
+// the question back as Cancel does; a tap on the window that misses both
+// buttons answers nothing.
+func TestConfirmTapOutsideCancels(t *testing.T) {
+	g, m := mnuMenu(t)
+	accepted, refused := 0, 0
+	c := newConfirm("Overwrite slot 1?", func() { accepted++ })
+	c.onNo = func() { refused++ }
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	_, _, y, h, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y)+8)}
+	c.update(g)
+	if mnuTop(g) != scene(c) || accepted+refused != 0 {
+		t.Fatalf("a tap on the window beside the buttons answered: yes %d no %d", accepted, refused)
+	}
+	g.in = input{click: true, mouse: image.Pt(yes.Min.X+yes.Dx()/2, int(y+h)+30)}
+	c.update(g)
+	if mnuTop(g) != scene(m) || accepted != 0 || refused != 1 {
+		t.Fatalf("a tap outside the window: top %T yes %d no %d, want the menu and one No", mnuTop(g), accepted, refused)
+	}
+}
+
+// TestChoiceNamesBothWays: a choice shows its own two labels, a script picks
+// them by those names, and a tap outside its window picks neither.
+func TestChoiceNamesBothWays(t *testing.T) {
+	g, _ := mnuMenu(t)
+	retried := 0
+	c := newChoice("The party has fallen.", "Retry", "Give up", func() { retried++ })
+	g.push(c)
+	for range 6 {
+		mnuPress(g)
+	}
+	kind, items := g.scriptPickables()
+	if kind != "confirm" || len(items) != 2 || items[0].label != "Retry" || items[1].label != "Give up" {
+		t.Fatalf("pickables %s %+v", kind, items)
+	}
+	g.tr = &tracer{layout: &layoutFrame{}}
+	c.draw(g, covScreen())
+	var labels []string
+	for _, control := range g.tr.layout.controls {
+		if control.Enabled {
+			labels = append(labels, control.Label)
+		}
+	}
+	g.tr = nil
+	if !slices.Equal(labels, []string{"Retry", "Give up"}) {
+		t.Fatalf("the choice's controls on the screen: %v", labels)
+	}
+	g.in = input{click: true, mouse: image.Pt(4, 4)}
+	c.update(g)
+	if mnuTop(g) != scene(c) {
+		t.Fatal("a tap outside a choice answered it")
+	}
+	_, _, _, _, yes, _ := c.layout(g)
+	g.in = input{click: true, mouse: yes.Min.Add(image.Pt(yes.Dx()/2, yes.Dy()/2))}
+	c.update(g)
+	if retried != 1 || mnuTop(g) == scene(c) {
+		t.Fatalf("a tap on the first way: retried %d", retried)
+	}
+}
+
+// mnuTap runs one tick of the top scene with a click at the middle of r.
+func mnuTap(g *Game, r image.Rectangle) {
+	g.in = input{click: true, pdown: true, mouse: r.Min.Add(image.Pt(r.Dx()/2, r.Dy()/2))}
+	mnuTop(g).update(g)
+	g.in = input{}
+}
+
+// TestMenuMemberByTap: the skill and equipment pages change member by a tap on
+// another member's card, and the status page by its previous and next
+// buttons, without closing; a tap elsewhere on the status page still closes it.
+func TestMenuMemberByTap(t *testing.T) {
+	g, m := mnuMenu(t)
+	mnuTab(t, g, lang.T("スキル"))
+	mnuPress(g, btnOK) // the first member's skills
+	if m.picker || m.items == nil || m.member != 0 {
+		t.Fatalf("skills not open: picker %v member %d", m.picker, m.member)
+	}
+	mnuTap(g, m.cardRect(g, 1))
+	if m.member != 1 || m.mode != "skill" || m.picker {
+		t.Fatalf("a tap on the second card in skills: member %d mode %q picker %v", m.member, m.mode, m.picker)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("そうび"))
+	mnuPress(g, btnOK)
+	if m.slots == nil || m.picker {
+		t.Fatal("equipment not open")
+	}
+	shown := m.member
+	mnuTap(g, m.cardRect(g, 1-shown))
+	if m.member != 1-shown || m.mode != "equip" {
+		t.Fatalf("a tap on the other card in equipment: member %d mode %q", m.member, m.mode)
+	}
+	mnuPress(g, btnCancel)
+	mnuPress(g, btnCancel)
+	mnuTab(t, g, lang.T("ステータス"))
+	m.member = 0
+	prev, next := stepButtons(m.statusSteps())
+	mnuTap(g, next)
+	if m.mode != "status" || m.member != 1 {
+		t.Fatalf("the next button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, prev)
+	if m.mode != "status" || m.member != 0 {
+		t.Fatalf("the previous button: mode %q member %d", m.mode, m.member)
+	}
+	mnuTap(g, image.Rect(prev.Min.X-200, prev.Max.Y+100, prev.Min.X-100, prev.Max.Y+200))
+	if m.mode != "" {
+		t.Fatalf("a tap on the page did not close it: %q", m.mode)
 	}
 }

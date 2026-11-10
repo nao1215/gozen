@@ -305,6 +305,24 @@ func (in *input) touch() {
 	}
 }
 
+// takesText reports whether the screen on top reads the keyboard as text now: its letters
+// are no hotkeys then.
+func (g *Game) takesText() bool {
+	if len(g.stack) == 0 {
+		return false
+	}
+	t, ok := g.stack[len(g.stack)-1].(interface{ takesText() bool })
+	return ok && t.takesText()
+}
+
+// muteKey turns the sound off or on with the mute key (pressed), unless the game is
+// embedded or the key is a letter of a text being typed.
+func (g *Game) muteKey(pressed bool) {
+	if pressed && !g.embedded && !g.takesText() {
+		g.audioSession().ToggleMute()
+	}
+}
+
 // menuKey reports whether the menu key opens the game menu now (never with menus: none).
 func (g *Game) menuKey() bool {
 	return !g.db.Game.NoMenus() && !g.in.held[btnOK] && g.in.pressedKey(btnMenu)
@@ -800,387 +818,19 @@ func (s *script) step(in *input) {
 			}
 			return
 		}
-		deadline := map[string]int{"read": 6000, "until": 3000, "walk": 6000, "face": 6000, "lines": 20000, "play": 40000}[c.verb]
-		if deadline > 0 && s.limit >= deadline {
-			s.err = fmt.Errorf("script: %s timed out after %d ticks", c.verb, deadline)
+		v, ok := scriptVerbOf(c.verb)
+		if !ok {
+			s.err = fmt.Errorf("script: unknown command %q", c.verb)
 			return
 		}
-		if s.acknowledge && !continuing {
-			switch c.verb {
-			case "press", "click", "pick", "hold", "drag", "read", "lines", "play", "until", "walk", "face", "type":
-				in.offer = &scriptOffer{script: s, before: *s, command: *c}
-			}
+		if v.deadline > 0 && s.limit >= v.deadline {
+			s.err = fmt.Errorf("script: %s timed out after %d ticks", c.verb, v.deadline)
+			return
 		}
-		switch c.verb {
-		case "hold":
-			for name := range strings.SplitSeq(c.arg, "+") {
-				if name == "shift" {
-					in.shift = true
-					continue
-				}
-				b := scriptButtons[name]
-				in.held[b] = true
-				in.pressed[b] = c.n == c.x
-			}
-			c.n--
-			if c.n == 0 {
-				s.pc++
-			}
-			return
-		case "wait":
-			s.wait = c.n
-			s.pc++
-			return
-		case "click":
-			in.click, in.mouse = true, image.Pt(c.x, c.y)
-			in.pdown, in.pup = true, true
-			s.pc++
-			s.wait = 8
-			return
-		case "drag":
-			// Press at the start, move in even steps while held, lift at the end.
-			k := dragTicks - c.n
-			in.mouse, in.moved = image.Pt(c.x+(c.toX-c.x)*k/dragTicks, c.y+(c.toY-c.y)*k/dragTicks), true
-			switch c.n {
-			case dragTicks:
-				in.click, in.pdown, in.pheld = true, true, true
-			case 0:
-				in.pup = true
-				c.n = dragTicks
-				s.pc++
-				s.wait = 8
-				return
-			default:
-				in.pheld = true
-			}
-			c.n--
-			return
-		case "press":
-			b, ok := scriptButtons[c.arg]
-			if d, err := strconv.Atoi(c.arg); !ok && err == nil && len(c.arg) == 1 {
-				in.digit = d
-				if d == 0 {
-					in.digit = 10
-				}
-			} else if !ok {
-				s.pc++
-				continue
-			} else {
-				in.pressed[b] = true
-			}
-			if ok && b == btnCancel {
-				in.pressed[btnMenu] = true
-			}
-			c.n--
-			if c.n <= 0 {
-				s.pc++
-			}
-			s.wait = s.gap
-			if s.wait == 0 {
-				s.wait = 8
-			}
-			return
-		case "gap":
-			s.gap = c.n
-			s.pc++
-			continue
-		case "read":
-			what, t := "", 0
-			if s.waiting != nil {
-				what, t = s.waiting()
-			}
-			s.limit++
-			if what == "choice" || what == "command" || (s.idle != nil && s.idle()) {
-				s.limit = 0
-				s.pc++
-				return
-			}
-			in.pressed[btnOK] = (what == "text" || what == "phone") && t >= c.n
-			return
-		case "shot":
-			s.shot = c.arg
-			s.pc++
-			s.wait = 1
-			return
-		case "skip":
-			in.fast = true
-			s.limit++
-			if c.name != "" {
-				if s.limit == 1 {
-					s.tps = ebiten.TPS()
-					ebiten.SetTPS(ebiten.SyncWithFPS)
-				}
-				s.shot = fmt.Sprintf("%s_%03d", c.name, s.limit)
-			}
-			if s.limit >= c.n {
-				if c.name != "" && s.tps > 0 {
-					ebiten.SetTPS(s.tps)
-				}
-				s.limit = 0
-				s.pc++
-			}
-			return
-		case "wait-graphs":
-			if s.graphsReady != nil && s.graphsReady() {
-				s.pc++
-			}
-			return
-		case "until":
-			if s.idle != nil && !s.idle() {
-				s.limit++
-				in.pressed[btnOK] = s.limit%6 == 0
-				return
-			}
-			s.limit = 0
-			s.pc++
-			return
-		case "walk", "face":
-			if s.walk == nil {
-				s.pc++
-				continue
-			}
-			if !s.walking && s.idle != nil && !s.idle() && s.arrived != nil && !s.arrived() {
-				s.walking = true
-			}
-			if s.walking {
-				if s.idle != nil && s.idle() {
-					s.walking = false
-					s.wait = 10
-					return
-				}
-				name := c.name
-				if name == "" {
-					name = "walk_" + c.arg
-				}
-				s.midEvent(in, name+"_w")
-				return
-			}
-			arg := c.arg
-			if c.verb == "face" {
-				arg = "face:" + arg
-			}
-			b, done := s.walk(arg)
-			s.limit++
-			if done {
-				s.limit = 0
-				s.pc++
-				return
-			}
-			if b >= 0 {
-				in.pressed[b] = true
-				in.held[b] = true
-				s.wait = 2
-			}
-			return
-		case "lines":
-			what, t := "", 0
-			if s.waiting != nil {
-				what, t = s.waiting()
-			}
-			if s.lineN == nil {
-				s.lineN = map[string]int{}
-			}
-			s.limit++
-			shoot := func() {
-				s.lineN[c.arg]++
-				s.lineDone++
-				s.shot = fmt.Sprintf("%s_%03d", c.arg, s.lineN[c.arg])
-			}
-			end := func() {
-				s.limit, s.lineDone, s.lineShot = 0, 0, false
-				s.pc++
-			}
-			switch {
-			case what == "choice" || what == "command":
-				if !s.lineShot {
-					s.lineShot = true
-					shoot()
-					s.wait = 1
-					return
-				}
-				end()
-				return
-			case (what == "text" || what == "phone") && t >= 4:
-				if !s.lineShot {
-					s.lineShot = true
-					shoot()
-					s.wait = 1
-					return
-				}
-				if c.n > 0 && s.lineDone >= c.n {
-					end()
-					return
-				}
-				in.pressed[btnOK] = true
-				s.lineShot = false
-				s.wait = 2
-				return
-			case what == "" && s.idle != nil && s.idle() && s.limit > 30:
-				end()
-				return
-			}
-			s.lineShot = false
-			return
-		case "play":
-			what, t := "", 0
-			if s.waiting != nil {
-				what, t = s.waiting()
-			}
-			if s.lineN == nil {
-				s.lineN = map[string]int{}
-			}
-			s.limit++
-			shoot := func(kind string) {
-				key := c.arg + kind
-				s.lineN[key]++
-				s.shot = fmt.Sprintf("%s%s%03d", c.arg, kind, s.lineN[key])
-			}
-			switch {
-			case what == "choice":
-				if !s.lineShot {
-					s.lineShot = true
-					shoot("_")
-					s.wait = 1
-					return
-				}
-				s.limit, s.lineShot = 0, false
-				s.pc++
-				return
-			case what == "command":
-				shoot("_b")
-				s.wait = 1
-				if s.battleAuto != nil {
-					s.battleAuto()
-				}
-				return
-			case (what == "text" || what == "phone") && t >= 4:
-				if !s.lineShot {
-					s.lineShot = true
-					shoot("_")
-					s.wait = 1
-					return
-				}
-				in.pressed[btnOK] = true
-				s.lineShot = false
-				s.wait = 2
-				return
-			case s.inBattle != nil && s.inBattle():
-				// `play NAME EVERY` films a battle every EVERY ticks (20 when not given).
-				every := 20
-				if c.n > 0 {
-					every = c.n
-				}
-				if s.limit%every == 0 {
-					shoot("_b")
-				}
-				return
-			case what == "" && s.idle != nil && s.idle() && s.limit > 30:
-				s.limit, s.lineShot = 0, false
-				s.pc++
-				return
-			}
-			s.lineShot = false
-			return
-		case "memo":
-			if s.memoNote != nil {
-				s.memoNote(c.arg, c.name)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "type":
-			if !s.acknowledge && s.typeText != nil {
-				s.typeText(c.arg)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "jump":
-			if s.jump != nil {
-				s.jump(c.arg, c.n)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "do":
-			if s.do != nil {
-				s.do(c.arg)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "battle-log":
-			if s.battleLog != nil {
-				s.battleLog(c.arg == "on")
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "battle-hp":
-			if s.battleHP != nil {
-				s.battleHP(c.arg, c.x, c.n)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "recruit":
-			if s.recruit != nil {
-				s.recruit(c.arg, c.n)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "guarantee-recruit":
-			if s.guaranteeRecruit != nil {
-				s.guaranteeRecruit(c.arg)
-			}
-			s.pc++
-			s.wait = 2
-			return
-		case "mark":
-			if s.mark != nil {
-				s.mark(c.arg)
-			}
-			s.pc++
-			continue
-		case "snapshot":
-			if s.snapshot != nil {
-				s.snapshot()
-			}
-			s.pc++
-			continue
-		case "look":
-			if s.look != nil {
-				s.look()
-			}
-			s.pc++
-			continue
-		case "guides":
-			if s.guides != nil {
-				s.guides(c.arg == "on")
-			}
-			s.pc++
-			continue
-		case "pick":
-			if !s.acknowledge && s.pick != nil {
-				s.pick(in, c.name) // a pick that finds nothing is written to the trace
-				if s.err != nil {
-					return
-				}
-			}
-			s.pc++
-			s.wait = 8
-			return
-		case "window":
-			s.size = [2]int{c.x, c.y}
-			if s.window != nil {
-				s.window(c.x, c.y)
-			}
-			s.pc++
-			s.wait = 10
-			return
-		case "quit":
-			s.quit = true
+		if s.acknowledge && !continuing && v.offered {
+			in.offer = &scriptOffer{script: s, before: *s, command: *c}
+		}
+		if v.run(s, in, c) {
 			return
 		}
 	}

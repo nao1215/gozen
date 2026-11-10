@@ -61,7 +61,7 @@ type atlasScene struct {
 	cameraCenter geom.Pt
 	cameraZoom   float64
 	cameraPan    bool
-	panelHidden  bool
+	panel        atlasPanel
 	loc          string
 	pic          string
 	age          int
@@ -109,7 +109,7 @@ func (s *atlasScene) location(g *Game) *data.Location { return g.db.Locations[s.
 func (s *atlasScene) arrive(g *Game) {
 	s.pointLayerValid = false
 	s.loc = g.st.Location
-	s.panelHidden = false
+	s.panel.hidden = false
 	l := s.location(g)
 	s.pic = l.Map.Picture
 	s.age, s.banner, s.queue, s.path, s.cross = 0, 240, nil, nil, nil
@@ -327,7 +327,7 @@ func (s *atlasScene) cameraPointVisible(g *Game, p geom.Pt) bool {
 }
 
 func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
-	before, hidden, center := s.sel, s.panelHidden, s.cameraCenter
+	before, hidden, center := s.sel, s.panel.hidden, s.cameraCenter
 	from := s.at
 	if s.sel >= 0 && s.sel < len(s.choices) {
 		from = s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt()
@@ -346,14 +346,14 @@ func (s *atlasScene) selectCameraPoint(g *Game, want geom.Pt) bool {
 		}
 	}
 	if best != s.sel {
-		s.panelHidden = false
+		s.panel.hidden = false
 		s.sel = best
 		g.sfx("cursor")
 	}
 	if len(s.choices) > 0 {
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 	}
-	return s.sel != before || s.panelHidden != hidden || s.cameraCenter != center
+	return s.sel != before || s.panel.hidden != hidden || s.cameraCenter != center
 }
 
 // cameraButtons are in screen coordinates, independent of the map transform; none when
@@ -424,7 +424,7 @@ func (s *atlasScene) updateCamera(g *Game) bool {
 		return true
 	case len(s.choices) > 0 && in.pressedKey(btnNext):
 		s.sel = (s.sel + 1) % len(s.choices)
-		s.panelHidden = false
+		s.panel.hidden = false
 		s.revealCameraPoint(g, s.location(g).Map.Points[s.choices[s.sel].Point].At.Pt())
 		return true
 	}
@@ -559,7 +559,7 @@ func (s *atlasScene) update(g *Game) {
 	if in.inspect(in.click) {
 		if c, ok := s.pointAt(g, float64(in.mouse.X), float64(in.mouse.Y)); ok {
 			in.query(true)
-			if s.location(g).Map.SelectionPanel != nil {
+			if s.location(g).Map.SelectionPanel != nil && c.Point != s.panel.pressed {
 				s.focusPoint(c.Point)
 				return
 			}
@@ -816,6 +816,21 @@ var (
 	plateInk  = color.NRGBA{0xf4, 0xef, 0xe2, 0xff}
 )
 
+// shownSel is the point the cursor is drawn on: none while the token walks, and
+// none while something other than the map's own order bar holds the input.
+func (s *atlasScene) shownSel(g *Game) string {
+	if s.walking() || s.sel >= len(s.choices) || g.busy() && !s.barOpen(g) {
+		return ""
+	}
+	return s.choices[s.sel].Point
+}
+
+// toScreen maps a point of the picture to the screen under the fit k, ox, oy.
+func (s *atlasScene) toScreen(g *Game, k, ox, oy float64) func(geom.Pt) (float32, float32) {
+	u := g.ui
+	return func(p geom.Pt) (float32, float32) { return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u) }
+}
+
 func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	k, ox, oy, ok := s.fit(g)
 	if !ok {
@@ -827,10 +842,7 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 	op.GeoM.Scale(k, k)
 	op.GeoM.Translate(ox, oy)
 	dst.DrawImage(g.pics.get(s.pic), op)
-	u := g.ui
-	toScreen := func(p geom.Pt) (float32, float32) {
-		return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u)
-	}
+	toScreen := s.toScreen(g, k, ox, oy)
 	talk := s.talkView(g)
 	if talk != "" {
 		defer fill(dst, color.NRGBA{0, 0, 0, 0x90})
@@ -839,19 +851,12 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		s.layoutPoints(g, nil)
 		return
 	}
+	sel := s.shownSel(g)
 	if s.campaignMap(g) {
-		sel := ""
-		if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
-			sel = s.choices[s.sel].Point
-		}
 		s.drawAreas(g, dst, toScreen, sel)
 	}
-	sel0 := ""
-	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
-		sel0 = s.choices[s.sel].Point
-	}
 	if s.campaignMap(g) && a.RegionRoads != "always" {
-		s.drawReach(g, dst, toScreen, sel0)
+		s.drawReach(g, dst, toScreen, sel)
 	}
 	if s.campaignMap(g) && a.RegionRoads == "always" || !s.campaignMap(g) && a.DrawRoads { // only when asked: the roads are painted in the picture
 		for _, r := range s.roads {
@@ -870,10 +875,6 @@ func (s *atlasScene) draw(g *Game, dst *ebiten.Image) {
 		}
 	}
 	s.drawPoints(g, dst)
-	sel := ""
-	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
-		sel = s.choices[s.sel].Point
-	}
 	_, sh := g.screen()
 	war := s.campaignMap(g)
 	if !war {
@@ -939,9 +940,7 @@ func (s *atlasScene) drawPoints(g *Game, dst *ebiten.Image) {
 	if a.Marker != nil {
 		key.marker = a.Marker.Height
 	}
-	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
-		key.selected = s.choices[s.sel].Point
-	}
+	key.selected = s.shownSel(g)
 	if s.pointLayer == nil || s.pointLayer.Bounds() != dst.Bounds() {
 		if s.pointLayer != nil {
 			s.pointLayer.Deallocate()
@@ -964,11 +963,8 @@ func (s *atlasScene) layoutPoints(g *Game, dst *ebiten.Image) {
 	a := s.location(g).Map
 	k, ox, oy, _ := s.fit(g)
 	u := g.ui
-	toScreen := func(p geom.Pt) (float32, float32) { return float32((ox + p.X*k) / u), float32((oy + p.Y*k) / u) }
-	sel := ""
-	if !s.walking() && s.sel < len(s.choices) && (!g.busy() || s.barOpen(g)) {
-		sel = s.choices[s.sel].Point
-	}
+	toScreen := s.toScreen(g, k, ox, oy)
+	sel := s.shownSel(g)
 	_, sh := g.screen()
 	mh := markerHeight * sh
 	if a.Marker != nil && a.Marker.Height > 0 {

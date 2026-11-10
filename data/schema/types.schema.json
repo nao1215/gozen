@@ -2109,6 +2109,39 @@
       },
       "type": "object"
     },
+    "BreedKeeper": {
+      "additionalProperties": false,
+      "description": "The ranch's greeting: the speaker's name and the line in the message window while the player chooses what to do. Both are translated by lang/\u003ccode\u003e.yaml.",
+      "properties": {
+        "name": {
+          "description": "The speaker's name over the line; none when omitted.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "text": {
+          "description": "The line shown; a neutral built-in line when omitted.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        }
+      },
+      "type": "object"
+    },
     "BreedPair": {
       "additionalProperties": false,
       "description": "A symmetric specific-species recipe, tried before family rules.",
@@ -2229,6 +2262,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "[BreedFamily](#breedfamily)[]"
+        },
+        "keeper": {
+          "$ref": "#/$defs/BreedKeeper",
+          "description": "Who greets the player in the ranch's message window. Omission shows a neutral line under no name.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[BreedKeeper](#breedkeeper)"
         },
         "min_level": {
           "description": "The minimum level of each parent; at least one.",

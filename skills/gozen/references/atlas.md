@@ -18,7 +18,7 @@ workshop:
 
 ## Selection panel and instant actions
 
-`map.selection_panel` shows the selected point's advice in a fixed rectangle (`rect: [x, y, w, h]` in screen fractions; `portrait` is the default face). Each point's `advice` is an ordered list of `{when, heading, text, portrait}`; the first variant whose `when` holds wins, and text can read state with `{item.potion}`. Clicking selects, Confirm (or the panel's button) activates, Back hides it. `map.activation: instant` makes the map an action menu: every open point with a `do` or `to` is available without roads (the current point too), and nothing walks, rolls road encounters or changes the saved spot. The two options are independent, and neither is saved.
+`map.selection_panel` shows the selected point's advice in a fixed rectangle (`rect: [x, y, w, h]` in screen fractions; `portrait` is the default face). Each point's `advice` is an ordered list of `{when, heading, text, portrait}`; the first variant whose `when` holds wins, and text can read state with `{item.potion}`. Clicking selects; a second press on the selected point, Confirm or the panel's button activates; Back hides it. `map.activation: instant` makes the map an action menu: every open point with a `do` or `to` is available without roads (the current point too), and nothing walks, rolls road encounters or changes the saved spot. The two options are independent, and neither is saved.
 
 <!-- verify: parse fragment of a map; the pictures are the author's -->
 ```yaml

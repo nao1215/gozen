@@ -250,10 +250,7 @@ func (g *Game) startBattle(troop string, done func(int)) *battleScene {
 	}
 	g.pics.preload(pics...)
 	if g.autoBattle || g.autoStartBattle() {
-		s.auto = true
-		for _, m := range b.Party {
-			m.Auto = true
-		}
+		s.startAuto(g, false)
 	}
 	s.troop = troop
 	s.openTick = g.tick
@@ -352,13 +349,8 @@ func (s *battleScene) tick(g *Game) {
 			s.mp[u] = float64(s.shownMP[u])
 		}
 	}
-	if s.auto && g.in.cancel() {
-		s.auto = false
-		g.autoBattle = false
-		for _, u := range s.b.Party {
-			u.Auto = false
-		}
-		g.sfx("cancel")
+	if s.auto && (g.in.cancel() || g.in.mouse.In(s.autoButton(g)) && g.in.clicked()) {
+		s.stopAuto(g)
 	}
 	switch s.phase {
 	case bpPlay:
@@ -731,9 +723,6 @@ func (s *battleScene) damageHit(g *Game, st battle.Step, r image.Rectangle, kind
 	if st.Crit && st.Amount > 0 {
 		tags = append(tags, popup{text: lang.T("CRITICAL!"), color: colorGold})
 	}
-	if st.Target.Enemy && st.Element != "" && (st.Weak || st.Resisted) {
-		g.st.Vars["known_"+st.Target.EID+"_"+st.Element] = 1.0
-	}
 	if st.Weak && st.Amount > 0 {
 		tags = append(tags, popup{text: lang.T("WEAK!"), color: color.NRGBA{0xff, 0xd0, 0x50, 0xff}})
 	}
@@ -952,13 +941,7 @@ func (s *battleScene) input(g *Game) {
 	case 3:
 		s.openItems(g)
 	case 4:
-		s.auto = true
-		g.autoBattle = true
-		for _, m := range s.b.Party {
-			m.Auto = true
-		}
-		s.b.StartTurn(s.actions)
-		s.phase = bpPlay
+		s.startAuto(g, true)
 	case 5:
 		steps, ok := s.b.TryEscape()
 		s.queue = append(s.queue, steps...)
@@ -1152,6 +1135,9 @@ func (s *battleScene) event(g *Game) {
 			g.notices.add(r.Text)
 			s.req = nil
 		default:
+			// What a battle has no screen for is answered as a battle without a screen
+			// answers it (a battle of the event counts as won), so both end in the same state.
+			s.runner.Unattended(r)
 			s.req = nil
 		}
 		return
@@ -1257,7 +1243,7 @@ func (s *battleScene) result(g *Game) {
 	if s.b.Result == battle.Lost && s.retry != nil {
 		snap := s.retry
 		s.retry = nil
-		c := newConfirm(lang.T("ぜんめつ した。たたかう まえから やりなおす？（いいえ: あきらめる）"), func() {
+		c := newChoice(lang.T("ぜんめつ した。たたかう まえから やりなおす？"), lang.T("やりなおす"), lang.T("あきらめる"), func() {
 			if !g.restoreState(snap) {
 				return
 			}
@@ -1470,7 +1456,9 @@ func (s *battleScene) draw(g *Game, dst *ebiten.Image) {
 		s.drawCutIn(g, dst)
 	}
 	if s.auto {
+		r := s.autoButton(g)
 		gfx.DrawTextOutlineColor(dst, lang.T("AUTO  (X でかいじょ)"), sw-150, 164, sizeS, g.th.accent, g.th.window, 1)
+		g.traceControl("AUTO", roundRect(float64(r.Min.X), float64(r.Min.Y), float64(r.Dx()), float64(r.Dy())), true, false, "")
 	}
 	if !talking && s.tacticHistoryVisible(g) {
 		r := s.reasonButton(g)
@@ -1931,6 +1919,38 @@ func (g *Game) tempo(n int) int {
 
 func (g *Game) autoTempo() float64 {
 	return max(1, g.db.Game.Battle.AutoTempo)
+}
+
+// startAuto turns AUTO on in this battle: every member acts by itself, and a turn waiting
+// for its orders begins. lasting keeps it on in the battles that follow (the player's own
+// AUTO); the setting that begins battles in AUTO and a script's act are for this battle.
+func (s *battleScene) startAuto(g *Game, lasting bool) {
+	s.auto = true
+	g.autoBattle = g.autoBattle || lasting
+	for _, m := range s.b.Party {
+		m.Auto = true
+	}
+	if s.phase == bpInput {
+		s.b.StartTurn(s.actions)
+		s.phase = bpPlay
+	}
+}
+
+// stopAuto turns AUTO off, in this battle and those that follow: the cancel key and a
+// press on the AUTO button.
+func (s *battleScene) stopAuto(g *Game) {
+	s.auto, g.autoBattle = false, false
+	for _, u := range s.b.Party {
+		u.Auto = false
+	}
+	g.sfx("cancel")
+}
+
+// autoButton is the place of the AUTO button, shown while AUTO is on.
+func (s *battleScene) autoButton(g *Game) image.Rectangle {
+	sw, _ := g.screen()
+	w := gfx.TextWidth(lang.T("AUTO  (X でかいじょ)"), sizeS) + 32
+	return image.Rect(int(sw-150-w/2), 156, int(sw-150+w/2), 200)
 }
 
 func (g *Game) autoStartBattle() bool {

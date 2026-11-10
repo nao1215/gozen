@@ -124,10 +124,8 @@ func (g *Game) loadSavedGame(st *rpg.State) {
 	if r != nil {
 		saved = r.Rand
 	}
-	if len(saved) > 0 {
-		if p := rand.NewPCG(1, 2); p.UnmarshalBinary(saved) == nil {
-			g.pcg, st.Rand = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
-		}
+	if p, err := savedPCG(saved); err == nil {
+		g.pcg, st.Rand = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
 	}
 	g.loadGame(st)
 	if r != nil {
@@ -186,8 +184,8 @@ func (g *Game) newSavedReplay(st *rpg.State) (*savedReplay, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := rand.NewPCG(1, 2)
-	if err := p.UnmarshalBinary(st.Resume.Rand); err != nil {
+	p, err := savedPCG(st.Resume.Rand)
+	if err != nil {
 		return nil, err
 	}
 	state, err := rpg.Parse(data.Fork(st.DB), b, rand.New(p)) //nolint:gosec // Private deterministic gameplay replay, not secrets.

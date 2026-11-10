@@ -120,11 +120,11 @@ func TestMessageMetrics(t *testing.T) {
 	if len(MessageWrap(gm, strings.Repeat("word ", 200))) <= MessageLines() {
 		t.Fatal("wrapping should not paginate")
 	}
-	lines, _, cut := PromptLines(gm, strings.Repeat("word ", 200), nil)
+	lines, _, cut := PromptLines(gm, strings.Repeat("word ", 200))
 	if !cut || len(lines) > MessageLines() {
 		t.Fatalf("prompt: %d lines cut=%v", len(lines), cut)
 	}
-	if _, _, cut := PromptLines(gm, "short", nil); cut {
+	if _, _, cut := PromptLines(gm, "short"); cut {
 		t.Fatal("a short prompt was cut")
 	}
 	gm.UI.Message = "novel"
