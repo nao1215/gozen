@@ -6,7 +6,7 @@ Read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture/overview.md), 
 
 Before v1.0.0 the YAML and save formats may change between versions without migration tools. Do not add migration commands or YAML upgraders.
 
-Use Go 1.26.10 or later. Install the pinned development tools listed in the [testing guide](docs/development/testing.md), then run:
+Use Go 1.26.11 or later. Install the pinned development tools listed in the [testing guide](docs/development/testing.md), then run:
 
 ```sh
 make test lint build

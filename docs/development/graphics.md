@@ -9,7 +9,7 @@ retain their timing. It does not accelerate dialogue or gameplay, and stacked sp
 retain their interpolated camera. Independent author-controlled movement speeds are
 tracked separately in issue #64.
 
-Use Go 1.26.10 or later. The normal tests of T3 start no display or audio device. Real drawing is checked by separate tests with the `graphics` tag. For the items to check before publication, see the [release checklist](release-checklist.md).
+Use Go 1.26.11 or later. The normal tests of T3 start no display or audio device. Real drawing is checked by separate tests with the `graphics` tag. For the items to check before publication, see the [release checklist](release-checklist.md).
 
 ## Original sample
 

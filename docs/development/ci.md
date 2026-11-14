@@ -11,14 +11,14 @@ A private repository has a limit on Actions time. While it is private, only `qui
 | Job | Environment and check | What counts as a result |
 | --- | --- | --- |
 | lint | Linux, Go 1.27.2 (`LINT_GO` of the Makefile, not stable: gofmt's output changes between Go releases). golangci-lint v2.14.0 (built by `make lint` with that Go), go-arch-lint v1.19.0, actionlint v1.7.12, zizmor v1.31.1. `make lint` | import direction, API list, tidy modules, static analysis, formatting, workflow syntax and security |
-| unit | Ubuntu, Windows and macOS × Go 1.26.10 / stable. `go test ./...` with cgo enabled, through [scripts/ci_go_test.sh](../../scripts/ci_go_test.sh). On Windows it reruns, at most three times, only a listed package (internal/mosaic, internal/promptgen) that died of the Go runtime heap crash of golang/go#81238 without a failed test or panic; every other failure fails at once | non-graphics contracts, including `gozen` and internal |
+| unit | Ubuntu, Windows and macOS × Go 1.26.11 / stable. `go test ./...` with cgo enabled, through [scripts/ci_go_test.sh](../../scripts/ci_go_test.sh). On Windows it reruns, at most three times, only a listed package (internal/mosaic, internal/promptgen) that died of the Go runtime heap crash of golang/go#81238 without a failed test or panic; every other failure fails at once | non-graphics contracts, including `gozen` and internal |
 | race, race-play | Linux, stable, `go test -race -short` with cgo enabled: race over every package but `internal/screen/play`, race-play over that package alone, side by side (it took two thirds of the race time) | race check of the non-graphics contracts (the heavy tests, skipped by `-short`, run without `-race` in the other jobs) |
 | build | amd64 on 3 OSes, arm64 on Linux and macOS, js/wasm. cgo disabled | all packages on desktop targets; the player and its dependencies for browsers. arm64 and wasm are cross-builds. No ONNX inference |
 | graphics | 3 OSes × 2 shards, stable. Linux uses setup-ebitengine and Xvfb; Windows and macOS use the native desktop. Every test of a graphics-tagged file is named `TestGraphics*` and selected by that prefix. Shard 1 runs the tests of `internal/screen/play` that `GRAPHICS_SPLIT` names (the slowest serial ones) and, in a command of its own, every test of `internal/screen/puppet`; shard 2 runs every other test of play with `-skip`, so no test falls between them (`make graphics GRAPHICS_SHARD=1` or `2` locally; without it, all). `TestGraphicsTestSelection` of `internal/dev/hygiene` fails on a test with another name and on a package the workflow does not select by the prefix | real loop of the screens with PNG checks and pixel checks of the moving standing pictures. Audio is muted. The capture E2E is the separate capture job |
 | cli-e2e | 3 OSes, stable, atago v0.25.2 | exit status, stdout and diagnostics, file changes and generated files of every subcommand of the real `gozen`. The graphics tag is a separate job |
 | inference-build | 3 OSes, stable, cgo enabled | building `gozen` with the ONNX adapter and inference. Inference tests without a model skip with a reason |
 | examples | 3 OSes, stable | building `./examples/...` and running minimal and headless. Running the screen is left to graphics |
-| govulncheck | Linux, Go 1.26.10 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
+| govulncheck | Linux, Go 1.26.11 (the lower bound in `go.mod`) and stable, cgo enabled, govulncheck v1.9.0 | known vulnerabilities reachable from `./...`. Judged from JSON; fails on anything not in `ACCEPTED` (empty now). The ONNX binding is analyzed too |
 | codeql | Linux, stable, cgo enabled | builds `./...` explicitly and runs Go static analysis |
 | docs-images-fresh | Linux, Go of `go.mod`, no display. `make docs-images-fresh`, on every push and pull request, documentation only or not | the input hashes of every documentation picture equal `docs/images/inputs.sum`; a failure names each stale picture and says to run `make docs-images` |
 
@@ -86,8 +86,8 @@ External actions are pinned by 40-character SHA, with one exception: the SLSA pr
 
 ```sh
 go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-govulncheck ./...                              # with the Go of go.mod (1.26.10 or later)
-GOTOOLCHAIN=go1.26.10 govulncheck ./...         # with the standard library of the lower bound
+govulncheck ./...                              # with the Go of go.mod (1.26.11 or later)
+GOTOOLCHAIN=go1.26.11 govulncheck ./...         # with the standard library of the lower bound
 gitleaks git                                   # secret strings in commits
 ```
 
