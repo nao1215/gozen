@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Changed
+
+- Building from source now needs Go 1.26.11 or later (was 1.26.10). Go 1.26.11 fixes the `net/http` advisory GO-2026-6859, which govulncheck finds reachable from gozen on the earlier patch.
+
 ## v0.24.0 - 2026-11-10
 
 ### Added

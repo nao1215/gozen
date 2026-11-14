@@ -185,7 +185,7 @@ Download a binary from [Releases](https://github.com/nao1215/gozen/releases), or
 brew install --cask nao1215/tap/gozen
 ```
 
-With Go 1.26.10 or later:
+With Go 1.26.11 or later:
 
 ```sh
 go install github.com/nao1215/gozen/cmd/gozen@latest
