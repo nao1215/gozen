@@ -11,8 +11,8 @@ require (
 	github.com/nao1215/markdown v1.1.1
 	github.com/spf13/pflag v1.1.0
 	github.com/yalue/onnxruntime_go v1.38.0
-	golang.org/x/image v0.47.0
-	golang.org/x/text v0.43.0
+	golang.org/x/image v0.48.0
+	golang.org/x/text v0.44.0
 	rsc.io/qr v0.2.0
 )
 
@@ -39,6 +39,6 @@ require (
 	github.com/olekukonko/ll v0.1.8 // indirect
 	github.com/olekukonko/tablewriter v1.1.5 // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
-	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 )
