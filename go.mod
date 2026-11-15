@@ -5,7 +5,7 @@ go 1.26.11
 tool github.com/nao1215/gozen/cmd/internal/dango
 
 require (
-	github.com/deepteams/webp v1.2.8
+	github.com/deepteams/webp v1.2.9
 	github.com/goccy/go-yaml v1.19.2
 	github.com/hajimehoshi/ebiten/v2 v2.10.6
 	github.com/nao1215/markdown v1.1.1
