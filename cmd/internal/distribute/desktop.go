@@ -81,7 +81,7 @@ func verifyPlayer(name string, r Runtime) error {
 }
 
 func verifyChecksum(name, expected string) error {
-	f, err := os.Open(name) //nolint:gosec // Newly staged player, copied from the selected runtime.
+	f, err := os.Open(name) // #nosec G304 -- Newly staged player, copied from the selected runtime.
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func verifyChecksum(name, expected string) error {
 // prepareRuntime validates and stages the runtime metadata.
 func prepareRuntime(bundle, stage, target, version, player string) (Runtime, error) {
 	var r Runtime
-	b, err := os.ReadFile(filepath.Join(bundle, "runtime.json")) //nolint:gosec // Explicit caller-selected runtime bundle.
+	b, err := os.ReadFile(filepath.Join(bundle, "runtime.json")) // #nosec G304 -- Explicit caller-selected runtime bundle.
 	if err != nil {
 		return r, err
 	}
