@@ -109,7 +109,7 @@ func (g *Game) rollBack() {
 // replayEvent begins an event again from its saved start and reads on to its line.
 func (g *Game) replayEvent(e backEvent) bool {
 	p := g.pcgFrom(e.rnd)
-	st, err := rpg.Parse(g.db, e.snap, rand.New(p)) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
+	st, err := rpg.Parse(g.db, e.snap, rand.New(p)) // #nosec G404 -- Restores deterministic gameplay randomness, not secrets.
 	if err != nil {
 		log.Printf("roll back: %v", err)
 		return false

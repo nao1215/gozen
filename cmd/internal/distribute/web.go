@@ -46,7 +46,7 @@ func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 				return err
 			}
 		}
-		f, err := os.Open(filepath.Join(stage, "gozen-player.wasm")) //nolint:gosec // Newly staged runtime file.
+		f, err := os.Open(filepath.Join(stage, "gozen-player.wasm")) // #nosec G304 -- Newly staged runtime file.
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 
 // gzipPlayer replaces the player with gozen-player.wasm.gz (a fifth of its size).
 func gzipPlayer(name string) error {
-	b, err := os.ReadFile(name) //nolint:gosec // The newly staged player.
+	b, err := os.ReadFile(name) // #nosec G304 -- The newly staged player.
 	if err != nil {
 		return err
 	}

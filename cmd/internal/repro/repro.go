@@ -46,7 +46,7 @@ type reproRecord struct {
 
 func readRepro(path, target string) (Bundle, []byte, error) {
 	b := Bundle{}
-	src, err := os.ReadFile(path) //nolint:gosec // Explicit trace input.
+	src, err := os.ReadFile(path) // #nosec G304 -- Explicit trace input.
 	if err != nil {
 		return b, nil, err
 	}

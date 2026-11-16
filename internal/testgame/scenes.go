@@ -103,7 +103,7 @@ func Picture(w, h int) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetRGBA(x, y, color.RGBA{uint8(40 + 160*x/max(1, w)), uint8(60 + 120*y/max(1, h)), 140, 255}) //nolint:gosec // in 0..255
+			img.SetRGBA(x, y, color.RGBA{uint8(40 + 160*x/max(1, w)), uint8(60 + 120*y/max(1, h)), 140, 255}) // #nosec G115 -- in 0..255
 		}
 	}
 	var b bytes.Buffer
@@ -118,7 +118,7 @@ func Depth(w, h int) []byte {
 	img := image.NewGray16(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetGray16(x, y, color.Gray16{Y: uint16(65535 * y / max(1, h-1))}) //nolint:gosec // in 0..65535
+			img.SetGray16(x, y, color.Gray16{Y: uint16(65535 * y / max(1, h-1))}) // #nosec G115 -- in 0..65535
 		}
 	}
 	var b bytes.Buffer

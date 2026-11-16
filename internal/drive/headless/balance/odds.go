@@ -140,7 +140,7 @@ func (p Prep) apply(db *data.DB, st *rpg.State) error {
 // FreshStart is the party row of a newly started game (the starting row if party is empty). Battle i's randomness is PCG(seed, i).
 func FreshStart(db *data.DB, seed uint64, party []string, p Prep) Start {
 	return func(i int) (*rpg.State, error) {
-		st := rpg.New(db, rand.New(rand.NewPCG(seed, uint64(i)))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+		st := rpg.New(db, rand.New(rand.NewPCG(seed, uint64(i)))) // #nosec G115 G404 -- Reproducible gameplay simulation, not security randomness.
 		if len(party) > 0 {
 			st.Party = nil
 			for _, id := range party {
@@ -161,7 +161,7 @@ func FreshStart(db *data.DB, seed uint64, party []string, p Prep) Start {
 // (or with the saved HP, MP and status if p.AsIs). Battle i's randomness is PCG(seed, i). The adjustment p is applied after healing.
 func SavedStart(db *data.DB, save []byte, seed uint64, p Prep) Start {
 	return func(i int) (*rpg.State, error) {
-		st, err := rpg.Parse(db, save, rand.New(rand.NewPCG(seed, uint64(i)))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+		st, err := rpg.Parse(db, save, rand.New(rand.NewPCG(seed, uint64(i)))) // #nosec G115 G404 -- Reproducible gameplay simulation, not security randomness.
 		if err != nil {
 			return nil, err
 		}

@@ -102,7 +102,7 @@ func New(cfg Config) clihelp.Operation {
 		}
 		p := promptgen.Plan{Select: map[string][]string{}}
 		if planFile != "" {
-			b, err := os.ReadFile(planFile) //nolint:gosec // Explicit user-supplied input path; this operation does not write files.
+			b, err := os.ReadFile(planFile) // #nosec G304 -- Explicit user-supplied input path; this operation does not write files.
 			if err != nil {
 				return err
 			}

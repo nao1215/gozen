@@ -138,7 +138,7 @@ func Run(db *data.DB, o Config) (Result, error) {
 			return Result{}, err
 		}
 	}
-	st := rpg.New(db, rand.New(rand.NewPCG(o.Seed, 7))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+	st := rpg.New(db, rand.New(rand.NewPCG(o.Seed, 7))) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 	st.Location = o.Location
 	var res Result
 	for f := 1; f <= o.Floors; f++ {
@@ -485,7 +485,7 @@ func clone(db *data.DB, st *rpg.State, seed uint64) (*rpg.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := rpg.Parse(db, b, rand.New(rand.NewPCG(seed, 99))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+	c, err := rpg.Parse(db, b, rand.New(rand.NewPCG(seed, 99))) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 	if err != nil {
 		return nil, err
 	}

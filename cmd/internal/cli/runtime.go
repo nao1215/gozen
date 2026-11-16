@@ -100,7 +100,7 @@ func CopyFile(fsys fs.FS, name, dst string, mode fs.FileMode) (err error) {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode) //nolint:gosec // Caller-owned staging directory; never overwrites an existing file.
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode) // #nosec G304 -- Caller-owned staging directory; never overwrites an existing file.
 	if err != nil {
 		return err
 	}

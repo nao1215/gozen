@@ -84,7 +84,7 @@ type Crowd struct {
 func NewCrowd(s *Script, cfg CrowdConfig) *Crowd {
 	rng := cfg.Rand
 	if rng == nil {
-		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible bot chatter
+		rng = rand.New(rand.NewPCG(1, 2)) // #nosec G404 -- reproducible bot chatter
 	}
 	c := &Crowd{s: s, rng: rng, mood: s.doc.Start, next: -1}
 	return c

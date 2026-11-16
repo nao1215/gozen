@@ -209,7 +209,7 @@ func Play(db *data.DB, c *Config, p Persona) *Run {
 		seed = 1
 	}
 	pcg := rand.NewPCG(seed, 1)
-	st := rpg.New(db, rand.New(pcg)) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+	st := rpg.New(db, rand.New(pcg)) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 	b := &bot{
 		db: db, c: c, p: p, st: st, run: &Run{Persona: p, Seed: seed}, pcg: pcg,
 		rewardCounts: map[string]int{}, used: map[string]int{}, seen: map[string]bool{}, prev: map[*Rule]float64{}, know: map[string]map[string]bool{},
@@ -812,7 +812,7 @@ func (b *bot) measureDuels() {
 			geared = b.st
 			return geared
 		}
-		c, err := rpg.Parse(b.db, save, rand.New(rand.NewPCG(uint64(b.day), 5))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+		c, err := rpg.Parse(b.db, save, rand.New(rand.NewPCG(uint64(b.day), 5))) // #nosec G115 G404 -- Reproducible gameplay simulation, not security randomness.
 		if err != nil {
 			geared = b.st
 			return geared

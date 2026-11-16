@@ -46,7 +46,7 @@ func (d dirStore) Read(name string) ([]byte, error) {
 	if err := validName(name); err != nil {
 		return nil, err
 	}
-	return os.ReadFile(filepath.Join(string(d), name)) //nolint:gosec // The caller owns the directory; name is a plain file name (validName).
+	return os.ReadFile(filepath.Join(string(d), name)) // #nosec G304 -- The caller owns the directory; name is a plain file name (validName).
 }
 
 func (d dirStore) Write(name string, b []byte) error {

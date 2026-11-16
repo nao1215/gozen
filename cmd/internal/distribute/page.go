@@ -74,7 +74,7 @@ func pageFor(src, stage string, db *gamedata.DB) ([]byte, error) {
 // copyShareImage copies the picture under the game's assets/ beside the page as
 // og-image with its extension, as it is, and reports its name and size.
 func copyShareImage(src, stage, file string) (string, image.Point, error) {
-	b, err := os.ReadFile(filepath.Join(src, "assets", filepath.FromSlash(file))) //nolint:gosec // A picture of the game being exported, checked when it loaded.
+	b, err := os.ReadFile(filepath.Join(src, "assets", filepath.FromSlash(file))) // #nosec G304 -- A picture of the game being exported, checked when it loaded.
 	if err != nil {
 		return "", image.Point{}, err
 	}

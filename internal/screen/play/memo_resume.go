@@ -36,7 +36,7 @@ func (g *Game) startFromMemo(path string) error {
 
 func (g *Game) startMemo(path string, m memo.Memo, save []byte) error {
 	p := g.pcgFrom(m.Rand)
-	st, err := rpg.ParseWithConfig(g.db, save, rand.New(p), rpg.Config{AllowLegacy: g.opts.AllowLegacySave}) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
+	st, err := rpg.ParseWithConfig(g.db, save, rand.New(p), rpg.Config{AllowLegacy: g.opts.AllowLegacySave}) // #nosec G404 -- Restores deterministic gameplay randomness, not secrets.
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}

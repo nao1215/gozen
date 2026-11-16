@@ -130,7 +130,7 @@ func (c *command) floorsCmd() clihelp.Operation {
 }
 
 func floorState(db *data.DB, loc string, floor int) *rpg.State {
-	st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+	st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 	st.Calm = true
 	st.Location = loc
 	dungeon.Dive(db, st, loc, floor)
@@ -299,7 +299,7 @@ func expectedBattles(db *data.DB, st *rpg.State, walk int) float64 {
 	if err != nil {
 		return 0
 	}
-	rng := rand.New(rand.NewPCG(7, 7)) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+	rng := rand.New(rand.NewPCG(7, 7)) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 	total := 0
 	const runs = 2000
 	for range runs {

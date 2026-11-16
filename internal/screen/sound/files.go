@@ -219,7 +219,7 @@ func readClip(r io.Reader, limit int64) ([]byte, error) {
 	}
 	out := make([]byte, len(raw)/2*4)
 	for i := range len(raw) / 2 {
-		//nolint:gosec // PCM reinterprets a signed two-complement 16-bit sample.
+		// #nosec G115 -- PCM reinterprets a signed two-complement 16-bit sample.
 		v := float32(int16(binary.LittleEndian.Uint16(raw[i*2:]))) / 32768
 		binary.LittleEndian.PutUint32(out[i*4:], math.Float32bits(v))
 	}

@@ -154,7 +154,7 @@ func loadReviewSources(file string) map[string]string {
 	if file == "" {
 		return out
 	}
-	b, err := os.ReadFile(file) //nolint:gosec // The host explicitly selects this optional review source file.
+	b, err := os.ReadFile(file) // #nosec G304 -- The host explicitly selects this optional review source file.
 	if err != nil {
 		log.Printf("review sources: %v", err)
 		return out
@@ -483,7 +483,7 @@ func (r *cgReview) write(g *Game, it reviewItem, t data.CGReviewTag, off bool, n
 			return
 		}
 	}
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) //nolint:gosec // The host explicitly selects the review output directory.
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) // #nosec G304 -- The host explicitly selects the review output directory.
 	if err == nil {
 		_, err = f.Write(append(b, '\n'))
 		if cerr := f.Close(); err == nil {

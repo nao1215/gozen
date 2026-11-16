@@ -145,7 +145,7 @@ func testArgs(ds []hygiene.Decision) []string {
 func execute(args []string) ([]testEvent, error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	cmd := exec.CommandContext(ctx, "go", args...) //nolint:gosec // Arguments come only from the checked-in decision table.
+	cmd := exec.CommandContext(ctx, "go", args...) // #nosec G204 -- Arguments come only from the checked-in decision table.
 	// Lint compares generated schema; an inherited authoring setting must not rewrite it.
 	cmd.Env = append(cmd.Environ(), "GOZEN_UPDATE_SCHEMA=0")
 	var stdout, stderr bytes.Buffer

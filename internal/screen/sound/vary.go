@@ -23,9 +23,9 @@ func (session *Session) vary(name string, b []byte) ([]byte, float64) {
 	if !seen || now.Sub(last) > session.varyWindow || (pitch == 0 && volume == 0) {
 		return b, 1
 	}
-	//nolint:gosec // Audio variation, not security-sensitive randomness.
+	// #nosec G404 -- Audio variation, not security-sensitive randomness.
 	v := 1 + volume*(2*rand.Float64()-1)
-	//nolint:gosec // Audio variation, not security-sensitive randomness.
+	// #nosec G404 -- Audio variation, not security-sensitive randomness.
 	r := 1 + pitch*(2*rand.Float64()-1)
 	return resample(b, r), v
 }

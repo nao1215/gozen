@@ -245,7 +245,7 @@ type designOutcome struct {
 }
 
 func writeTimeline(path string, r *designeval.Run) (err error) {
-	f, err := os.Create(path) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	f, err := os.Create(path) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func previousRun(root, name string) (string, map[string]designeval.Summary) {
 	}
 	sort.Strings(names)
 	for _, name := range slices.Backward(names) {
-		b, err := os.ReadFile(filepath.Join(root, name, "summary.json")) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+		b, err := os.ReadFile(filepath.Join(root, name, "summary.json")) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 		if err != nil {
 			continue
 		}
@@ -696,7 +696,7 @@ func writeBand(path string, runs []*designeval.Run) (err error) {
 			}
 		}
 	}
-	f, err := os.Create(path) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	f, err := os.Create(path) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 	if err != nil {
 		return err
 	}

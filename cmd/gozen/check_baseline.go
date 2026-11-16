@@ -42,7 +42,7 @@ func warningCounts(only string, ds gamedata.Diagnostics) checkBaseline {
 }
 
 func readCheckBaseline(name, only string) (b checkBaseline, err error) {
-	f, err := os.Open(name) //nolint:gosec // Explicit CLI input.
+	f, err := os.Open(name) // #nosec G304 -- Explicit CLI input.
 	if err != nil {
 		return b, err
 	}
@@ -91,7 +91,7 @@ func writeCheckBaseline(name string, b checkBaseline) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // Explicit CLI output; never overwrite inputs.
+	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- Explicit CLI output; never overwrite inputs.
 	if errors.Is(err, fs.ErrExist) {
 		return diag.OutputExists.Wrap(err)
 	}

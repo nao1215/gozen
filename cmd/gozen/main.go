@@ -50,7 +50,7 @@ func startProfile(path string) func() {
 	if path == "" {
 		return func() {}
 	}
-	f, err := os.Create(path) //nolint:gosec // A path the developer chose in the environment.
+	f, err := os.Create(path) // #nosec G304 G703 -- A path the developer chose in the environment.
 	if err != nil {
 		log.Print("CPU profile:", err)
 		return func() {}

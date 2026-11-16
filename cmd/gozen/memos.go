@@ -389,7 +389,7 @@ func thumbnail(src, dst string, w int) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return err
 	}
-	o, err := os.Create(dst) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	o, err := os.Create(dst) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 	if err != nil {
 		return err
 	}

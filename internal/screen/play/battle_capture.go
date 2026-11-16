@@ -90,7 +90,7 @@ func (g *Game) restoreBattleCapture() error {
 	if err != nil {
 		return fmt.Errorf(lang.T("戦闘記録の乱数状態が不正: %w"), err)
 	}
-	st, err := rpg.Parse(g.db, c.Save, rand.New(p)) //nolint:gosec // Reproducible gameplay, not cryptographic randomness.
+	st, err := rpg.Parse(g.db, c.Save, rand.New(p)) // #nosec G404 -- Reproducible gameplay, not cryptographic randomness.
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (g *Game) restoreBattleCapture() error {
 }
 
 func loadBattleReplay(path string, o *Options) (_ *replay, err error) {
-	f, err := os.Open(path) //nolint:gosec // The caller explicitly selects the replay file.
+	f, err := os.Open(path) // #nosec G304 -- The caller explicitly selects the replay file.
 	if err != nil {
 		return nil, err
 	}

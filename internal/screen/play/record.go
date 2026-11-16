@@ -71,12 +71,12 @@ func Record(ctx context.Context, opts Options, out string) (err error) {
 	defer func() { err = errors.Join(err, os.RemoveAll(tmp)) }()
 	audioPath := filepath.Join(tmp, "audio.f32")
 	videoPath := filepath.Join(tmp, "video.mp4")
-	audio, err := os.Create(audioPath) //nolint:gosec // audioPath is a fixed basename in this run's private temporary directory.
+	audio, err := os.Create(audioPath) // #nosec G304 -- audioPath is a fixed basename in this run's private temporary directory.
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, audio.Close()) }()
-	//nolint:gosec // The executable comes from LookPath; arguments are separate and no shell is used.
+	// #nosec G204 -- The executable comes from LookPath; arguments are separate and no shell is used.
 	enc := exec.CommandContext(ctx, ff, "-loglevel", "error", "-y",
 		"-f", "rawvideo", "-pix_fmt", "rgba", "-s", fmt.Sprintf("%dx%d", w, h), "-r", strconv.Itoa(60/videoEvery), "-i", "-",
 		"-c:v", "libx264", "-preset", "medium", "-crf", "23", "-pix_fmt", "yuv420p", videoPath)
@@ -96,7 +96,7 @@ func Record(ctx context.Context, opts Options, out string) (err error) {
 	if runErr != nil {
 		return runErr
 	}
-	//nolint:gosec // The executable comes from LookPath; arguments are separate and no shell is used.
+	// #nosec G204 -- The executable comes from LookPath; arguments are separate and no shell is used.
 	mux := exec.CommandContext(ctx, ff, "-loglevel", "error", "-y", "-i", videoPath,
 		"-f", "f32le", "-ar", "44100", "-ac", "2", "-i", audioPath,
 		"-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out)

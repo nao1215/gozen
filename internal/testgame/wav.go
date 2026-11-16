@@ -25,7 +25,7 @@ func Wav(seconds float64) []byte {
 	b = le.AppendUint32(b, n*2)
 	for i := range n {
 		v := int16(math.Sin(float64(i)*2*math.Pi*440/rate) * 8000)
-		b = le.AppendUint16(b, uint16(v)) //nolint:gosec // A signed sample written as its two's-complement bits.
+		b = le.AppendUint16(b, uint16(v)) // #nosec G115 -- A signed sample written as its two's-complement bits.
 	}
 	return b
 }

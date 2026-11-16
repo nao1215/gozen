@@ -16,7 +16,7 @@ import (
 // which directory was given.
 func gameFS(dir string) (fs.FS, error) {
 	name := filepath.Join(dir, "game.yaml")
-	f, err := os.Open(name) //nolint:gosec // The game directory is the command's operand.
+	f, err := os.Open(name) // #nosec G304 -- The game directory is the command's operand.
 	if err == nil {
 		var st fs.FileInfo
 		st, err = f.Stat()

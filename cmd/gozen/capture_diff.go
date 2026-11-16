@@ -50,7 +50,7 @@ type captureDiffSummary struct {
 }
 
 func readPreviousShots(dir string) ([]shotResult, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "shots.json")) //nolint:gosec // Explicit caller-selected capture directory.
+	b, err := os.ReadFile(filepath.Join(dir, "shots.json")) // #nosec G304 -- Explicit caller-selected capture directory.
 	if err != nil {
 		return nil, err
 	}

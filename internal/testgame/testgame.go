@@ -131,7 +131,7 @@ const sentinel = "synthetic file sentinel"
 
 // State supplies an independent random source with the requested seed.
 func State(db *data.DB, seed uint64) *rpg.State {
-	st := rpg.New(db, rand.New(rand.NewPCG(seed, seed))) //nolint:gosec // Deterministic gameplay test, not a security token.
+	st := rpg.New(db, rand.New(rand.NewPCG(seed, seed))) // #nosec G404 -- Deterministic gameplay test, not a security token.
 	st.SetRecruitSeed(seed)
 	return st
 }

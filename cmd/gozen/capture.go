@@ -270,7 +270,7 @@ func (c *command) capture() clihelp.Operation {
 }
 
 func readShotList(p string) (*shotList, error) {
-	b, err := os.ReadFile(p) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	b, err := os.ReadFile(p) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 	if err != nil {
 		return nil, err
 	}

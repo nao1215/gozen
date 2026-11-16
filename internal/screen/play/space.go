@@ -283,7 +283,7 @@ func (v *spaceView) buildOccupancy(state *rpg.State, d *data.Dungeon) {
 			if i < 0 || i+3 >= len(v.pixels) {
 				continue
 			}
-			v.pixels[i], v.pixels[i+1], v.pixels[i+2] = 3, byte(data.FacingIndex(stair.Facing)*16+stair.Length), byte(n) //nolint:gosec // Validated direction <= 3, length <= 8 and offset < length.
+			v.pixels[i], v.pixels[i+1], v.pixels[i+2] = 3, byte(data.FacingIndex(stair.Facing)*16+stair.Length), byte(n) // #nosec G115 -- Validated direction <= 3, length <= 8 and offset < length.
 		}
 	}
 }

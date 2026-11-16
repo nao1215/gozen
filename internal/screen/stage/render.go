@@ -83,7 +83,7 @@ func NewRenderer(s *Scene, bg, depth image.Image) (*Renderer, error) {
 				}
 				o := fi.PixOffset(x, y)
 				if old := uint16(fi.Pix[o])<<8 | uint16(fi.Pix[o+1]); old == 0 || v > old {
-					fi.Pix[o], fi.Pix[o+1] = uint8(v>>8), uint8(v) //nolint:gosec // the two bytes
+					fi.Pix[o], fi.Pix[o+1] = uint8(v>>8), uint8(v) // #nosec G115 -- the two bytes
 				}
 			}
 		}

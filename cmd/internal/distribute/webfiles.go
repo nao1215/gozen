@@ -154,7 +154,7 @@ func readEarlier(dir string) (*earlierExport, error) {
 		return nil, nil
 	}
 	game := filepath.Join(dir, "game")
-	b, err := os.ReadFile(filepath.Join(game, "files.json")) //nolint:gosec // The caller-selected previous export.
+	b, err := os.ReadFile(filepath.Join(game, "files.json")) // #nosec G304 -- The caller-selected previous export.
 	if err != nil {
 		return nil, fmt.Errorf("reuse: not a web export: %w", err)
 	}
@@ -271,7 +271,7 @@ type shrinker struct {
 func (s *shrinker) file(name string) (webFile, error) {
 	dir, taken, earlier := s.dir, s.taken, s.earlier
 	src := filepath.Join(dir, filepath.FromSlash(name))
-	b, err := os.ReadFile(src) //nolint:gosec // A file of the newly staged game.
+	b, err := os.ReadFile(src) // #nosec G304 -- A file of the newly staged game.
 	if err != nil {
 		return webFile{}, err
 	}

@@ -147,7 +147,7 @@ func (s *battleScene) stepFx() {
 }
 
 func rnd(seed uint32, i int) float64 {
-	//nolint:gosec // Visual hash intentionally wraps modulo 2^32.
+	// #nosec G115 -- Visual hash intentionally wraps modulo 2^32.
 	x := seed ^ uint32(i)*0x9e3779b9
 	x ^= x >> 16
 	x *= 0x7feb352d
@@ -182,7 +182,7 @@ func (b *fxBatch) v(x, y float64, c color.NRGBA, a float64) uint32 {
 		DstX: float32(x), DstY: float32(y), SrcX: 1, SrcY: 1,
 		ColorR: float32(c.R) / 255, ColorG: float32(c.G) / 255, ColorB: float32(c.B) / 255, ColorA: float32(a),
 	})
-	return uint32(len(b.vs) - 1) //nolint:gosec // One frame cannot allocate 2^32 vertices.
+	return uint32(len(b.vs) - 1) // #nosec G115 -- One frame cannot allocate 2^32 vertices.
 }
 
 func (b *fxBatch) tri(i, j, k uint32) { b.is = append(b.is, i, j, k) }
@@ -213,7 +213,7 @@ func (b *fxBatch) fan(cx, cy, r, ry float64, c color.NRGBA, a, edge float64) {
 	}
 	const n = 20
 	m := b.v(cx, cy, c, a)
-	first := uint32(len(b.vs)) //nolint:gosec // One frame cannot allocate 2^32 vertices.
+	first := uint32(len(b.vs)) // #nosec G115 -- One frame cannot allocate 2^32 vertices.
 	for i := range n {
 		ang := float64(i) / n * 2 * math.Pi
 		b.v(cx+math.Cos(ang)*r, cy+math.Sin(ang)*ry, c, a*edge)
@@ -232,7 +232,7 @@ func (b *fxBatch) ring(cx, cy, r, ry, w float64, c color.NRGBA, a float64) {
 		k = ry / r
 	}
 	const n = 28
-	base := uint32(len(b.vs)) //nolint:gosec // One frame cannot allocate 2^32 vertices.
+	base := uint32(len(b.vs)) // #nosec G115 -- One frame cannot allocate 2^32 vertices.
 	for i := range n {
 		ang := float64(i) / n * 2 * math.Pi
 		cs, sn := math.Cos(ang), math.Sin(ang)
@@ -298,12 +298,12 @@ func (b *fxBatch) polyFade(pts [][2]float64, c color.NRGBA, a, edge float64) {
 	}
 	n := float64(len(pts))
 	m := b.v(mx/n, my/n, c, a)
-	first := uint32(len(b.vs)) //nolint:gosec // One frame cannot allocate 2^32 vertices.
+	first := uint32(len(b.vs)) // #nosec G115 -- One frame cannot allocate 2^32 vertices.
 	for _, p := range pts {
 		b.v(p[0], p[1], c, edge)
 	}
 	for i := range pts {
-		b.tri(m, first+uint32(i), first+uint32((i+1)%len(pts))) //nolint:gosec // Shape vertex indexes are bounded by the frame vertex allocation.
+		b.tri(m, first+uint32(i), first+uint32((i+1)%len(pts))) // #nosec G115 -- Shape vertex indexes are bounded by the frame vertex allocation.
 	}
 }
 
@@ -416,7 +416,7 @@ func (b *fxBatch) star(cx, cy, r, inner, rot float64, n int, c color.NRGBA, a fl
 		return
 	}
 	m := b.v(cx, cy, lighten(c, 0.7), a)
-	first := uint32(len(b.vs)) //nolint:gosec // One frame cannot allocate 2^32 vertices.
+	first := uint32(len(b.vs)) // #nosec G115 -- One frame cannot allocate 2^32 vertices.
 	for i := range 2 * n {
 		rr := r
 		if i%2 == 1 {
@@ -426,7 +426,7 @@ func (b *fxBatch) star(cx, cy, r, inner, rot float64, n int, c color.NRGBA, a fl
 		b.v(cx+math.Cos(ang)*rr, cy+math.Sin(ang)*rr, c, a*0.15)
 	}
 	for i := range 2 * n {
-		b.tri(m, first+uint32(i), first+uint32((i+1)%(2*n))) //nolint:gosec // Shape vertex indexes are bounded by the frame vertex allocation.
+		b.tri(m, first+uint32(i), first+uint32((i+1)%(2*n))) // #nosec G115 -- Shape vertex indexes are bounded by the frame vertex allocation.
 	}
 }
 

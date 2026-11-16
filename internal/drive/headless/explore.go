@@ -192,7 +192,7 @@ func (e *explorer) image(cg data.CG) {
 
 func explorePath(db *data.DB, base []byte, cmds []data.Command, prefix []int, opt Config, expanded map[string]bool) (p *Path, branches [][]int) {
 	p = &Path{}
-	st, err := rpg.Parse(db, base, rand.New(rand.NewPCG(opt.Seed, 0x5eed))) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	st, err := rpg.Parse(db, base, rand.New(rand.NewPCG(opt.Seed, 0x5eed))) // #nosec G404 -- Deterministic gameplay randomness, not security-sensitive data.
 	if err != nil {
 		p.Errs = append(p.Errs, err)
 		return p, nil

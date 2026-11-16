@@ -174,10 +174,10 @@ func verifyEntries(ctx context.Context, r Release, z *zip.Reader, expanded int64
 			}
 			continue
 		}
-		if f.UncompressedSize64 > uint64(expanded-total) { //nolint:gosec // Total starts at zero and each preceding entry is bounded by the remaining positive budget.
+		if f.UncompressedSize64 > uint64(expanded-total) { // #nosec G115 -- Total starts at zero and each preceding entry is bounded by the remaining positive budget.
 			return nil, errors.New("package expansion exceeds limit")
 		}
-		size := int64(f.UncompressedSize64) //nolint:gosec // Bounded above by the installation expansion limit minus total.
+		size := int64(f.UncompressedSize64) // #nosec G115 -- Bounded above by the installation expansion limit minus total.
 		total += size
 		if e := verifyFile(ctx, f, size); e != nil {
 			return nil, fmt.Errorf("entry %s: %w", name, e)

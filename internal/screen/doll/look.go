@@ -34,7 +34,7 @@ func shade(c color.RGBA, k float64) color.RGBA {
 }
 
 func rgba(r, g, b uint32) color.RGBA {
-	return color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), 255} //nolint:gosec // 16-bit to 8-bit
+	return color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), 255} // #nosec G115 -- 16-bit to 8-bit
 }
 
 func pickColor(img image.Image, b image.Rectangle, y0, y1, x0, x1 float64, def color.RGBA) color.RGBA {

@@ -141,7 +141,7 @@ func (m modelSpec) cachedModel() (string, bool) {
 		return "", false
 	}
 	var recorded map[string]verifiedFile
-	if b, err := os.ReadFile(filepath.Join(d, verifiedName)); err == nil { //nolint:gosec // inside the cache directory
+	if b, err := os.ReadFile(filepath.Join(d, verifiedName)); err == nil { // #nosec G304 -- inside the cache directory
 		if json.Unmarshal(b, &recorded) != nil {
 			recorded = nil
 		}

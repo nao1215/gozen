@@ -264,7 +264,7 @@ func (s *State) bind() (*State, error) {
 		}
 	}
 	if s.Rand == nil {
-		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
+		s.Rand = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) // #nosec G404 -- Gameplay randomness; no security-sensitive values.
 	}
 	if err := s.validateStateNames(); err != nil {
 		return nil, err
@@ -529,12 +529,12 @@ func (s *State) SaveFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	old, err := os.ReadFile(path) //nolint:gosec // The caller explicitly selects its save file.
+	old, err := os.ReadFile(path) // #nosec G304 -- The caller explicitly selects its save file.
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
 	}
 	if err == nil {
-		previous, loadErr := ParseWithConfig(s.DB, old, rand.New(rand.NewPCG(1, 2)), Config{AllowLegacy: true}) //nolint:gosec // Gameplay randomness; no security-sensitive values.
+		previous, loadErr := ParseWithConfig(s.DB, old, rand.New(rand.NewPCG(1, 2)), Config{AllowLegacy: true}) // #nosec G404 -- Gameplay randomness; no security-sensitive values.
 		if loadErr != nil || previous.LoadReport.Changed() {
 			return savefile.WritePreserving(path, b)
 		}
@@ -597,6 +597,6 @@ func (s *State) RetryCheckpoint() (*State, *rand.PCG, error) {
 		return nil, nil, fmt.Errorf("checkpoint random state: %w", err)
 	}
 	st.Checkpoint = &Checkpoint{Event: c.Event, Save: slices.Clone(c.Save)}
-	st.Rand = rand.New(p) //nolint:gosec // Restores deterministic gameplay.
+	st.Rand = rand.New(p) // #nosec G404 -- Restores deterministic gameplay.
 	return st, p, nil
 }

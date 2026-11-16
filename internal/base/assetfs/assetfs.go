@@ -471,11 +471,11 @@ func (t Tree) Build(ins []Approval) (Result, error) {
 		if slices.Contains(res.Replaced, a.File) {
 			from = filepath.Join(top, filepath.FromSlash(a.File))
 		}
-		want, err := os.ReadFile(from) //nolint:gosec // The caller selects the source and destination; traversal validates their containment.
+		want, err := os.ReadFile(from) // #nosec G304 -- The caller selects the source and destination; traversal validates their containment.
 		if err != nil {
 			return res, err
 		}
-		got, err := os.ReadFile(filepath.Join(dst, rel)) //nolint:gosec // The caller selects the source and destination; traversal validates their containment.
+		got, err := os.ReadFile(filepath.Join(dst, rel)) // #nosec G304 -- The caller selects the source and destination; traversal validates their containment.
 		if err != nil {
 			return res, err
 		}
@@ -493,7 +493,7 @@ func within(p, dir string) bool {
 }
 
 func copyFile(from, to string) (err error) {
-	in, err := os.Open(from) //nolint:gosec // The caller selects the source and destination; traversal validates their containment.
+	in, err := os.Open(from) // #nosec G304 -- The caller selects the source and destination; traversal validates their containment.
 	if err != nil {
 		return err
 	}
@@ -501,7 +501,7 @@ func copyFile(from, to string) (err error) {
 	if err := os.MkdirAll(filepath.Dir(to), 0o750); err != nil {
 		return err
 	}
-	out, err := os.Create(to) //nolint:gosec // The caller selects the source and destination; traversal validates their containment.
+	out, err := os.Create(to) // #nosec G304 -- The caller selects the source and destination; traversal validates their containment.
 	if err != nil {
 		return err
 	}

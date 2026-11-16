@@ -20,7 +20,7 @@ func DeviceLocales(context.Context) []string {
 	buf := make([]uint16, 85) // LOCALE_NAME_MAX_LENGTH
 	// the buffer is passed as Windows takes it; the third value is GetLastError, which a
 	// length above 0 leaves unread
-	if n, _, _ := proc.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf))); n > 1 { //nolint:gosec,errcheck // see above
+	if n, _, _ := proc.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf))); n > 1 { /* #nosec G103 -- see above */ //nolint:errcheck
 		out = append(out, syscall.UTF16ToString(buf[:n-1]))
 	}
 	return out

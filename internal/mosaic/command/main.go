@@ -536,7 +536,7 @@ func one(ctx context.Context, c *config, rel string) (result entry, err error) {
 }
 
 func decode(path string) (image.Image, error) {
-	f, err := os.Open(path) //nolint:gosec // The caller explicitly selects this input file.
+	f, err := os.Open(path) // #nosec G304 -- The caller explicitly selects this input file.
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +577,7 @@ func writeReport(gameDir, out string, report []entry) ([]entry, error) {
 		now[e.File] = e
 	}
 	all := append([]entry(nil), report...)
-	if b, err := os.ReadFile(path); err == nil { //nolint:gosec // The caller explicitly selects this input file.
+	if b, err := os.ReadFile(path); err == nil { // #nosec G304 -- The caller explicitly selects this input file.
 		var old []entry
 		if json.Unmarshal(b, &old) == nil {
 			for _, e := range old {
@@ -630,7 +630,7 @@ func writeReport(gameDir, out string, report []entry) ([]entry, error) {
 }
 
 func fileSum(path string) (string, error) {
-	b, err := os.ReadFile(path) //nolint:gosec // The caller explicitly selects this input file.
+	b, err := os.ReadFile(path) // #nosec G304 -- The caller explicitly selects this input file.
 	if err != nil {
 		return "", err
 	}
