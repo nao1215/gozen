@@ -47,8 +47,8 @@ func NewMesh(r *Rig) *Mesh {
 	}
 	for j := range rows - 1 {
 		for i := range cols - 1 {
-			a := uint16(j*cols + i)                          //nolint:gosec // At most 49x49 vertices (maxCells), far below 65536.
-			b, c, d := a+1, a+uint16(cols), a+uint16(cols)+1 //nolint:gosec // cols is at most 49.
+			a := uint16(j*cols + i)                          // #nosec G115 -- At most 49x49 vertices (maxCells), far below 65536.
+			b, c, d := a+1, a+uint16(cols), a+uint16(cols)+1 // #nosec G115 -- cols is at most 49.
 			m.Index = append(m.Index, a, b, c, b, d, c)
 		}
 	}

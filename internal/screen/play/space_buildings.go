@@ -70,7 +70,7 @@ func (v *spaceView) prepareBuildings(d *data.Dungeon) {
 		for x := range 64 {
 			for slot, i := range d.Space.RoofCandidates(x, z) {
 				offset := ((slot/3*64+z)*64+x)*4 + slot%3
-				v.buildingPixels[offset] = byte(i + 1) //nolint:gosec // At most 64 validated roof parts.
+				v.buildingPixels[offset] = byte(i + 1) // #nosec G115 -- At most 64 validated roof parts.
 			}
 		}
 	}
@@ -86,7 +86,7 @@ func (v *spaceView) prepareBuildings(d *data.Dungeon) {
 					if face == 3 {
 						offset = ((640+(r.Level-1)*64+z)*64 + x) * 4
 					}
-					v.buildingPixels[offset] = byte(id(name)) //nolint:gosec // At most 32 validated material IDs.
+					v.buildingPixels[offset] = byte(id(name)) // #nosec G115 -- At most 32 validated material IDs.
 				}
 			}
 		}

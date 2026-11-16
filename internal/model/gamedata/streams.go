@@ -2,7 +2,7 @@ package gamedata
 
 import (
 	"cmp"
-	"crypto/sha1" //nolint:gosec // A file name for a line, not security.
+	"crypto/sha1" // #nosec G505 -- A file name for a line, not security.
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -436,7 +436,7 @@ func (t StreamTiming) Seconds(b Beat) float64 {
 // VoiceKey names the recorded voice of a stream line: the first 16 hexadecimal digits of
 // the SHA-1 of the line in UTF-8 after translation and field substitution, before quoting.
 func VoiceKey(line string) string {
-	sum := sha1.Sum([]byte(line)) //nolint:gosec // A file name for a line, not security.
+	sum := sha1.Sum([]byte(line)) // #nosec G401 -- A file name for a line, not security.
 	return hex.EncodeToString(sum[:])[:16]
 }
 

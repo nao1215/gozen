@@ -544,7 +544,7 @@ func (r *Result) Write(dir string) error {
 		if !strings.HasSuffix(a, ".txt") {
 			continue
 		}
-		b, err := os.ReadFile(dst) //nolint:gosec // The copy just made in the caller's new directory.
+		b, err := os.ReadFile(dst) // #nosec G304 -- The copy just made in the caller's new directory.
 		if err != nil {
 			return err
 		}

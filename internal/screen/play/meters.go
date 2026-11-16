@@ -148,7 +148,7 @@ func (g *Game) viewState() *rpg.State {
 	if g.pcg != nil {
 		source = *g.pcg
 	}
-	state.Rand = rand.New(&source) //nolint:gosec // Display only, not security.
+	state.Rand = rand.New(&source) // #nosec G404 -- Display only, not security.
 	return &state
 }
 

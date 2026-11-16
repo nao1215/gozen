@@ -605,7 +605,7 @@ func renderView(img image.Image, region image.Rectangle, size, step int, ov over
 				y := region.Min.Y + int(float64(py-at.Min.Y)/scale)
 				if (image.Point{x, y}).In(ov.painted.Rect) && ov.painted.Pix[ov.painted.PixOffset(x, y)] != 0 {
 					c := out.RGBAAt(px, py)
-					out.SetRGBA(px, py, color.RGBA{uint8((int(c.R)*3 + 255) / 4), uint8((int(c.G)*3 + 220) / 4), uint8(int(c.B) * 3 / 4), 255}) //nolint:gosec // Channel averages remain within 0..255.
+					out.SetRGBA(px, py, color.RGBA{uint8((int(c.R)*3 + 255) / 4), uint8((int(c.G)*3 + 220) / 4), uint8(int(c.B) * 3 / 4), 255}) // #nosec G115 -- Channel averages remain within 0..255.
 				}
 			}
 		}
@@ -674,7 +674,7 @@ func gridLine(dst *image.RGBA, r image.Rectangle) {
 			if (x+y)/4%2 == 1 {
 				v = 0
 			}
-			mix := func(a uint8) uint8 { return uint8((int(a)*2 + int(v)) / 3) } //nolint:gosec // Channel averages remain within 0..255.
+			mix := func(a uint8) uint8 { return uint8((int(a)*2 + int(v)) / 3) } // #nosec G115 -- Channel averages remain within 0..255.
 			dst.SetRGBA(x, y, color.RGBA{mix(c.R), mix(c.G), mix(c.B), 255})
 		}
 	}

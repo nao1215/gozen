@@ -22,7 +22,7 @@ func Cases() []string {
 // fontPath selects the existing licensed test font; its bytes are copied unchanged.
 // It is used by benchmark setup and the budget integration tests.
 func Generate(dir, scenario, fontPath string) error {
-	font, err := os.ReadFile(fontPath) //nolint:gosec // Caller selects the existing licensed test font.
+	font, err := os.ReadFile(fontPath) // #nosec G304 -- Caller selects the existing licensed test font.
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func Generate(dir, scenario, fontPath string) error {
 		return err
 	}
 	write := func(name, body string) error { return os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600) }
-	if err := os.WriteFile(filepath.Join(dir, "assets", "regular.ttf"), font, 0o600); err != nil { //nolint:gosec // Caller owns the scratch directory; the relative path is fixed.
+	if err := os.WriteFile(filepath.Join(dir, "assets", "regular.ttf"), font, 0o600); err != nil { // #nosec G703 -- Caller owns the scratch directory; the relative path is fixed.
 		return err
 	}
 	game := "schema_version: 4\nid: speed-budget\ntitle: Speed budget\nscreen: {width: 960, height: 540}\nfonts: {regular: regular.ttf}\nstart: {location: room, party: [reader]}\nui: {message: novel}\nbattle: {variance: 0, critical: 0}\n"
@@ -56,7 +56,7 @@ troops: {lesson: {members: [mote]}}
 				img.SetRGBA(x, y, color.RGBA{uint8((x/32 + phase) & 255), uint8((y/32 + phase) & 255), 128, 255})
 			}
 		}
-		f, err := os.Create(filepath.Join(dir, "assets", name)) //nolint:gosec // Fixed generated asset names under caller-owned scratch directory.
+		f, err := os.Create(filepath.Join(dir, "assets", name)) // #nosec G304 -- Fixed generated asset names under caller-owned scratch directory.
 		if err != nil {
 			return err
 		}

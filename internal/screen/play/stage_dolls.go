@@ -300,7 +300,7 @@ func hexRGBA(s string) color.RGBA {
 	if err != nil {
 		return color.RGBA{A: 255}
 	}
-	return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} //nolint:gosec // 24-bit value, split into bytes
+	return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} // #nosec G115 -- 24-bit value, split into bytes
 }
 
 // stageRenderer is the textures of a location's scene (made on its first showing).

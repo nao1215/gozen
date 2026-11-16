@@ -90,7 +90,7 @@ func (g *Game) rig(file string) *puppet.Rig {
 func seededPuppet(rig *puppet.Rig, key string) *puppet.Puppet {
 	h := fnv.New64a()
 	h.Write([]byte(key))
-	return puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) //nolint:gosec // Animation timing, not security-sensitive data.
+	return puppet.New(rig, rand.New(rand.NewPCG(h.Sum64(), 1)), ebiten.DefaultTPS) // #nosec G404 -- Animation timing, not security-sensitive data.
 }
 
 func (g *Game) enemyPuppet(u *battle.Unit, picture string, hp int) *puppet.Puppet {

@@ -288,8 +288,8 @@ type one struct {
 }
 
 func play(ctx context.Context, db *data.DB, cfg Config, seed uint64, r *Result) (*one, error) {
-	st := rpg.New(db, rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))) //nolint:gosec // Gameplay randomness, not security.
-	rng := rand.New(rand.NewPCG(seed, 1))                                   //nolint:gosec // The strategy's randomness, not security.
+	st := rpg.New(db, rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))) // #nosec G404 -- Gameplay randomness, not security.
+	rng := rand.New(rand.NewPCG(seed, 1))                                   // #nosec G404 -- The strategy's randomness, not security.
 	d := headless.New(db, st)
 	if err := d.Start(); err != nil {
 		return nil, err

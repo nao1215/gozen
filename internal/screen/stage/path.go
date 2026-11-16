@@ -212,7 +212,7 @@ func (s *Scene) Path(p, q geom.Pt) []geom.Pt {
 		g.run = 1
 	}
 	h := func(i int) float64 { return math.Hypot(float64(i%g.w-tx), float64(i/g.w-ty)) }
-	g.seen[start], g.cost[start], g.prev[start] = g.run, 0, int32(start) //nolint:gosec // a cell index of the grid
+	g.seen[start], g.cost[start], g.prev[start] = g.run, 0, int32(start) // #nosec G115 -- a cell index of the grid
 	g.open = append(g.open[:0], node{start, h(start)})
 	for len(g.open) > 0 {
 		n := g.open.pop()
@@ -231,7 +231,7 @@ func (s *Scene) Path(p, q geom.Pt) []geom.Pt {
 			j := ny*g.w + nx
 			c := g.cost[n.i] + d[2]
 			if g.seen[j] != g.run || c < g.cost[j] {
-				g.seen[j], g.cost[j], g.prev[j] = g.run, c, int32(n.i) //nolint:gosec // a cell index of the grid
+				g.seen[j], g.cost[j], g.prev[j] = g.run, c, int32(n.i) // #nosec G115 -- a cell index of the grid
 				g.open.push(node{j, c + h(j)})
 			}
 		}

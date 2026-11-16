@@ -152,7 +152,7 @@ func (p Policy) ReadRecords(top fs.FS) ([]Approval, []string, error) {
 
 // ReadInspections also converts the old format according to the settings. Old records without a source hash are filled in from the output record.
 func (p Policy) ReadInspections(file string, records []Approval) (result []Approval, err error) {
-	f, err := os.Open(file) //nolint:gosec // Tool caller supplies the inspection file.
+	f, err := os.Open(file) // #nosec G304 -- Tool caller supplies the inspection file.
 	if err != nil {
 		return nil, err
 	}

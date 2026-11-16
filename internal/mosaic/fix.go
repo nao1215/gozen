@@ -117,7 +117,7 @@ func LoadFixes(path string) (Fixes, error) {
 	if path == "" {
 		return fx, nil
 	}
-	b, err := os.ReadFile(path) //nolint:gosec // The caller explicitly selects this input file.
+	b, err := os.ReadFile(path) // #nosec G304 -- The caller explicitly selects this input file.
 	if err != nil {
 		return nil, err
 	}

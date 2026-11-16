@@ -138,7 +138,7 @@ func New(b *Book, id string, cfg Config) (*Mind, error) {
 	}
 	rng := cfg.Rand
 	if rng == nil {
-		rng = rand.New(rand.NewPCG(1, 2)) //nolint:gosec // G404: reproducible line choice, not security
+		rng = rand.New(rand.NewPCG(1, 2)) // #nosec G404 -- reproducible line choice, not security
 	}
 	m := &Mind{
 		book: b, p: p, cfg: cfg, rng: rng, lex: map[string]*lexRun{},

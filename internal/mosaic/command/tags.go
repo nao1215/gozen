@@ -36,7 +36,7 @@ func loadTagCache(path, dir, lib string, threads int) (*tagCache, error) {
 	if path == "" {
 		return tc, nil
 	}
-	b, err := os.ReadFile(path) //nolint:gosec // The caller explicitly selects this input file.
+	b, err := os.ReadFile(path) // #nosec G304 -- The caller explicitly selects this input file.
 	if os.IsNotExist(err) {
 		return tc, nil
 	}

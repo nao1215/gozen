@@ -277,7 +277,7 @@ func (g *Game) reload() {
 	for _, b := range [][]byte{save, now} {
 		if err == nil && b != nil {
 			var st *rpg.State
-			st, err = rpg.Parse(db, b, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Deterministic validation of a saved gameplay state.
+			st, err = rpg.Parse(db, b, rand.New(rand.NewPCG(1, 2))) // #nosec G404 -- Deterministic validation of a saved gameplay state.
 			if err == nil {
 				reports = append(reports, st.LoadReport)
 			}
@@ -357,7 +357,7 @@ func (g *Game) reloadState(now, save []byte, inEvent bool, name string, lines in
 		rng := baseRng
 		if fromEvent && rnd != nil {
 			if p, err := savedPCG(rnd); err == nil {
-				g.pcg, rng = p, rand.New(p) //nolint:gosec // Restores deterministic gameplay randomness, not secrets.
+				g.pcg, rng = p, rand.New(p) // #nosec G404 -- Restores deterministic gameplay randomness, not secrets.
 			}
 		}
 		st, err := rpg.Parse(g.db, b, rng)

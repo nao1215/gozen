@@ -152,7 +152,7 @@ type SpacePose struct {
 func New(db *data.DB, rng *rand.Rand) *State {
 	db = db.ForState()
 	if rng == nil {
-		rng = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) //nolint:gosec // Gameplay randomness; no security-sensitive values.
+		rng = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) // #nosec G404 -- Gameplay randomness; no security-sensitive values.
 	}
 	s := &State{
 		Party: []string{}, Actors: map[string]*Actor{}, Items: map[string]int{}, Flags: map[string]bool{},
@@ -196,7 +196,7 @@ func (s *State) RecruitFloat64() float64 {
 	if s.RecruitSeed == 0 {
 		s.RecruitSeed = collectionSeed(s.DB.Game.ID)
 	}
-	rng := rand.New(rand.NewPCG(s.RecruitSeed, s.RecruitDraws)) //nolint:gosec // Deterministic gameplay randomness.
+	rng := rand.New(rand.NewPCG(s.RecruitSeed, s.RecruitDraws)) // #nosec G404 -- Deterministic gameplay randomness.
 	s.RecruitDraws++
 	return rng.Float64()
 }

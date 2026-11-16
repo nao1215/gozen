@@ -112,7 +112,7 @@ func New(g *Game, cfg Config) (*Session, error) {
 		return nil, fmt.Errorf("%w: nil game", ErrInvalid)
 	}
 	s := newSession(g, cfg)
-	s.st = rpg.New(s.db, rand.New(s.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	s.st = rpg.New(s.db, rand.New(s.pcg)) // #nosec G404 -- Gameplay randomness, not security.
 	s.db = s.st.DB
 	s.st.SetRecruitSeed(s.seed)
 	s.start()
@@ -128,7 +128,7 @@ func Restore(g *Game, save []byte, cfg Config) (*Session, error) {
 		return nil, fmt.Errorf("%w: nil game", ErrInvalid)
 	}
 	s := newSession(g, cfg)
-	st, err := rpg.Parse(s.db, save, rand.New(s.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	st, err := rpg.Parse(s.db, save, rand.New(s.pcg)) // #nosec G404 -- Gameplay randomness, not security.
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrIncompatibleSave, err)
 	}
@@ -215,7 +215,7 @@ func (s *Session) resume(c rpg.Cursor) error {
 func newSession(g *Game, cfg Config) *Session {
 	seed := cfg.Seed
 	if seed == 0 {
-		seed = rand.Uint64() //nolint:gosec // Gameplay randomness, not security.
+		seed = rand.Uint64() // #nosec G404 -- Gameplay randomness, not security.
 	}
 	if cfg.Policy == nil {
 		cfg.Policy = DefaultPolicy{}
@@ -727,7 +727,7 @@ func (s *Session) Clone() (*Session, error) {
 	c := &Session{g: s.g, db: gamedata.Fork(s.db), cfg: s.cfg, last: s.last}
 	pcg := *s.pcg
 	c.pcg = &pcg
-	st, err := rpg.Parse(c.db, b, rand.New(c.pcg)) //nolint:gosec // Gameplay randomness, not security.
+	st, err := rpg.Parse(c.db, b, rand.New(c.pcg)) // #nosec G404 -- Gameplay randomness, not security.
 	if err != nil {
 		return nil, err
 	}

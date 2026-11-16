@@ -49,7 +49,7 @@ func bubbleImage() *ebiten.Image {
 }
 
 func bubbleHash(a, b, c int) float64 {
-	//nolint:gosec // Visual hash intentionally wraps modulo 2^32.
+	// #nosec G115 -- Visual hash intentionally wraps modulo 2^32.
 	h := uint32(a)*0x9e3779b1 ^ uint32(b)*0x85ebca77 ^ uint32(c)*0xc2b2ae3d
 	h ^= h >> 15
 	h *= 0x2c1b3c6d

@@ -293,7 +293,7 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	p := puppet.New(rig, rand.New(rand.NewPCG(o.seed, 7)), 60) //nolint:gosec // Animation timing, not security-sensitive data.
+	p := puppet.New(rig, rand.New(rand.NewPCG(o.seed, 7)), 60) // #nosec G404 -- Animation timing, not security-sensitive data.
 	defer p.Close()
 	w, h := rig.Size()
 	s := &stage{p: p, w: w, h: h, bg: background(), frames: o.frames}

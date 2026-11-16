@@ -90,7 +90,7 @@ func (c *command) sim() clihelp.Operation {
 		for _, file := range starts {
 			var start balance.Start
 			if file != "" {
-				b, err := os.ReadFile(file) //nolint:gosec // The caller names the saved state to read.
+				b, err := os.ReadFile(file) // #nosec G304 -- The caller names the saved state to read.
 				if err != nil {
 					return err
 				}

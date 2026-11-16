@@ -81,7 +81,7 @@ func Make(db *data.DB, st *rpg.State, loc string) {
 	if fs, ok := g.SeedFor(safeint.From(floor)); ok {
 		s = fs
 	}
-	rng := rand.New(rand.NewPCG(s, uint64(safeint.From(floor))*7919+1)) //nolint:gosec // Deterministic gameplay randomness, not security-sensitive data.
+	rng := rand.New(rand.NewPCG(s, uint64(safeint.From(floor))*7919+1)) // #nosec G115 G404 -- Deterministic gameplay randomness, not security-sensitive data.
 	// The map is made again from the seed when a save is loaded: what shapes it reads the
 	// floor's number only, never the rest of the state (it has changed since the dive).
 	env := expr.Map{"floor": floor}
@@ -139,7 +139,7 @@ func seedBits(seed float64) uint64 {
 	case math.IsNaN(seed):
 		return 0
 	case seed < 0:
-		return uint64(int64(max(seed, math.MinInt64))) //nolint:gosec // The wrap is the point: the seed's bits.
+		return uint64(int64(max(seed, math.MinInt64))) // #nosec G115 -- The wrap is the point: the seed's bits.
 	case seed >= 1<<64:
 		return math.MaxUint64
 	}

@@ -50,20 +50,20 @@ func run() error {
 	if err := os.MkdirAll(filepath.Dir(*out), 0o750); err != nil {
 		return err
 	}
-	license, err := os.ReadFile(filepath.Join(goRoot, "LICENSE")) //nolint:gosec // License of the active build toolchain.
+	license, err := os.ReadFile(filepath.Join(goRoot, "LICENSE")) // #nosec G304 -- License of the active build toolchain.
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(filepath.Dir(*out), "GO-LICENSE"), license, 0o600); err != nil { //nolint:gosec // Explicit maintainer-selected bundle output.
+	if err := os.WriteFile(filepath.Join(filepath.Dir(*out), "GO-LICENSE"), license, 0o600); err != nil { // #nosec G703 -- Explicit maintainer-selected bundle output.
 		return err
 	}
 	if *target == "js-wasm" {
 		source := filepath.Join(goRoot, "lib", "wasm", "wasm_exec.js")
-		b, err := os.ReadFile(source) //nolint:gosec // Matching JavaScript runtime from the active Go toolchain.
+		b, err := os.ReadFile(source) // #nosec G304 -- Matching JavaScript runtime from the active Go toolchain.
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(filepath.Dir(*out), "wasm_exec.js"), b, 0o600); err != nil { //nolint:gosec // Explicit maintainer-selected bundle output.
+		if err := os.WriteFile(filepath.Join(filepath.Dir(*out), "wasm_exec.js"), b, 0o600); err != nil { // #nosec G703 -- Explicit maintainer-selected bundle output.
 			return err
 		}
 		sum := sha256.Sum256(b)
@@ -77,7 +77,7 @@ func run() error {
 }
 
 func checksum(name string) (string, error) {
-	f, err := os.Open(name) //nolint:gosec // Maintainer-selected compiled player.
+	f, err := os.Open(name) // #nosec G304 -- Maintainer-selected compiled player.
 	if err != nil {
 		return "", err
 	}

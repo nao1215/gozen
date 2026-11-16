@@ -136,7 +136,7 @@ func newMusicRoom(g *Game) *musicRoom {
 	r := &musicRoom{entries: musicEntries(g.db), playing: -1, rnd: g.rng()}
 	if r.rnd == nil {
 		n := uint64(time.Now().UnixNano())
-		r.rnd = rand.New(rand.NewPCG(n, n*7+1)) //nolint:gosec // Music-room shuffle, not cryptographic randomness.
+		r.rnd = rand.New(rand.NewPCG(n, n*7+1)) // #nosec G404 -- Music-room shuffle, not cryptographic randomness.
 	}
 	r.pool = g.musicBackgrounds()
 	r.songs = g.songPictures()

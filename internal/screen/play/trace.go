@@ -857,7 +857,7 @@ func loadReplay(path string, o *Options) (_ *replay, err error) {
 	if o.ReplayBattle > 0 {
 		return loadBattleReplay(path, o)
 	}
-	f, err := os.Open(path) //nolint:gosec // The caller explicitly selects the trace input file.
+	f, err := os.Open(path) // #nosec G304 -- The caller explicitly selects the trace input file.
 	if err != nil {
 		return nil, err
 	}
@@ -1383,7 +1383,7 @@ func comparableLine(l traceLine) string {
 	return string(b)
 }
 
-func newSeed() uint64 { return rand.Uint64()>>12 | 1 } //nolint:gosec // Gameplay seed, not a security token.
+func newSeed() uint64 { return rand.Uint64()>>12 | 1 } // #nosec G404 -- Gameplay seed, not a security token.
 
 func (g *Game) traceEnd() {
 	if g.tr == nil || g.tr.ended {

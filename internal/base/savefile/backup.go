@@ -58,7 +58,7 @@ func writePreserving(name string, b []byte, read func(string) ([]byte, error), w
 }
 
 func createBackup(path string, b []byte) (err error) {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // Caller-owned save path; exclusive creation preserves existing backups.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- Caller-owned save path; exclusive creation preserves existing backups.
 	if err != nil {
 		return err
 	}

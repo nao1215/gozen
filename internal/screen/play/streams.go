@@ -91,7 +91,7 @@ func (g *Game) stepStreams() {
 		_, offset := now.Zone()
 		now = now.In(time.FixedZone("", offset))
 		g.emit("now", traceLine{"unix_ms": now.UnixMilli(), "utc_offset": offset})
-		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}, left: map[*broadcast.Show]int{}} //nolint:gosec // Who streams is not security-sensitive.
+		g.desk = &streamDesk{base: now, tick0: g.tick, rng: rand.New(rand.NewPCG(g.opts.Seed, uint64(now.UnixMilli()))), avatars: map[string]*ebiten.Image{}, left: map[*broadcast.Show]int{}} // #nosec G404 -- Who streams is not security-sensitive.
 		if v := g.db.Streams.Voices; v != "" {
 			st, err := fs.Stat(g.db.FS, "assets/"+v)
 			g.desk.voices = err == nil && st.IsDir()
@@ -429,7 +429,7 @@ func (g *Game) newCrowd() *chat.Crowd {
 	if err == nil {
 		var s *chat.Script
 		if s, err = chat.Parse(b); err == nil { // JSON is YAML
-			return chat.NewCrowd(s, chat.CrowdConfig{Rand: rand.New(rand.NewPCG(g.desk.rng.Uint64(), 1))}) //nolint:gosec // Bot chatter.
+			return chat.NewCrowd(s, chat.CrowdConfig{Rand: rand.New(rand.NewPCG(g.desk.rng.Uint64(), 1))}) // #nosec G404 -- Bot chatter.
 		}
 	}
 	log.Printf("streams: crowd: %v", err) // gozen check reports the crowd

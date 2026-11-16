@@ -197,7 +197,7 @@ func (p *pcm) fill(r io.Reader, progress func()) error {
 		even := n &^ 1
 		for j := 0; j < even; j += 2 {
 			if i < len(p.data) {
-				//nolint:gosec // PCM reinterprets a signed two-complement 16-bit sample.
+				// #nosec G115 -- PCM reinterprets a signed two-complement 16-bit sample.
 				p.data[i] = int16(binary.LittleEndian.Uint16(buf[j:]))
 				i++
 			} else {

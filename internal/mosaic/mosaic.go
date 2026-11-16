@@ -139,7 +139,7 @@ func average(img image.Image, r image.Rectangle) color.RGBA {
 	if n == 0 {
 		return color.RGBA{}
 	}
-	return color.RGBA{uint8(sr / n >> 8), uint8(sg / n >> 8), uint8(sb / n >> 8), uint8(sa / n >> 8)} //nolint:gosec // Channel averages remain within 0..255.
+	return color.RGBA{uint8(sr / n >> 8), uint8(sg / n >> 8), uint8(sb / n >> 8), uint8(sa / n >> 8)} // #nosec G115 -- Channel averages remain within 0..255.
 }
 
 func fill(dst *image.RGBA, r image.Rectangle, c color.RGBA) {

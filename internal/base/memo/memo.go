@@ -110,7 +110,7 @@ func Next(root string, m *Memo) (string, error) {
 	}
 	for n := 1; ; n++ {
 		base := filepath.Join(dir, fmt.Sprintf("%03d", n))
-		f, err := os.OpenFile(base+".json", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // root is the caller-selected note directory.
+		f, err := os.OpenFile(base+".json", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) // #nosec G304 -- root is the caller-selected note directory.
 		if errors.Is(err, os.ErrExist) {
 			continue
 		}
@@ -138,7 +138,7 @@ func WriteAt(base string, m *Memo, shot image.Image, save []byte) (_ string, err
 	}()
 
 	if shot != nil {
-		f, err := os.OpenFile(base+".png", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) //nolint:gosec // base is a caller-selected Next reservation.
+		f, err := os.OpenFile(base+".png", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) // #nosec G304 -- base is a caller-selected Next reservation.
 		if err != nil {
 			return "", err
 		}
@@ -171,7 +171,7 @@ func Read(path string) (Memo, []byte, error) {
 	if before, ok := strings.CutSuffix(path, ".save"); ok {
 		jsonPath, savePath = before+".json", path
 	}
-	if b, err := os.ReadFile(jsonPath); err == nil { //nolint:gosec // The caller explicitly selects the note to read.
+	if b, err := os.ReadFile(jsonPath); err == nil { // #nosec G304 -- The caller explicitly selects the note to read.
 		if err := json.Unmarshal(b, &m); err != nil {
 			return m, nil, fmt.Errorf("%s: %w", jsonPath, err)
 		}
@@ -187,7 +187,7 @@ func Read(path string) (Memo, []byte, error) {
 	} else if savePath == "" || !errors.Is(err, fs.ErrNotExist) {
 		return m, nil, err
 	}
-	b, err := os.ReadFile(savePath) //nolint:gosec // The caller selected the save or its validated sibling basename.
+	b, err := os.ReadFile(savePath) // #nosec G304 -- The caller selected the save or its validated sibling basename.
 	return m, b, err
 }
 
@@ -203,7 +203,7 @@ func All(root string) ([]Entry, error) {
 	}
 	var out []Entry
 	for _, f := range files {
-		b, err := os.ReadFile(f) //nolint:gosec // f is from Glob within the caller-selected note directory.
+		b, err := os.ReadFile(f) // #nosec G304 -- f is from Glob within the caller-selected note directory.
 		if err != nil {
 			return nil, err
 		}

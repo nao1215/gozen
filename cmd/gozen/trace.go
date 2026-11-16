@@ -79,7 +79,7 @@ func (c *command) traceCmd() clihelp.Operation {
 		inputStream := io.NopCloser(os.Stdin)
 		if inputPath != "-" {
 			var err error
-			inputStream, err = os.Open(inputPath) //nolint:gosec // Explicit caller-selected input.
+			inputStream, err = os.Open(inputPath) // #nosec G304 -- Explicit caller-selected input.
 			if err != nil {
 				return err
 			}

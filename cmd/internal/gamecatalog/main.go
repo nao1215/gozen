@@ -46,7 +46,7 @@ func run(ctx context.Context, args []string) error {
 	if len(args) < 2 {
 		return errors.New("usage: gamecatalog check CATALOG SOURCES [PREVIOUS] | sign CATALOG SIGNATURE")
 	}
-	b, e := os.ReadFile(args[1]) //nolint:gosec // Explicit maintainer-selected catalog path.
+	b, e := os.ReadFile(args[1]) // #nosec G703 -- Explicit maintainer-selected catalog path.
 	if e != nil {
 		return e
 	}
@@ -64,7 +64,7 @@ func run(ctx context.Context, args []string) error {
 			return e
 		}
 		if len(args) == 4 {
-			old, e := os.ReadFile(args[3]) //nolint:gosec // Explicit maintainer-selected comparison snapshot.
+			old, e := os.ReadFile(args[3]) // #nosec G703 -- Explicit maintainer-selected comparison snapshot.
 			if e != nil {
 				return e
 			}
@@ -89,7 +89,7 @@ func run(ctx context.Context, args []string) error {
 		if e != nil {
 			return e
 		}
-		return os.WriteFile(args[2], []byte(sig+"\n"), 0o600) //nolint:gosec // Explicit maintainer-selected signature output.
+		return os.WriteFile(args[2], []byte(sig+"\n"), 0o600) // #nosec G703 -- Explicit maintainer-selected signature output.
 	default:
 		return errors.New("unknown catalog operation")
 	}
@@ -97,7 +97,7 @@ func run(ctx context.Context, args []string) error {
 
 func readSources(name string) (sources, error) {
 	var cfg sources
-	b, e := os.ReadFile(name) //nolint:gosec // Explicit maintainer-selected source allowlist.
+	b, e := os.ReadFile(name) // #nosec G304 G703 -- Explicit maintainer-selected source allowlist.
 	if e != nil {
 		return cfg, e
 	}
@@ -184,7 +184,7 @@ func verifyRelease(ctx context.Context, r gamepackage.Release) (err error) {
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(dir)) }()
 	name := filepath.Join(dir, "game.zip")
-	f, e := os.Create(name) //nolint:gosec // Fixed filename in a newly created private temporary directory.
+	f, e := os.Create(name) // #nosec G304 -- Fixed filename in a newly created private temporary directory.
 	if e != nil {
 		return e
 	}

@@ -168,7 +168,7 @@ func WriteNew(name string, b []byte) (err error) {
 	if err = os.MkdirAll(filepath.Dir(name), 0o750); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // Explicit caller-selected input or file within a newly reserved output tree.
+	f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- Explicit caller-selected input or file within a newly reserved output tree.
 	if err != nil {
 		return err
 	}

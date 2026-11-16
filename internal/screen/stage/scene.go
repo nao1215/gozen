@@ -182,7 +182,7 @@ func Gray16(img image.Image, size image.Rectangle) *image.Gray16 {
 		for x := size.Min.X; x < size.Max.X; x++ {
 			sx := b.Min.X + (x-size.Min.X)*b.Dx()/size.Dx()
 			r, _, _, _ := img.At(sx, sy).RGBA()
-			g.SetGray16(x, y, color.Gray16{Y: uint16(r)}) //nolint:gosec // a 16-bit channel
+			g.SetGray16(x, y, color.Gray16{Y: uint16(r)}) // #nosec G115 -- a 16-bit channel
 		}
 	}
 	return g

@@ -23,7 +23,7 @@ func (cfg Config) batchScenes(ctx context.Context, c *promptgen.Catalog, path st
 	if path == "-" {
 		b, err = io.ReadAll(cfg.Input)
 	} else {
-		b, err = os.ReadFile(path) //nolint:gosec // Explicit user-supplied input path; this operation does not write files.
+		b, err = os.ReadFile(path) // #nosec G304 -- Explicit user-supplied input path; this operation does not write files.
 	}
 	if err != nil {
 		return err

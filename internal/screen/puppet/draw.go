@@ -217,7 +217,7 @@ func shrink(img *image.NRGBA, at image.Point, level int) (*image.NRGBA, image.Po
 	x1, y1 := floorDiv(at.X+b.Dx()+n-1, n), floorDiv(at.Y+b.Dy()+n-1, n)
 	out := image.NewNRGBA(image.Rect(0, 0, x1-x0, y1-y0))
 	rows := func(from, to int) {
-		area := uint64(n) * uint64(n) //nolint:gosec // n is a power of two up to 1<<maxLevel.
+		area := uint64(n) * uint64(n) // #nosec G115 -- n is a power of two up to 1<<maxLevel.
 		for oy := from; oy < to; oy++ {
 			for ox := range x1 - x0 {
 				var sr, sg, sb, sa uint64
@@ -244,10 +244,10 @@ func shrink(img *image.NRGBA, at image.Point, level int) (*image.NRGBA, image.Po
 					continue
 				}
 				o := out.Pix[oy*out.Stride+ox*4:]
-				o[0] = uint8((sr + sa/2) / sa)     //nolint:gosec // An average of bytes is a byte.
-				o[1] = uint8((sg + sa/2) / sa)     //nolint:gosec // An average of bytes is a byte.
-				o[2] = uint8((sb + sa/2) / sa)     //nolint:gosec // An average of bytes is a byte.
-				o[3] = uint8((sa + area/2) / area) //nolint:gosec // An average of bytes is a byte.
+				o[0] = uint8((sr + sa/2) / sa)     // #nosec G115 -- An average of bytes is a byte.
+				o[1] = uint8((sg + sa/2) / sa)     // #nosec G115 -- An average of bytes is a byte.
+				o[2] = uint8((sb + sa/2) / sa)     // #nosec G115 -- An average of bytes is a byte.
+				o[3] = uint8((sa + area/2) / area) // #nosec G115 -- An average of bytes is a byte.
 			}
 		}
 	}

@@ -714,8 +714,8 @@ func (v *viewer) strips(pic data.Picture, base color.NRGBA, n int, tAt func(int)
 		}
 		if i > 0 {
 			for j := range rows {
-				a := uint16((i-1)*(rows+1) + j) //nolint:gosec // The strip uses a small fixed subdivision count, at most 16 rows.
-				b := uint16(i*(rows+1) + j)     //nolint:gosec // The strip uses a small fixed subdivision count, at most 16 rows.
+				a := uint16((i-1)*(rows+1) + j) // #nosec G115 -- The strip uses a small fixed subdivision count, at most 16 rows.
+				b := uint16(i*(rows+1) + j)     // #nosec G115 -- The strip uses a small fixed subdivision count, at most 16 rows.
 				is = append(is, a, a+1, b, a+1, b+1, b)
 			}
 		}
@@ -797,7 +797,7 @@ func (v *viewer) flat(x, z, y float64, col color.NRGBA, pic data.Picture) {
 
 	img := v.g.pics.get(pic.File)
 	if pic.Tint.Valid {
-		col = color.NRGBA{uint8(uint16(col.R) * uint16(pic.Tint.R) / 255), uint8(uint16(col.G) * uint16(pic.Tint.G) / 255), uint8(uint16(col.B) * uint16(pic.Tint.B) / 255), 0xff} //nolint:gosec // The product of two bytes divided by 255 is in [0,255].
+		col = color.NRGBA{uint8(uint16(col.R) * uint16(pic.Tint.R) / 255), uint8(uint16(col.G) * uint16(pic.Tint.G) / 255), uint8(uint16(col.B) * uint16(pic.Tint.B) / 255), 0xff} // #nosec G115 -- The product of two bytes divided by 255 is in [0,255].
 	}
 	if brightness := pic.Brightness(); brightness != 1 {
 		col = shadeOf(col, float32(brightness))
@@ -845,7 +845,7 @@ func (v *viewer) flat(x, z, y float64, col color.NRGBA, pic data.Picture) {
 
 func (v *viewer) floorSign(t *data.Tile, floor color.NRGBA, x, z float64) {
 	mark := t.Mark.Or(color.NRGBA{0xc0, 0xc0, 0xc0, 0xff})
-	mix := color.NRGBA{uint8((int(floor.R) + int(mark.R)) / 2), uint8((int(floor.G) + int(mark.G)) / 2), uint8((int(floor.B) + int(mark.B)) / 2), 0xff} //nolint:gosec // The average of two bytes is in [0,255].
+	mix := color.NRGBA{uint8((int(floor.R) + int(mark.R)) / 2), uint8((int(floor.G) + int(mark.G)) / 2), uint8((int(floor.B) + int(mark.B)) / 2), 0xff} // #nosec G115 -- The average of two bytes is in [0,255].
 
 	pt := func(u, w float64) (float32, float32, bool) {
 		zz := z + 0.5 + w

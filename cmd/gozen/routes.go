@@ -65,7 +65,7 @@ func (c *command) routes() clihelp.Operation {
 		if err != nil {
 			return err
 		}
-		st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) //nolint:gosec // Reproducible gameplay simulation, not security randomness.
+		st := rpg.New(db, rand.New(rand.NewPCG(1, 2))) // #nosec G404 -- Reproducible gameplay simulation, not security randomness.
 		ctx, cancel := context.WithTimeout(ctx, *timeout)
 		defer cancel()
 		var initial []gamedata.Command

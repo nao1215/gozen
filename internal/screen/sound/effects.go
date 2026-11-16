@@ -158,7 +158,7 @@ func (session *Session) makeEffects(background bool) {
 
 func (session *Session) synthEffects() map[string][]byte {
 	effects := map[string][]byte{}
-	//nolint:gosec // Deterministic synthetic audio noise, not a secret.
+	// #nosec G404 -- Deterministic synthetic audio noise, not a secret.
 	rng := rand.New(rand.NewPCG(11, 12))
 	noise := func() float64 { return rng.Float64()*2 - 1 }
 	effects["cursor"] = session.synth(builtinEffectSeconds["cursor"], func(t float64) float64 { return tone(t, 1320) * env(t, 0.002, 0.012) * 0.25 })

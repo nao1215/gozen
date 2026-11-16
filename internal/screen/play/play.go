@@ -893,14 +893,14 @@ func (g *Game) fitView(ow, oh, dsf float64) {
 
 func (g *Game) stateRng() *rand.Rand {
 	g.pcg = g.newPCG()
-	return rand.New(g.pcg) //nolint:gosec // Gameplay randomness is not used for security.
+	return rand.New(g.pcg) // #nosec G404 -- Gameplay randomness is not used for security.
 }
 
 func (g *Game) collectionSeed() uint64 {
 	if g.opts.Seed != 0 {
 		return g.opts.Seed
 	}
-	return rand.Uint64() //nolint:gosec // Gameplay randomness is not used for security.
+	return rand.Uint64() // #nosec G404 -- Gameplay randomness is not used for security.
 }
 
 func (g *Game) newPCG() *rand.PCG {
@@ -911,7 +911,7 @@ func (g *Game) newPCG() *rand.PCG {
 		}
 		return rand.NewPCG(g.opts.Seed, second)
 	}
-	return rand.NewPCG(rand.Uint64(), rand.Uint64()) //nolint:gosec // Gameplay randomness is not used for security.
+	return rand.NewPCG(rand.Uint64(), rand.Uint64()) // #nosec G404 -- Gameplay randomness is not used for security.
 }
 
 // savedPCG reads back a random stream that a save, a memo, a rollback point or
@@ -934,7 +934,7 @@ func (g *Game) pcgFrom(b []byte) *rand.PCG {
 
 func (g *Game) rng() *rand.Rand {
 	if g.opts.Seed != 0 {
-		return rand.New(g.newPCG()) //nolint:gosec // Gameplay randomness is not used for security.
+		return rand.New(g.newPCG()) // #nosec G404 -- Gameplay randomness is not used for security.
 	}
 	return nil
 }

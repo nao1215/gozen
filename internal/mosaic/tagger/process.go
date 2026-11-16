@@ -21,7 +21,7 @@ const Keep = 0.05
 // readNames reads the tag names, in the model's output order, from selected_tags.csv:
 // a header row whose second column is "name", then one row per tag.
 func readNames(path string) (result []string, err error) {
-	f, err := os.Open(path) //nolint:gosec // The caller explicitly selects this input file.
+	f, err := os.Open(path) // #nosec G304 -- The caller explicitly selects this input file.
 	if err != nil {
 		return nil, err
 	}
