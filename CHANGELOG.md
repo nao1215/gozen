@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.26.0 - 2026-11-19
+
 ### Added
 
 - The setting "Text size" draws the lines of the message window larger (Normal, Large at 1.2 times, Very large at 1.4 times), two lines a page instead of three so they stay inside the window. The line shown is paged again at once, and the size is kept with the settings.
