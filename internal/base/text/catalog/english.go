@@ -654,7 +654,7 @@ var english = map[string]string{
 	"今日":    "Today",
 	"通知":    "Message",
 	"バックログ": "Backlog",
-	"↑↓ ホイール スワイプ: スクロール\u3000X / クリック: もどる": "Up/Down, wheel, swipe: scroll   X / click: back",
+	"↑↓ ホイール スワイプ: スクロール\u3000X / クリック: もどる":                "Up/Down, wheel, swipe: scroll   X / click: back",
 	"↑↓ ホイール スワイプ: スクロール\u3000▶: 声をもう一度\u3000X / クリック: もどる": "Up/Down, wheel, swipe: scroll   ▶: hear again   X / click: back",
 	"声をもう一度": "Hear again",
 	"ログ":     "Log",
