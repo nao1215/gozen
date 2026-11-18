@@ -594,6 +594,14 @@ func (g *Game) stagePicture(face string) bool {
 type backlogView struct {
 	top  int
 	drag swipe
+	// voices are the ▶ marks drawn last, by the entry they replay: a click on one plays
+	// that line's voice again instead of closing the log.
+	voices []logVoice
+}
+
+type logVoice struct {
+	at    image.Rectangle
+	entry int
 }
 
 // logRow is the height of a line of the log with one row of text: how far a finger drags
@@ -630,6 +638,7 @@ func (v *backlogView) update(g *Game) {
 	}
 	switch {
 	case v.drag.moving():
+	case g.in.clicked() && v.replay(g):
 	case g.in.cancel() || g.in.pressedKey(btnLog) || g.in.ok() || g.in.clicked():
 		g.logView = nil
 	case g.in.up():
@@ -643,11 +652,29 @@ func (v *backlogView) update(g *Game) {
 	}
 }
 
+// replay plays the voice of the ▶ under the pointer and reports whether there was one.
+func (v *backlogView) replay(g *Game) bool {
+	for _, m := range v.voices {
+		if g.in.mouse.In(m.at) && m.entry < len(g.backlog) {
+			g.replayVoice(*g.backlog[m.entry].line)
+			return true
+		}
+	}
+	return false
+}
+
 func (v *backlogView) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	gfx.FillRoundRect(dst, 0, 0, float32(sw), float32(sh), 0, withAlpha(g.th.window, 0xf0))
 	g.text(dst, lang.T("バックログ"), 60, 30, sizeL, g.th.accent)
-	gfx.DrawTextRight(dst, lang.T("↑↓ ホイール スワイプ: スクロール　X / クリック: もどる"), sw-60, 38, sizeS, g.th.dim)
+	v.voices = v.voices[:0]
+	defer func() {
+		hint := lang.T("↑↓ ホイール スワイプ: スクロール　X / クリック: もどる")
+		if len(v.voices) > 0 {
+			hint = lang.T("↑↓ ホイール スワイプ: スクロール　▶: 声をもう一度　X / クリック: もどる")
+		}
+		gfx.DrawTextRight(dst, hint, sw-60, 38, sizeS, g.th.dim)
+	}()
 	y := 100.0
 	for i := v.top; i < len(g.backlog); i++ {
 		l := g.backlog[i]
@@ -668,6 +695,14 @@ func (v *backlogView) draw(g *Game, dst *ebiten.Image) {
 				ns *= 184 / nw
 			}
 			g.text(dst, l.name, 80, y+(sizeM-ns)/2, ns, g.th.nameTag)
+		}
+		if l.line != nil && l.line.Voice != "" {
+			at := image.Rect(24, int(y-6), 72, int(y+sizeM*1.4+6))
+			v.voices = append(v.voices, logVoice{at, i})
+			if g.controlFrame() != nil {
+				g.traceControl(lang.T("声をもう一度"), roundRect(float64(at.Min.X), float64(at.Min.Y), float64(at.Dx()), float64(at.Dy())), true, false, "")
+			}
+			g.text(dst, "▶", 36, y, sizeM*0.9, g.th.accent)
 		}
 		for j, ln := range lines {
 			g.text(dst, ln, 280, y+float64(j)*sizeM*1.4, sizeM, c)
