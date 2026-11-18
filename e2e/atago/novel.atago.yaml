@@ -291,3 +291,74 @@ scenarios:
       exit_code: 0
       stdout:
         contains: ['- set: {flag.met: true}', 'to talk line 2']
+- name: more slots, a quick slot, endings and ruby are checked
+  steps:
+  - fixture:
+      file: kept/game.yaml
+      content: |
+        schema_version: 11
+        id: kept
+        start: {location: room, party: [reader], event: talk}
+        ui:
+          message: novel
+          saves: {slots: 9, quick: true}
+        gallery:
+          endings:
+            - {id: home, title: Home, flag: end_home, hint: Go home.}
+  - fixture:
+      file: kept/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events:
+          talk:
+            do:
+              - say: "|Gozen《ごぜん》 is the name."
+              - say: "The road home."
+              - set: {flag.end_home: true}
+              - end: true
+  - run:
+      command: gozen check kept
+  - assert:
+      exit_code: 0
+      stderr:
+        not_contains: 'flag.end_home is set but nothing reads it'
+  - fixture:
+      file: quick.txt
+      content: "wait 30\npress quick_save\nwait 10\nquit\n"
+  - run:
+      command: gozen sim script kept --event talk --script quick.txt --save-dir saves
+  - assert:
+      exit_code: 0
+  - assert: {file: {path: saves/quick.json, exists: true}}
+- name: an ending nothing reaches and too many slots are refused
+  steps:
+  - fixture:
+      file: bad/game.yaml
+      content: |
+        schema_version: 11
+        id: bad
+        start: {location: room, party: [reader]}
+        ui: {message: novel, saves: {slots: 100}}
+        gallery:
+          endings:
+            - {id: lost, title: Lost}
+            - {id: lost, title: Lost again, flag: lost}
+  - fixture:
+      file: bad/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+  - run:
+      command: gozen check --only structure bad
+  - assert:
+      exit_code: 1
+      stderr:
+        contains:
+        - 'ui.saves.slots: want 1 to 99 slots'
+        - 'gallery.endings[0]: an ending needs an id, a title and a flag or when'
+        - 'gallery.endings[1].id: the id "lost" names another ending too'

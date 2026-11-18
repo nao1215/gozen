@@ -10957,7 +10957,7 @@
     },
     "Gallery": {
       "additionalProperties": false,
-      "description": "The title screen's gallery: pictures to look at again and scenes to play again.",
+      "description": "The title screen's gallery: pictures to look at again, scenes to play again and the endings reached.",
       "properties": {
         "cgs": {
           "description": "The pictures in the gallery, each opening once it has been shown in play.",
@@ -11107,7 +11107,7 @@
           "x-type": "string"
         },
         "title": {
-          "description": "The title shown for the picture in the gallery.",
+          "description": "The title shown for the picture in the gallery. Translated by lang/\u003ccode\u003e.yaml.",
           "type": "string",
           "x-contract": {
             "default": "empty string",

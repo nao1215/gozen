@@ -443,7 +443,7 @@ func TestCommandExecution(t *testing.T) {
 // YAML words are checked lexically, not as a proof of gameplay generality.
 // The frozen baseline below may only shrink; new words cannot be added to it.
 const (
-	yamlBaselineLimit = 728
+	yamlBaselineLimit = 725
 	yamlBaseline      = `
 acceleration accent accepts act action activation activity activity_attributes
 add_state addresses admission advice affect affection affiliation
@@ -474,15 +474,15 @@ equip_slots equip_stones escape evening event_label event_when every
 exclusive exp expr expression_depth expression_length extra face_at face_box
 face_expr face_rules face_shade face_shade_top face_shape families family far
 fatal field_notices fight fighters file_lines files filled filter_label
-finish first first_person fit flag flash flat floor
+finish first first_person fit flash flat floor
 floor_texture floors flows focus foe_scale foe_scale_when foes fonts
 footer for forecast_label fps frame free_move front_weight fronts
-full full_color fullscreen fusions fx gallery game_over garrison
+full full_color fullscreen fusions fx game_over garrison
 gauge generate give goods greet greeting grid group
 groups guard_rate guard_skill guest guest_backdrops guests hair hard
 haze head header header_face header_tint heading heal held
-hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight hint
-hit hits hitstop  host hp hp_triggers hurt
+hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight
+hit hits hitstop host hp hp_triggers hurt
 icon image_height images in indexed_names initial instant instead
 into intro items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
@@ -501,7 +501,7 @@ on_enter on_escape on_leave on_turn on_turn_end on_turn_end_allies on_user
 on_win one_shot one_way only opacities opacity open_wall
 optional options order_view origin_u origin_v others_title out outfit
 over over_size page pages pairs pan paper param
-params parent parents passives  patterns peek per_char
+params parent parents passives patterns peek per_char
 per_hour per_soldier per_turn percent period persist phase phone_accent
 phone_background phone_muted phone_text picture_fit pictures pin_end_turn pitch place
 planned planned_label play policies policy pop portrait posts

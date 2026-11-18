@@ -76,8 +76,10 @@ From [After the Pass](examples/novel). See the [visual novel recipes](https://na
 | Roll back (Q, wheel) | Skip to the line not read (N) |
 |:--|:--|
 | ![Back goes over two lines and a choice, with the state](docs/images/novel-back.gif) | ![the option taken again, then Skip stops at the first line not read](docs/images/novel-skip.gif) |
-| Two languages | Staging (`stand`, `effect`) |
-| ![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
+| Saves with pictures, Q.Save and Q.Load | Endings in the gallery |
+| ![Save writes slot 1 with a picture of the scene, Q.Save keeps a later line, Q.Load asks once and goes back to it, and the load screen shows each save with its picture](docs/images/novel-saves.gif) | ![Brenna's ending runs out to THE END; the gallery's Endings tab lists it with its picture, the other two as ??? with a hint](docs/images/novel-endings.gif) |
+| Two languages, with ruby | Staging (`stand`, `effect`) |
+| ![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
 | Event picture with its line | |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | |
 

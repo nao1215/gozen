@@ -203,6 +203,14 @@ runs:
     sample: novel
     script: scripts/capture-novel-ending.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, with_brenna, --line, "7", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-saves:
+    sample: novel
+    script: scripts/capture-novel-saves.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-endings:
+    sample: novel
+    script: scripts/capture-novel-endings.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, with_brenna, --line, "13", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   # The hot reload (F5): the game runs from a copy of its files ({game}), and
   # `edit` changes a line in the copy once the shot `after` is written.
   playtest-reload:
@@ -382,6 +390,20 @@ images:
       - {shots: la*}
       - {shots: lb*}
       - {shots: lc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-saves.mp4:
+    run: novel-saves
+    frames:
+      - {shots: sa*}
+      - {shots: sb*}
+      - {shots: sc*}
+      - {shots: sd*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-endings.mp4:
+    run: novel-endings
+    frames:
+      - {shots: ea*}
+      - {shots: eb*}
     mp4: {fps: 12, width: 1280, height: 720}
   novel-stage.mp4:
     run: novel-stage
@@ -746,6 +768,20 @@ images:
       - {shots: "nb01[6-9]"}
       - {shots: "nb02*"}
       - {shots: "nc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  novel-saves.gif:
+    run: novel-saves
+    frames:
+      - {shots: "sa*"}
+      - {shots: "sb*"}
+      - {shots: "sc*"}
+      - {shots: "sd*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  novel-endings.gif:
+    run: novel-endings
+    frames:
+      - {shots: "ea*"}
+      - {shots: "eb*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-language.gif:
     run: novel-language

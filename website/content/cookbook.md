@@ -21,9 +21,9 @@ dependencies, materials and optional character voice checks.
 | [Run an inn and a place to save](#run-an-inn-and-a-place-to-save) | actions, `if` on `gold`, `heal: all`, `save: true` |
 | [Write talk with choices and branches](#write-talk-with-choices-and-branches) | `people`, `say`, `choice`, `if` |
 | [Remember things with flags and conditions](#remember-things-with-flags-and-conditions) | `set`, `flag.*` and `var.*`, `when`, `trigger: auto` |
-| [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, a choice's `id`, `chose.*` |
+| [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, `ui.saves`, a choice's `id`, `chose.*` |
 | [Stage portraits and effects](#stage-portraits-and-effects) | `stand`, `effect`, `music` fades, `wait` and `sfx` that hold |
-| [Add voices](#add-voices) | `say.voice`, actor `voices`, `ui.voice` |
+| [Add voices](#add-voices) | `say.voice`, actor `voices`, `ui.voice`, the backlog's ▶ |
 | [Add a companion who joins](#add-a-companion-who-joins) | `actors`, `join`, `leave` |
 | [Grow by level and learn skills](#grow-by-level-and-learn-skills) | class `stats` formulas, `exp_for`, `skills` by level |
 | [Make items and equipment](#make-items-and-equipment) | item `use`, `kind`, `slot`, `stats`, class `equip` |
@@ -45,13 +45,13 @@ dependencies, materials and optional character voice checks.
 | [Paint a scene with people and balloons](#paint-a-scene-with-people-and-balloons) | `stage`, `spots`, dolls, `bubbles` |
 | [Give a character faces and a moving portrait](#give-a-character-faces-and-a-moving-portrait) | `faces`, `say.face`, `puppet` |
 | [Set the face icons](#set-the-face-icons) | `face_box`, `face_shade`, a doll's `icon` |
-| [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes` |
+| [Show event pictures and fill the gallery](#show-event-pictures-and-fill-the-gallery) | `image`, `gallery.cgs`, `gallery.scenes`, `gallery.endings` |
 | [Keep a character book](#keep-a-character-book) | `profiles`, `ui.profiles`, `open: profiles` |
 | [Keep a monster book](#keep-a-monster-book) | `enemies.<id>.lore`, `ui.bestiary`, `bestiary.<id>.seen` |
 | [Collect, raise and breed monsters](#collect-raise-and-breed-monsters) | `recruit`, `monster_families`, `breeding`, `open: ranch` |
 | [Play music for places, battles and moods](#play-music-for-places-battles-and-moods) | `music.songs`, `music`, `battle_music`, `mood` rules |
 | [Change the language and the engine's wording](#change-the-language-and-the-engines-wording) | `language`, `text`, `terms` |
-| [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml` |
+| [Offer the game in two languages](#offer-the-game-in-two-languages) | `written_in`, `languages`, `lang/<code>.yaml`, ruby `|base《reading》` |
 | [Test-play with notes, reload and quick starts](#test-play-with-notes-reload-and-quick-starts) | `memo`, `--dev`, F5, F9, `--start` |
 | [Measure battles with sim battle and sim dive](#measure-battles-with-sim-battle-and-sim-dive) | `gozen sim battle`, `gozen sim dive` |
 | [Check and measure in CI](#check-and-measure-in-ci) | `setup-gozen`, `gozen check`, `gozen sim` in GitHub Actions |
@@ -247,6 +247,21 @@ events:
 
 The game resumes a save made in the middle of an event at its saved line. Use a separate `--save-dir` when testing save and load through `gozen run`. Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
 
+Each save keeps a small picture of the scene the player left, shown at the left of its row on the save and load screens. `ui.saves.slots` sets how many slots there are (3 by default, up to 99; more than the screen holds scroll), and `ui.saves.quick` adds "Q.Save" and "Q.Load" to the band: Q.Save writes one quick slot at once, without a menu, and Q.Load asks once and goes back to it. The load screen lists the quick slot after the autosave. A script presses them with `press quick_save` and `press quick_load`.
+
+![Save writes slot 1 with a picture of the scene, Q.Save keeps a later line, Q.Load asks once and goes back to it, and the load screen shows each save with its picture](/images/novel-saves.mp4)
+
+<!-- verify: load group=saves as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 11
+ui:
+  message: novel
+  saves: {slots: 9, quick: true}
+```
+
+Reference: [SaveStyle](/schema/#savestyle).
+
 ## Stage portraits and effects
 
 In the novel window, portraits come and go with the speakers by themselves. An event that uses `stand` places them as written instead: who stands where, how they come in (`fade` or `slide`) and when they leave. A line's `face` still changes the expression of a portrait standing. `effect` shakes one portrait or the screen, plays a reaction of a moving portrait, or fades the screen through a color; `music` fades in and out; a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
@@ -312,7 +327,7 @@ events:
       - say: {who: Traveler, voice: voice/traveler_001.ogg, text: Thank you.}
 ```
 
-A voice plays when its line opens and stops at the next line. Skip mode, Ctrl over a line read, scene skip and the replay of rolling back pass the voices of the lines they pass; the line they land on speaks. The settings have a voice volume and a volume for each actor with `voices`. `gozen check` reports a voice file that is not there and counts the lines of a voiced actor without one (GZN0109). The headless session sees each voice as an effect (`Effect.Kind` `voice`, with the file), and a trace has a `voice` line for each voice played. Reference: [Say](/schema/#say) (`voice`), [Actor](/schema/#actor) (`voices`), [VoiceStyle](/schema/#voicestyle).
+A voice plays when its line opens and stops at the next line. In the backlog, a voiced line has a ▶ at its left: a click or a tap on it plays the voice again, and the log stays open. Skip mode, Ctrl over a line read, scene skip and the replay of rolling back pass the voices of the lines they pass; the line they land on speaks. The settings have a voice volume and a volume for each actor with `voices`. `gozen check` reports a voice file that is not there and counts the lines of a voiced actor without one (GZN0109). The headless session sees each voice as an effect (`Effect.Kind` `voice`, with the file), and a trace has a `voice` line for each voice played. Reference: [Say](/schema/#say) (`voice`), [Actor](/schema/#actor) (`voices`), [VoiceStyle](/schema/#voicestyle).
 
 ## Add a companion who joins
 
@@ -1068,7 +1083,32 @@ gallery:
     - {title: Sunrise on the ridge, event: sunrise, flag: saw_sunrise, location: ridge}
 ```
 
-`files` shows several pictures in turn, and `look: dream` blurs the edges for a memory. Reference: [CG](/schema/#cg), [Gallery](/schema/#gallery), [GalleryCG](/schema/#gallerycg), [GalleryScene](/schema/#galleryscene).
+`files` shows several pictures in turn, and `look: dream` blurs the edges for a memory.
+
+`gallery.endings` lists the game's endings in an Endings tab after Scenes. An ending is reached once its `flag` is set or its `when` holds, and stays reached across saves and new games; the tab counts how many were reached. One not reached shows ??? and its `hint`, and one reached its title and `picture`. Set the flag on the ending's last lines: it is recorded before the game returns to the title.
+
+![Brenna's ending runs out to THE END; the gallery's Endings tab lists it with its picture, the other two as ??? with a hint](/images/novel-endings.mp4)
+
+<!-- verify: load group=endings -->
+```yaml
+events:
+  farewell:
+    do:
+      - say: The road home is long, and you walk it together.
+      - set: {flag.end_together: true}
+      - clear: true
+```
+
+<!-- verify: load group=endings as=game.yaml -->
+```yaml
+# game.yaml
+gallery:
+  endings:
+    - {id: together, title: Together, flag: end_together, hint: Stay with her after the festival.}
+    - {id: alone, title: The Long Road, when: "flag.left_early", hint: Leave before the festival.}
+```
+
+`gozen check` reports an ending without an id, a title or a way to reach it, and two endings with the same id. Reference: [CG](/schema/#cg), [Gallery](/schema/#gallery), [GalleryCG](/schema/#gallerycg), [GalleryScene](/schema/#galleryscene), [GalleryEnding](/schema/#galleryending).
 
 ## Keep a character book
 
@@ -1351,7 +1391,7 @@ text:
 
 Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `text` from each text as written to its translation, with the `{expressions}` kept. `languages` lets the player choose in the settings; the choice is kept with the settings.
 
-![the settings switch to Japanese, the line on the screen turns Japanese at once, and so does the next](/images/novel-language.mp4)
+![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](/images/novel-language.mp4)
 
 <!-- verify: load group=languages as=game.yaml -->
 ```yaml
@@ -1381,7 +1421,9 @@ text:
   "Bread": "Pan"
 ```
 
-Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's scenes when the language changes. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
+Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's pictures, scenes and endings when the language changes.
+
+A line marks the reading of a word as web novels do: `|base《reading》` puts the reading small above the base, and the bar may be left out when the base is a run of kanji (`乾杯《かんぱい》`). The video above shows it in the Japanese lines. The backlog shows the base alone, and `gozen check` measures a line without its marks. A `《` with no base before it, or no `》` after it, is shown as written. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
 
 `gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (an internal integration test overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
 

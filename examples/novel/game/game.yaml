@@ -28,6 +28,10 @@ ui:
   # Six slots with a picture each, and Q.Save and Q.Load on the band.
   saves: {slots: 6, quick: true}
 gallery:
+  cgs:
+    - {file: cg/table.jpg, title: The Counter}
+    - {file: cg/toast.jpg, title: To the Kettle}
+    - {file: cg/wine.jpg, title: Among the Barrels}
   endings:
     - {id: brenna, title: One More Round, flag: end_brenna, picture: cg/toast.jpg, hint: Spend the last hour at the bar.}
     - {id: wren, title: Field Assessment, flag: end_wren, picture: cg/wine.jpg, hint: Spend the last hour among the barrels.}

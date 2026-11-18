@@ -118,7 +118,7 @@ Fusion:
   price: "The gold the fusion costs."
   to: "The ID of the item (the stone, an ID of items) that the fusion produces."
 Gallery:
-  _: "The title screen's gallery: pictures to look at again and scenes to play again."
+  _: "The title screen's gallery: pictures to look at again, scenes to play again and the endings reached."
   cgs: "The pictures in the gallery, each opening once it has been shown in play."
   music: "The song and mood used when a gallery scene starts, unless the scene has its own music. If neither is set, the location's music plays."
   music_pictures: "Pictures shown in the music section for each song, as a map of song ID to a list of picture paths. Pictures not yet unlocked are skipped."
@@ -129,7 +129,7 @@ GalleryCG:
   file: "The path of the picture under assets/. It may be a pattern matching several files."
   files: "Several pages of one picture, viewed one after another. Each entry may be a pattern such as `cg/x.*.jpg`."
   flag: "A flag that, once set, also opens this picture."
-  title: "The title shown for the picture in the gallery."
+  title: "The title shown for the picture in the gallery. Translated by lang/<code>.yaml."
 GalleryPage:
   _: "An entry point into the middle of a gallery scene, given as a playback position and the answers to choices before it."
   answers: "The 0-based indexes of the options chosen at each choice before this position, in order. Playback stops at the first choice with no listed answer."

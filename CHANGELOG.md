@@ -4,10 +4,24 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- Saves keep a picture of the scene. Each save writes a 320x180 JPEG of the last frame with nothing over the scene beside it (`save1.jpg`), shown at the left of its row on the save and load screens. Visual change: the rows of those screens are taller and wider in a game that draws.
+- `ui.saves.slots` sets how many slots the player saves to (3 by default, up to 99; the rows scroll), and `ui.saves.quick` adds Q.Save and Q.Load to the novel band: one quick slot (`quick.json`) written at once without a menu, and read back after one question. A script presses them with `press quick_save` and `press quick_load`.
+- The backlog plays a line's voice again: a voiced line shows a ▶ at its left, and a click or tap on it replays the voice and keeps the log open.
+- `gallery.endings` lists the game's endings in an Endings tab of the gallery, after Scenes: each by `id`, `title`, a `flag` or `when` that reaches it, a `hint` shown under ??? until then and a `picture`. A reached ending is kept in the gallery record across saves and new games and checked again before the game returns to the title, so a flag set on the line before `end` counts. `gozen check` reports an ending without an id, a title or a way to reach it and two endings with one id, and counts an ending's flag as read.
+- Ruby: a line marks the reading of a word with `|base《reading》`, or `漢字《かんじ》` for a run of kanji, drawn small over the base in the message window. The backlog shows the base, and `gozen check` measures the line without the marks.
+- The titles of the gallery's pictures are translated by `lang/<code>.yaml`, as the scenes' titles were.
+- After the Pass, the novel sample, keeps six save slots with Q.Save and Q.Load, lists its three pictures and three endings in the gallery, and shows ruby in its Japanese lines.
+
 ### Changed
 
 - CI scans the repository with gosec and Trivy on every pull request (Trivy covers dependency vulnerabilities, committed secrets and misconfigurations, and also runs daily). Workflow actions are recorded in `.github/workflows/actions.lock`, which CI verifies against the pinned commits.
 - Building from source now needs Go 1.26.11 or later (was 1.26.10). Go 1.26.11 fixes the `net/http` advisory GO-2026-6859, which govulncheck finds reachable from gozen on the earlier patch.
+
+### Fixed
+
+- The save and load screens opened from the novel band, and a question asked from it, are drawn over the standing portraits and the message window; they were drawn under them.
 
 ## v0.24.0 - 2026-11-10
 

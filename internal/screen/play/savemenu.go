@@ -37,6 +37,10 @@ func newSaveMenu(g *Game, saving bool, done func()) *saveMenu {
 
 func (s *saveMenu) overlay() bool { return true }
 
+// modal draws the save screen over the novel window and the stage: opened from the
+// novel band, it was drawn under the portraits standing in front of the scene.
+func (s *saveMenu) modal() bool { return true }
+
 // Rows of the save screen: a row with a picture of the save is taller, so the picture
 // reads as the scene it is.
 const (
@@ -80,7 +84,13 @@ func (s *saveMenu) refresh(g *Game) {
 			}
 		}
 	}
+	// A game that keeps pictures lays the rows out for them from its first save on, so
+	// the first picture does not move the rows.
+	pics = pics || g.slotPics.keeps(g)
 	width := math.Min(800, sw-32)
+	if pics {
+		width = math.Min(1120, sw-32)
+	}
 	_, _, titleGap := s.heading(width)
 	y := math.Max(sh/2-saveListTop, 16+titleGap)
 	n := len(items)
@@ -254,10 +264,13 @@ func (s *saveShots) keep(g *Game, screen *ebiten.Image) {
 	}
 }
 
+// keeps reports whether the game keeps a picture of its saves. Pixels can be read back
+// only inside the Ebitengine loop (a game drawn offscreen by a test has none), and a trial
+// run that keeps no save keeps no picture.
+func (s *saveShots) keeps(g *Game) bool { return g.loopStarted && (!g.testRun() || g.storeGiven) }
+
 func (s *saveShots) uncovered(g *Game) bool {
-	// Pixels can be read back only inside the Ebitengine loop; a game drawn offscreen by
-	// a test has no picture to keep.
-	if !g.loopStarted || g.testRun() && !g.storeGiven || g.logView != nil || g.talk.hidden || len(g.stack) == 0 {
+	if !s.keeps(g) || g.logView != nil || g.talk.hidden || len(g.stack) == 0 {
 		return false
 	}
 	o, ok := g.stack[len(g.stack)-1].(overlay)

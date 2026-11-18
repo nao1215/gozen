@@ -30,7 +30,7 @@ func (l logLine) shown(db *data.DB) (name, text string) {
 	switch {
 	case l.line != nil:
 		s := l.line.Reword(db)
-		return s.Name, s.Text
+		return s.Name, rubyText(s.Text)
 	case l.asked != nil && l.pick >= 0 && l.pick < len(l.asked.Options):
 		return "", "→ " + l.asked.Reword(db).Options[l.pick]
 	}
@@ -339,6 +339,7 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 			left -= n
 			g.text(dst, string(r[:n]), frame.textL+20, y+74+float64(i)*size*1.5, size, g.th.text)
 		}
+		t.drawRuby(g, dst, frame.textL+20, y+74, size*1.5, size)
 		if t.shown >= t.total && t.choice == nil {
 			bob := math.Sin(float64(g.tick)/6) * 4
 			gfx.DrawText(dst, "▼", frame.textR-20, y+novelH-80+bob, sizeS, g.th.cursor)
