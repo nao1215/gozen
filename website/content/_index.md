@@ -59,8 +59,8 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | ![Save writes slot 1 with a picture of the scene, Q.Save keeps a later line, Q.Load asks once and goes back to it, and the load screen shows each save with its picture](/images/novel-saves.mp4) | ![Brenna's ending runs out to THE END; the gallery's Endings tab lists it with its picture, the other two as ??? with a hint](/images/novel-endings.mp4) |
 | Two languages, with ruby | Staging (`stand`, `effect`) |
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
-| Event picture with its line | |
-| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | |
+| Event picture with its line | Larger text (settings) |
+| ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | ![the settings raise the text size twice, and the line behind them comes back larger, two lines a page, as does the next](/images/novel-text-size.mp4) |
 
 #### Phone apps
 

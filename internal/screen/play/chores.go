@@ -96,6 +96,35 @@ func (g *Game) autoSave() {
 	g.emit("autosave", traceLine{"at": key})
 }
 
+// suspendSave writes the autosave when the page is hidden in the middle of play (another
+// app on a phone, which may close the browser's page unseen), where the save screen could
+// save: the next visit continues from it as from any autosave. The stream screens keep
+// their own (keepOpen); the title, a replay and a scene that refuses saving write nothing.
+func (g *Game) suspendSave() {
+	if g.closed || g.desk != nil || g.replaying || g.rep != nil || g.saveBlocked() != "" {
+		return
+	}
+	if !g.idle() && !g.talk.active {
+		return
+	}
+	for _, s := range g.stack {
+		if _, ok := s.(*title); ok {
+			return
+		}
+	}
+	if g.testRun() && !g.storeGiven {
+		return
+	}
+	// Only the save: its picture is drawn by the game's loop, which is not running here
+	// (a hidden page draws no frames), and the autosave has no picture of its own.
+	err := g.writeSave(g.autoPath())
+	g.autoSaveRetry.record(g.tick, "autosave", err)
+	if err == nil {
+		g.autoKey = ""
+		g.emit("autosave", traceLine{"at": g.st.Location})
+	}
+}
+
 func (g *Game) offerGear() {
 	if g.isAutopilot() || (g.rep != nil && g.rep.version == 1) {
 		return

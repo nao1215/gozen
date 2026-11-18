@@ -122,6 +122,22 @@ func TestPaginateShrinksBeforeSplitting(t *testing.T) {
 	}
 }
 
+// TestPaginateFromKeepsTheLeastSize: a floor keeps the text from shrinking under it to
+// save a page; the text then takes more pages instead.
+func TestPaginateFromKeepsTheLeastSize(t *testing.T) {
+	text := strings.Repeat("あ", 22)
+	pages, sz := paginateFrom(text, 10, 10, 2, widthWrap(100))
+	if sz != 10 || len(pages) != 2 {
+		t.Fatalf("size %v pages %q, want 10 on two pages", sz, pages)
+	}
+	if got := strings.Join(slices.Concat(pages...), ""); got != text {
+		t.Fatalf("pages lost text: %q", got)
+	}
+	if _, sz := paginateFrom(text, 10, 9, 2, widthWrap(100)); sz < 9 {
+		t.Fatalf("size %v under the floor 9", sz)
+	}
+}
+
 func TestPaginateSplitsAtSentencesAndKeepsEverything(t *testing.T) {
 	sentence := "これは一つの文です。"
 	text := strings.Repeat(sentence, 9)

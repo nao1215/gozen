@@ -4,6 +4,19 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- The setting "Text size" draws the lines of the message window larger (Normal, Large at 1.2 times, Very large at 1.4 times), two lines a page instead of three so they stay inside the window. The line shown is paged again at once, and the size is kept with the settings.
+- A browser export can be added to a phone's home screen: every page names a web app manifest (`manifest.webmanifest`) that opens it fullscreen, turned the way the game's screen is, and `web.icon` gives its icon, a square PNG under `assets/` of 192x192 or more copied beside the page as `icon.png`. `gozen check` reports an icon that is missing, not a PNG, not square or smaller.
+- A phone held the other way from the game's screen is asked to turn, in the first of the device's languages the game offers, and can play as it is. Fullscreen in the settings keeps the screen turned the game's way where the browser can lock it.
+- The page hidden in the middle of play (another app on a phone, which may close the browser's page unseen) writes the autosave where the save screen could save, so the next visit continues from it.
+- After a touch, the title's hint explains the taps instead of the keys.
+- After the Pass, the novel sample, has a home screen icon.
+
+### Changed
+
+- The settings list "Text size" under "Text speed": a script that moves to a row by counting presses moves one more to reach the rows after it.
+
 ## v0.25.0 - 2026-11-19
 
 ### Added

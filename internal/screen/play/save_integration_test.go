@@ -1049,3 +1049,42 @@ func TestSavePictureSkipsScreensOverTheScene(t *testing.T) {
 		t.Fatal("the settings over the scene would be the save's picture")
 	}
 }
+
+// TestSuspendSaveKeepsTheLineShown: the page hidden in the middle of a conversation (a
+// phone's browser sent to the background) writes the autosave at the line shown, which the
+// next visit loads back; on the title nothing is written.
+func TestSuspendSaveKeepsTheLineShown(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	wldAdvance(t, g)
+	if got := wldTalkText(g); got != "Line 2." {
+		t.Fatalf("at %q", got)
+	}
+	if g.storeHas("auto.json") { // the autosave of the place, written before the line
+		if err := g.store.Remove("auto.json"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g.suspendSave()
+	if !g.storeHas("auto.json") {
+		t.Fatal("hiding the page wrote no autosave")
+	}
+	wldAdvance(t, g)
+	st, err := g.load(g.autoSlot())
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.loadSavedGame(st)
+	wldFrames(t, g, 30)
+	if got := wldTalkText(g); got != "Line 2." {
+		t.Fatalf("the autosave resumed at %q, want Line 2. shown when the page was hidden", got)
+	}
+
+	if err := g.store.Remove("auto.json"); err != nil {
+		t.Fatal(err)
+	}
+	g.toTitle()
+	g.suspendSave()
+	if g.storeHas("auto.json") {
+		t.Fatal("hiding the page on the title wrote an autosave")
+	}
+}

@@ -156,7 +156,7 @@ func (t *talk) setPage(i int) {
 // layout breaks the line into the window's pages and shows the first.
 func (t *talk) layout(g *Game) {
 	t.plain, t.ruby = parseRuby(t.say.Text)
-	t.pages, t.size = MessagePages(&g.db.Game, t.plain)
+	t.pages, t.size = messagePagesAt(&g.db.Game, t.plain, g.cfg.textScale())
 	if def := g.db.Game.Screens[t.say.Ensemble]; g.novel() && def != nil && captionsOnStage(def.View) {
 		sw, sh := g.screen()
 		width := sw - 48 - min(340.0, (sw-48)*.30) - 68

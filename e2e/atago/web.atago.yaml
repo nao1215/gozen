@@ -1011,3 +1011,103 @@ scenarios:
         - {path: $.downloads, equals: 0}
         - {path: $.hostSave, equals: 0}
         - {path: $.hostLocation, equals: camp}
+- name: a phone can add the page to its home screen and is asked to turn
+  tags: [web]
+  services:
+  - name: site
+    command: >-
+      python3 -c "from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; from pathlib import Path; s=ThreadingHTTPServer(('127.0.0.1',0),SimpleHTTPRequestHandler); Path('address').write_text('http://127.0.0.1:'+str(s.server_port)); s.serve_forever()"
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - run: {command: 'gozen new game --id home-screen'}
+  - assert: {exit_code: 0}
+  - fixture:
+      file: game/game.yaml
+      content: |
+        schema_version: 9
+        id: home-screen
+        title: 'Tall game'
+        language: ja
+        screen: {width: 540, height: 960}
+        start: {location: village, party: [hero]}
+        web: {icon: icon.png}
+  - fixture:
+      file: game/assets/icon.png
+      from: fixtures/game/assets/icon.png
+  - run:
+      command: 'gozen export game --target web --out site --runtime "${env:GOZEN_WEB_RUNTIME}"'
+  - assert: {exit_code: 0}
+  - assert: {file: {path: site/icon.png, equals_file: game/assets/icon.png}}
+  - assert:
+      file:
+        path: site/manifest.webmanifest
+        json:
+        - {path: $.name, equals: Tall game}
+        - {path: $.display, equals: fullscreen}
+        - {path: $.orientation, equals: portrait}
+        - {path: '$.icons[0].src', equals: icon.png}
+        - {path: '$.icons[0].sizes', equals: 192x192}
+  # the page names its manifest and icon, and its note for a phone asks to hold it
+  # upright in the game's language; Play as it is keeps the phone as it is held
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: |
+          ({screen: document.documentElement.dataset.screen,
+            manifest: document.querySelector('link[rel=manifest]').getAttribute('href'),
+            icon: document.querySelector('link[rel=apple-touch-icon]').getAttribute('href'),
+            note: document.getElementById('turn-note').textContent})
+  - assert:
+      value:
+        json:
+        - {path: $.screen, equals: portrait}
+        - {path: $.manifest, equals: manifest.webmanifest}
+        - {path: $.icon, equals: icon.png}
+        - {path: $.note, equals: スマホを縦にすると、大きな画面で遊べます。}
+  - cdp:
+      runner: browser
+      actions:
+      - eval: "document.getElementById('keep').click(); document.documentElement.classList.contains('kept')"
+  - assert: {value: {equals: 'true'}}
+  # the page hidden in the middle of play (another app on a phone) writes the autosave
+  # and goes on drawing when it is shown again; on the title it writes nothing
+  - cdp:
+      runner: browser
+      actions:
+      - eval: |
+          (async () => {
+            const show = (state) => {
+              Object.defineProperty(document, 'visibilityState', {configurable: true, get: () => state});
+              document.dispatchEvent(new Event('visibilitychange'));
+            };
+            const frames = (n) => new Promise(r => { const f = () => --n > 0 ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); });
+            const hidden = async () => {
+              localStorage.removeItem('gozen/home-screen/auto.json');
+              show('hidden');
+              const saved = localStorage.getItem('gozen/home-screen/auto.json') !== null;
+              show('visible');
+              await frames(10);
+              return saved;
+            };
+            await frames(30);
+            const onTitle = await hidden();
+            const canvas = document.querySelector('canvas');
+            canvas.focus();
+            canvas.dispatchEvent(new KeyboardEvent('keydown', {code: 'Enter', key: 'Enter', bubbles: true}));
+            await frames(2);
+            canvas.dispatchEvent(new KeyboardEvent('keyup', {code: 'Enter', key: 'Enter', bubbles: true}));
+            await frames(60);
+            const saved = await hidden();
+            window.testHidden = {onTitle, saved, drawing: true};
+            document.body.dataset.testHidden = 'true';
+          })(); true
+      - wait_visible: 'body[data-test-hidden=true]'
+      - eval: testHidden
+  - assert:
+      value:
+        json:
+        - {path: $.onTitle, equals: false}
+        - {path: $.saved, equals: true}
+        - {path: $.drawing, equals: true}

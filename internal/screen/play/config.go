@@ -18,7 +18,10 @@ import (
 )
 
 type config struct {
-	TextSpeed   int  `json:"text_speed"`
+	TextSpeed int `json:"text_speed"`
+	// TextSize is the size of the lines in the message window: 0 the game's, 1 and 2
+	// larger (textScale).
+	TextSize    int  `json:"text_size,omitempty"`
 	AutoWait    int  `json:"auto_wait"`
 	Window      int  `json:"window"`
 	BGM         int  `json:"bgm"`
@@ -48,6 +51,9 @@ func defaultConfig() config {
 }
 
 func (c config) textStep() int { return []int{1, 2, 3, 5, 9999}[clampInt(c.TextSpeed, 0, 4)] }
+
+// textScale is how many times the game's size the message window's lines are drawn.
+func (c config) textScale() float64 { return []float64{1, 1.2, 1.4}[clampInt(c.TextSize, 0, 2)] }
 
 func (c config) autoScale() float64 {
 	return []float64{0.5, 0.75, 1, 1.4, 2}[clampInt(c.AutoWait, 0, 4)]
@@ -135,6 +141,7 @@ type cfgRow int
 
 const (
 	rowText cfgRow = iota
+	rowTextSize
 	rowAutoWait
 	rowWindow
 	rowBGM
@@ -216,6 +223,7 @@ func (s *configScreen) refresh(g *Game) {
 		s.list.items, s.rows = append(s.list.items, it), append(s.rows, r)
 	}
 	add(rowText, lang.T("文字の速さ"), speed[clampInt(c.TextSpeed, 0, 4)])
+	add(rowTextSize, lang.T("文字の大きさ"), []string{lang.T("ふつう"), lang.T("大きい"), lang.T("とても大きい")}[clampInt(c.TextSize, 0, 2)])
 	add(rowAutoWait, lang.T("オートの待ち"), wait[clampInt(c.AutoWait, 0, 4)])
 	add(rowWindow, lang.T("ウィンドウの濃さ"), bar(c.Window))
 	add(rowBGM, lang.T("BGM の音量"), bar(c.BGM))
@@ -331,6 +339,9 @@ func (s *configScreen) change(g *Game, d int, wrap bool) {
 	switch s.row(s.list.sel) {
 	case rowText:
 		c.TextSpeed = step(c.TextSpeed, 0, 4)
+	case rowTextSize:
+		c.TextSize = step(c.TextSize, 0, 2)
+		g.talk.reword(g) // the line shown is paged again at the new size
 	case rowAutoWait:
 		c.AutoWait = step(c.AutoWait, 0, 4)
 	case rowWindow:
@@ -420,7 +431,14 @@ func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
 			sample = lang.T("自分で：勧めません。スキルツリーで自分で振ります。")
 		}
 	}
-	ls, sz := gfx.FitLines(sample, sizeS, l.w-48, 2)
+	size, lines := sizeS, 2
+	if s.row(l.sel) == rowTextSize {
+		// the sample is one line as large as the lines of the message window will be
+		sample, lines = lang.T("この大きさで表示します。"), 1
+		size, _ = messageMetrics(&g.db.Game)
+		size *= g.cfg.textScale()
+	}
+	ls, sz := gfx.FitLines(sample, size, l.w-48, lines)
 	for i, ln := range ls {
 		g.text(dst, ln, l.x+24, y+20+float64(i)*gfx.LineHeight(sz)-float64(len(ls)-1)*gfx.LineHeight(sz)/2, sz, g.th.text)
 	}
