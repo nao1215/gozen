@@ -1747,7 +1747,27 @@ type Gallery struct {
 	// MusicPictures is the sequence of pictures shown per song (a songs id) in the music column. Choosing a song switches to the first;
 	// while it plays it goes through the sequence in order, and once exhausted, randomly among the opened CGs. Unopened CGs are skipped.
 	MusicPictures map[string][]string `yaml:"music_pictures"`
+	// Endings are the game's endings in the gallery's Endings tab: one is reached once its
+	// flag is set or its when holds, and stays reached in the gallery record across saves
+	// and new games. Unreached, it shows ??? and its hint.
+	Endings []GalleryEnding `yaml:"endings"`
 }
+
+// GalleryEnding is one ending of the gallery's list.
+type GalleryEnding struct {
+	// ID names the ending in the gallery record, so retitling it keeps it reached.
+	ID    string `yaml:"id"`
+	Title string `yaml:"title"`
+	Flag  string `yaml:"flag"`
+	When  Expr   `yaml:"when"`
+	// Hint is shown under ??? while the ending is not reached (empty: nothing).
+	Hint string `yaml:"hint"`
+	// Picture is shown beside the list once the ending is reached.
+	Picture string `yaml:"picture"`
+}
+
+// Key is the ending's name in the gallery record.
+func (e GalleryEnding) Key() string { return "ending:" + e.ID }
 
 // GalleryCG is a picture of the gallery: open once it (any of its pages) has been shown by
 // an image command (or its flag has been set). files takes the pages of one picture the

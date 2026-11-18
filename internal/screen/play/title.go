@@ -182,6 +182,9 @@ func titleHintX(g *Game, tw float64) float64 {
 // toTitle ends the play for the title screen, or, in a game with menus: none, for the
 // opening that takes its place.
 func (g *Game) toTitle() {
+	// The unlocks are checked every half second; an ending reached on the last line
+	// before end is recorded before the state goes.
+	g.checkUnlocks()
 	g.st = nil
 	g.resetPlay(true)
 	g.events, g.autoRead = nil, false

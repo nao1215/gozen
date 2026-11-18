@@ -123,6 +123,7 @@ Gallery:
   music: "The song and mood used when a gallery scene starts, unless the scene has its own music. If neither is set, the location's music plays."
   music_pictures: "Pictures shown in the music section for each song, as a map of song ID to a list of picture paths. Pictures not yet unlocked are skipped."
   scenes: "The scenes that can be played again from the gallery."
+  endings: "The game's endings, listed in the gallery's Endings tab with how many were reached. An ending stays reached across saves and new games."
 GalleryCG:
   _: "A picture in the gallery that opens once it has been shown by an `image` command or its flag is set."
   file: "The path of the picture under assets/. It may be a pattern matching several files."
@@ -135,6 +136,14 @@ GalleryPage:
   line: "The 1-based number of the line or question to start from, counting dialog lines and choices."
   picture: "If set, only dialog shown over this picture is counted for `line`."
   title: "The title shown for this entry point in the list."
+GalleryEnding:
+  _: "An ending of the gallery's Endings tab. It is reached once its flag is set or its when holds, checked every half second and before the game returns to the title, so a flag set on the line before `end` counts."
+  id: "A fixed name for the ending in the gallery record, so retitling it keeps it reached. Required and unique."
+  title: "The ending's name in the list once it is reached. Translated by lang/<code>.yaml."
+  flag: "A flag that, once set, reaches the ending. A flag or `when` is needed."
+  when: "An expression that, once true, reaches the ending."
+  hint: "A line shown under ??? while the ending is not reached, such as how to reach it. Translated by lang/<code>.yaml."
+  picture: "A picture under assets/ shown beside the list once the ending is reached."
 GalleryScene:
   _: "A scene that can be played again from the gallery, run as an event with the starting party and no lasting effect."
   background: "The picture shown behind the replay. By default the location's background is used."

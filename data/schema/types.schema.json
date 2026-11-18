@@ -10978,6 +10978,25 @@
           },
           "x-type": "[GalleryCG](#gallerycg)[]"
         },
+        "endings": {
+          "description": "The game's endings, listed in the gallery's Endings tab with how many were reached. An ending stays reached across saves and new games.",
+          "items": {
+            "$ref": "#/$defs/GalleryEnding"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[GalleryEnding](#galleryending)[]"
+        },
         "music": {
           "$ref": "#/$defs/MusicCue",
           "description": "The song and mood used when a gallery scene starts, unless the scene has its own music. If neither is set, the location's music plays.",
@@ -11104,6 +11123,96 @@
       "required": [
         "title"
       ],
+      "type": "object"
+    },
+    "GalleryEnding": {
+      "additionalProperties": false,
+      "description": "An ending of the gallery's Endings tab. It is reached once its flag is set or its when holds, checked every half second and before the game returns to the title, so a flag set on the line before `end` counts.",
+      "properties": {
+        "flag": {
+          "description": "A flag that, once set, reaches the ending. A flag or `when` is needed.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "hint": {
+          "description": "A line shown under ??? while the ending is not reached, such as how to reach it. Translated by lang/\u003ccode\u003e.yaml.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "id": {
+          "description": "A fixed name for the ending in the gallery record, so retitling it keeps it reached. Required and unique.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "picture": {
+          "description": "A picture under assets/ shown beside the list once the ending is reached.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "The ending's name in the list once it is reached. Translated by lang/\u003ccode\u003e.yaml.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "An expression that, once true, reaches the ending.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
       "type": "object"
     },
     "GalleryPage": {

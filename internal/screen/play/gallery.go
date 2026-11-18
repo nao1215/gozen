@@ -174,11 +174,30 @@ func (g *Game) checkUnlocks() {
 			g.unlock(sc.Key())
 		}
 	}
+	for _, e := range gal.Endings {
+		if !g.unlocked[e.Key()] && g.endingReached(e) {
+			g.unlock(e.Key())
+		}
+	}
 	g.checkProfiles()
 }
 
+// endingReached reports whether the state reaches the ending: its flag is set, or its
+// when holds.
+func (g *Game) endingReached(e data.GalleryEnding) bool {
+	if e.Flag != "" && g.st.Flags[e.Flag] {
+		return true
+	}
+	if !e.When.Set() {
+		return false
+	}
+	ok, err := e.When.Bool(g.st.Env())
+	return err == nil && ok
+}
+
 func (g *Game) hasGallery() bool {
-	return len(g.db.Game.Gallery.CGs)+len(g.db.Game.Gallery.Scenes) > 0
+	gal := g.db.Game.Gallery
+	return len(gal.CGs)+len(gal.Scenes)+len(gal.Endings) > 0
 }
 
 type galleryScreen struct {
@@ -254,6 +273,9 @@ func (s *galleryScreen) refresh(g *Game) {
 
 func (s *galleryScreen) tabIDs(g *Game) []int {
 	ids := []int{0, 1}
+	if len(g.db.Game.Gallery.Endings) > 0 {
+		ids = append(ids, galleryEndingTab)
+	}
 	if len(g.db.Music.Songs) > 0 {
 		ids = append(ids, galleryMusicTab)
 	}
@@ -266,9 +288,12 @@ func (s *galleryScreen) tabIDs(g *Game) []int {
 func (s *galleryScreen) tabLabels(g *Game) []string {
 	labels := []string{lang.T("CG"), lang.T("シーン")}
 	for _, id := range s.tabIDs(g)[2:] {
-		if id == galleryMusicTab {
+		switch id {
+		case galleryEndingTab:
+			labels = append(labels, lang.T("エンディング"))
+		case galleryMusicTab:
 			labels = append(labels, lang.T("音楽"))
-		} else {
+		default:
 			title := g.db.Game.SceneReview.Title
 			if title == "" {
 				title = lang.T("回想検査")
@@ -298,7 +323,16 @@ func (s *galleryScreen) build(g *Game) {
 		s.syncMusicList()
 		return
 	}
-	if s.tab == 0 {
+	switch s.tab {
+	case galleryEndingTab:
+		for _, e := range gal.Endings {
+			if g.opts.GalleryAll || g.unlocked[e.Key()] {
+				items = append(items, listItem{label: e.Title})
+			} else {
+				items = append(items, listItem{label: lang.T("？？？"), disabled: true})
+			}
+		}
+	case 0:
 		for _, cg := range gal.CGs {
 			if g.opts.GalleryAll || g.unlocked["cg:"+cg.Key()] {
 				items = append(items, listItem{label: cg.Title})
@@ -306,7 +340,7 @@ func (s *galleryScreen) build(g *Game) {
 				items = append(items, listItem{label: lang.T("？？？"), disabled: true})
 			}
 		}
-	} else {
+	default:
 		for _, sc := range gal.Scenes {
 			if g.opts.GalleryAll || g.unlocked[sc.Key()] {
 				items = append(items, listItem{label: sc.Title})
@@ -435,8 +469,8 @@ func (s *galleryScreen) update(g *Game) {
 		return
 	}
 	chose := s.menu.updateChoice(g)
-	if !chose || len(s.menu.items) == 0 || s.menu.items[s.menu.sel].disabled {
-		return
+	if !chose || len(s.menu.items) == 0 || s.menu.items[s.menu.sel].disabled || s.tab == galleryEndingTab {
+		return // an ending is looked at beside the list; there is nothing to open
 	}
 	gal := g.db.Game.Gallery
 	if s.tab == 0 {
@@ -502,12 +536,16 @@ func (s *galleryScreen) draw(g *Game, dst *ebiten.Image) {
 
 	gal := g.db.Game.Gallery
 	pic := ""
-	if len(s.menu.items) > 0 && !s.menu.items[s.menu.sel].disabled {
-		if s.tab == 0 {
+	open := len(s.menu.items) > 0 && !s.menu.items[s.menu.sel].disabled
+	if open {
+		switch s.tab {
+		case galleryEndingTab:
+			pic = gal.Endings[s.menu.sel].Picture
+		case 0:
 			if pages := gal.CGs[s.menu.sel].Pages(g.db.FS); len(pages) > 0 {
 				pic = pages[0]
 			}
-		} else {
+		default:
 			pic = gal.Scenes[s.menu.sel].Picture
 		}
 	}
@@ -519,23 +557,38 @@ func (s *galleryScreen) draw(g *Game, dst *ebiten.Image) {
 	} else {
 		gfx.DrawText(dst, lang.T("？？？"), x+w/2, y+h/2-20, sizeL, g.th.dim)
 	}
-	n, open := 0, 0
+	if s.tab == galleryEndingTab && !open && len(s.menu.items) > 0 {
+		if hint := gal.Endings[s.menu.sel].Hint; hint != "" {
+			ls, sz := gfx.FitLines(hint, sizeM, w-48, 3)
+			for i, l := range ls {
+				gfx.DrawText(dst, l, x+w/2, y+h/2+30+float64(i)*gfx.LineHeight(sz), sz, g.th.text)
+			}
+		}
+	}
+	n, opened := 0, 0
 	for _, it := range s.menu.items {
 		n++
 		if !it.disabled {
-			open++
+			opened++
 		}
 	}
 
-	if len(s.menu.items) > 0 && !s.menu.items[s.menu.sel].disabled {
+	if open {
 		ls, sz := gfx.FitLines(s.menu.items[s.menu.sel].label, sizeM, w, 1)
 		if len(ls) > 0 {
 			gfx.DrawTextOutlineColor(dst, ls[0], x+w/2, y+h+20, sz, g.th.text, g.th.window, 1)
 		}
 	}
-	gfx.DrawTextOutlineColor(dst, lang.T("ひらいた数")+": "+itoa(open)+" / "+itoa(n), x+w/2, y+h+64, sizeS, g.th.dim, g.th.window, 1)
+	count := lang.T("ひらいた数")
+	if s.tab == galleryEndingTab {
+		count = lang.T("たどりついた数")
+	}
+	gfx.DrawTextOutlineColor(dst, count+": "+itoa(opened)+" / "+itoa(n), x+w/2, y+h+64, sizeS, g.th.dim, g.th.window, 1)
 	hint := lang.T("←→: CG / シーン   Z: みる   X: もどる")
-	if len(g.db.Music.Songs) > 0 {
+	switch {
+	case len(gal.Endings) > 0:
+		hint = "←→: " + strings.Join(s.tabLabels(g), " / ") + "   " + lang.T("Z: みる   X: もどる")
+	case len(g.db.Music.Songs) > 0:
 		hint = lang.T("←→: CG / シーン / 音楽   Z: みる   X: もどる")
 	}
 	if s.tab == 0 && g.opts.GalleryAll && g.cgReviewEnabled() {

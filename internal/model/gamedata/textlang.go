@@ -148,6 +148,9 @@ func (db *DB) nameFields() []*string {
 	for i := range g.Gallery.Scenes {
 		out = append(out, &g.Gallery.Scenes[i].Title)
 	}
+	for i := range g.Gallery.Endings {
+		out = append(out, &g.Gallery.Endings[i].Title, &g.Gallery.Endings[i].Hint)
+	}
 	for _, c := range db.Classes {
 		out = append(out, &c.Name)
 	}
@@ -243,6 +246,10 @@ func (db *DB) SourceTexts() []SourceText {
 	}
 	for i := range g.Gallery.Scenes {
 		add(fmt.Sprintf("game.yaml gallery.scenes[%d].title", i), src(&g.Gallery.Scenes[i].Title))
+	}
+	for i := range g.Gallery.Endings {
+		add(fmt.Sprintf("game.yaml gallery.endings[%d].title", i), src(&g.Gallery.Endings[i].Title))
+		add(fmt.Sprintf("game.yaml gallery.endings[%d].hint", i), src(&g.Gallery.Endings[i].Hint))
 	}
 	sorted := func(m []string) []string { return slices.Sorted(slices.Values(m)) }
 	for _, id := range sorted(slices.Collect(maps.Keys(db.Classes))) {

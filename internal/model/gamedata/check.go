@@ -926,6 +926,7 @@ func (db *DB) Check() []error {
 		}
 	}
 	c.galleryKeys(g.Gallery)
+	c.galleryEndings(g.Gallery.Endings)
 	for i, sc := range g.Gallery.Scenes {
 		w := fmt.Sprintf("game.yaml gallery.scenes[%d]", i)
 		_, ok := c.db.Events[sc.Event]
@@ -1726,6 +1727,27 @@ func (c *checker) choseReferences() {
 }
 
 // galleryKeys rejects duplicate migration targets and mappings that leak unlock records into another recollection.
+// galleryEndings checks gallery.endings: each has an id of its own, a title, and a flag
+// or a when that reaches it.
+func (c *checker) galleryEndings(endings []GalleryEnding) {
+	seen := map[string]bool{}
+	for i, e := range endings {
+		w := fmt.Sprintf("game.yaml gallery.endings[%d]", i)
+		if e.ID == "" || e.Title == "" || (e.Flag == "" && !e.When.Set()) {
+			c.errorf(diag.Shape, w, "an ending needs an id, a title and a flag or when that reaches it")
+		}
+		if e.ID != "" && seen[e.ID] {
+			c.errorf(diag.Duplicate, w+".id", "the id %q names another ending too", e.ID)
+		}
+		seen[e.ID] = true
+		c.stateFlag(w+".flag", e.Flag)
+		c.expr(w+".when", e.When, FieldNames)
+		if e.Picture != "" {
+			c.file(w+".picture", e.Picture)
+		}
+	}
+}
+
 func (c *checker) galleryKeys(g Gallery) {
 	owners := map[string]int{}
 	claim := func(key, where string, i int, explicit bool) {

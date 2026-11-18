@@ -149,6 +149,11 @@ func TestCheckMore(t *testing.T) {
 		{"gallery music pictures: unknown song", map[string]string{"game.yaml": game("gallery: {music_pictures: {nosong: [cg/none.jpg]}}\n")}, `gallery.music_pictures.nosong: unknown song "nosong"`},
 		{"gallery music pictures: missing picture", map[string]string{"game.yaml": game("gallery: {music_pictures: {nosong: [cg/none.jpg]}}\n")}, `gallery.music_pictures.nosong[0]: no file assets/cg/none.jpg`},
 		{"gallery scene: seen missing", map[string]string{"game.yaml": game("gallery: {scenes: [{title: X, event: e, seen: cg/none.jpg}]}\n"), "data/z.yaml": "events: {e: {do: []}}"}, `gallery.scenes[0].seen: no file assets/cg/none.jpg`},
+		{"gallery ending: nothing reaches it", map[string]string{"game.yaml": game("gallery: {endings: [{id: a, title: A}]}\n")}, `gallery.endings[0]: an ending needs an id, a title and a flag or when`},
+		{"gallery ending: no id", map[string]string{"game.yaml": game("gallery: {endings: [{title: A, flag: a}]}\n")}, `gallery.endings[0]: an ending needs an id`},
+		{"gallery ending: same id", map[string]string{"game.yaml": game("gallery: {endings: [{id: a, title: A, flag: a}, {id: a, title: B, flag: b}]}\n")}, `gallery.endings[1].id: the id "a" names another ending too`},
+		{"gallery ending: bad when", map[string]string{"game.yaml": game(`gallery: {endings: [{id: a, title: A, when: "flagg.x"}]}` + "\n")}, `gallery.endings[0].when: "flagg.x" uses the unknown name`},
+		{"gallery ending: missing picture", map[string]string{"game.yaml": game("gallery: {endings: [{id: a, title: A, flag: a, picture: cg/none.jpg}]}\n")}, `gallery.endings[0].picture: no file assets/cg/none.jpg`},
 		// 6. fields of fixed-type items
 		{"group field typo", map[string]string{"data/z.yaml": `events: {e: {when: "party.min_hp_rtae < 0.5", do: []}}`}, `"party.min_hp_rtae < 0.5": party: a party member has no field "hp_rtae"`},
 		{"aggregate of a non-number", map[string]string{"data/z.yaml": `events: {e: {when: "party.min_class > 0", do: []}}`}, `class is not a number`},

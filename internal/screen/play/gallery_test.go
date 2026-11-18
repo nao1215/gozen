@@ -3,6 +3,8 @@ package play
 import (
 	"testing"
 	"testing/fstest"
+
+	"github.com/nao1215/gozen/internal/testgame"
 )
 
 const galleryEndingYAML = `
@@ -93,5 +95,66 @@ func TestGalleryReviewButton(t *testing.T) {
 	mnuTap(g, s.reviewButton(g))
 	if _, ok := mnuTop(g).(*cgReview); !ok {
 		t.Fatalf("a tap on the review button left %T on top", mnuTop(g))
+	}
+}
+
+// TestGalleryEndings: an ending reached on the last line before the title is recorded,
+// stays reached in a new play, and the gallery's Endings tab lists it by its title while
+// the one not reached shows ??? with its hint.
+func TestGalleryEndings(t *testing.T) {
+	fsys := gameFiles(t)
+	fsys["game.yaml"].Data = append([]byte("schema_version: 4\n"), append(fsys["game.yaml"].Data, []byte(`
+gallery:
+  endings:
+    - {id: warm, title: Warm Night, flag: warm, picture: end.png}
+    - {id: cold, title: Cold Road, when: "flag.cold", hint: Leave before the toast.}
+`)...)...)
+	fsys["assets/end.png"] = &fstest.MapFile{Data: testgame.Picture(32, 18)}
+	dir := t.TempDir()
+	open := func() *Game {
+		g, err := New(Options{FS: fsys, NoSound: true, SaveDir: dir, Location: "camp", Seed: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = g.Close() }) // the first play is closed by hand
+		return g
+	}
+	g := open()
+	if !g.hasGallery() {
+		t.Fatal("a gallery of endings alone is no gallery")
+	}
+	g.st.Flags["warm"] = true
+	g.toTitle()
+	g.saveUnlocks()
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	g = open()
+	if !g.unlocked["ending:warm"] || g.unlocked["ending:cold"] {
+		t.Fatalf("unlocks after a new play %v", g.unlocked)
+	}
+	s := newGallery(g)
+	at := -1
+	for i, id := range s.tabIDs(g) {
+		if id == galleryEndingTab {
+			at = i
+		}
+	}
+	if at != 2 || s.tabLabels(g)[at] != "Endings" {
+		t.Fatalf("tabs %v %v: want Endings after Scenes", s.tabIDs(g), s.tabLabels(g))
+	}
+	s.tab = galleryEndingTab
+	s.build(g)
+	if it := s.menu.items; len(it) != 2 || it[0].label != "Warm Night" || it[0].disabled || it[1].label != "???" || !it[1].disabled {
+		t.Fatalf("ending rows %+v", it)
+	}
+	s.menu.sel = 1
+	s.draw(g, btlImage()) // the hint of the ending not reached
+	g.in = input{}
+	g.in.pressed[btnOK] = true
+	s.menu.sel = 0
+	s.update(g)
+	if s.view != "" || len(g.stack) == 0 {
+		t.Fatalf("choosing a reached ending opened %q", s.view)
 	}
 }

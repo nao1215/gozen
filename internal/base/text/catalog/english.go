@@ -556,6 +556,8 @@ var english = map[string]string{
 	"Z: せんぞを みる":                "Z: view ancestry",
 	"Q: ページを ひらく":               "Q: open page",
 	"Tab: べつの くみあわせ":            "Tab: other recipe",
+	"エンディング":                    "Endings",
+	"たどりついた数":                   "Reached",
 	"X: もどる":                    "X: back",
 	"相関図":                       "Relationships",
 	"Tab: ページ   矢印: 選択   Z: 注目/詳細   X: 全体/もどる   F6: とじる":     "Tab: page   arrows: choose   Z: focus/page   X: full/back   F6: close",
