@@ -341,7 +341,7 @@ var english = map[string]string{
 	"%s に はいごうする（おやは いなくなる）":        "Fuse into %s (the parents leave)",
 	"あずかり":                          "reserve",
 	"なかま":                           "party",
-	"%s を にがしますか？（もどって きません）":          "Release %s permanently?",
+	"%s を にがしますか？（もどって きません）":       "Release %s permanently?",
 	"%s と %s を いれかえた。ここを おすと もとに もどす。": "Swapped %s with %s. Press here to undo.",
 	"モンスターぼくじょう":                       "Monster Ranch",
 	"なかま %d/%d   あずかり %d":              "Party %d/%d   Reserve %d",

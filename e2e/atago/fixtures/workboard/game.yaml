@@ -109,7 +109,6 @@ ui:
   profiles: true
   profile_book: {layout: grid}
   quick_menu: below
-  saves: {slots: 5, quick: true}
   material:
     kind: glass
     blur: 12
