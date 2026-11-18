@@ -1071,6 +1071,28 @@ scenarios:
       actions:
       - eval: "document.getElementById('keep').click(); document.documentElement.classList.contains('kept')"
   - assert: {value: {equals: 'true'}}
+  # at a phone's width the game fits the screen: the page does not scroll sideways
+  # and the canvas fills the window (the game draws its own bars inside it)
+  - cdp:
+      runner: browser
+      actions:
+      - viewport: {width: 390, height: 844, device_scale_factor: 2, mobile: true}
+      - eval: "new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); true"
+      - eval: |
+          (() => {
+            const r = document.querySelector('canvas').getBoundingClientRect();
+            return {scroll: document.documentElement.scrollWidth <= innerWidth,
+              inside: r.left >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5,
+              wide: r.width >= innerWidth - 1,
+              tall: r.height >= innerHeight - 1};
+          })()
+  - assert:
+      value:
+        json:
+        - {path: $.scroll, equals: true}
+        - {path: $.inside, equals: true}
+        - {path: $.wide, equals: true}
+        - {path: $.tall, equals: true}
   # the page hidden in the middle of play (another app on a phone) writes the autosave
   # and goes on drawing when it is shown again; on the title it writes nothing
   - cdp:
