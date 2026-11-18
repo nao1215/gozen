@@ -561,6 +561,16 @@ type ProfileBook struct {
 	Layout string `yaml:"layout"`
 }
 
+// SaveStyle shapes the save screens (ui.saves).
+type SaveStyle struct {
+	// Slots is how many slots the player saves to (default 3, at most 99). More slots
+	// than the screen holds scroll.
+	Slots int `yaml:"slots"`
+	// Quick adds Quick save and Quick load to the novel band: one slot written without a
+	// menu, and read back with one question, as a visual novel's Q.Save and Q.Load.
+	Quick bool `yaml:"quick"`
+}
+
 // TitleMenu shapes the title screen's menu (schema_version 10).
 type TitleMenu struct {
 	// HideDisabled leaves out the entries that cannot be chosen now (Continue with no
@@ -637,6 +647,9 @@ type UIStyle struct {
 	// 10): empty, it rolls back one line when it can and opens the backlog otherwise, as
 	// before; log always opens the backlog. Turning it down advances the line either way.
 	WheelUp string `yaml:"wheel_up"`
+	// Saves shapes the save screens: the number of slots and the quick slot. Omitted,
+	// three slots and the autosave, without a quick slot.
+	Saves *SaveStyle `yaml:"saves"`
 	// Title shapes the title screen's menu (schema_version 10). Omitted, the menu shows
 	// every entry, the ones that cannot be chosen grayed.
 	Title *TitleMenu `yaml:"title"`
@@ -1734,7 +1747,27 @@ type Gallery struct {
 	// MusicPictures is the sequence of pictures shown per song (a songs id) in the music column. Choosing a song switches to the first;
 	// while it plays it goes through the sequence in order, and once exhausted, randomly among the opened CGs. Unopened CGs are skipped.
 	MusicPictures map[string][]string `yaml:"music_pictures"`
+	// Endings are the game's endings in the gallery's Endings tab: one is reached once its
+	// flag is set or its when holds, and stays reached in the gallery record across saves
+	// and new games. Unreached, it shows ??? and its hint.
+	Endings []GalleryEnding `yaml:"endings"`
 }
+
+// GalleryEnding is one ending of the gallery's list.
+type GalleryEnding struct {
+	// ID names the ending in the gallery record, so retitling it keeps it reached.
+	ID    string `yaml:"id"`
+	Title string `yaml:"title"`
+	Flag  string `yaml:"flag"`
+	When  Expr   `yaml:"when"`
+	// Hint is shown under ??? while the ending is not reached (empty: nothing).
+	Hint string `yaml:"hint"`
+	// Picture is shown beside the list once the ending is reached.
+	Picture string `yaml:"picture"`
+}
+
+// Key is the ending's name in the gallery record.
+func (e GalleryEnding) Key() string { return "ending:" + e.ID }
 
 // GalleryCG is a picture of the gallery: open once it (any of its pages) has been shown by
 // an image command (or its flag has been set). files takes the pages of one picture the

@@ -26,6 +26,9 @@ func (g *Game) sceneReviewLog() string {
 
 const galleryCheckTab = 3
 
+// galleryEndingTab is the Endings tab, after Scenes while gallery.endings has any.
+const galleryEndingTab = 4
+
 type sceneReviewLine struct {
 	Time  string `json:"time"`
 	Event string `json:"event"`

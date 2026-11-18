@@ -2,6 +2,7 @@ package play
 
 import (
 	"bytes"
+	"image"
 	"testing"
 	"testing/fstest"
 
@@ -103,5 +104,35 @@ func TestScreenOnlyVoiceHasVolumeControl(t *testing.T) {
 	s.change(g, -1, false)
 	if g.cfg.Voice != before-1 {
 		t.Fatal("screen voice volume control does not change the setting")
+	}
+}
+
+// TestBacklogReplaysAVoice: a voiced line of the backlog carries a ▶; a click on it plays
+// the line's voice again and keeps the log open, and a click elsewhere closes it.
+func TestBacklogReplaysAVoice(t *testing.T) {
+	g := voicedGame(t, Options{Location: "camp", Event: "talk", Script: "wait 10\nquit\n"})
+	runToEnd(t, g)
+	g.remember(logLine{text: "A line without a voice."})
+	v := &backlogView{}
+	g.logView = v
+	v.draw(g, btlImage())
+	if len(v.voices) != 1 || g.backlog[v.voices[0].entry].line.Text != "Hi." {
+		t.Fatalf("▶ marks %+v, want one for Hi.", v.voices)
+	}
+	var out bytes.Buffer
+	g.tr = newTracer(&out)
+	at := v.voices[0].at
+	g.in = input{mouse: image.Pt((at.Min.X+at.Max.X)/2, (at.Min.Y+at.Max.Y)/2), click: true}
+	v.update(g)
+	if g.logView == nil {
+		t.Fatal("the ▶ closed the log")
+	}
+	if got := traceLines(t, out.Bytes(), "voice"); len(got) != 1 || got[0]["file"] != "teller/voice/hi.wav" {
+		t.Fatalf("voice lines %v", got)
+	}
+	g.in = input{mouse: image.Pt(900, 500), click: true}
+	v.update(g)
+	if g.logView != nil {
+		t.Fatal("a click off the ▶ left the log open")
 	}
 }

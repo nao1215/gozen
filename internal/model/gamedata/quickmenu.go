@@ -2,6 +2,21 @@ package gamedata
 
 import "github.com/nao1215/gozen/internal/base/diag"
 
+// MaxSaveSlots bounds ui.saves.slots: a save screen scrolls, but a hundred slots is a
+// typo rather than a design.
+const MaxSaveSlots = 99
+
+// SaveSlots is how many slots the player saves to: ui.saves.slots, or 3.
+func (u *UIStyle) SaveSlots() int {
+	if u.Saves != nil && u.Saves.Slots > 0 {
+		return u.Saves.Slots
+	}
+	return 3
+}
+
+// QuickSave reports whether the novel band offers Quick save and Quick load.
+func (u *UIStyle) QuickSave() bool { return u.Saves != nil && u.Saves.Quick }
+
 // novelWindow checks ui.quick_menu and ui.novel_window (schema_version 10).
 func (c *checker) novelWindow(u *UIStyle) {
 	if u.QuickMenu != "" {
@@ -21,6 +36,9 @@ func (c *checker) novelWindow(u *UIStyle) {
 		if u.WheelUp != "log" {
 			c.errorf(diag.OutOfRange, "game.yaml ui.wheel_up", "want log, got %q", u.WheelUp)
 		}
+	}
+	if sv := u.Saves; sv != nil && (sv.Slots < 0 || sv.Slots > MaxSaveSlots) {
+		c.errorf(diag.OutOfRange, "game.yaml ui.saves.slots", "want 1 to %d slots (0 keeps 3), got %d", MaxSaveSlots, sv.Slots)
 	}
 	if u.Title != nil {
 		c.needsVersion("game.yaml ui.title", "ui.title", SchemaVersion10)

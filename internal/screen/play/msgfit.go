@@ -19,16 +19,18 @@ func messageMetrics(gm *data.Game) (size, width float64) {
 	return talkSize, sw - 80 - 100
 }
 
+// MessagePages pages a line as the message window shows it, its ruby marks taken out:
+// gozen check measures an authored line with it before play does.
 func MessagePages(gm *data.Game, text string) ([][]string, float64) {
 	size, width := messageMetrics(gm)
-	return gfx.Paginate(text, size, width, talkLines)
+	return gfx.Paginate(rubyText(text), size, width, talkLines)
 }
 
 func MessageLines() int { return talkLines }
 
 func MessageWrap(gm *data.Game, text string) []string {
 	size, width := messageMetrics(gm)
-	return gfx.Wrap(text, size, width)
+	return gfx.Wrap(rubyText(text), size, width)
 }
 
 func choiceWidth(gm *data.Game, options []string) float64 {

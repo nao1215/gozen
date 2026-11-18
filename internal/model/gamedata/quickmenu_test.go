@@ -8,7 +8,7 @@ import (
 )
 
 // TestQuickMenuAndNovelWindow: ui.quick_menu is below or inside, ui.novel_window is in
-// fractions of the screen, both at schema_version 10.
+// fractions of the screen, both at schema_version 10; ui.saves.slots is 1 to 99.
 func TestQuickMenuAndNovelWindow(t *testing.T) {
 	for _, c := range []struct{ head, want string }{
 		{"schema_version: 10\nid: b\nui: {quick_menu: below, novel_window: {width: 0.8, bottom: 0.02}}\n", ""},
@@ -25,6 +25,9 @@ func TestQuickMenuAndNovelWindow(t *testing.T) {
 		{"schema_version: 9\nid: b\nui: {choice_position: center}\n", "ui.choice_position needs schema_version: 10"},
 		{"schema_version: 10\nid: b\nui: {material: {kind: glass, opacities: {window: 0.5}}}\n", "ui.material.opacities: want base, card"},
 		{"schema_version: 10\nid: b\nui: {material: {kind: glass, opacities: {message: 1.5}}}\n", "ui.material.opacities: want base, card"},
+		{"schema_version: 11\nid: b\nui: {saves: {slots: 12, quick: true}}\n", ""},
+		{"schema_version: 11\nid: b\nui: {saves: {slots: 100}}\n", "ui.saves.slots: want 1 to 99 slots"},
+		{"schema_version: 11\nid: b\nui: {saves: {slots: -1}}\n", "ui.saves.slots: want 1 to 99 slots"},
 	} {
 		_, err := testgame.TryLoad(map[string]string{"game.yaml": c.head + testgame.Game})
 		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {

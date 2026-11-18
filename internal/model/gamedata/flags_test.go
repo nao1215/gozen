@@ -9,13 +9,13 @@ import (
 )
 
 // TestFlagWarnings: a flag set but never read and one read but never set are warned of
-// apart from the scene warnings; a flag declared in state.names, a gallery scene's flag
-// and a read in any expression count (ADR 0029).
+// apart from the scene warnings; a flag declared in state.names, a gallery scene's or
+// ending's flag and a read in any expression count (ADR 0029).
 func TestFlagWarnings(t *testing.T) {
 	db := testgame.Load(t, map[string]string{
-		"game.yaml": testgame.Game + "state: {names: {flag.kept: {type: bool, initial: false}}}\n",
+		"game.yaml": testgame.Game + "state: {names: {flag.kept: {type: bool, initial: false}}}\ngallery: {endings: [{id: fin, title: Fin, flag: ended}]}\n",
 		"data/z.yaml": `events: {e: {do: [
-{set: {flag.unread: true, flag.kept: true, flag.used: true}},
+{set: {flag.unread: true, flag.kept: true, flag.used: true, flag.ended: true}},
 {say: "{flag.used ? 'yes' : 'no'}"},
 {if: "flag.unset", then: [{gold: 1}]}
 ]}}`,
@@ -29,7 +29,7 @@ func TestFlagWarnings(t *testing.T) {
 			t.Errorf("no %q in\n%v", want, w)
 		}
 	}
-	for _, not := range []string{"flag.kept", "flag.used "} {
+	for _, not := range []string{"flag.kept", "flag.used ", "flag.ended"} {
 		if strings.Contains(w.Error(), not) {
 			t.Errorf("warned of %s:\n%v", not, w)
 		}

@@ -16,14 +16,19 @@ type talk struct {
 	meeting *ensembleLog
 	say     event.Say
 	pages   [][]string
-	page    int
-	shown   int
-	total   int
-	choice  *list
-	active  bool
-	age     int
-	full    int
-	hidden  bool
+	// ruby are the readings of the line (`|base《reading》`), over plain, the line without
+	// its marks; pageAt is where in plain each page starts.
+	ruby   []rubySpan
+	plain  string
+	pageAt []int
+	page   int
+	shown  int
+	total  int
+	choice *list
+	active bool
+	age    int
+	full   int
+	hidden bool
 
 	still  bool
 	closed int
@@ -150,7 +155,8 @@ func (t *talk) setPage(i int) {
 
 // layout breaks the line into the window's pages and shows the first.
 func (t *talk) layout(g *Game) {
-	t.pages, t.size = MessagePages(&g.db.Game, t.say.Text)
+	t.plain, t.ruby = parseRuby(t.say.Text)
+	t.pages, t.size = MessagePages(&g.db.Game, t.plain)
 	if def := g.db.Game.Screens[t.say.Ensemble]; g.novel() && def != nil && captionsOnStage(def.View) {
 		sw, sh := g.screen()
 		width := sw - 48 - min(340.0, (sw-48)*.30) - 68
@@ -159,7 +165,7 @@ func (t *talk) layout(g *Game) {
 			l := callGeometry(sw, sh)
 			width, rows = max(1, l.caption.w-32), max(1, int((l.caption.h-36*sh/720)/gfx.LineHeight(size)))
 		}
-		lines := gfx.Wrap(t.say.Text, size, width)
+		lines := gfx.Wrap(t.plain, size, width)
 		t.pages = nil
 		for len(lines) > 0 {
 			n := min(rows, len(lines))
@@ -170,7 +176,29 @@ func (t *talk) layout(g *Game) {
 	if len(t.pages) == 0 {
 		t.pages = [][]string{{""}}
 	}
+	t.pageAt = t.pageAt[:0]
+	if len(t.ruby) > 0 {
+		plain, at := []rune(t.plain), 0
+		for _, p := range t.pages {
+			t.pageAt = append(t.pageAt, at)
+			for _, ln := range p {
+				lr := []rune(ln)
+				for at+len(lr) <= len(plain) && string(plain[at:at+len(lr)]) != ln {
+					at++
+				}
+				at += len(lr)
+			}
+		}
+	}
 	t.setPage(0)
+}
+
+// drawRuby draws the readings over the page shown, its first line at x, y.
+func (t *talk) drawRuby(g *Game, dst *ebiten.Image, x, y, step, size float64) {
+	if len(t.ruby) == 0 || t.page >= len(t.pageAt) {
+		return
+	}
+	g.drawRuby(dst, t.ruby, t.plain, t.pages[t.page], t.pageAt[t.page], t.shown, x, y, step, size)
 }
 
 func (t *talk) ask(g *Game, c event.Choice) { t.question(g, c, false) }
@@ -518,6 +546,7 @@ func (t *talk) draw(g *Game, dst *ebiten.Image) {
 		left -= n
 		g.text(dst, string(r[:n]), x+50, y+40+float64(i)*size*1.45, size, g.th.text)
 	}
+	t.drawRuby(g, dst, x+50, y+40, size*1.45, size)
 	if t.shown >= t.total && t.choice == nil {
 		bob := math.Sin(float64(g.tick)/6) * 4
 		gfx.DrawText(dst, "▼", x+w-50, y+h-48+bob, sizeS, g.th.cursor)

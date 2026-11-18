@@ -276,7 +276,7 @@ type traceStore struct {
 }
 
 func (s *traceStore) slot(name string) bool {
-	for i := range saveSlots + 1 {
+	for i := range s.game.slotCount() {
 		if name == s.game.slotPath(i) {
 			return true
 		}
@@ -419,8 +419,8 @@ func (g *Game) traceSaves() (map[string]string, error) {
 	if g.db.FS == nil && g.opts.FS == nil {
 		return out, nil
 	}
-	names := make([]string, 0, saveSlots+1)
-	for i := range saveSlots + 1 {
+	names := make([]string, 0, g.slotCount())
+	for i := range g.slotCount() {
 		names = append(names, g.slotPath(i))
 	}
 	if g.db.Game.Phone != nil {
@@ -466,7 +466,7 @@ var buttonNames = [numButtons]string{
 	btnBack: "back", btnSave: "save", btnLoad: "load", btnPanel: "panel",
 	btnBook: "characters", btnBestiary: "bestiary", btnCaptions: "captions",
 	btnMapZoomIn: "map_zoom_in", btnMapZoomOut: "map_zoom_out", btnMapOverview: "map_overview",
-	btnMapFocus: "map_focus", btnMapPan: "map_pan", btnEndTurn: "end_turn_key", btnInbox: "inbox",
+	btnMapFocus: "map_focus", btnMapPan: "map_pan", btnEndTurn: "end_turn_key", btnInbox: "inbox", btnQuickSave: "quick_save", btnQuickLoad: "quick_load",
 }
 
 func (g *Game) traceInput(in *input) {
@@ -1522,7 +1522,7 @@ func (s *replayStore) ModTime(name string) (time.Time, error) {
 
 func (s *replayStore) Write(name string, b []byte) error {
 	if s.game != nil && s.game.rep != nil && s.game.rep.partial {
-		for i := range saveSlots + 1 {
+		for i := range s.game.slotCount() {
 			if name == s.game.slotPath(i) {
 				if len(s.writes[s.game.tick][name]) == 0 {
 					s.game.failure = fmt.Errorf("cannot reproduce exactly: unrecorded save write at tick %d", s.game.tick)

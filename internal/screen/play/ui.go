@@ -142,6 +142,8 @@ type listItem struct {
 
 	note      string
 	noteColor color.Color
+	// pic is drawn at the row's left, list.picW wide (a save's scene on the save screen).
+	pic *ebiten.Image
 }
 
 type list struct {
@@ -165,6 +167,8 @@ type list struct {
 	// press makes the pointer move the cursor with a click only, not as it passes over the
 	// rows: the lists of a book, where a row shows a page of its own.
 	press bool
+	// picW is the width of the column of the rows' pictures; 0 leaves no column.
+	picW float64
 }
 
 // swipe is a finger dragged over a part that scrolls: a list's rows, a log, a grid. A
@@ -483,6 +487,12 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 		}
 
 		room := float64(l.w) - 42 - 22
+		labelX := float64(r.Min.X) + 42
+		if l.picW > 0 {
+			l.drawPic(g, dst, it.pic, labelX, float64(r.Min.Y)+6, l.rowH-12)
+			labelX += l.picW + 16
+			room -= l.picW + 16
+		}
 		if it.right != "" {
 			room -= gfx.TextWidth(it.right, l.size) + 16
 		}
@@ -507,7 +517,7 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 			size = math.Max(l.size*0.8, l.size*room/tw)
 			label = gfx.Ellipsis(label, size, room)
 		}
-		g.text(dst, label, float64(r.Min.X)+42, ty+(l.size-size)*0.65, size, c)
+		g.text(dst, label, labelX, ty+(l.size-size)*0.65, size, c)
 		if it.right != "" {
 			gfx.DrawTextRight(dst, it.right, float64(r.Max.X)-22, ty, l.size, c)
 		}
@@ -516,6 +526,20 @@ func (l *list) drawRows(g *Game, dst *ebiten.Image, active bool) {
 }
 
 // drawMarks draws the ▲ and the ▼ of a list with rows above or under the ones shown.
+// drawPic draws a row's picture in the column, fitted to its height, or the empty frame
+// of a row with none.
+func (l *list) drawPic(g *Game, dst *ebiten.Image, pic *ebiten.Image, x, y, h float64) {
+	gfx.FillRect(dst, float32(x), float32(y), float32(l.picW), float32(h), withAlpha(colorBlack, 0x60), false)
+	if pic != nil {
+		b := pic.Bounds()
+		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		op.GeoM.Scale(l.picW/float64(b.Dx()), h/float64(b.Dy()))
+		op.GeoM.Translate(x, y)
+		gfx.DrawImage(dst, pic, op)
+	}
+	gfx.StrokeRoundRect(dst, float32(x), float32(y), float32(l.picW), float32(h), 4, 1.5, withAlpha(g.th.border, 0xc0))
+}
+
 func (l *list) drawMarks(g *Game, dst *ebiten.Image) {
 	n, rows := l.scrolled()
 	cx, up, down := l.markPlaces()

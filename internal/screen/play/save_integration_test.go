@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -145,7 +146,7 @@ func TestSaveSlotLabels(t *testing.T) {
 	if ok || l == "" || l == "3: ---- empty ----" {
 		t.Fatalf("damaged slot: %q %v", l, ok)
 	}
-	if slotName(autoSlot) == "" {
+	if g.slotName(g.autoSlot()) == "" {
 		t.Fatal("auto slot has no name")
 	}
 	if _, ok := g.storeTime(g.slotPath(1)); !ok {
@@ -897,7 +898,7 @@ func TestSaveMenuFitsPortraitAndShortLandscape(t *testing.T) {
 					}
 				}
 				for i, item := range l.items {
-					if i == saveSlots {
+					if i >= g.saveSlots() {
 						// Autosave uses a descriptive prefix.
 						continue
 					}
@@ -920,5 +921,131 @@ func TestSaveMenuFitsPortraitAndShortLandscape(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestQuickSaveAndMoreSlots: a visual novel asks for six slots and a quick slot. The band
+// gains Q.Save and Q.Load after Load; Q.Save writes quick.json at once, a later line is
+// left by Q.Load after its question, and the load screen lists the six slots, the
+// autosave and the quick slot while the save screen lists the six alone.
+func TestQuickSaveAndMoreSlots(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel, saves: {slots: 6, quick: true}}", "ev_many")
+	var labels []string
+	for _, b := range g.novelButtons() {
+		labels = append(labels, b.label)
+	}
+	if at := slices.Index(labels, "ロード"); at < 0 || at+2 >= len(labels) || labels[at+1] != "Qセーブ" || labels[at+2] != "Qロード" {
+		t.Fatalf("band %v: want Q.Save and Q.Load right after Load", labels)
+	}
+	g.quickLoad()
+	if _, asked := g.stack[len(g.stack)-1].(*confirm); asked || g.slotPics.note == "" {
+		t.Fatalf("Q.Load without a quick save asked (%T) or said nothing (%q)", g.stack[len(g.stack)-1], g.slotPics.note)
+	}
+	if got := wldTalkText(g); got != "Line 1." {
+		t.Fatalf("at %q", got)
+	}
+	g.quickSave()
+	if !g.storeHas("quick.json") || g.slotPics.note != "Quick saved." {
+		t.Fatalf("Q.Save: quick.json %v, note %q", g.storeHas("quick.json"), g.slotPics.note)
+	}
+	wldAdvance(t, g)
+	if got := wldTalkText(g); got != "Line 2." {
+		t.Fatalf("after one press at %q", got)
+	}
+	g.quickLoad()
+	sysConfirm(t, g, true)
+	wldFrames(t, g, 30)
+	if got := wldTalkText(g); got != "Line 1." {
+		t.Fatalf("Q.Load resumed at %q, want the quick saved Line 1.", got)
+	}
+
+	if g.slotPath(5) != "save6.json" || g.slotPath(g.autoSlot()) != "auto.json" || g.slotPath(g.quickSlot()) != "quick.json" {
+		t.Fatalf("slot files %q %q %q", g.slotPath(5), g.slotPath(g.autoSlot()), g.slotPath(g.quickSlot()))
+	}
+	save := newSaveMenu(g, true, func() {})
+	load := newSaveMenu(g, false, func() {})
+	if len(save.slots.items) != 6 || len(load.slots.items) != 8 {
+		t.Fatalf("save screen %d rows, load screen %d rows; want 6 and 8", len(save.slots.items), len(load.slots.items))
+	}
+	if last := load.slots.items[7]; last.disabled || !strings.HasPrefix(last.label, "Quick:") {
+		t.Fatalf("the quick slot row %+v", last)
+	}
+	if sel := load.index[load.slots.sel]; sel != g.quickSlot() {
+		t.Fatalf("the load screen opens on slot %d, want the newest save, the quick slot %d", sel, g.quickSlot())
+	}
+}
+
+// TestSaveScreenScrollsManySlots: more slots than the screen holds keep their rows inside
+// the screen and scroll to the slot chosen.
+func TestSaveScreenScrollsManySlots(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel, saves: {slots: 40}}", "ev_many")
+	m := newSaveMenu(g, true, func() {})
+	_, sh := g.screen()
+	if m.slots.rows >= 40 || m.slots.y+m.slots.height() > sh {
+		t.Fatalf("40 slots: %d rows shown, bottom %v of %v", m.slots.rows, m.slots.y+m.slots.height(), sh)
+	}
+	m.slots.sel = 39
+	m.slots.scroll()
+	if shown := m.slots.shown(); shown[len(shown)-1] != 39 {
+		t.Fatalf("the last slot is not shown after moving to it: %v", shown)
+	}
+}
+
+// TestSavePictureFollowsItsSave: a save written before anything was drawn has no
+// picture, and an older picture of the slot is removed so it does not stand for it.
+func TestSavePictureFollowsItsSave(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	if err := g.store.Write("save1.jpg.b64", []byte("old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.save(0); err != nil {
+		t.Fatal(err)
+	}
+	if g.storeHas("save1.jpg.b64") {
+		t.Fatal("a save without a frame kept the slot's old picture")
+	}
+	if g.slotPics.picture(g, g.slotPath(0)) != nil {
+		t.Fatal("a slot without a picture has one")
+	}
+}
+
+// TestQuickSaveNeedsTheSetting: without ui.saves.quick the band has no quick buttons and
+// a script's quick_save is refused, so no quick slot appears on the load screen.
+func TestQuickSaveNeedsTheSetting(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	for _, b := range g.novelButtons() {
+		if b.b == btnQuickSave || b.b == btnQuickLoad {
+			t.Fatalf("quick button %q without ui.saves.quick", b.label)
+		}
+	}
+	if r := g.novelButtonReason(btnQuickSave); r != "unavailable" {
+		t.Fatalf("quick save without the setting: reason %q", r)
+	}
+}
+
+// TestQuickLoadOfABrokenSave: a quick save that cannot be read says so instead of saying
+// there is none.
+func TestQuickLoadOfABrokenSave(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel, saves: {quick: true}}", "ev_many")
+	if err := g.store.Write("quick.json", []byte("{broken")); err != nil {
+		t.Fatal(err)
+	}
+	g.quickLoad()
+	if !strings.HasPrefix(g.slotPics.note, "Could not load") {
+		t.Fatalf("a broken quick save says %q", g.slotPics.note)
+	}
+}
+
+// TestSavePictureSkipsScreensOverTheScene: the frame a save keeps is the scene, not a
+// menu (an overlay) or a book opened over it (a modal screen).
+func TestSavePictureSkipsScreensOverTheScene(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	g.loopStarted = true // as in the Ebitengine loop, where pictures are kept
+	if !g.slotPics.uncovered(g) {
+		t.Fatal("the scene itself is covered")
+	}
+	g.push(newConfigScreen(g))
+	if g.slotPics.uncovered(g) {
+		t.Fatal("the settings over the scene would be the save's picture")
 	}
 }

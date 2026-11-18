@@ -926,6 +926,7 @@ func (db *DB) Check() []error {
 		}
 	}
 	c.galleryKeys(g.Gallery)
+	c.galleryEndings(g.Gallery.Endings)
 	for i, sc := range g.Gallery.Scenes {
 		w := fmt.Sprintf("game.yaml gallery.scenes[%d]", i)
 		_, ok := c.db.Events[sc.Event]
@@ -1674,11 +1675,16 @@ func (c *checker) flagRead(name, where string) {
 }
 
 // flagWarnings warn of a flag set but never read, and of one read but never set (by set,
-// gallery.scenes.set; --flags is for tests). They are kept apart from the scene warnings.
+// gallery.scenes.set; --flags is for tests). The flags of gallery scenes and endings are read. They are kept apart from the scene warnings.
 func (c *checker) flagWarnings() {
 	for i, s := range c.db.Game.Gallery.Scenes {
 		if s.Flag != "" {
 			c.flagRead(s.Flag, fmt.Sprintf("game.yaml gallery.scenes[%d].flag", i))
+		}
+	}
+	for i, e := range c.db.Game.Gallery.Endings {
+		if e.Flag != "" {
+			c.flagRead(e.Flag, fmt.Sprintf("game.yaml gallery.endings[%d].flag", i))
 		}
 	}
 	declared := func(name string) bool { _, ok := c.db.Game.State.Names["flag."+name]; return ok }
@@ -1726,6 +1732,27 @@ func (c *checker) choseReferences() {
 }
 
 // galleryKeys rejects duplicate migration targets and mappings that leak unlock records into another recollection.
+// galleryEndings checks gallery.endings: each has an id of its own, a title, and a flag
+// or a when that reaches it.
+func (c *checker) galleryEndings(endings []GalleryEnding) {
+	seen := map[string]bool{}
+	for i, e := range endings {
+		w := fmt.Sprintf("game.yaml gallery.endings[%d]", i)
+		if e.ID == "" || e.Title == "" || (e.Flag == "" && !e.When.Set()) {
+			c.errorf(diag.Shape, w, "an ending needs an id, a title and a flag or when that reaches it")
+		}
+		if e.ID != "" && seen[e.ID] {
+			c.errorf(diag.Duplicate, w+".id", "the id %q names another ending too", e.ID)
+		}
+		seen[e.ID] = true
+		c.stateFlag(w+".flag", e.Flag)
+		c.expr(w+".when", e.When, FieldNames)
+		if e.Picture != "" {
+			c.file(w+".picture", e.Picture)
+		}
+	}
+}
+
 func (c *checker) galleryKeys(g Gallery) {
 	owners := map[string]int{}
 	claim := func(key, where string, i int, explicit bool) {

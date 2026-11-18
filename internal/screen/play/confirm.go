@@ -54,6 +54,10 @@ func (c *confirm) window(g *Game, y, h float64) image.Rectangle {
 
 func (c *confirm) overlay() bool { return true }
 
+// modal draws the question over the novel window and the stage, which a question asked
+// from the novel band (Q.Load) would otherwise sit under.
+func (c *confirm) modal() bool { return true }
+
 func (c *confirm) layout(g *Game) (lines []string, size, y, h float64, yes, no image.Rectangle) {
 	sw, sh := g.screen()
 	width := min(720.0, sw-32)

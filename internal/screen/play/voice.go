@@ -49,6 +49,13 @@ func (g *Game) playVoice(t *talk, s event.Say) {
 	g.emit("voice", l)
 }
 
+// replayVoice plays a logged line's voice again (the ▶ of the backlog). It cuts the voice
+// playing, as a new line does, and leaves the auto wait of the line on the screen alone.
+func (g *Game) replayVoice(s event.Say) {
+	scratch := talk{}
+	g.playVoice(&scratch, s)
+}
+
 // voiceGain is the volume of a speaker's voice (the settings' row for that actor; 1 when unset).
 func (g *Game) voiceGain(actor string) float64 {
 	if v, ok := g.cfg.VoiceBy[actor]; ok {

@@ -10957,7 +10957,7 @@
     },
     "Gallery": {
       "additionalProperties": false,
-      "description": "The title screen's gallery: pictures to look at again and scenes to play again.",
+      "description": "The title screen's gallery: pictures to look at again, scenes to play again and the endings reached.",
       "properties": {
         "cgs": {
           "description": "The pictures in the gallery, each opening once it has been shown in play.",
@@ -10977,6 +10977,25 @@
             "version": "0, 1, 2"
           },
           "x-type": "[GalleryCG](#gallerycg)[]"
+        },
+        "endings": {
+          "description": "The game's endings, listed in the gallery's Endings tab with how many were reached. An ending stays reached across saves and new games.",
+          "items": {
+            "$ref": "#/$defs/GalleryEnding"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[GalleryEnding](#galleryending)[]"
         },
         "music": {
           "$ref": "#/$defs/MusicCue",
@@ -11088,7 +11107,7 @@
           "x-type": "string"
         },
         "title": {
-          "description": "The title shown for the picture in the gallery.",
+          "description": "The title shown for the picture in the gallery. Translated by lang/\u003ccode\u003e.yaml.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -11104,6 +11123,96 @@
       "required": [
         "title"
       ],
+      "type": "object"
+    },
+    "GalleryEnding": {
+      "additionalProperties": false,
+      "description": "An ending of the gallery's Endings tab. It is reached once its flag is set or its when holds, checked every half second and before the game returns to the title, so a flag set on the line before `end` counts.",
+      "properties": {
+        "flag": {
+          "description": "A flag that, once set, reaches the ending. A flag or `when` is needed.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "hint": {
+          "description": "A line shown under ??? while the ending is not reached, such as how to reach it. Translated by lang/\u003ccode\u003e.yaml.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "id": {
+          "description": "A fixed name for the ending in the gallery record, so retitling it keeps it reached. Required and unique.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "picture": {
+          "description": "A picture under assets/ shown beside the list once the ending is reached.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "title": {
+          "description": "The ending's name in the list once it is reached. Translated by lang/\u003ccode\u003e.yaml.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "when": {
+          "description": "An expression that, once true, reaches the ending.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        }
+      },
       "type": "object"
     },
     "GalleryPage": {
@@ -19662,6 +19771,39 @@
       ],
       "description": "A sound effect, written as its name or a map (the map needs schema version 4)."
     },
+    "SaveStyle": {
+      "additionalProperties": false,
+      "description": "The save screens: how many slots there are and whether a quick slot is offered.",
+      "properties": {
+        "quick": {
+          "description": "Add Quick save and Quick load to the novel band. Quick save writes one slot at once without a menu; Quick load reads it back after one question. The load screen lists the quick slot after the autosave. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "slots": {
+          "description": "How many slots the player saves to, from 1 to 99. The default is 3. More slots than the screen holds scroll.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "Say": {
       "anyOf": [
         {
@@ -26659,6 +26801,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "saves": {
+          "$ref": "#/$defs/SaveStyle",
+          "description": "The save screens: the number of slots and the quick slot. Omitted, three slots and the autosave, without a quick slot.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SaveStyle](#savestyle)"
         },
         "sfx_vary": {
           "$ref": "#/$defs/SfxVary",
