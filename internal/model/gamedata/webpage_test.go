@@ -11,13 +11,18 @@ import (
 	"github.com/nao1215/gozen/internal/testgame"
 )
 
-// webGame is the fixture game with game.yaml's web and a 1280x720 JPEG, a 600x315 PNG and
-// a GIF under assets/.
+// webGame is the fixture game with game.yaml's web and a 1280x720 JPEG, a 600x315 PNG,
+// a 192x192 and a 96x96 PNG and a GIF under assets/.
 func webGame(t *testing.T, web string) map[string]string {
 	t.Helper()
-	var big, small bytes.Buffer
+	var big, small, icon, tiny bytes.Buffer
 	if err := jpeg.Encode(&big, image.NewRGBA(image.Rect(0, 0, 1280, 720)), nil); err != nil {
 		t.Fatal(err)
+	}
+	for b, side := range map[*bytes.Buffer]int{&icon: 192, &tiny: 96} {
+		if err := png.Encode(b, image.NewRGBA(image.Rect(0, 0, side, side))); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := png.Encode(&small, image.NewRGBA(image.Rect(0, 0, 600, 315))); err != nil {
 		t.Fatal(err)
@@ -25,6 +30,7 @@ func webGame(t *testing.T, web string) map[string]string {
 	return map[string]string{
 		"game.yaml":      "schema_version: 9\nid: web\n" + testgame.Game + web,
 		"assets/big.jpg": big.String(), "assets/small.png": small.String(), "assets/card.gif": "GIF89a",
+		"assets/icon.png": icon.String(), "assets/tiny.png": tiny.String(),
 	}
 }
 
@@ -38,12 +44,19 @@ func TestCheckWebPage(t *testing.T) {
 		{"missing picture", "web: {url: 'https://example.org/', image: gone.png}\n", "no picture assets/gone.png"},
 		{"gif", "web: {url: 'https://example.org/', image: card.gif}\n", "want a PNG or a JPEG"},
 		{"picture without address", "web: {image: big.jpg}\n", "a picture needs web.url"},
+		{"icon not png", "web: {icon: big.jpg}\n", "game.yaml web.icon: want a PNG"},
+		{"missing icon", "web: {icon: gone.png}\n", "no picture assets/gone.png"},
+		{"icon not square", "web: {icon: small.png}\n", "assets/small.png is 600x315: want a square of 192x192 or more"},
+		{"small icon", "web: {icon: tiny.png}\n", "assets/tiny.png is 96x96: want a square of 192x192 or more"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if _, err := testgame.TryLoad(webGame(t, tt.web)); err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("want an error with %q, got %v", tt.want, err)
 			}
 		})
+	}
+	if _, err := testgame.TryLoad(webGame(t, "web: {icon: icon.png}\n")); err != nil {
+		t.Fatalf("a square icon of 192x192 without an address: %v", err)
 	}
 	old := webGame(t, "web: {url: 'https://example.org/'}\n")
 	old["game.yaml"] = strings.Replace(old["game.yaml"], "schema_version: 9", "schema_version: 8", 1)

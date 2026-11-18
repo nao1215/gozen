@@ -162,8 +162,17 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 	}
 	t.menu.draw(g, dst, true)
 
-	hint := lang.T("Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん")
+	hint := g.titleHint()
 	gfx.DrawTextOutlineColor(dst, hint, titleHintX(g, gfx.TextWidth(hint, sizeS*0.8)), sh-44, sizeS*0.8, g.th.text, g.th.window, a)
+}
+
+// titleHint is the line under the title's menu: the keys, or the touches when the last
+// input was a finger (a phone has no keys to press).
+func (g *Game) titleHint() string {
+	if g.in.byTouch {
+		return lang.T("タップ: けってい   2本の指で タップ: もどる")
+	}
+	return lang.T("Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん")
 }
 
 // titleHintRoom is the room kept under the title's menu for the key hint.

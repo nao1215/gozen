@@ -27324,6 +27324,19 @@
           },
           "x-type": "string"
         },
+        "icon": {
+          "description": "The square PNG under assets/, 192x192 or more, that a phone shows for the page added to its home screen. gozen export copies it beside the page as icon.png and names it in the page's web app manifest; it does not need url.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "image": {
           "description": "The card's picture under assets/, a PNG or a JPEG of 1200x630 or more (smaller is warned of, GZN0121). gozen export copies it as it is beside the page as og-image with its extension; it needs url.",
           "type": "string",

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +31,23 @@ func TestTitleMenuKeepsClearOfTheHint(t *testing.T) {
 		}
 	}
 	newTitle(g).draw(g, btlImage())
+}
+
+// TestTitleHintExplainsTheTouches: after a touch the title's hint explains the touches,
+// which the keys' hint would leave a phone's player without; a key brings the keys back.
+func TestTitleHintExplainsTheTouches(t *testing.T) {
+	g, _ := btlOpen(t, Options{Location: "-"}, "", "")
+	keys := g.titleHint()
+	g.in.byTouch = true
+	touches := g.titleHint()
+	if touches == keys || !strings.Contains(touches, "Tap") {
+		t.Fatalf("the hint after a touch is %q", touches)
+	}
+	newTitle(g).draw(g, btlImage())
+	g.in.byTouch = false
+	if g.titleHint() != keys {
+		t.Fatal("the keys' hint did not come back")
+	}
 }
 
 // A game with menus: none has no title and no menu: it opens on a new game at start

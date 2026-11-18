@@ -149,6 +149,7 @@ WebPage:
   url: "Where the page is published, an https:// address ending in /: the page's og:url and the start of its picture's address."
   description: "A sentence or two about the game, the page's description and the card's text."
   image: "The card's picture under assets/, a PNG or a JPEG of 1200x630 or more (smaller is warned of, GZN0121). gozen export copies it as it is beside the page as og-image with its extension; it needs url."
+  icon: "The square PNG under assets/, 192x192 or more, that a phone shows for the page added to its home screen. gozen export copies it beside the page as icon.png and names it in the page's web app manifest; it does not need url."
 
 MaterialStyle:
   opacities: "Schema 10: opacity for one role of panel (base, card, control, chart, message for the novel message window and its band, choice for the novel window's choices), each in [0,1]. A role left out uses opacity. Higher is a deeper tint over the same finish."

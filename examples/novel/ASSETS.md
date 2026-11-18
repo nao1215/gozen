@@ -6,6 +6,7 @@ the repository. The files under `game/assets/` are listed here.
 | Files | What | License |
 |:--|:--|:--|
 | `bg/hill.jpg` | The tavern on the snowy hill at dusk, also behind the title | CC0 1.0 |
+| `icon.png` | The home screen icon of the browser page (`web.icon`), the tavern cut from `bg/hill.jpg` | CC0 1.0 |
 | `bg/tavern.jpg` | The tavern inside, with the fire lit | CC0 1.0 |
 | `bg/tavern_late.jpg` | The empty tavern late at night | CC0 1.0 |
 | `cg/toast.jpg`, `cg/wine.jpg`, `cg/table.jpg` | The event pictures: Brenna raising her mug, Wren with a glass of wine, and the counter with a glass and bottles | CC0 1.0 |

@@ -15,7 +15,19 @@ func Paginate(s string, size, width float64, lines int) ([][]string, float64) {
 	return paginateWith(s, size, lines, func(t string, sz float64) []string { return Wrap(t, sz, width) })
 }
 
+// PaginateAtLeast pages s as Paginate does, but draws it no smaller than least (Paginate
+// may take it down to 0.8 of size to save a page). The player's larger text size uses it,
+// so the lines are never smaller than the game's own size.
+func PaginateAtLeast(s string, size, least, width float64, lines int) ([][]string, float64) {
+	return paginateFrom(s, size, max(least, size*pageShrink), lines, func(t string, sz float64) []string { return Wrap(t, sz, width) })
+}
+
 func paginateWith(s string, size float64, lines int, wrap func(string, float64) []string) ([][]string, float64) {
+	return paginateFrom(s, size, size*pageShrink, lines, wrap)
+}
+
+// paginateFrom pages s at size, or at a smaller size down to least that takes fewer pages.
+func paginateFrom(s string, size, least float64, lines int, wrap func(string, float64) []string) ([][]string, float64) {
 	if size <= 0 || math.IsNaN(size) || math.IsInf(size, 0) {
 		return nil, 0
 	}
@@ -30,7 +42,7 @@ func paginateWith(s string, size float64, lines int, wrap func(string, float64) 
 		return ls
 	}
 	sizes := []float64{size}
-	for sz := size * 0.94; sz > 0 && sz < size && sz >= size*pageShrink; sz *= 0.94 {
+	for sz := size * 0.94; sz > 0 && sz < size && sz >= least; sz *= 0.94 {
 		sizes = append(sizes, sz)
 	}
 	for _, sz := range sizes {

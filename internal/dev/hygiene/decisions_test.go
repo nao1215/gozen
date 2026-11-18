@@ -443,7 +443,7 @@ func TestCommandExecution(t *testing.T) {
 // YAML words are checked lexically, not as a proof of gameplay generality.
 // The frozen baseline below may only shrink; new words cannot be added to it.
 const (
-	yamlBaselineLimit = 725
+	yamlBaselineLimit = 724
 	yamlBaseline      = `
 acceleration accent accepts act action activation activity activity_attributes
 add_state addresses admission advice affect affection affiliation
@@ -483,7 +483,7 @@ groups guard_rate guard_skill guest guest_backdrops guests hair hard
 haze head header header_face header_tint heading heal held
 hidden hide hide_bar_on_choice hide_closed hide_disabled hide_gold highlight
 hit hits hitstop host hp hp_triggers hurt
-icon image_height images in indexed_names initial instant instead
+image_height images in indexed_names initial instant instead
 into intro items join join_exp joined keeper
 kinds label_expr label_size labels landmark landmark_ground landmark_scale learn
 leave ledger ledgers left legacy_keys legend_rank level_scale light

@@ -447,6 +447,10 @@ var english = map[string]string{
 	"オフ":            "Off",
 	"オン":            "On",
 	"文字の速さ":         "Text speed",
+	"文字の大きさ":        "Text size",
+	"大きい":           "Large",
+	"とても大きい":        "Very large",
+	"この大きさで表示します。":  "Text at this size.",
 	"オートの待ち":        "Auto wait",
 	"ウィンドウの濃さ":      "Window opacity",
 	"BGM の音量":       "Music volume",
@@ -823,6 +827,7 @@ var english = map[string]string{
 	"つづきから": "Continue",
 	"はじめから": "New Game",
 	"Z / Enter: けってい   X / Esc: もどる   O: せってい   M: ミュート   F11: ぜんがめん": "Z / Enter: OK   X / Esc: back   O: settings   M: mute   F11: fullscreen",
+	"タップ: けってい   2本の指で タップ: もどる":                                      "Tap: OK   Two-finger tap: back",
 	// screens: replays (development)
 	"--until は正のティックを指定する":                        "--until needs a positive tick",
 	"replay %s の %d 行目で順序・終端・ティックが不正":             "replay %s line %d: invalid order, end or tick",

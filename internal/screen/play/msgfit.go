@@ -22,8 +22,17 @@ func messageMetrics(gm *data.Game) (size, width float64) {
 // MessagePages pages a line as the message window shows it, its ruby marks taken out:
 // gozen check measures an authored line with it before play does.
 func MessagePages(gm *data.Game, text string) ([][]string, float64) {
+	return messagePagesAt(gm, text, 1)
+}
+
+// messagePagesAt pages a line at k times the message window's size (the player's text
+// size): a larger size takes a line fewer a page, so the pages stay inside the window.
+func messagePagesAt(gm *data.Game, text string, k float64) ([][]string, float64) {
 	size, width := messageMetrics(gm)
-	return gfx.Paginate(rubyText(text), size, width, talkLines)
+	if k <= 1 {
+		return gfx.Paginate(rubyText(text), size, width, talkLines)
+	}
+	return gfx.PaginateAtLeast(rubyText(text), size*k, size, width, talkLines-1)
 }
 
 func MessageLines() int { return talkLines }

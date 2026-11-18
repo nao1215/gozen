@@ -772,6 +772,30 @@ Saves use browser local storage. They persist on the same origin (scheme, host
 and port) with the same game ID. They do not sync across devices or move with a
 changed origin. YAML and assets remain downloadable; export does not hide them.
 
+#### Phones
+
+A phone plays the exported page in its browser. A tap is a click, a long press or a
+two-finger tap is the right click, and a swipe scrolls; the title explains the taps
+once the player has touched the screen. A phone held the other way from the game's
+screen is asked to turn, in the first of the device's languages the game offers, and
+can choose to play as it is. Fullscreen in the settings also keeps the screen turned
+the game's way where the browser allows it.
+
+Every page can be added to the home screen, from where it opens fullscreen, turned
+the game's way. `web.icon` names the icon: a square PNG under `assets/` of 192x192
+or more, copied beside the page as `icon.png` and named in `manifest.webmanifest`.
+
+<!-- verify: parse game.yaml fragment; the icon is a picture of the game, checked by gozen check -->
+```yaml
+# game.yaml
+schema_version: 9
+web: {icon: icon.png}
+```
+
+When the page is hidden in the middle of play (the player switches to another app,
+and the browser may then close the page unseen), the game writes the autosave where
+the save screen could save, and the next visit continues from it.
+
 ## CPU profiles and reusable exports
 
 Set `GOZEN_CPUPROFILE=cpu.pprof` before a command to record its CPU activity:

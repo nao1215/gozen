@@ -11,10 +11,18 @@ canvas { touch-action: none; }
 #bar { width: min(320px, 70vw); height: 3px; margin: 0.75rem auto; background: #e6e6e6; }
 #fill { width: 0; height: 100%; background: #555; }
 #amount { margin: 0; color: #777; font-variant-numeric: tabular-nums; }
+/* A phone held the other way from the game's screen is asked to turn, until it does or
+   the player chooses to play as it is. */
+#turn { display: none; position: fixed; inset: 0; z-index: 20; place-content: center; justify-items: center; gap: 1.25rem; padding: 1.5rem; text-align: center; background: rgba(16, 24, 28, 0.94); font-size: 16px; line-height: 1.6; }
+#turn svg { width: 64px; height: 64px; }
+#turn button { padding: 0.6rem 1.4rem; border: 1px solid #f4f1e6; border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+@media (pointer: coarse) and (orientation: portrait) { html[data-screen="landscape"]:not(.kept) #turn { display: grid; } }
+@media (pointer: coarse) and (orientation: landscape) { html[data-screen="portrait"]:not(.kept) #turn { display: grid; } }
 </style>
 </head>
 <body>
 <div id="loading"><p id="note">Loading game...</p><div id="bar"><div id="fill"></div></div><p id="amount"></p><noscript>This game needs JavaScript and WebAssembly.</noscript></div>
+<div id="turn" role="dialog" aria-labelledby="turn-note" data-notes="{}"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="3"/><path d="M14 50a22 22 0 0 0 36 0"/><path d="M50 42v8h-8"/></svg><p id="turn-note">Turn your phone to see the game larger.</p><button type="button" id="keep">Play as it is</button></div>
 <script src="wasm_exec.js"></script>
 <script>
 "use strict";
@@ -56,6 +64,33 @@ window.goZenFail = (message) => {
   loading.textContent = "Could not start: " + message;
 };
 document.addEventListener("contextmenu", (event) => event.preventDefault());
+{
+  // A touch on the note sends no mouse events after it: the player's audio starts on
+  // the first touchend or mouseup and calls back the first one twice when both come.
+  const keep = (event) => {
+    event.preventDefault();
+    document.documentElement.classList.add("kept");
+  };
+  document.getElementById("turn").addEventListener("touchend", (event) => event.preventDefault());
+  document.getElementById("keep").addEventListener("touchend", keep);
+  document.getElementById("keep").addEventListener("click", keep);
+}
+{
+  const notes = JSON.parse(document.getElementById("turn").dataset.notes);
+  const code = navigator.languages.map((l) => l.split("-")[0]).find((l) => notes[l]);
+  if (code) {
+    document.getElementById("turn-note").textContent = notes[code][0];
+    document.getElementById("keep").textContent = notes[code][1];
+  }
+}
+// A phone keeps the game's screen turned while it is full screen (the settings' full
+// screen); a browser that cannot lock it leaves it to the player.
+document.addEventListener("fullscreenchange", () => {
+  const turn = document.documentElement.dataset.screen;
+  if (document.fullscreenElement && turn && screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock(turn).catch(() => {});
+  }
+});
 // Phones read aloud only after speechSynthesis has spoken once inside a touch, a click
 // or a key press, and the game speaks from its frame, outside any: so each touch says
 // nothing until that has once begun (iOS also wants the voices asked for in one).

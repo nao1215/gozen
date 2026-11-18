@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -174,6 +175,9 @@ type input struct {
 	touchFrom     image.Point
 	began, swiped bool
 	swipe         float64
+	// byTouch reports that the last input was a finger, not a key, a button or the mouse:
+	// the title then explains the touches instead of the keys.
+	byTouch bool
 }
 
 func (in *input) update() {
@@ -243,6 +247,9 @@ func (in *input) update() {
 	}
 	in.click = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft)
 	in.rclick = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight)
+	if in.click || in.rclick || slices.Contains(in.pressed[:], true) {
+		in.byTouch = false
+	}
 	_, in.wheel = ebiten.Wheel()
 	in.pdown = in.click
 	in.pheld = ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
@@ -302,7 +309,7 @@ func (in *input) touch() {
 	for _, id := range inpututil.AppendJustPressedTouchIDs(in.justTouched[:0]) {
 		x, y := ebiten.TouchPosition(id)
 		in.touchID, in.touching, in.touchDone, in.longUsed, in.touchAt = id, true, false, false, in.toUI(x, y)
-		in.touchFrom, in.began, in.swiped = in.touchAt, true, false
+		in.touchFrom, in.began, in.swiped, in.byTouch = in.touchAt, true, false, true
 		in.mouse, in.moved = in.touchAt, true
 		in.pdown, in.pheld = true, true
 		return

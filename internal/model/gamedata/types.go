@@ -262,6 +262,9 @@ type WebPage struct {
 	Description string `yaml:"description"`
 	// Image is the card's picture under assets/, a PNG or a JPEG of 1200x630 or more.
 	Image string `yaml:"image"`
+	// Icon is the square PNG under assets/ (192x192 or more) a phone shows for the page
+	// added to its home screen.
+	Icon string `yaml:"icon"`
 }
 
 // NoMenus reports whether game.yaml has menus: none. The play leaves out the title and every

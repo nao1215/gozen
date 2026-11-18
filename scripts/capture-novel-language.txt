@@ -52,7 +52,7 @@ shot lb006
 wait 2
 shot lb007
 wait 2
-press down 7
+press down 8
 shot lb008
 wait 2
 shot lb009

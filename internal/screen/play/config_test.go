@@ -4,8 +4,10 @@ import (
 	"image"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/nao1215/gozen/internal/rules/event"
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
@@ -105,5 +107,52 @@ func TestSettingsFitAuthoredScreen(t *testing.T) {
 				t.Fatal("visible Back setting cannot be activated by pointer")
 			}
 		})
+	}
+}
+
+// TestTextSizeSettingPagesLargerLines: the text size of the settings draws the message
+// window's lines larger with a line fewer a page, pages the line shown again at once, and
+// is kept with the settings.
+func TestTextSizeSettingPagesLargerLines(t *testing.T) {
+	const pageShrinkTest = 0.8
+	dir := t.TempDir()
+	g := novelGame(t, Options{SaveDir: dir})
+	long := strings.Repeat("The wind runs over the pass and the lamps of the inn come on one by one. ", 6)
+	g.talk.open(g, event.Say{Text: long})
+	base, lines := g.talk.size, 0
+	for _, p := range g.talk.pages {
+		lines = max(lines, len(p))
+	}
+	if lines != talkLines {
+		t.Fatalf("a long line fills %d lines a page at the game's size, want %d", lines, talkLines)
+	}
+	s := newConfigScreen(g)
+	s.list.sel = slicesIndexRow(t, s, rowTextSize)
+	for want, k := range []float64{1.2, 1.4} {
+		s.change(g, 1, false)
+		if g.cfg.TextSize != want+1 {
+			t.Fatalf("text size = %d, want %d", g.cfg.TextSize, want+1)
+		}
+		if g.talk.size < base || g.talk.size < base*k*pageShrinkTest {
+			t.Errorf("at %v the line shown is drawn at %v, not larger than the game's %v", k, g.talk.size, base)
+		}
+		for i, p := range g.talk.pages {
+			if len(p) > talkLines-1 {
+				t.Errorf("at %v page %d has %d lines, want %d at most", k, i, len(p), talkLines-1)
+			}
+		}
+	}
+	s.change(g, 1, false) // the largest stays the largest
+	if g.cfg.TextSize != 2 {
+		t.Fatalf("text size went past the largest: %d", g.cfg.TextSize)
+	}
+	if err := g.saveConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if again := novelGame(t, Options{SaveDir: dir}); again.cfg.TextSize != 2 || again.cfg.textScale() != 1.4 {
+		t.Fatalf("the text size did not survive restarting: %d", again.cfg.TextSize)
 	}
 }

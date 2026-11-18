@@ -191,6 +191,10 @@ runs:
     sample: novel
     script: scripts/capture-novel-language.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-text-size:
+    sample: novel
+    script: scripts/capture-novel-text-size.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, toast, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   novel-stage:
     sample: novel
     script: scripts/capture-novel-stage.txt
@@ -390,6 +394,13 @@ images:
       - {shots: la*}
       - {shots: lb*}
       - {shots: lc*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-text-size.mp4:
+    run: novel-text-size
+    frames:
+      - {shots: ta*}
+      - {shots: tb*}
+      - {shots: tc*}
     mp4: {fps: 12, width: 1280, height: 720}
   novel-saves.mp4:
     run: novel-saves
@@ -789,6 +800,13 @@ images:
       - {shots: "la*"}
       - {shots: "lb*"}
       - {shots: "lc*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  novel-text-size.gif:
+    run: novel-text-size
+    frames:
+      - {shots: "ta*"}
+      - {shots: "tb*"}
+      - {shots: "tc*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-game-home.jpg:
     run: phone-games

@@ -224,6 +224,13 @@ func (g *Game) StartRendering() {
 	ebiten.SetRunnableOnUnfocused(true)
 
 	g.startLive()
+	// A phone's browser sent to the background may close the page unseen: the play is
+	// saved as it is hidden (suspendSave).
+	g.suspendCleanup = whenHidden(func() {
+		if !g.updating.Load() {
+			g.suspendSave()
+		}
+	})
 }
 
 var activeGame atomic.Bool
@@ -241,6 +248,7 @@ type modal interface{ modal() bool }
 
 type Game struct {
 	hiddenCleanup       func()
+	suspendCleanup      func()
 	textInput           func()
 	inputCaret          func(float64, float64) (float64, float64)
 	restorePresentation func()
@@ -2704,6 +2712,10 @@ func (g *Game) Close() error {
 	if g.hiddenCleanup != nil {
 		g.hiddenCleanup()
 		g.hiddenCleanup = nil
+	}
+	if g.suspendCleanup != nil {
+		g.suspendCleanup()
+		g.suspendCleanup = nil
 	}
 	if g.cancel != nil {
 		g.cancel()
