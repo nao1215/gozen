@@ -1675,11 +1675,16 @@ func (c *checker) flagRead(name, where string) {
 }
 
 // flagWarnings warn of a flag set but never read, and of one read but never set (by set,
-// gallery.scenes.set; --flags is for tests). They are kept apart from the scene warnings.
+// gallery.scenes.set; --flags is for tests). The flags of gallery scenes and endings are read. They are kept apart from the scene warnings.
 func (c *checker) flagWarnings() {
 	for i, s := range c.db.Game.Gallery.Scenes {
 		if s.Flag != "" {
 			c.flagRead(s.Flag, fmt.Sprintf("game.yaml gallery.scenes[%d].flag", i))
+		}
+	}
+	for i, e := range c.db.Game.Gallery.Endings {
+		if e.Flag != "" {
+			c.flagRead(e.Flag, fmt.Sprintf("game.yaml gallery.endings[%d].flag", i))
 		}
 	}
 	declared := func(name string) bool { _, ok := c.db.Game.State.Names["flag."+name]; return ok }

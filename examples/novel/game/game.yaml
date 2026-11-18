@@ -25,3 +25,10 @@ ui:
   cursor: "#ffd9a0"
   # Three stand at once: a little smaller than the default, so they do not crowd.
   stage_scale: {brenna/normal.png: 0.8, wren/normal.png: 0.8, hedda/normal.png: 0.8}
+  # Six slots with a picture each, and Q.Save and Q.Load on the band.
+  saves: {slots: 6, quick: true}
+gallery:
+  endings:
+    - {id: brenna, title: One More Round, flag: end_brenna, picture: cg/toast.jpg, hint: Spend the last hour at the bar.}
+    - {id: wren, title: Field Assessment, flag: end_wren, picture: cg/wine.jpg, hint: Spend the last hour among the barrels.}
+    - {id: hedda, title: The Door, flag: end_hedda, picture: cg/table.jpg, hint: Stay to help close up.}

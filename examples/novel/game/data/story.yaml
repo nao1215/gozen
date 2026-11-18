@@ -160,6 +160,7 @@ events:
     - say: "Her mug stands forgotten beside her, ale foaming over the rim and splashing across the wood. The fire glows behind her, and a plate of cheese cubes waits on the counter."
     - say: {who: brenna, text: "To the Kettle! To the cheese! To eleven days, and every last one of them behind us!"}
     - say: "You raise your own mug. Ale spills. Neither of you cares."
+    - set: {flag.end_brenna: true}
     - call: goodnight
   with_wren:
     - stand: {who: brenna, leave: fade}
@@ -177,6 +178,7 @@ events:
     - say: {who: wren, text: "I used to think a map was how you knew where you were. Tonight I do not need one for this part. Noted."}
     - say: {who: wren, text: "Thank you. For the sixth night. For waiting. Please do not make a speech."}
     - say: "You don't. You lift your glass. She lifts hers and gives a small nod, as if signing a document."
+    - set: {flag.end_wren: true}
     - call: goodnight
   with_hedda:
     - stand: {who: brenna, leave: fade}
@@ -193,6 +195,7 @@ events:
     - say: {who: hedda, text: "Look at that. Glass, bottle, light. Ordinary things."}
     - say: {who: hedda, text: "That's what I keep from a night like this. Not the coin. This."}
     - say: {who: hedda, text: "Last cider's on the house. Don't tell the others. I'll deny it."}
+    - set: {flag.end_hedda: true}
     - call: goodnight
   goodnight:
     - say: "The fire is down to one orange eye. Hedda unbolts the door, and the cold slips in, clean and quiet."
