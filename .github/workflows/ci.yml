@@ -319,7 +319,7 @@ jobs:
       # The release binary (checksum checked) instead of go install: no build in each job.
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
         with:
-          version: v0.25.2
+          version: v0.26.1
       - name: Install runtime license collector
         if: runner.os == 'Linux'
         run: go install github.com/google/go-licenses/v2@v2.0.1
@@ -398,7 +398,7 @@ jobs:
       - uses: nao1215/setup-atago@5c563dcd9d85e114f8abe8bbdcd058e51de09efb # v0.1.3
         if: needs.changes.outputs.code != 'false'
         with:
-          version: v0.25.2
+          version: v0.26.1
       - name: Build and exercise native CLI binaries
         if: needs.changes.outputs.code != 'false'
         shell: pwsh

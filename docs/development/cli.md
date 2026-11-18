@@ -46,10 +46,10 @@ Every `--help` has the same shape: the name, a one-line description and the vers
 
 ## E2E
 
-atago v0.25.2 is used.
+atago v0.26.1 is used.
 
 ```sh
-go install github.com/nao1215/atago@v0.25.2
+go install github.com/nao1215/atago@v0.26.1
 make e2e
 # Only on Linux with a display environment prepared
 xvfb-run --auto-servernum --error-file=/dev/stderr make e2e-graphics

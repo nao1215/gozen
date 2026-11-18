@@ -30,7 +30,7 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 | `make lint` | `go-arch-lint check`, `make boundary`, `make tidy`, `make workflows`, `make deadcode`, `make complexity`, `go tool dango lint`, `golangci-lint run ./...`, `golangci-lint fmt --diff`, then the same two in `examples/go-zen`, `examples/novel` and `examples/campaign`, in order | dependencies, API, modules, workflows, unreachable functions, complexity of changed functions, maintainer decisions, static analysis, formatting |
 | `make build` | `go build -trimpath -buildvcs=false ./...` | compiling the core, `gozen` and internal, samples and development tools |
 | `make graphics` | `go test -tags=graphics -parallel=4 -timeout=20m ./internal/screen/play -run TestGraphics -count=1` and the same for `./internal/screen/puppet` | every test of the graphics-tagged files (all are named `TestGraphics*`): real loop and PNG checks of the screens, and pixel checks of the moving standing pictures (drawn and read inside one loop). Wrapped in Xvfb on Linux |
-| `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.25.2 |
+| `make e2e` | [direct steps for the CLI](cli.md#e2e) | contract checks of every `gozen` subcommand with atago v0.26.1 |
 | `make docs-images` / `make docs-images-check` | `go test ./internal/dev/docs -run '^TestDocImages$' -count=1` with `GOZEN_DOCS_IMAGES=update` (or `check`); inside xvfb-run on Linux | remake the README and site pictures from the ledger / fail if stale ([README and site pictures and steps](docs.md)) |
 | `make docs-steps` | `GOZEN_DOCS_STEPS=1 go test ./internal/dev/docs -run '^TestDocSteps$' -count=1` | running the steps of the README and site |
 | `make website-check` | `GOZEN_SITE_DIR=website/public go test ./internal/dev/docs -run '^TestSite(Links|Schema)$' -count=1` | link and image references of the built site |
@@ -38,7 +38,7 @@ Windows is assumed to have neither Make nor Bash. At the repository root, run th
 
 `e2e` was replaced in T4 with checks of the real binary using atago. `graphics` is the screen test of T3, and `e2e-graphics` is the CLI capture pipeline of T4. A failure caused by a missing prerequisite is not counted as a success or a skip.
 
-`make coverage` requires atago v0.25.2 and a display. On Linux, run `xvfb-run --auto-servernum --error-file=/dev/stderr make coverage`. It combines unit-test coverage with the real CLI capture scenarios, including PNG/GIF output, rejected assets and per-job timeouts. Both use atomic counters and `-coverpkg=./...`. The unit-test profile retains packages with no tests; `go tool covdata textfmt` converts the CLI counters into additional blocks. Octocov merges repeated blocks in `coverage.out`. Each run uses a fresh temporary directory so old counters cannot affect the result.
+`make coverage` requires atago v0.26.1 and a display. On Linux, run `xvfb-run --auto-servernum --error-file=/dev/stderr make coverage`. It combines unit-test coverage with the real CLI capture scenarios, including PNG/GIF output, rejected assets and per-job timeouts. Both use atomic counters and `-coverpkg=./...`. The unit-test profile retains packages with no tests; `go tool covdata textfmt` converts the CLI counters into additional blocks. Octocov merges repeated blocks in `coverage.out`. Each run uses a fresh temporary directory so old counters cannot affect the result.
 
 `go build -trimpath -buildvcs=false ./...` compiles the libraries; it does not put a game or CLI in `bin/`. `-trimpath` removes absolute source paths and `-buildvcs=false` stops automatic collection of VCS information. Build the individual CLI binary into `bin/` with `make cli-build`.
 
@@ -54,7 +54,7 @@ Per-OS setup, the sample and input scripts are in [Graphics development](graphic
 
 ## CLI and ONNX tests
 
-For the CLI, new neutral specs in `e2e/atago/` check exit status, stdout/stderr, invalid input, file changes and generated files with atago. Specs that open a screen are separate from normal specs. T4 added the neutral specs in `e2e/atago/` and aligned atago v0.25.2 in Make and CI. The production support added in T5 is also a normal target, and the real capture with the graphics tag is separate. For installation and the direct Windows steps, see [Verifying the CLI](cli.md#e2e).
+For the CLI, new neutral specs in `e2e/atago/` check exit status, stdout/stderr, invalid input, file changes and generated files with atago. Specs that open a screen are separate from normal specs. T4 added the neutral specs in `e2e/atago/` and aligned atago v0.26.1 in Make and CI. The production support added in T5 is also a normal target, and the real capture with the graphics tag is separate. For installation and the direct Windows steps, see [Verifying the CLI](cli.md#e2e).
 
 In `internal/promptgen` and `internal/mosaic`, checks without inference are separate from checks that use ONNX. Checks that use inference live under another tag or an explicit target, and `t.Skip` explains the missing prerequisite when the shared library or model is absent. The real model path is given by the user, and test failures are not replaced indiscriminately with skips. The ONNX tests of T5 run real inference only when the model and shared library are given explicitly. See [how to set it](production-tools.md#verification). No model is bundled.
 
