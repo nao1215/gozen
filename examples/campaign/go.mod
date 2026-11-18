@@ -6,7 +6,7 @@ require github.com/nao1215/gozen v0.0.0
 
 require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
 
