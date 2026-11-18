@@ -385,13 +385,13 @@ type Game struct {
 	carry     *carryRecord
 	replaying bool
 	// sortieTactics are the tactics last chosen on the sortie screen, by general.
-	sortieTactics   map[string]string
-	autoBattle      bool
-	read            map[uint64]bool
-	readDirty       bool
-	autoSaveRetry   saveRetry
+	sortieTactics map[string]string
+	autoBattle    bool
+	read          map[uint64]bool
+	readDirty     bool
+	autoSaveRetry saveRetry
 	// shots keeps the frame a save shows on the save screen.
-	slotPics saveShots
+	slotPics        saveShots
 	unlockSaveRetry saveRetry
 	unlockDirty     bool
 	autoKey         string
