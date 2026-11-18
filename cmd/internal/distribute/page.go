@@ -3,6 +3,7 @@ package distribute
 import (
 	"bytes"
 	"cmp"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -72,7 +73,8 @@ func pageFor(src, stage string, db *gamedata.DB) ([]byte, error) {
 	for _, r := range [][2]string{
 		{"Turn your phone to see the game larger.", html.EscapeString(notes[language][0])},
 		{"Play as it is", html.EscapeString(notes[language][1])},
-		{`data-notes="{}"`, `data-notes="` + html.EscapeString(string(others)) + `"`},
+		// base64 (UTF-8 JSON): the attribute holds no quote whatever the notes say
+		{`data-notes=""`, `data-notes="` + base64.StdEncoding.EncodeToString(others) + `"`},
 	} {
 		if bytes.Count(page, []byte(r[0])) != 1 {
 			return nil, fmt.Errorf("the page template has no single %q", r[0])

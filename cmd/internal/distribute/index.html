@@ -22,7 +22,7 @@ canvas { touch-action: none; }
 </head>
 <body>
 <div id="loading"><p id="note">Loading game...</p><div id="bar"><div id="fill"></div></div><p id="amount"></p><noscript>This game needs JavaScript and WebAssembly.</noscript></div>
-<div id="turn" role="dialog" aria-labelledby="turn-note" data-notes="{}"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="3"/><path d="M14 50a22 22 0 0 0 36 0"/><path d="M50 42v8h-8"/></svg><p id="turn-note">Turn your phone to see the game larger.</p><button type="button" id="keep">Play as it is</button></div>
+<div id="turn" role="dialog" aria-labelledby="turn-note" data-notes=""><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="3"/><path d="M14 50a22 22 0 0 0 36 0"/><path d="M50 42v8h-8"/></svg><p id="turn-note">Turn your phone to see the game larger.</p><button type="button" id="keep">Play as it is</button></div>
 <script src="wasm_exec.js"></script>
 <script>
 "use strict";
@@ -76,7 +76,7 @@ document.addEventListener("contextmenu", (event) => event.preventDefault());
   document.getElementById("keep").addEventListener("click", keep);
 }
 {
-  const notes = JSON.parse(document.getElementById("turn").dataset.notes);
+  const notes = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(document.getElementById("turn").dataset.notes), (c) => c.charCodeAt(0))));
   const code = navigator.languages.map((l) => l.split("-")[0]).find((l) => notes[l]);
   if (code) {
     document.getElementById("turn-note").textContent = notes[code][0];

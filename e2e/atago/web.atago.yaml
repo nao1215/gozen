@@ -1047,12 +1047,11 @@ scenarios:
         - {path: $.orientation, equals: portrait}
         - {path: '$.icons[0].src', equals: icon.png}
         - {path: '$.icons[0].sizes', equals: 192x192}
-  # a phone: the page names its manifest and icon, and its note asks to hold the phone
+  # the page names its manifest and icon, and its note for a phone asks to hold it
   # upright in the game's language; Play as it is keeps the phone as it is held
   - cdp:
       runner: browser
       actions:
-      - viewport: {width: 844, height: 390, mobile: true}
       - navigate: '${origin}/site/'
       - wait_visible: 'body:not(:has(#loading))'
       - eval: |
