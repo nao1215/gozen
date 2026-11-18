@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.25.0 - 2026-11-19
+
 ### Added
 
 - Saves keep a picture of the scene. Each save writes a 320x180 JPEG of the last frame with nothing over the scene (no menu or book) beside it, as base64 text (`save1.jpg.b64`), shown at the left of its row on the save and load screens. Visual change: the rows of those screens are taller and wider in a game that draws.
