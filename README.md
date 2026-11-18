@@ -12,6 +12,7 @@
 ![GitHub](https://img.shields.io/github/license/nao1215/gozen)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/nao1215/gozen/total)](https://github.com/nao1215/gozen/releases)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nao1215/gozen/badge)](https://scorecard.dev/viewer/?uri=github.com/nao1215/gozen)
+[![Mentioned in Awesome Ebitengine](https://awesome.re/mentioned-badge.svg)](https://github.com/sedyh/awesome-ebitengine)
 
 <p align="center">
   <picture>
