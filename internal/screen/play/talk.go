@@ -21,14 +21,14 @@ type talk struct {
 	ruby   []rubySpan
 	plain  string
 	pageAt []int
-	page    int
-	shown   int
-	total   int
-	choice  *list
-	active  bool
-	age     int
-	full    int
-	hidden  bool
+	page   int
+	shown  int
+	total  int
+	choice *list
+	active bool
+	age    int
+	full   int
+	hidden bool
 
 	still  bool
 	closed int

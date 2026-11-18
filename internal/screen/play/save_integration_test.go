@@ -995,16 +995,57 @@ func TestSaveScreenScrollsManySlots(t *testing.T) {
 // picture, and an older picture of the slot is removed so it does not stand for it.
 func TestSavePictureFollowsItsSave(t *testing.T) {
 	g := wldNovelWith(t, "{message: novel}", "ev_many")
-	if err := g.store.Write("save1.jpg", []byte("old")); err != nil {
+	if err := g.store.Write("save1.jpg.b64", []byte("old")); err != nil {
 		t.Fatal(err)
 	}
 	if err := g.save(0); err != nil {
 		t.Fatal(err)
 	}
-	if g.storeHas("save1.jpg") {
+	if g.storeHas("save1.jpg.b64") {
 		t.Fatal("a save without a frame kept the slot's old picture")
 	}
 	if g.slotPics.picture(g, g.slotPath(0)) != nil {
 		t.Fatal("a slot without a picture has one")
+	}
+}
+
+// TestQuickSaveNeedsTheSetting: without ui.saves.quick the band has no quick buttons and
+// a script's quick_save is refused, so no quick slot appears on the load screen.
+func TestQuickSaveNeedsTheSetting(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	for _, b := range g.novelButtons() {
+		if b.b == btnQuickSave || b.b == btnQuickLoad {
+			t.Fatalf("quick button %q without ui.saves.quick", b.label)
+		}
+	}
+	if r := g.novelButtonReason(btnQuickSave); r != "unavailable" {
+		t.Fatalf("quick save without the setting: reason %q", r)
+	}
+}
+
+// TestQuickLoadOfABrokenSave: a quick save that cannot be read says so instead of saying
+// there is none.
+func TestQuickLoadOfABrokenSave(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel, saves: {quick: true}}", "ev_many")
+	if err := g.store.Write("quick.json", []byte("{broken")); err != nil {
+		t.Fatal(err)
+	}
+	g.quickLoad()
+	if !strings.HasPrefix(g.slotPics.note, "Could not load") {
+		t.Fatalf("a broken quick save says %q", g.slotPics.note)
+	}
+}
+
+// TestSavePictureSkipsScreensOverTheScene: the frame a save keeps is the scene, not a
+// menu (an overlay) or a book opened over it (a modal screen).
+func TestSavePictureSkipsScreensOverTheScene(t *testing.T) {
+	g := wldNovelWith(t, "{message: novel}", "ev_many")
+	g.loopStarted = true // as in the Ebitengine loop, where pictures are kept
+	if !g.slotPics.uncovered(g) {
+		t.Fatal("the scene itself is covered")
+	}
+	g.push(newConfigScreen(g))
+	if g.slotPics.uncovered(g) {
+		t.Fatal("the settings over the scene would be the save's picture")
 	}
 }

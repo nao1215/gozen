@@ -2,9 +2,11 @@ package play
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/jpeg"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -221,7 +223,11 @@ func (g *Game) quickLoad() {
 	st, err := g.load(g.quickSlot())
 	if err != nil {
 		g.sfx("buzzer")
-		g.slotPics.say(lang.T("クイックセーブが ありません。"))
+		if g.storeHas(g.slotPath(g.quickSlot())) {
+			g.slotPics.say(lang.T("ロードできなかった: ") + err.Error())
+		} else {
+			g.slotPics.say(lang.T("クイックセーブが ありません。"))
+		}
 		return
 	}
 	g.push(newConfirm(lang.T("クイックセーブを ロードしますか？（セーブしていない 進み具合は 消えます）"), func() { g.loadSavedGame(st) }))
@@ -273,8 +279,14 @@ func (s *saveShots) uncovered(g *Game) bool {
 	if !s.keeps(g) || g.logView != nil || g.talk.hidden || len(g.stack) == 0 {
 		return false
 	}
-	o, ok := g.stack[len(g.stack)-1].(overlay)
-	return !ok || !o.overlay()
+	// A screen over the scene (a menu, the character book) is not the scene the save
+	// returns to.
+	top := g.stack[len(g.stack)-1]
+	if o, ok := top.(overlay); ok && o.overlay() {
+		return false
+	}
+	m, ok := top.(modal)
+	return !ok || !m.modal()
 }
 
 func (s *saveShots) copy(screen *ebiten.Image) {
@@ -288,24 +300,37 @@ func (s *saveShots) copy(screen *ebiten.Image) {
 	s.frame.DrawImage(screen, op)
 }
 
-// write stores the picture of the save path beside it (save1.json → save1.jpg). A save
+// write stores the picture of the save path beside it (shotName). A save
 // with no frame yet (nothing drawn) has no picture; an old picture is removed so it does
 // not stand for the new save.
 func (s *saveShots) write(g *Game, path string) {
 	name := shotName(path)
+	delete(s.pics, name)
 	if s.frame == nil {
-		_ = g.store.Remove(name)
+		s.drop(g, name)
 		return
 	}
 	img := image.NewRGBA(image.Rect(0, 0, shotW, shotH))
 	s.frame.ReadPixels(img.Pix)
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 82}); err != nil {
-		return
+	err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 70})
+	if err == nil {
+		// A browser keeps saves as text, so the picture is written as base64, as the
+		// phone's packages are.
+		err = g.store.Write(name, []byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 	}
-	// The save is written; a picture that cannot be written leaves the row without one.
-	_ = g.store.Write(name, buf.Bytes())
-	delete(s.pics, name)
+	if err != nil {
+		log.Printf("save picture %s: %v", name, err)
+		s.drop(g, name)
+	}
+}
+
+// drop removes the picture of a save, so the row goes without one rather than show an
+// older save's. The save itself is written already.
+func (s *saveShots) drop(g *Game, name string) {
+	if err := g.store.Remove(name); err != nil {
+		log.Printf("save picture %s: %v", name, err)
+	}
 }
 
 // picture is the picture of the save at path, or nil.
@@ -317,8 +342,10 @@ func (s *saveShots) picture(g *Game, path string) *ebiten.Image {
 	}
 	var img *ebiten.Image
 	if b, err := g.storeRead(name); err == nil {
-		if pic, err := picdecode.Decode(b); err == nil {
-			img = ebiten.NewImageFromImage(pic)
+		if raw, err := base64.StdEncoding.DecodeString(string(b)); err == nil {
+			if pic, err := picdecode.Decode(raw); err == nil {
+				img = ebiten.NewImageFromImage(pic)
+			}
 		}
 	}
 	if s.pics == nil {
@@ -328,7 +355,8 @@ func (s *saveShots) picture(g *Game, path string) *ebiten.Image {
 	return img
 }
 
-func shotName(path string) string { return strings.TrimSuffix(path, ".json") + ".jpg" }
+// shotName is the file of the picture of the save at path: save1.json → save1.jpg.b64.
+func shotName(path string) string { return strings.TrimSuffix(path, ".json") + ".jpg.b64" }
 
 func (s *saveShots) say(text string) { s.note, s.noteT = text, 90 }
 

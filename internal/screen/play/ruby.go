@@ -54,6 +54,10 @@ func parseRuby(s string) (string, []rubySpan) {
 				i, bar = i+1+end, -1
 				continue
 			}
+			if bar >= 0 { // a bar before a mark with no base is text
+				out = slices.Insert(out, bar, barRune)
+				bar = -1
+			}
 		}
 		out = append(out, r)
 	}
@@ -72,17 +76,20 @@ func rubyText(s string) string {
 	return plain
 }
 
-// drawRuby draws the readings over the lines of a page as far as shown runes of it are
+// rubyPlace is a reading to draw: on which line of the page, with its base and the text
+// of the line before the base.
+type rubyPlace struct {
+	line             int
+	before, base, on string
+}
+
+// rubyPlaces are the readings over the lines of a page as far as shown runes of it are
 // typed out. lines are the page's lines, at offset runes into the text; a reading shows
-// once its whole base is typed. x and y place the first line, and step is a line's
-// height.
-func (g *Game) drawRuby(dst *ebiten.Image, spans []rubySpan, text string, lines []string, offset, shown int, x, y, step, size float64) {
-	if len(spans) == 0 {
-		return
-	}
-	rs := size * 0.5
+// once its whole base is typed.
+func rubyPlaces(spans []rubySpan, text string, lines []string, offset, shown int) []rubyPlace {
+	var out []rubyPlace
 	plain := []rune(text)
-	at := offset
+	at, typed := offset, 0
 	for i, ln := range lines {
 		lr := []rune(ln)
 		// A wrapped line may have lost the space it was broken at: find it in the text.
@@ -91,17 +98,26 @@ func (g *Game) drawRuby(dst *ebiten.Image, spans []rubySpan, text string, lines 
 			from++
 		}
 		if from+len(lr) > len(plain) {
-			return
+			return out
 		}
 		for _, sp := range spans {
-			if sp.start < from || sp.end > from+len(lr) || sp.end-offset > shown {
+			// shown counts the runes of the lines, not the spaces a wrap dropped.
+			if sp.start < from || sp.end > from+len(lr) || typed+sp.end-from > shown {
 				continue
 			}
-			base := string(plain[sp.start:sp.end])
-			left := gfx.TextWidth(string(plain[from:sp.start]), size)
-			bw, rw := gfx.TextWidth(base, size), gfx.TextWidth(sp.text, rs)
-			g.text(dst, sp.text, x+left+(bw-rw)/2, y+float64(i)*step-rs*1.05, rs, g.th.text)
+			out = append(out, rubyPlace{i, string(plain[from:sp.start]), string(plain[sp.start:sp.end]), sp.text})
 		}
-		at = from + len(lr)
+		at, typed = from+len(lr), typed+len(lr)
+	}
+	return out
+}
+
+// drawRuby draws rubyPlaces over a page whose first line is at x, y, a line step tall.
+func (g *Game) drawRuby(dst *ebiten.Image, spans []rubySpan, text string, lines []string, offset, shown int, x, y, step, size float64) {
+	rs := size * 0.5
+	for _, p := range rubyPlaces(spans, text, lines, offset, shown) {
+		left := gfx.TextWidth(p.before, size)
+		bw, rw := gfx.TextWidth(p.base, size), gfx.TextWidth(p.on, rs)
+		g.text(dst, p.on, x+left+(bw-rw)/2, y+float64(p.line)*step-rs*1.05, rs, g.th.text)
 	}
 }

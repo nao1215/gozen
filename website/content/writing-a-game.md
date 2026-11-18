@@ -651,7 +651,7 @@ locations:
 
 ## Saves
 
-Saves are JSON files in the OS config directory, under the game `id`, each with a small JPEG of the scene beside it (`save1.json` and `save1.jpg`). `ui.saves.slots` sets the number of slots and `ui.saves.quick` adds a quick slot (`quick.json`). They record the schema and data versions; raise `data_version` in `game.yaml` when you change definitions in a way old saves should notice, and the loader reports what it repaired.
+Saves are JSON files in the OS config directory, under the game `id`, each with a small JPEG of the scene beside it, kept as base64 text so a browser can store it too (`save1.json` and `save1.jpg.b64`). `ui.saves.slots` sets the number of slots and `ui.saves.quick` adds a quick slot (`quick.json`). They record the schema and data versions; raise `data_version` in `game.yaml` when you change definitions in a way old saves should notice, and the loader reports what it repaired.
 
 ## A bigger example
 

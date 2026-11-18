@@ -6,7 +6,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- Saves keep a picture of the scene. Each save writes a 320x180 JPEG of the last frame with nothing over the scene beside it (`save1.jpg`), shown at the left of its row on the save and load screens. Visual change: the rows of those screens are taller and wider in a game that draws.
+- Saves keep a picture of the scene. Each save writes a 320x180 JPEG of the last frame with nothing over the scene (no menu or book) beside it, as base64 text (`save1.jpg.b64`), shown at the left of its row on the save and load screens. Visual change: the rows of those screens are taller and wider in a game that draws.
 - `ui.saves.slots` sets how many slots the player saves to (3 by default, up to 99; the rows scroll), and `ui.saves.quick` adds Q.Save and Q.Load to the novel band: one quick slot (`quick.json`) written at once without a menu, and read back after one question. A script presses them with `press quick_save` and `press quick_load`.
 - The backlog plays a line's voice again: a voiced line shows a ▶ at its left, and a click or tap on it replays the voice and keeps the log open.
 - `gallery.endings` lists the game's endings in an Endings tab of the gallery, after Scenes: each by `id`, `title`, a `flag` or `when` that reaches it, a `hint` shown under ??? until then and a `picture`. A reached ending is kept in the gallery record across saves and new games and checked again before the game returns to the title, so a flag set on the line before `end` counts. `gozen check` reports an ending without an id, a title or a way to reach it and two endings with one id, and counts an ending's flag as read.

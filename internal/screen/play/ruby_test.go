@@ -25,6 +25,8 @@ func TestParseRuby(t *testing.T) {
 		// A bar with no reading after it, and the first of two bars, are text.
 		{"a|b《》", "a|b《》", nil},
 		{"x|y|語《ご》", "x|y語", []rubySpan{{3, 4, "ご"}}},
+		// A bar before a mark with no base stays text and does not reach the next reading.
+		{"|《注》漢字《かんじ》", "|《注》漢字", []rubySpan{{4, 6, "かんじ"}}},
 	} {
 		plain, spans := parseRuby(c.in)
 		if plain != c.plain || !reflect.DeepEqual(spans, c.spans) {
@@ -48,5 +50,18 @@ func TestRubyInTheWindow(t *testing.T) {
 	s := event.Say{Text: "|魔法使い《ウィザード》が来た。"}
 	if _, text := (logLine{line: &s}).shown(g.db); text != "魔法使いが来た。" {
 		t.Fatalf("the backlog shows %q", text)
+	}
+}
+
+// TestRubyPlacesAfterAWrap: a reading at the end of a page shows once the page is typed
+// out, though the wrap dropped the space before it; it waits for its whole base.
+func TestRubyPlacesAfterAWrap(t *testing.T) {
+	plain, spans := parseRuby("あい うえ 漢字《かんじ》")
+	lines := []string{"あい うえ", "漢字"}
+	if got := rubyPlaces(spans, plain, lines, 0, 7); len(got) != 1 || got[0] != (rubyPlace{1, "", "漢字", "かんじ"}) {
+		t.Fatalf("typed out: %+v", got)
+	}
+	if got := rubyPlaces(spans, plain, lines, 0, 6); len(got) != 0 {
+		t.Fatalf("half the base typed: %+v", got)
 	}
 }

@@ -126,6 +126,9 @@ func (g *Game) novelButtonReason(b button) string {
 			return "unavailable"
 		}
 	case btnSave, btnLoad, btnQuickSave, btnQuickLoad:
+		if (b == btnQuickSave || b == btnQuickLoad) && !g.db.Game.UI.QuickSave() {
+			return "unavailable"
+		}
 		if !g.talk.active {
 			return "inactive"
 		}

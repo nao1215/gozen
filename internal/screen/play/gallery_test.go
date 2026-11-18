@@ -116,7 +116,11 @@ gallery:
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = g.Close() }) // the first play is closed by hand
+		t.Cleanup(func() {
+			if err := g.Close(); err != nil { // a second Close returns nil
+				t.Error(err)
+			}
+		})
 		return g
 	}
 	g := open()
