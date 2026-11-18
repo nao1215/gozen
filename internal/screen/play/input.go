@@ -50,6 +50,10 @@ const (
 	btnEndTurn
 	// btnInbox opens the oldest chat message (the top-right notification).
 	btnInbox
+	// btnQuickSave and btnQuickLoad are the novel band's Q.Save and Q.Load (ui.saves.quick);
+	// they have no key, as every letter near the others is taken.
+	btnQuickSave
+	btnQuickLoad
 
 	numButtons
 
@@ -745,7 +749,7 @@ var scriptButtons = map[string]button{
 	"log": btnLog, "auto": btnAuto, "hide": btnHide, "config": btnConfig, "memo": btnMemo,
 	"reload": btnReload, "tag": btnTag, "graphs": btnGraphs, "skip": btnSkip, "scene_skip": btnSceneSkip,
 	"bestiary": btnBestiary, "captions": btnCaptions,
-	"back": btnBack, "save": btnSave, "load": btnLoad, "panel": btnPanel, "characters": btnBook,
+	"back": btnBack, "save": btnSave, "load": btnLoad, "quick_save": btnQuickSave, "quick_load": btnQuickLoad, "panel": btnPanel, "characters": btnBook,
 }
 
 func (s *script) midEvent(in *input, name string) {

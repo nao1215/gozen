@@ -42,7 +42,7 @@ func (t *title) liveKeep(g *Game) scene {
 func (g *Game) titleMenu() *list {
 	sw, sh := g.screen()
 	hasSave := false
-	for i := range saveSlots + 1 {
+	for i := range g.slotCount() {
 		if _, ok := g.slotLabel(i); ok {
 			hasSave = true
 		}

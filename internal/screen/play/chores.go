@@ -47,8 +47,6 @@ func (g *Game) idleChores() {
 
 func (g *Game) ManualSP() bool { return g.cfg.ManualSP }
 
-const autoSlot = saveSlots
-
 func (g *Game) autoPath() string { return "auto.json" }
 
 // Failed background saves wait five seconds of game updates between attempts.

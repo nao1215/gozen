@@ -64,7 +64,7 @@ func TestMenusNoneOpensOnTheNewestSave(t *testing.T) {
 	}
 	now := time.Now()
 	at(1, "field", now.Add(-time.Hour))
-	at(autoSlot, "camp", now)
+	at(g.autoSlot(), "camp", now)
 	btlClose(t, g)
 	for _, tc := range []struct{ newest, want string }{{"auto", "camp"}, {"save2", "field"}} {
 		if tc.newest == "save2" {

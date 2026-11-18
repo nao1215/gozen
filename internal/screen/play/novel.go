@@ -65,12 +65,19 @@ var novelButtons = []novelButton{{"もどる", btnBack}, {"ログ", btnLog}, {"�
 // sceneSkipButton shows on the novel bar only while the running event can be skipped.
 var sceneSkipButton = novelButton{"シーン送り", btnSceneSkip}
 
+// quickButtons stand after Load when game.yaml asks for a quick slot (ui.saves.quick).
+var quickButtons = []novelButton{{"Qセーブ", btnQuickSave}, {"Qロード", btnQuickLoad}}
+
 // bookButton opens the character book from the novel bar when game.yaml asks for it
 // (ui.profiles); under --dev F6 opens the book without the button.
 var bookButton = novelButton{"キャラクター", btnBook}
 
 func (g *Game) novelButtons() []novelButton {
 	out := novelButtons
+	if g.db.Game.UI.QuickSave() {
+		at := slices.IndexFunc(out, func(b novelButton) bool { return b.b == btnLoad }) + 1
+		out = slices.Insert(slices.Clone(out), at, quickButtons...)
+	}
 	if g.hasProfiles() && g.db.Game.UI.Profiles {
 		out = slices.Insert(slices.Clone(out), len(out)-1, bookButton)
 	}
@@ -118,7 +125,7 @@ func (g *Game) novelButtonReason(b button) string {
 		if !g.sceneSkippable() {
 			return "unavailable"
 		}
-	case btnSave, btnLoad:
+	case btnSave, btnLoad, btnQuickSave, btnQuickLoad:
 		if !g.talk.active {
 			return "inactive"
 		}
@@ -200,6 +207,12 @@ func (g *Game) novelInput() bool {
 		m := newSaveMenu(g, false, func() {})
 		m.inPlay = true
 		g.push(m)
+		return true
+	case g.novelButtonReason(btnQuickSave) == "" && g.in.query(press[btnQuickSave]):
+		g.quickSave()
+		return true
+	case g.novelButtonReason(btnQuickLoad) == "" && g.in.query(press[btnQuickLoad]):
+		g.quickLoad()
 		return true
 	case g.novelButtonReason(btnHide) == "" && (g.in.query(press[btnHide]) || g.in.esc || g.in.rightClicked()):
 		t.hidden = true

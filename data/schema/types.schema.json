@@ -19662,6 +19662,39 @@
       ],
       "description": "A sound effect, written as its name or a map (the map needs schema version 4)."
     },
+    "SaveStyle": {
+      "additionalProperties": false,
+      "description": "The save screens: how many slots there are and whether a quick slot is offered.",
+      "properties": {
+        "quick": {
+          "description": "Add Quick save and Quick load to the novel band. Quick save writes one slot at once without a menu; Quick load reads it back after one question. The load screen lists the quick slot after the autosave. Off by default.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "slots": {
+          "description": "How many slots the player saves to, from 1 to 99. The default is 3. More slots than the screen holds scroll.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "Say": {
       "anyOf": [
         {
@@ -26659,6 +26692,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "saves": {
+          "$ref": "#/$defs/SaveStyle",
+          "description": "The save screens: the number of slots and the quick slot. Omitted, three slots and the autosave, without a quick slot.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SaveStyle](#savestyle)"
         },
         "sfx_vary": {
           "$ref": "#/$defs/SfxVary",

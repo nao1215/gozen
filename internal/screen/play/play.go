@@ -390,6 +390,8 @@ type Game struct {
 	read            map[uint64]bool
 	readDirty       bool
 	autoSaveRetry   saveRetry
+	// shots keeps the frame a save shows on the save screen.
+	slotPics saveShots
 	unlockSaveRetry saveRetry
 	unlockDirty     bool
 	autoKey         string
@@ -1394,6 +1396,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	g.drawFadeColor(screen)
 	g.drawTurn(screen)
+	g.slotPics.keep(g, screen)
 	if g.opts.Video != nil {
 		if err := g.recordFrame(screen); err != nil {
 			g.failure = err
@@ -2477,11 +2480,30 @@ func (g *Game) currentBattle() *battleScene {
 	return nil
 }
 
-const saveSlots = 3
+// Slot indexes: the player's slots (ui.saves.slots) count from 0, then the autosave, then
+// the quick slot. Their files keep the names they had with three slots, so a game that
+// raises the count keeps its saves.
+func (g *Game) saveSlots() int {
+	if g.db == nil {
+		return 3 // a store checked before the game data is read
+	}
+	return g.db.Game.UI.SaveSlots()
+}
+
+func (g *Game) autoSlot() int { return g.saveSlots() }
+
+func (g *Game) quickSlot() int { return g.saveSlots() + 1 }
+
+// slotCount is every slot a save can be read from: the player's, the autosave and the
+// quick slot.
+func (g *Game) slotCount() int { return g.saveSlots() + 2 }
 
 func (g *Game) slotPath(i int) string {
-	if i == autoSlot {
+	switch i {
+	case g.autoSlot():
 		return g.autoPath()
+	case g.quickSlot():
+		return "quick.json"
 	}
 	return fmt.Sprintf("save%d.json", i+1)
 }
@@ -2490,7 +2512,11 @@ func (g *Game) save(i int) error {
 	if g.testRun() && !g.storeGiven {
 		return nil
 	}
-	return g.writeSave(g.slotPath(i))
+	if err := g.writeSave(g.slotPath(i)); err != nil {
+		return err
+	}
+	g.slotPics.write(g, g.slotPath(i))
+	return nil
 }
 
 func (g *Game) load(i int) (*rpg.State, error) {
@@ -2524,7 +2550,7 @@ func resumeAt(db *data.DB, st *rpg.State) {
 func (g *Game) newestSave() (int, *rpg.State) {
 	at, found := 0, (*rpg.State)(nil)
 	var newest time.Time
-	for i := range saveSlots + 1 {
+	for i := range g.slotCount() {
 		st, err := g.load(i)
 		if err != nil {
 			continue
@@ -2540,7 +2566,7 @@ func (g *Game) newestSave() (int, *rpg.State) {
 }
 
 func (g *Game) anySave() bool {
-	for i := range saveSlots + 1 {
+	for i := range g.slotCount() {
 		if g.storeHas(g.slotPath(i)) {
 			return true
 		}
@@ -2548,9 +2574,12 @@ func (g *Game) anySave() bool {
 	return false
 }
 
-func slotName(i int) string {
-	if i == autoSlot {
+func (g *Game) slotName(i int) string {
+	switch i {
+	case g.autoSlot():
 		return lang.T("オート")
+	case g.quickSlot():
+		return lang.T("クイック")
 	}
 	return strconv.Itoa(i + 1)
 }
@@ -2559,9 +2588,9 @@ func (g *Game) slotLabel(i int) (string, bool) {
 	st, err := g.load(i)
 	if err != nil {
 		if g.storeHas(g.slotPath(i)) {
-			return slotName(i) + lang.T(": ---- 読めないセーブ ----"), false
+			return g.slotName(i) + lang.T(": ---- 読めないセーブ ----"), false
 		}
-		return slotName(i) + lang.T(": ---- からっぽ ----"), false
+		return g.slotName(i) + lang.T(": ---- からっぽ ----"), false
 	}
 	loc := data.Render(g.db.Locations[st.Location].Name, st.Env())
 	if l := g.db.Locations[st.Location]; l != nil && l.Dungeon != nil && l.Dungeon.Generate != nil {
@@ -2580,7 +2609,7 @@ func (g *Game) slotLabel(i int) (string, bool) {
 		when = t.Format("01/02 15:04")
 	}
 
-	return fmt.Sprintf("%s: %s%s  %d:%02d:%02d  %s", slotName(i), party, loc, sec/3600, sec/60%60, sec%60, when), true
+	return fmt.Sprintf("%s: %s%s  %d:%02d:%02d  %s", g.slotName(i), party, loc, sec/3600, sec/60%60, sec%60, when), true
 }
 
 var (

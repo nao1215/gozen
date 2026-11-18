@@ -561,6 +561,16 @@ type ProfileBook struct {
 	Layout string `yaml:"layout"`
 }
 
+// SaveStyle shapes the save screens (ui.saves).
+type SaveStyle struct {
+	// Slots is how many slots the player saves to (default 3, at most 99). More slots
+	// than the screen holds scroll.
+	Slots int `yaml:"slots"`
+	// Quick adds Quick save and Quick load to the novel band: one slot written without a
+	// menu, and read back with one question, as a visual novel's Q.Save and Q.Load.
+	Quick bool `yaml:"quick"`
+}
+
 // TitleMenu shapes the title screen's menu (schema_version 10).
 type TitleMenu struct {
 	// HideDisabled leaves out the entries that cannot be chosen now (Continue with no
@@ -637,6 +647,9 @@ type UIStyle struct {
 	// 10): empty, it rolls back one line when it can and opens the backlog otherwise, as
 	// before; log always opens the backlog. Turning it down advances the line either way.
 	WheelUp string `yaml:"wheel_up"`
+	// Saves shapes the save screens: the number of slots and the quick slot. Omitted,
+	// three slots and the autosave, without a quick slot.
+	Saves *SaveStyle `yaml:"saves"`
 	// Title shapes the title screen's menu (schema_version 10). Omitted, the menu shows
 	// every entry, the ones that cannot be chosen grayed.
 	Title *TitleMenu `yaml:"title"`
