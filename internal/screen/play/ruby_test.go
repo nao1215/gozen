@@ -3,6 +3,9 @@ package play
 import (
 	"reflect"
 	"testing"
+	"unicode/utf8"
+
+	"pgregory.net/rapid"
 
 	"github.com/nao1215/gozen/internal/rules/event"
 )
@@ -64,4 +67,32 @@ func TestRubyPlacesAfterAWrap(t *testing.T) {
 	if got := rubyPlaces(spans, plain, lines, 0, 6); len(got) != 0 {
 		t.Fatalf("half the base typed: %+v", got)
 	}
+}
+
+// TestParseRubyRoundTrip: text written as plain runs and ruby marks (a bar, the base and the
+// reading in double angle brackets) comes back as the runs and bases without the marks,
+// each reading over its own base.
+func TestParseRubyRoundTrip(t *testing.T) {
+	plainRun := rapid.StringOfN(rapid.SampledFrom([]rune("あ漢字a 。!")), 0, 6, -1)
+	word := rapid.StringOfN(rapid.SampledFrom([]rune("あ漢字aZ 。")), 1, 5, -1)
+	rapid.Check(t, func(t *rapid.T) {
+		var src, want string
+		var spans []rubySpan
+		for i, n := 0, rapid.IntRange(0, 5).Draw(t, "n"); i < n; i++ {
+			run := plainRun.Draw(t, "run")
+			src, want = src+run, want+run
+			if !rapid.Bool().Draw(t, "marked") {
+				continue
+			}
+			base, reading := word.Draw(t, "base"), word.Draw(t, "reading")
+			at := utf8.RuneCountInString(want)
+			spans = append(spans, rubySpan{at, at + utf8.RuneCountInString(base), reading})
+			src += rapid.SampledFrom([]string{"|", "｜"}).Draw(t, "bar") + base + "《" + reading + "》"
+			want += base
+		}
+		plain, got := parseRuby(src)
+		if plain != want || !reflect.DeepEqual(got, spans) {
+			t.Fatalf("%q: %q %v, want %q %v", src, plain, got, want, spans)
+		}
+	})
 }

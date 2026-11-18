@@ -58,6 +58,31 @@ For the CLI, new neutral specs in `e2e/atago/` check exit status, stdout/stderr,
 
 In `internal/promptgen` and `internal/mosaic`, checks without inference are separate from checks that use ONNX. Checks that use inference live under another tag or an explicit target, and `t.Skip` explains the missing prerequisite when the shared library or model is absent. The real model path is given by the user, and test failures are not replaced indiscriminately with skips. The ONNX tests of T5 run real inference only when the model and shared library are given explicitly. See [how to set it](production-tools.md#verification). No model is bundled.
 
+## Property, model and metamorphic tests
+
+Where an exact expected value is hard to write for every input, tests state a rule that every input keeps and let [rapid](https://github.com/flyingmutant/rapid) draw the inputs; a failure is shrunk to its smallest input and printed with the draws that reproduce it. They run in the normal `go test ./...` with 100 inputs each; give more with `-args -rapid.checks=5000`.
+
+| Test | Rule |
+|---|---|
+| `TestStoresFollowAModel` (`internal/base/savefile`) | any sequence of writes, reads, removals and listings leaves `DirStore`, `MemStore` and a `Serialized` store agreeing with a plain map, unsafe names refused alike |
+| `TestPaginateProperties` (`internal/screen/gfx`) | pages lose and repeat no text, no page has more lines than the window, the size stays between the floor and the asked size |
+| `TestPaginateMetamorphic` (`internal/screen/gfx`) | a window with more lines, or a wider one, never takes more pages |
+| `TestParseRubyRoundTrip` (`internal/screen/play`) | text written with `\|base《reading》` marks gives back the text without them and each reading over its own base |
+| `TestLoadIgnoresKeyOrder` (`internal/model/gamedata`) | every example game, with the keys of every YAML mapping in reverse, loads to the same game with the same warnings; only what follows the file's order (menus, a map's points) may come in another order |
+
+The five tests together take under half a second. Each is cheap for its own reason:
+
+- rapid draws many inputs only for small pure functions and in-memory state (the store model, pagination, ruby), where 100 inputs run in milliseconds.
+- The metamorphic test on loading is the one that runs the whole loader, so it takes no random inputs. It applies one transformation to each of the 8 example games, which already cover every genre, and its subtests run in parallel.
+
+How the tools were chosen:
+
+- `testing/quick` was not used: it cannot shrink a failure or drive a sequence of operations.
+- gopter was not used: it is no longer maintained and needs reflection-based generators.
+- Go's native fuzzing (`go test -fuzz`) stays in the nightly Fuzz workflow: it needs minutes to explore, and in a normal run it only replays its seed corpus.
+
+Older tests that draw inputs with `math/rand` (`internal/base/expr/property_test.go` and others) keep their fixed seeds. Mutation testing is not part of the checks: it takes hours on a module of this size.
+
 ## CI
 
 T7 collected the configuration, OSes, permissions, pinned tools and dependency updates in [CI configuration](ci.md). Besides the normal lint, unit and build, it wires graphics, the atago E2E of `gozen`, separate examples, Linux race, govulncheck and CodeQL. The cgo compile of ONNX and the skip reason when no model is given are checked in the separate inference-build. Distinguish the jobs that are defined from the actual remote results. Before publication, follow the [release checklist](release-checklist.md) to confirm the results and the unverified items.
