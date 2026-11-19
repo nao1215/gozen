@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"pgregory.net/rapid"
+
 	"github.com/nao1215/gozen/internal/base/savefile"
 )
 
@@ -243,4 +245,75 @@ func TestSerializedStore(t *testing.T) {
 	} else if _, err := timer.ModTime("a.json"); err != nil {
 		t.Fatalf("the directory's time was lost: %v", err)
 	}
+}
+
+// TestStoresFollowAModel: any sequence of writes, reads, removals and listings leaves
+// DirStore, MemStore and a Serialized MemStore agreeing with a plain map, the unsafe
+// names refused by all of them alike. rapid shrinks a failing sequence to its shortest.
+func TestStoresFollowAModel(t *testing.T) {
+	names := []string{"save1.json", "auto.json", "セーブ.json", "a b", ".hidden", "a/b", `a\b`, "", "..", "q.json.tmp"}
+	rapid.Check(t, func(rt *rapid.T) {
+		stores := map[string]savefile.Store{
+			"dir":    savefile.DirStore(filepath.Join(t.TempDir(), "saves")),
+			"mem":    savefile.MemStore(),
+			"serial": savefile.Serialized(savefile.MemStore()),
+		}
+		model := map[string][]byte{}
+		valid := func(n string) bool {
+			return n != "" && !strings.HasPrefix(n, ".") && !strings.ContainsAny(n, `/\`)
+		}
+		name := rapid.SampledFrom(names)
+		rt.Repeat(map[string]func(*rapid.T){
+			"write": func(rt *rapid.T) {
+				n, b := name.Draw(rt, "name"), rapid.SliceOfN(rapid.Byte(), 0, 16).Draw(rt, "bytes")
+				for k, st := range stores {
+					if err := st.Write(n, b); (err == nil) != valid(n) {
+						rt.Fatalf("%s: Write(%q) = %v", k, n, err)
+					} else if err != nil && !errors.Is(err, fs.ErrInvalid) {
+						rt.Fatalf("%s: Write(%q) = %v, want fs.ErrInvalid", k, n, err)
+					}
+				}
+				if valid(n) {
+					model[n] = slices.Clone(b)
+				}
+			},
+			"read": func(rt *rapid.T) {
+				n := name.Draw(rt, "name")
+				want, ok := model[n]
+				for k, st := range stores {
+					got, err := st.Read(n)
+					switch {
+					case !valid(n):
+						if !errors.Is(err, fs.ErrInvalid) {
+							rt.Fatalf("%s: Read(%q) = %v, want fs.ErrInvalid", k, n, err)
+						}
+					case !ok:
+						if !errors.Is(err, fs.ErrNotExist) {
+							rt.Fatalf("%s: Read(%q) = %v, want fs.ErrNotExist", k, n, err)
+						}
+					case err != nil || string(got) != string(want):
+						rt.Fatalf("%s: Read(%q) = %q, %v, want %q", k, n, got, err, want)
+					}
+				}
+			},
+			"remove": func(rt *rapid.T) {
+				n := name.Draw(rt, "name")
+				for k, st := range stores {
+					if err := st.Remove(n); (err == nil) != valid(n) {
+						rt.Fatalf("%s: Remove(%q) = %v", k, n, err)
+					}
+				}
+				delete(model, n)
+			},
+			"": func(rt *rapid.T) { // after every step every store lists what the model holds
+				want := slices.Sorted(maps.Keys(model))
+				for k, st := range stores {
+					got, err := st.List()
+					if err != nil || !slices.Equal(got, want) {
+						rt.Fatalf("%s: List() = %q, %v, want %q", k, got, err, want)
+					}
+				}
+			},
+		})
+	})
 }

@@ -13,6 +13,7 @@ require (
 	github.com/yalue/onnxruntime_go v1.38.0
 	golang.org/x/image v0.48.0
 	golang.org/x/text v0.44.0
+	pgregory.net/rapid v1.3.0
 	rsc.io/qr v0.2.0
 )
 
