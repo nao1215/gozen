@@ -66,8 +66,8 @@ All from [Go Zen](examples/go-zen) at 1920x1080.
 | ![four against the Brass Warden, with damage numbers](docs/images/go-zen-battle.gif) | ![Ox's Shield Rush cut-in](docs/images/go-zen-cutin.gif) |
 | Shop | Skill tree |
 | ![the shop's goods](docs/images/go-zen-shop.jpg) | ![Maren's skill tree: Z raises Chart and Ink Burst as the SP left count down, then Tab goes to Ox](docs/images/go-zen-tree.gif) |
-| Title | |
-| ![the title screen](docs/images/go-zen-title.jpg) | |
+| Title | Weather and tone (`weather`, `tone`) |
+| ![the title screen](docs/images/go-zen-title.jpg) | ![the painted plaza in rain at night, then snow, petals in sepia and embers at dusk](docs/images/go-zen-weather.gif) |
 
 ### Novel games
 

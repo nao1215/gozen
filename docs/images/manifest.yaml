@@ -121,6 +121,10 @@ runs:
     sample: go-zen
     script: scripts/capture-go-zen-map.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, town, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  weather:
+    sample: go-zen
+    script: scripts/capture-go-zen-weather.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, plaza, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   plaza:
     sample: go-zen
     script: scripts/capture-go-zen-plaza.txt
@@ -316,6 +320,11 @@ images:
     run: plaza
     frames:
       - {shots: p*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  go-zen-weather.mp4:
+    run: weather
+    frames:
+      - {shots: wk*}
     mp4: {fps: 12, width: 1280, height: 720}
   go-zen-map.mp4:
     run: map
@@ -662,6 +671,11 @@ images:
     run: plaza
     frames:
       - {shots: "p*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  go-zen-weather.gif:
+    run: weather
+    frames:
+      - {shots: "wk*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   go-zen-map.gif:
     run: map

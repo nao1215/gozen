@@ -69,6 +69,16 @@ func TestLookChanges(t *testing.T) {
 	if len(a.drops) == 0 || !slices.Equal(a.drops, b.drops) {
 		t.Errorf("two runs of the same play drop different snow (%d, %d drops)", len(a.drops), len(b.drops))
 	}
+	// Another kind: the slow snow thins out over the change instead of falling for seconds.
+	a.change(&data.Weather{Kind: data.WeatherPetals, Power: 0.5}, 30)
+	for range 30 {
+		a.step(1280, 720, 1)
+	}
+	for _, d := range a.drops {
+		if d.kind == data.WeatherSnow {
+			t.Fatalf("snow is left %d ticks after the weather turned to petals", 30)
+		}
+	}
 
 	// A loaded look without an effect is shown at once.
 	g.st.SetTone(&data.Tone{Color: "#ff0000", Vignette: 1})
@@ -85,6 +95,22 @@ func TestLookChanges(t *testing.T) {
 	}
 	if len(g.look.weather.drops) != 0 {
 		t.Errorf("%d drops are left long after the rain stopped", len(g.look.weather.drops))
+	}
+
+	// The drops fall on the screen last drawn, in its pixels: sparks rise from its bottom
+	// edge, not from below a screen scaled once more by the UI scale.
+	g.look.weather.sw, g.look.weather.sh = 640, 360
+	ui := g.ui
+	g.ui = 1.5 // a 1080-high game
+	t.Cleanup(func() { g.ui = ui })
+	g.st.SetWeather(&data.Weather{Kind: data.WeatherEmbers, Power: 1})
+	for range 10 {
+		g.stepLook()
+	}
+	for _, d := range g.look.weather.drops {
+		if d.fade == 0 && (d.y > 360+20*g.ui || d.x > 640+100*g.ui) {
+			t.Fatalf("a spark at (%v, %v) is off a 640x360 screen", d.x, d.y)
+		}
 	}
 
 	// The title (no state) has no look.
