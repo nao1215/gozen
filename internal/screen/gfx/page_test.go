@@ -50,11 +50,14 @@ func TestPaginateProperties(t *testing.T) {
 	})
 }
 
-// TestPaginateMetamorphic: a window with more lines, or the same text at a fixed size in a
-// wider window, never takes more pages.
+// TestPaginateMetamorphic: one sentence in a window with more lines, or at a fixed size in a
+// wider window, never takes more pages. Several sentences may: pages begin at a sentence
+// where they can, so "!" and a sentence of four lines take three pages of four lines and
+// two of three.
 func TestPaginateMetamorphic(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		s := pageText(t)
+		parts := rapid.SliceOfN(rapid.SampledFrom([]string{"あ", "漢", "A", "word", " ", "、"}), 0, 80).Draw(t, "parts")
+		s := strings.Join(parts, "")
 		size := rapid.Float64Range(8, 40).Draw(t, "size")
 		width := rapid.Float64Range(40, 400).Draw(t, "width")
 		lines := rapid.IntRange(1, 4).Draw(t, "lines")
