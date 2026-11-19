@@ -293,6 +293,8 @@ type Game struct {
 	th       theme
 	glass    materialCache
 	tick     int
+	// look is the weather and the tone drawn over the scene (ADR 0066).
+	look sceneLook
 
 	// callLast is the last speaker of each call, kept on its stage through a
 	// narrated line (presentation only).
@@ -1204,6 +1206,7 @@ func (g *Game) Update() error {
 		}
 	}
 	g.stepStaging()
+	g.stepLook()
 	g.stepFanfare()
 	g.ageCG()
 	g.freezeT = max(0, g.freezeT-1)
@@ -1359,6 +1362,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			alpha = math.Min(1, float64(g.cgAge)/float64(ticks))
 		}
 		g.drawCG(dst, g.cg, float32(alpha))
+	}
+	if !g.novel() || !g.talk.active {
+		g.drawLook(dst) // a line of the novel window colors its portraits too (drawNovel)
 	}
 
 	if g.fadeT > 30 && g.freeze != nil {

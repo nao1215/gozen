@@ -199,6 +199,14 @@ runs:
     sample: novel
     script: scripts/capture-novel-stage.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, opening, --line, "9", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-weather:
+    sample: novel
+    script: scripts/capture-novel-weather.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, opening, --line, "1", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  novel-tone:
+    sample: novel
+    script: scripts/capture-novel-tone.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, stories, --line, "8", --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   novel-panel:
     sample: novel
     script: scripts/capture-novel-panel.txt
@@ -420,6 +428,16 @@ images:
     run: novel-stage
     frames:
       - {shots: st*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-weather.mp4:
+    run: novel-weather
+    frames:
+      - {shots: wx*}
+    mp4: {fps: 12, width: 1280, height: 720}
+  novel-tone.mp4:
+    run: novel-tone
+    frames:
+      - {shots: tn*}
     mp4: {fps: 12, width: 1280, height: 720}
   playtest-reload.mp4:
     run: playtest-reload
@@ -911,6 +929,16 @@ images:
     run: novel-stage
     frames:
       - {shots: "st*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  novel-weather.gif:
+    run: novel-weather
+    frames:
+      - {shots: "wx*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  novel-tone.gif:
+    run: novel-tone
+    frames:
+      - {shots: "tn*"}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   novel-panel.jpg:
     run: novel-panel

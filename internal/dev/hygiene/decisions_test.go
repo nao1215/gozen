@@ -443,7 +443,7 @@ func TestCommandExecution(t *testing.T) {
 // YAML words are checked lexically, not as a proof of gameplay generality.
 // The frozen baseline below may only shrink; new words cannot be added to it.
 const (
-	yamlBaselineLimit = 709
+	yamlBaselineLimit = 707
 	yamlBaseline      = `
 acceleration accepts act action activation activity activity_attributes
 add_state addresses admission advice affect affection affiliation after_win
@@ -493,7 +493,7 @@ only opacities opacity open_wall optional options order_view origin_u origin_v
 others_title out outfit over over_size page pages pairs pan paper param params
 parent parents passives patterns peek per_char per_hour per_soldier per_turn
 percent period persist phase picture_fit pictures pin_end_turn pitch place
-planned planned_label play policies policy pop portrait posts power preferred
+planned planned_label play policies policy pop portrait posts preferred
 preset price primary primary_card primary_text priority profile profile_book
 progress prompt q qr question quick_menu quiet r rank rare_rank reaction
 reactions read reason recoil recover recruit rect refraction region_borders
@@ -514,7 +514,7 @@ stone_wearer stones stop streak stream streams strict style subject subtitle
 summon summon_max surfaces symbol tabs tactic tactic_actions tactic_conditions
 tactic_presets tactic_targets tactics tag tagline take talk_on_enter
 talk_portrait tempo terms terrain text_key theme thickness things ticket tile
-timeout timeout_result timing tint tip_lines tip_per tips today token tone tones
+timeout timeout_result timing tint tip_lines tip_per tips today token tones
 top total tracking transform transform_clear transform_hp travel_speed tree turn
 turn_speed turn_ticks unavailable unbounded underside unit units unknown unlock
 until until_taken unused_definitions url values variance vars verbs via video

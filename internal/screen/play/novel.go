@@ -257,6 +257,8 @@ func (t *talk) drawNovel(g *Game, dst *ebiten.Image) {
 		t.drawNovelStage(g, dst)
 		g.stageK = 1
 	}
+	// The portraits stand in the scene: the weather and the tone go over them, under the window.
+	g.drawLook(dst)
 	frame := g.novelFrame()
 	if def := g.db.Game.Screens[s.Ensemble]; s.Ensemble != "" && def != nil && def.Kind == "ensemble" {
 		rect(dst, 0, 0, sw, sh, withAlpha(g.th.window, 255))

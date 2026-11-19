@@ -89,7 +89,7 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 	}
 	switch typ {
 	case reflect.TypeFor[ItemCount](), reflect.TypeFor[IDRef](), reflect.TypeFor[ScreenCall](), reflect.TypeFor[EventCall](), reflect.TypeFor[Picture](), reflect.TypeFor[CG](), reflect.TypeFor[Say](), reflect.TypeFor[MusicCue](), reflect.TypeFor[Target](), reflect.TypeFor[Bubble](), reflect.TypeFor[Token](),
-		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
+		reflect.TypeFor[Stand](), reflect.TypeFor[EffectCue](), reflect.TypeFor[WeatherCue](), reflect.TypeFor[ToneCue](), reflect.TypeFor[SFXCue](), reflect.TypeFor[OrderCmd](), reflect.TypeFor[CallControl](), reflect.TypeFor[ProfileFace]():
 		if _, ok := raw.(string); ok {
 			return nil
 		}

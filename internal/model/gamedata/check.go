@@ -2398,6 +2398,10 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			}
 		case "effect":
 			c.effectCue(w+".effect", cmd.Effect)
+		case "weather":
+			c.weatherCue(w+".weather", *cmd.Weather)
+		case "tone":
+			c.toneCue(w+".tone", *cmd.Tone)
 		case "order", "end_turn", "game_over":
 			c.campaignCommand(w, verb, cmd)
 		case "carry":

@@ -23,6 +23,7 @@ dependencies, materials and optional character voice checks.
 | [Remember things with flags and conditions](#remember-things-with-flags-and-conditions) | `set`, `flag.*` and `var.*`, `when`, `trigger: auto` |
 | [Let the player roll back and save in a scene](#let-the-player-roll-back-and-save-in-a-scene) | `ui.rollback`, `ui.saves`, a choice's `id`, `chose.*` |
 | [Stage portraits and effects](#stage-portraits-and-effects) | `stand`, `effect`, `music` fades, `wait` and `sfx` that hold |
+| [Set the weather and the tone](#set-the-weather-and-the-tone) | `weather` (rain, snow, petals, embers), `tone` (gray, sepia, night, dusk, or its parts) |
 | [Add voices](#add-voices) | `say.voice`, actor `voices`, `ui.voice`, the backlog's ▶ |
 | [Add a companion who joins](#add-a-companion-who-joins) | `actors`, `join`, `leave` |
 | [Grow by level and learn skills](#grow-by-level-and-learn-skills) | class `stats` formulas, `exp_for`, `skills` by level |
@@ -299,6 +300,44 @@ events:
 ```
 
 `at` is `left`, `center`, `right` or a fraction of the screen's width. A name that is not an actor needs `face`, a picture under `assets/`; an actor's `face` is one of its faces. The headless session sees `stand` as an effect (`Effect.Kind` `stand`, with the actor), so a test can check who stands in a scene. Every map form needs `schema_version: 4`; the old string forms work as before. Reference: [Stand](/schema/#stand), [EffectCue](/schema/#effectcue), [WaitCue](/schema/#waitcue), [SFXCue](/schema/#sfxcue), [MusicCue](/schema/#musiccue).
+
+## Set the weather and the tone
+
+`weather` makes rain, snow, petals or embers fall over the scene, and `tone` colors it: a preset (`gray`, `sepia`, `night`, `dusk`) or its parts, `color` (multiplied), `gray`, `bright` and `vignette` (dark edges). Both stay from the command on, over every place and line, until another `weather` or `tone` changes them, and a save keeps them. `none` takes each away. A change eases in over `seconds` (1 by default; 0 is at once).
+
+| Weather | Tone of a memory |
+|:--|:--|
+| ![snow falls over the hill above the village, leaning with the wind](/images/novel-weather.mp4) | ![Brenna starts her memory and the tavern eases to a cold gray with dark edges, then the colors come back](/images/novel-tone.mp4) |
+
+<!-- verify: load group=look as=game.yaml -->
+```yaml
+# game.yaml
+schema_version: 12
+ui:
+  message: novel
+```
+
+<!-- verify: load group=look -->
+```yaml
+events:
+  arrival:
+    do:
+      - weather: {kind: snow, power: 0.55, wind: 0.35, seconds: 0}
+      - say: Snow squeaks under every step.
+      - weather: {kind: none, seconds: 0.5}
+      - say: Warmth rolls over you.
+  memory:
+    do:
+      - tone: {gray: 0.7, color: "#d8e4ff", bright: -0.1, vignette: 0.5, seconds: 1.5}
+      - say: Fourth day. The lead wagon started to slide.
+      - tone: none
+  storm:
+    do:
+      - weather: rain
+      - tone: night
+```
+
+The weather and the tone are drawn over the place, its pictures and the portraits standing, and under the windows; a battle has neither. The drops fall the same way in every capture of the same play. The headless session sees each command as an effect (`Effect.Kind` `visual`, named `weather` or `tone`), and the state's `look` holds what is falling and the tone. Both need `schema_version: 12`. Reference: [WeatherCue](/schema/#weathercue), [ToneCue](/schema/#tonecue).
 
 ## Add voices
 

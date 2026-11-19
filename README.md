@@ -82,6 +82,8 @@ From [After the Pass](examples/novel). See the [visual novel recipes](https://na
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](docs/images/novel-language.gif) | ![Brenna slides in and her portrait shakes](docs/images/novel-stage.gif) |
 | Event picture with its line | Larger text (settings) |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](docs/images/novel-picture.jpg) | ![the settings raise the text size twice, and the line behind them comes back larger, two lines a page, as does the next](docs/images/novel-text-size.gif) |
+| Weather (`weather`) | Tone of a memory (`tone`) |
+| ![snow falls over the hill above the village, leaning with the wind](docs/images/novel-weather.gif) | ![Brenna starts her memory and the tavern eases to a cold gray with dark edges, then the colors come back](docs/images/novel-tone.gif) |
 
 #### Phone apps
 

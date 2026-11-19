@@ -67,14 +67,18 @@ events:
               - move: plaza_end
   memory_backs:
     - set: {flag.seen_cg3: true}
+    # A memory: warm, faded and dark at the edges, then the colors come back.
+    - tone: {gray: 0.6, color: "#ffe2bc", bright: 0.05, vignette: 0.55, seconds: 0.8}
     - say: "The brass wall looms. Shoulder to shoulder, the four of them hold the line, and Maren grips a page in each hand."
     - say: {who: ox, face: determined, text: "Behind me."}
     - say: {who: tilly, face: determined, text: "I'll bet on you."}
     - say: {who: kes, face: determined, text: "Statistically— we win."}
     - say: {who: maren, face: determined, text: "Every line, walked."}
+    - tone: none
   # Beat 15. Final Image.
   final_image:
     - music: town
+    - weather: {kind: petals, power: 0.6, wind: 0.3}
     - say: "Pellmere Plaza. Noon. The fountain runs, and the whole square is wet and shouting."
     - say: {who: Mayor, text: "Maren Quill! The town's thanks. And a thousand gold, as promised."}
     - gold: 1000

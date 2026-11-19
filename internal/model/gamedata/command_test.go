@@ -34,7 +34,7 @@ var commandExamples = map[string]string{
 	"move": `move: deep`, "music": `music: ""`, "mood": `mood: calm`, "image": `image: ""`,
 	"shop": `shop: store`, "call": `call: sub`, "wait": `wait: 1`, "notice": `notice: hi`, "message": `message: {who: scout, text: hi, event: sub}`, "call_view": `call_view: {camera: {who: scout, on: true}}`, "phone": `phone: {app: chat, messages: [{text: hi}]}`,
 	"sfx": `sfx: decide`, "exp": `exp: 0`, "learn": `learn: {actor: scout, skill: fire}`,
-	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "stand": `stand: none`, "end": `end: true`,
+	"reset_tree": `reset_tree: all`, "reset_actor": `reset_actor: scout`, "effect": `effect: fade`, "weather": `weather: {kind: snow, power: 0.8, wind: -0.3, seconds: 2}`, "tone": `tone: sepia`, "stand": `stand: none`, "end": `end: true`,
 	"clear": `clear: true`, "save": `save: true`, "open": `open: skills`,
 	"dive": `dive: deep`, "open_wall": `open_wall: S`,
 	"stone_suggest": `stone_suggest: offer`, "stone_apply": `stone_apply: offer`,
@@ -94,10 +94,10 @@ func TestCommandFieldMatrix(t *testing.T) {
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
 		campaign := wantVerb == "order" || wantVerb == "end_turn" || wantVerb == "game_over"
-		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" || wantVerb == "weather" || wantVerb == "tone" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
-				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 10") {
+				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 10") && !strings.Contains(e.Error(), "needs schema_version: 12") {
 					rest = append(rest, e)
 				}
 			}

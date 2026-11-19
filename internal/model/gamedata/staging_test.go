@@ -67,3 +67,35 @@ func TestStagingFiniteDurations(t *testing.T) {
 		}
 	}
 }
+
+// TestWeatherAndToneWords: weather and tone take a word or a map, need schema version 12,
+// and are refused with a word they do not know or a number out of its range (ADR 0066).
+func TestWeatherAndToneWords(t *testing.T) {
+	v12 := "schema_version: 12\nid: b\n"
+	v11 := "schema_version: 11\nid: b\n"
+	for _, c := range []struct{ head, do, want string }{
+		{v12, `[{weather: rain}, {weather: {kind: snow, power: 1, wind: -1, color: "#e0f0ff", seconds: 3}}, {weather: {kind: none, seconds: 0}}]`, ""},
+		{v12, `[{tone: sepia}, {tone: {color: "#ffd0a0", gray: 0.5, bright: -0.3, vignette: 1, seconds: 2}}, {tone: none}]`, ""},
+		{v11, `[{weather: rain}]`, "weather needs schema_version: 12"},
+		{v11, `[{tone: night}]`, "tone needs schema_version: 12"},
+		{v12, `[{weather: hail}]`, "want rain, snow, petals, embers, none"},
+		{v12, `[{weather: {kind: rain, power: 1.5}}]`, "power is from 0 to 1"},
+		{v12, `[{weather: {kind: rain, wind: -2}}]`, "wind is from -1 to 1"},
+		{v12, `[{weather: {kind: none, power: 0.5}}]`, "weather none takes only seconds"},
+		{v12, `[{weather: {kind: rain, seconds: 61}}]`, "seconds is from 0 to 60"},
+		{v12, `[{weather: {kind: rain, power: .nan}}]`, "power is from 0 to 1"},
+		{v12, `[{tone: noir}]`, "want gray, sepia, night, dusk, none or a map"},
+		{v12, `[{tone: {gray: 2}}]`, "gray is from 0 to 1"},
+		{v12, `[{tone: {bright: -1.5}}]`, "bright is from -1 to 1"},
+		{v12, `[{tone: {vignette: -0.1}}]`, "vignette is from 0 to 1"},
+		{v12, `[{tone: {gray: 1, seconds: -1}}]`, "seconds is from 0 to 60"},
+	} {
+		_, err := testgame.TryLoad(map[string]string{
+			"game.yaml":   c.head + testgame.Game,
+			"data/z.yaml": "events: {e: {do: " + c.do + "}}",
+		})
+		if c.want == "" && err != nil || c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)) {
+			t.Errorf("%s: %v", c.do, err)
+		}
+	}
+}

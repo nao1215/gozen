@@ -94,7 +94,8 @@ type BreedEffect struct {
 }
 
 // VisualEffect requests a named visual effect: a word of the whole screen (shake, flash,
-// fade) or a reaction of a portrait; Cue holds the rest of a map form (ADR 0028).
+// fade) or a reaction of a portrait; Cue holds the rest of a map form (ADR 0028). weather
+// and tone tell that the state's look changed, over Cue.Seconds (ADR 0066).
 type VisualEffect struct {
 	Name string
 	Cue  data.EffectCue
@@ -1497,6 +1498,14 @@ func (r *Runner) run(c *data.Command) Request {
 		r.emit(r.stand(c.Stand))
 	case "effect":
 		r.emit(VisualEffect{Name: c.Effect.Name, Cue: c.Effect})
+	case "weather":
+		r.st.SetWeather(c.Weather.Weather())
+		seconds := float64(c.Weather.Ticks()) / 60
+		r.emit(VisualEffect{Name: "weather", Cue: data.EffectCue{Name: "weather", Seconds: seconds}})
+	case "tone":
+		r.st.SetTone(c.Tone.Tone())
+		seconds := float64(c.Tone.Ticks()) / 60
+		r.emit(VisualEffect{Name: "tone", Cue: data.EffectCue{Name: "tone", Seconds: seconds}})
 	case "exp":
 		n, err := c.Exp.Number(env)
 		r.logf(err)

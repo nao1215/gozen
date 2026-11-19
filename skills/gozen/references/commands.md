@@ -71,7 +71,9 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | `stone_suggest` | Suggest a stronger arrangement of owned stones and store the proposed changes under a variable prefix. |
 | `stone_wearer` | Lets the player choose who wears the stones. |
 | `take` | Removes an item from the bag: the item ID and a count (default 1). |
+| `tone` | Colors the scene from now on: `gray`, `sepia`, `night`, `dusk` or `none`, or a map of `color`, `gray`, `bright`, `vignette` and `seconds`. Kept in saves; version 12. |
 | `turn` | Turns in a dungeon: `left`, `right` or `back`. |
 | `use` | Uses an item from the menu, an ID of items. |
 | `wait` | Pauses for the given number of seconds. A map (version 4) with `skip: false` holds even in skip mode. |
 | `walk` | Walks the shortest path in a dungeon to the tile of the given map character. |
+| `weather` | Lets rain, snow, petals or embers fall over the scene from now on (`none` stops it), with `power`, `wind`, `color` and `seconds`. Kept in saves; version 12. |

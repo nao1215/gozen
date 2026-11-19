@@ -61,6 +61,8 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | ![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](/images/novel-language.mp4) | ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4) |
 | Event picture with its line | Larger text (settings) |
 | ![Brenna's ending: a picture of her cheering at the bar, with the line under it](/images/novel-picture.jpg) | ![the settings raise the text size twice, and the line behind them comes back larger, two lines a page, as does the next](/images/novel-text-size.mp4) |
+| Weather (`weather`) | Tone of a memory (`tone`) |
+| ![snow falls over the hill above the village, leaning with the wind](/images/novel-weather.mp4) | ![Brenna starts her memory and the tavern eases to a cold gray with dark edges, then the colors come back](/images/novel-tone.mp4) |
 
 #### Phone apps
 
