@@ -147,7 +147,7 @@ jobs:
             ~/.cache/go-build
           key: ${{ steps.snapshot-cache.outputs.cache-primary-key }}
 
-  # The browser E2E of the Linux artifacts, in two shards on runners of their own,
+  # The browser E2E of the Linux artifacts, in shards on runners of their own,
   # one scenario at a time (scripts/smoke_artifacts.sh explains why).
   smoke-web:
     name: Smoke-test the web export (${{ matrix.shard }})
@@ -160,8 +160,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: phone
-            select: --tag phone-browser
+          - shard: phone-small
+            select: --tag phone-browser --filter small
+          - shard: phone-large
+            select: --tag phone-browser --filter large
           - shard: pages
             select: --tag web --skip-tag phone-browser
     steps:
