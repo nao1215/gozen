@@ -3,6 +3,7 @@ package play
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -31,6 +32,11 @@ func wldOpenWith(t *testing.T, opts Options) *Game {
 	g, err := New(opts)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if testing.CoverMode() != "" {
+		// Instrumented baking on a 4-core runner shared with parallel tests took
+		// over 10 seconds; a picture that never loads still fails.
+		g.pictureWait = time.Minute
 	}
 	t.Cleanup(func() {
 		if err := g.Close(); err != nil {

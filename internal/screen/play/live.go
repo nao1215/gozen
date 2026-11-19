@@ -101,8 +101,10 @@ func (g *Game) startLive() {
 	l := &g.live
 	l.setBase(liveFingerprint(dir))
 	l.stop = make(chan struct{})
-	go func(stop chan struct{}) {
-		t := time.NewTicker(liveEvery)
+	// liveEvery is read here, not in the goroutine: a test that changes it would
+	// race with a watcher of an earlier game that has not started yet.
+	go func(stop chan struct{}, every time.Duration) {
+		t := time.NewTicker(every)
 		defer t.Stop()
 		for {
 			select {
@@ -112,7 +114,7 @@ func (g *Game) startLive() {
 				l.changed.Store(liveFingerprint(dir) != l.baseNow())
 			}
 		}
-	}(l.stop)
+	}(l.stop, liveEvery)
 }
 
 func (g *Game) stopLive() {

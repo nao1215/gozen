@@ -485,6 +485,7 @@ type Game struct {
 	fast            *fastTo
 	untilShot       bool
 	pictureDeadline time.Time
+	pictureWait     time.Duration // 0: pictureTimeout's default
 	quick           []*memoBox
 	quickN          int
 
@@ -1294,7 +1295,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		defer g.tr.performance.drawn(time.Now())
 	}
 	if g.waitsForDolls() {
-		g.pictureDeadline = time.Now().Add(10 * time.Second)
+		g.pictureDeadline = time.Now().Add(g.pictureTimeout())
 		defer func() { g.pictureDeadline = time.Time{} }()
 	}
 	g.pics.beginFrame()
