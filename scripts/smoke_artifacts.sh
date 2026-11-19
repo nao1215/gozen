@@ -7,9 +7,16 @@
 # .github/workflows/release-smoke.yml, which uses this script (on pull requests,
 # main and before a release); locally run it after
 # `goreleaser release --snapshot --clean --skip=publish,sign`.
+#
+# `smoke_artifacts.sh DIST web SELECTION...` runs only the browser E2E with the
+# Linux binary and the web runtime of DIST, choosing scenarios with the atago
+# flags SELECTION (--tag, --skip-tag). Release Smoke runs it in shards of their
+# own, one scenario at a time: the browsers draw with SwiftShader on the CPU, and
+# two of them on one runner's four cores pass the steps' deadlines.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 dist=${1:-dist}
+mode=${2:-artifacts}
 fixture=e2e/atago/fixtures/game
 
 fail() {
@@ -56,6 +63,15 @@ run_binary() {
     PATH="$(dirname "$bin"):$PATH" GOZEN_RUNTIME="$work/runtime" GOZEN_EXE_SUFFIX="" \
         atago run --ci --parallel 1 --tag desktop e2e/atago/desktop.atago.yaml
 }
+
+if [ "$mode" = web ]; then
+    tar -xzf "$(ls "$dist"/gozen_*_linux_"$arch".tar.gz)" -C "$work"
+    mkdir -p "$work/web-runtime"
+    tar -xzf "$(ls "$dist"/gozen-runtime_*_js_wasm.tar.gz)" -C "$work/web-runtime"
+    PATH="$work:$PATH" GOZEN_WEB_RUNTIME="$work/web-runtime" \
+        atago run --ci --parallel 1 "${@:3}" e2e/atago/web.atago.yaml
+    exit 0
+fi
 
 case "$(uname -s)" in
     Linux)
@@ -106,10 +122,6 @@ case "$(uname -s)" in
         fi
         tar -xzf "$(ls "$dist"/gozen_*_linux_"$arch".tar.gz)" -C "$work"
         run_binary "$work/gozen"
-        mkdir -p "$work/web-runtime"
-        tar -xzf "$(ls "$dist"/gozen-runtime_*_js_wasm.tar.gz)" -C "$work/web-runtime"
-        PATH="$work:$PATH" GOZEN_WEB_RUNTIME="$work/web-runtime" \
-            atago run --ci --parallel 2 --tag web e2e/atago/web.atago.yaml
         ;;
     Darwin)
         tar -xzf "$(ls "$dist"/gozen_*_darwin_"$arch".tar.gz)" -C "$work"

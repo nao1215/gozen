@@ -46,7 +46,8 @@ fi
 for attempt in 1 2 3; do
   if sudo timeout --kill-after=10 60 apt-get "${apt_options[@]}" update &&
     sudo timeout --kill-after=10 90 apt-get "${apt_options[@]}" "${install[@]}" --download-only "$@"; then
-    if [ -n "$cache" ]; then
+    # Packages the runner already has download nothing, and leave nothing to keep.
+    if [ -n "$cache" ] && compgen -G "/var/cache/apt/archives/*.deb" > /dev/null; then
       mkdir -p "$cache"
       cp /var/cache/apt/archives/*.deb "$cache"/
     fi
