@@ -305,6 +305,8 @@ events:
 
 `weather` makes rain, snow, petals or embers fall over the scene, and `tone` colors it: a preset (`gray`, `sepia`, `night`, `dusk`) or its parts, `color` (multiplied), `gray`, `bright` and `vignette` (dark edges). Both stay from the command on, over every place and line, until another `weather` or `tone` changes them, and a save keeps them. `none` takes each away. A change eases in over `seconds` (1 by default; 0 is at once).
 
+![the painted plaza in rain at night, then snow, petals in sepia and embers at dusk](/images/go-zen-weather.mp4)
+
 | Weather | Tone of a memory |
 |:--|:--|
 | ![snow falls over the hill above the village, leaning with the wind](/images/novel-weather.mp4) | ![Brenna starts her memory and the tavern eases to a cold gray with dark edges, then the colors come back](/images/novel-tone.mp4) |

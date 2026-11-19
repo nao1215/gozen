@@ -82,23 +82,36 @@ type weatherDrop struct {
 	size, life   float64
 	age          int
 	tint         color.NRGBA
+	// fade and faded let a drop of a weather that was changed or stopped thin out over
+	// the change, rather than keep falling (slow snow would stay for seconds).
+	fade, faded int
 }
+
+// minFade is the fewest ticks the drops of a changed weather take to thin out.
+const minFade = 24
 
 // weatherView keeps the drops falling. power eases toward the weather's; a change of kind
 // lets the drops of the old one fall out while the new one comes in.
 type weatherView struct {
-	w                          data.Weather
-	tint                       color.NRGBA
-	tinted                     bool
-	from, to                   float64
-	age, length                int
-	drops                      []weatherDrop
-	rng                        *rand.Rand
-	carry                      float64
+	w           data.Weather
+	tint        color.NRGBA
+	tinted      bool
+	from, to    float64
+	age, length int
+	drops       []weatherDrop
+	rng         *rand.Rand
+	carry       float64
+	// fill asks the next step to spread a new kind's drops over the whole screen, as if it
+	// had been falling for a while: slow snow from the top alone looks thin for seconds.
+	fill                       bool
 	streak, flake, petal, glow *ebiten.Image
+	// sw and sh are the pixels of the screen last drawn on, where the drops fall: a window
+	// fitted to the desktop is not the game's screen.
+	sw, sh float64
 }
 
-// maxDrops bounds the drops on the screen, whatever the power.
+// maxDrops bounds the drops of one weather on the screen, whatever the power; the drops of
+// the weather before a change thin out on top of them for a moment.
 const maxDrops = 900
 
 func (v *weatherView) power() float64 {
@@ -110,12 +123,20 @@ func (v *weatherView) power() float64 {
 
 func (v *weatherView) change(w *data.Weather, ticks int) {
 	from := v.power()
+	if w == nil || w.Kind != v.w.Kind {
+		for i := range v.drops {
+			if v.drops[i].fade == 0 {
+				v.drops[i].fade = max(ticks, minFade)
+			}
+		}
+	}
 	if w == nil {
 		v.from, v.to, v.age, v.length = from, 0, 0, ticks
 		return
 	}
 	if w.Kind != v.w.Kind {
-		from = 0 // the drops of the old kind fall out by themselves
+		from = 0 // the drops of the old kind thin out by themselves
+		v.fill = true
 	}
 	v.w, v.from, v.to, v.age, v.length = *w, from, w.Power, 0, ticks
 	v.tint, v.tinted = lookColor(w.Color)
@@ -138,10 +159,13 @@ func (v *weatherView) step(w, h, k float64) {
 		d.x += d.vx
 		d.y += d.vy
 		d.spin += d.turn
+		if d.fade > 0 {
+			d.faded++
+		}
 		if d.kind == data.WeatherPetals || d.kind == data.WeatherSnow {
 			d.x += math.Sin(float64(d.age)*0.04+d.spin) * 0.6 * k
 		}
-		gone := d.y > h+20*k || d.y < -40*k || d.x < -60*k || d.x > w+60*k || d.life > 0 && float64(d.age) > d.life
+		gone := d.y > h+20*k || d.y < -40*k || d.x < -60*k || d.x > w+60*k || d.life > 0 && float64(d.age) > d.life || d.fade > 0 && d.faded >= d.fade
 		if !gone {
 			kept = append(kept, d)
 		}
@@ -152,11 +176,40 @@ func (v *weatherView) step(w, h, k float64) {
 		return
 	}
 	rate := map[string]float64{data.WeatherRain: 9, data.WeatherSnow: 2.2, data.WeatherPetals: 0.9, data.WeatherEmbers: 1.4}[v.w.Kind]
+	if v.fill {
+		v.fill = false
+		// As many as fall in the time one takes to cross the screen, at the weather's power.
+		speed := map[string]float64{data.WeatherRain: 17, data.WeatherSnow: 1.4, data.WeatherPetals: 1.35, data.WeatherEmbers: 1.5}[v.w.Kind] * k
+		ticks := h / speed
+		if v.w.Kind == data.WeatherEmbers {
+			ticks = math.Min(ticks, 360) // sparks burn out before they cross the screen
+		}
+		n := int(rate * v.to * w / 1280 * ticks)
+		for range min(n, maxDrops-v.falling()) {
+			d := v.newDrop(w, h, k)
+			d.y = v.rng.Float64() * h
+			// Sparks spread at once would all burn out together: each has part of its life left.
+			d.life *= 0.2 + 0.8*v.rng.Float64()
+			v.drops = append(v.drops, d)
+		}
+	}
 	v.carry += rate * p * w / 1280
-	for ; v.carry >= 1 && len(v.drops) < maxDrops; v.carry-- {
+	for ; v.carry >= 1 && v.falling() < maxDrops; v.carry-- {
 		v.drops = append(v.drops, v.newDrop(w, h, k))
 	}
 	v.carry = math.Min(v.carry, 1)
+}
+
+// falling counts the drops of the weather now, not those thinning out after a change, so a
+// heavy rain that stops does not keep the next weather from coming in whole.
+func (v *weatherView) falling() int {
+	n := 0
+	for _, d := range v.drops {
+		if d.fade == 0 {
+			n++
+		}
+	}
+	return n
 }
 
 func (v *weatherView) newDrop(w, h, k float64) weatherDrop {
@@ -185,8 +238,8 @@ func (v *weatherView) newDrop(w, h, k float64) weatherDrop {
 		d.vy = -(0.8 + 1.4*r()) * k
 		d.vx = (wind*1.5 + (r()-0.5)*0.6) * k
 		d.size = 0.4 + 0.7*r()
-		d.life = 120 + 160*r()
-		d.tint = color.NRGBA{255, 170, 70, 255}
+		d.life = 240 + 240*r()
+		d.tint = color.NRGBA{255, 150, 50, 255}
 	}
 	if v.tinted {
 		d.tint.R, d.tint.G, d.tint.B = v.tint.R, v.tint.G, v.tint.B
@@ -222,6 +275,7 @@ func (v *weatherView) pictures() {
 }
 
 func (v *weatherView) draw(dst *ebiten.Image, k float64) {
+	v.sw, v.sh = float64(dst.Bounds().Dx()), float64(dst.Bounds().Dy())
 	if len(v.drops) == 0 {
 		return
 	}
@@ -247,17 +301,36 @@ func (v *weatherView) draw(dst *ebiten.Image, k float64) {
 			op.GeoM.Scale(d.size*k, d.size*k*(0.35+0.3*math.Abs(math.Sin(d.spin))))
 			op.GeoM.Rotate(d.spin)
 		case data.WeatherEmbers:
+			// A soft halo, then a bright core over it: a spark on a warm scene would vanish
+			// as a halo alone.
 			img = v.glow
 			op.GeoM.Translate(-8, -8)
-			op.GeoM.Scale(d.size*k, d.size*k)
-			op.Blend = ebiten.BlendLighter
+			op.GeoM.Scale(d.size*k*2.2, d.size*k*2.2)
+			op.ColorScale.ScaleAlpha(0.45)
 			if d.life > 0 {
 				op.ColorScale.ScaleAlpha(float32(math.Max(0, 1-float64(d.age)/d.life)))
 			}
 		}
 		op.GeoM.Translate(d.x, d.y)
+		if d.fade > 0 {
+			op.ColorScale.ScaleAlpha(1 - float32(d.faded)/float32(d.fade))
+		}
+		if d.age < minFade { // a new drop comes in, rather than pop up where it was spread
+			op.ColorScale.ScaleAlpha(float32(d.age) / minFade)
+		}
 		op.ColorScale.ScaleWithColor(d.tint)
 		dst.DrawImage(img, op)
+		if d.kind == data.WeatherEmbers {
+			a := op.ColorScale.A() / 0.45
+			op.GeoM.Reset()
+			op.GeoM.Translate(-6, -6)
+			op.GeoM.Scale(d.size*k*0.55, d.size*k*0.55)
+			op.GeoM.Translate(d.x, d.y)
+			op.ColorScale.Reset()
+			op.ColorScale.ScaleAlpha(min(1, a))
+			op.ColorScale.ScaleWithColor(color.NRGBA{255, 236, 170, 255})
+			dst.DrawImage(v.flake, op)
+		}
 	}
 }
 
@@ -300,13 +373,12 @@ func (g *Game) stepLook() {
 	if g.look.tone.age < g.look.tone.length {
 		g.look.tone.age++
 	}
-	w, h := g.screenPixels()
-	g.look.weather.step(w, h, g.ui)
-}
-
-// screenPixels is the size of the screen drawn, in pixels.
-func (g *Game) screenPixels() (float64, float64) {
-	return float64(g.db.Game.Screen.Width) * g.ui, float64(g.db.Game.Screen.Height) * g.ui
+	v := &g.look.weather
+	w, h := v.sw, v.sh
+	if w == 0 || h == 0 { // not drawn yet (or never, without a window): the game's screen
+		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
+	}
+	v.step(w, h, g.ui)
 }
 
 // drawLook colors the scene drawn so far with the tone, then draws the weather over it. A
