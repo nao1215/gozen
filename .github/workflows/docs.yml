@@ -100,10 +100,31 @@ jobs:
             go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-part${{ matrix.shard }}-
             go-${{ runner.os }}-images-${{ steps.go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}-
       # Before setup-ebitengine, so its apt calls read the mirror order this sets.
+      # Ubuntu packages come from a cache keyed by the runner image when it has them
+      # (scripts/ci_apt_install.sh); main saves what it downloaded.
+      - name: Name the apt package cache
+        id: apt-key
+        if: ${{ (steps.scope.outputs.run == 'true') && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+        run: echo "key=apt-$ImageOS-$ImageVersion-ffmpeg" >> "$GITHUB_OUTPUT"
+      - name: Restore the apt packages
+        id: apt-cache
+        if: ${{ (steps.scope.outputs.run == 'true') && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/apt-debs
+          key: ${{ steps.apt-key.outputs.key }}
       - name: Install ffmpeg
         if: steps.scope.outputs.run == 'true'
         timeout-minutes: 15
+        env:
+          APT_DEB_CACHE: ${{ steps.apt-key.outputs.key && format('{0}/apt-debs', runner.temp) || '' }}
         run: ./scripts/ci_apt_install.sh ffmpeg
+      - name: Save the apt packages
+        if: ${{ (steps.scope.outputs.run == 'true') && (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.apt-cache.outputs.cache-hit != 'true') }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/apt-debs
+          key: ${{ steps.apt-key.outputs.key }}
       - uses: nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a # v1.0.0
         if: steps.scope.outputs.run == 'true'
         with:

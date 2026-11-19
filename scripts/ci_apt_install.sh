@@ -30,9 +30,26 @@ fi
 apt_options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60)
 install=(install -y --no-install-recommends)
 
+# APT_DEB_CACHE names a directory of .deb files that the workflow keeps with
+# actions/cache, keyed by the runner image (so the files fit the packages it
+# already has) and the package list. When it holds the packages, they are
+# installed from it without the network; after a download, the files are copied
+# into it for the workflow to save.
+cache=${APT_DEB_CACHE:-}
+if [ -n "$cache" ] && compgen -G "$cache/*.deb" > /dev/null; then
+  if sudo apt-get "${apt_options[@]}" "${install[@]}" "$cache"/*.deb; then
+    exit 0
+  fi
+  echo "the cached packages did not install; downloading them" >&2
+fi
+
 for attempt in 1 2 3; do
   if sudo timeout --kill-after=10 60 apt-get "${apt_options[@]}" update &&
     sudo timeout --kill-after=10 90 apt-get "${apt_options[@]}" "${install[@]}" --download-only "$@"; then
+    if [ -n "$cache" ]; then
+      mkdir -p "$cache"
+      cp /var/cache/apt/archives/*.deb "$cache"/
+    fi
     sudo apt-get "${apt_options[@]}" "${install[@]}" "$@"
     exit 0
   fi
