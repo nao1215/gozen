@@ -132,9 +132,10 @@ events:
     - say: {who: hedda, text: "Past midnight. Door's locked. Nobody has to be anywhere."}
     - say: {who: hedda, text: "The last hour's the best one. Spend it however you like."}
     - choice:
-        - {label: "One more round with Brenna at the bar", do: [{call: with_brenna}]}
-        - {label: "Share the barrels with Wren", do: [{call: with_wren}]}
-        - {label: "Help Hedda close up", do: [{call: with_hedda}]}
+        - {id: brenna, label: "One more round with Brenna at the bar", do: [{call: with_brenna}]}
+        - {id: wren, label: "Share the barrels with Wren", do: [{call: with_wren}]}
+        - {id: hedda, label: "Help Hedda close up", do: [{call: with_hedda}]}
+      id: night
   with_brenna:
     - stand: {who: wren, leave: fade}
     - stand: {who: hedda, leave: fade}
