@@ -742,6 +742,7 @@ Upload the contents of `site/` to a static HTTP or HTTPS host:
 ```text
 site/
   index.html
+  sw.js
   gozen-player.wasm.gz
   wasm_exec.js
   runtime.json
@@ -791,6 +792,15 @@ or more, copied beside the page as `icon.png` and named in `manifest.webmanifest
 schema_version: 9
 web: {icon: icon.png}
 ```
+
+A page played once opens again without a network, from the home screen too. The
+export writes `sw.js`, a service worker the page registers. It asks the host first and
+keeps every file the page reads, then answers from those files when the host cannot be
+reached. Online, the page always plays the export the host serves now: export again and
+the next load plays the new game, and the files kept of the earlier export are removed
+once the new one has come whole. The recorded voices of a stream are kept once they have
+been heard. Service workers need an HTTPS host, or this computer (`localhost`,
+`127.0.0.1`); elsewhere the page plays online as before.
 
 When the page is hidden in the middle of play (the player switches to another app,
 and the browser may then close the page unseen), the game writes the autosave where

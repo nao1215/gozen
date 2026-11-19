@@ -21,6 +21,9 @@ import (
 //go:embed index.html
 var webPage []byte
 
+//go:embed sw.js
+var serviceWorker []byte
+
 // Web assembles a static website from a game and a matching WASM runtime.
 // The runtime must carry the wasm_exec.js from the same Go build. The player is served
 // gzipped (gozen-player.wasm.gz) and the game's files made smaller (shrinkWeb): the page
@@ -87,7 +90,10 @@ func Web(ctx context.Context, src, dst, bundle, version, reuse string) error {
 		if err != nil {
 			return err
 		}
-		return cli.WriteNew(filepath.Join(stage, "index.html"), page)
+		if err := cli.WriteNew(filepath.Join(stage, "index.html"), page); err != nil {
+			return err
+		}
+		return writeServiceWorker(stage)
 	})
 }
 

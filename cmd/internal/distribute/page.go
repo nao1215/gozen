@@ -3,13 +3,17 @@ package distribute
 import (
 	"bytes"
 	"cmp"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"image"
 	_ "image/jpeg" // the link card's picture
 	_ "image/png"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -203,4 +207,60 @@ func writeHome(src, stage string, db *gamedata.DB, turn string) (bool, error) {
 		return false, err
 	}
 	return has, cli.WriteNew(filepath.Join(stage, homeManifest), append(b, '\n'))
+}
+
+// offlineWorker is the service worker beside the page (sw.js, ADR 0065), and offlineShell
+// the files it keeps as it is installed, before the page has read any: the page, the
+// player and the list of the game's files. The game's files are kept as the page reads
+// them, so a page played once opens again without a network.
+const offlineWorker = "sw.js"
+
+var offlineShell = []string{"index.html", "wasm_exec.js", "gozen-player.wasm.gz", homeManifest, homeIcon, "game/files.json"}
+
+// writeServiceWorker writes sw.js beside the page, after every other file of the export:
+// its version is the SHA-256 of their names and bytes, so two exports that serve the same
+// files have the same worker, and any change of a file is a new worker whose cache does
+// not mix the two.
+func writeServiceWorker(stage string) error {
+	root, err := os.OpenRoot(stage)
+	if err != nil {
+		return err
+	}
+	defer root.Close() //nolint:errcheck // Read only.
+	h := sha256.New()
+	err = fs.WalkDir(root.FS(), ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := fs.ReadFile(root.FS(), name)
+		if err != nil {
+			return err
+		}
+		h.Write(fmt.Appendf(nil, "%s\x00%d\x00", name, len(b)))
+		h.Write(b)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	shell := []string{"./"}
+	for _, name := range offlineShell {
+		if _, err := os.Stat(filepath.Join(stage, filepath.FromSlash(name))); err == nil {
+			shell = append(shell, name)
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	list, err := json.Marshal(shell)
+	if err != nil {
+		return err
+	}
+	worker := serviceWorker
+	for _, r := range [][2]string{{`"VERSION"`, `"` + hex.EncodeToString(h.Sum(nil)) + `"`}, {"SHELL;", string(list) + ";"}} {
+		if bytes.Count(worker, []byte(r[0])) != 1 {
+			return fmt.Errorf("the service worker template has no single %s", r[0])
+		}
+		worker = bytes.Replace(worker, []byte(r[0]), []byte(r[1]), 1)
+	}
+	return cli.WriteNew(filepath.Join(stage, offlineWorker), worker)
 }

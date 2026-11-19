@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -166,5 +167,74 @@ func TestWebPageHomeScreen(t *testing.T) {
 	}
 	if b, err := os.ReadFile(filepath.Join(out, "manifest.webmanifest")); err != nil || strings.Contains(string(b), "icons") { //nolint:gosec // Test-owned exported manifest.
 		t.Errorf("manifest without web.icon (%v):\n%s", err, b)
+	}
+}
+
+// TestWebServiceWorker: every page registers sw.js, which keeps the page, the player and
+// the list of the game's files as it is installed (the icon only when the game has one).
+// Its version is the same for two exports of the same files and changes with any file of
+// the game, so a page offline never mixes the files of two exports.
+func TestWebServiceWorker(t *testing.T) {
+	export := func(src string) (string, string) {
+		t.Helper()
+		out := filepath.Join(t.TempDir(), "site")
+		if err := Web(t.Context(), src, out, webBundle(t), "devel", ""); err != nil {
+			t.Fatal(err)
+		}
+		page, err := os.ReadFile(filepath.Join(out, "index.html")) //nolint:gosec // Test-owned exported page.
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(page), `navigator.serviceWorker.register("sw.js")`) || !strings.Contains(string(page), `postMessage("gozen-files-complete")`) {
+			t.Error("the page does not register sw.js and tell it when the files have come")
+		}
+		worker, err := os.ReadFile(filepath.Join(out, "sw.js")) //nolint:gosec // Test-owned exported worker.
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out, string(worker)
+	}
+	field := func(worker, prefix string) string {
+		t.Helper()
+		_, rest, ok := strings.Cut(worker, prefix)
+		if !ok {
+			t.Fatalf("sw.js has no %s:\n%s", prefix, worker)
+		}
+		value, _, _ := strings.Cut(rest, ";\n")
+		return value
+	}
+
+	src, _ := pageGame(t, "web: {icon: share/icon.png}\n")
+	out, worker := export(src)
+	var shell []string
+	if err := json.Unmarshal([]byte(field(worker, "const shell = ")), &shell); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"./", "index.html", "wasm_exec.js", "gozen-player.wasm.gz", "manifest.webmanifest", "icon.png", "game/files.json"}; !slices.Equal(shell, want) {
+		t.Errorf("shell %v, want %v", shell, want)
+	}
+	for _, name := range shell[1:] {
+		if _, err := os.Stat(filepath.Join(out, filepath.FromSlash(name))); err != nil {
+			t.Errorf("the shell names %s, which the export has not: %v", name, err)
+		}
+	}
+	version := field(worker, "const version = ")
+	if len(version) != 66 { // a quoted SHA-256
+		t.Errorf("version %s", version)
+	}
+	if _, again := export(src); field(again, "const version = ") != version {
+		t.Error("two exports of the same game have different versions")
+	}
+	if err := os.WriteFile(filepath.Join(src, "data", "main.yaml"), []byte(testgame.Data+"\n# a later edit\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, edited := export(src); field(edited, "const version = ") == version {
+		t.Error("an edit of the game kept the version of the earlier export")
+	}
+
+	// Without web.icon, the shell has no icon.
+	src, _ = pageGame(t, "")
+	if _, worker := export(src); strings.Contains(field(worker, "const shell = "), homeIcon) {
+		t.Errorf("a game without web.icon keeps an icon: %s", field(worker, "const shell = "))
 	}
 }
