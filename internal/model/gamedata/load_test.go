@@ -146,7 +146,9 @@ func (o overlayFS) Open(name string) (fs.File, error) {
 
 func (o overlayFS) ReadDir(name string) ([]fs.DirEntry, error) { return fs.ReadDir(o.base, name) }
 
-// reverseMappings writes every mapping of a YAML document with its keys in reverse order.
+// reverseMappings writes every mapping of a YAML document with its keys in reverse order,
+// but a mapping holding an anchor or an alias keeps its order: an alias must follow its
+// anchor, and a merge key (<<) written after a key would replace it.
 func reverseMappings(t *testing.T, b []byte) []byte {
 	t.Helper()
 	f, err := parser.ParseBytes(b, parser.ParseComments)
@@ -162,7 +164,7 @@ func reverseMappings(t *testing.T, b []byte) []byte {
 type reverser struct{}
 
 func (r reverser) Visit(n ast.Node) ast.Visitor {
-	if m, ok := n.(*ast.MappingNode); ok {
+	if m, ok := n.(*ast.MappingNode); ok && len(ast.Filter(ast.AnchorType, m)) == 0 && len(ast.Filter(ast.AliasType, m)) == 0 {
 		slices.Reverse(m.Values)
 	}
 	return r
