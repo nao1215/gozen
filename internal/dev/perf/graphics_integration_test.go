@@ -112,12 +112,10 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 				allocLimit, heapLimit, secondsLimit := 20000.0, float64(256<<20), 120.0
 				switch name {
 				case "huge-map":
-					// Measured under Xvfb (llvmpipe): about 9,960 startup and 371 warm
-					// allocations/frame, 290 MB heap; limits are about 1.3-2x of that.
-					allocLimit, heapLimit, secondsLimit = 13000, 512<<20, 15
-					if record.Name == name {
-						allocLimit = 600
-					}
+					// Measured under Xvfb (llvmpipe): about 371 warm allocations/frame
+					// and 290 MB heap; limits are about 1.3-2x of that. Startup is
+					// checked by its total below.
+					allocLimit, heapLimit, secondsLimit = 600, 512<<20, 15
 				case "pictures-4k":
 					// Measured: about 818 startup and 162 warm allocations/frame.
 					allocLimit, secondsLimit = 1700, 5
@@ -132,13 +130,20 @@ func TestGraphicsSpeedBudget(t *testing.T) {
 				if record.Allocations == nil {
 					t.Fatalf("section %s: missing allocations/frame", record.Name)
 				}
-				if name == "standing-pictures" && record.Name == "run" {
+				switch {
+				case name == "standing-pictures" && record.Name == "run":
 					// Loading the 32 figures is fixed work. The loop can render
 					// only 11 startup frames rather than 30, inflating the
 					// ratio even when total allocations decrease (24k vs 32k).
 					// Keep the original 1,900 x 30 nominal-frame allowance.
 					checkBudget(t, name+"/run", "total allocations", *record.TotalAllocations, 1900*30)
-				} else {
+				case name == "huge-map" && record.Name == "run":
+					// Decoding the map is fixed work too: 225k-231k allocations
+					// in every CI run, while a slow runner draws 17 of the 31
+					// startup ticks instead of 28. The ratio crossed 13,000 on
+					// the run with the fewest allocations. Allow about 1.3x.
+					checkBudget(t, name+"/run", "total allocations", *record.TotalAllocations, 300000)
+				default:
 					checkBudget(t, name+"/"+record.Name, "allocations/frame", *record.Allocations, allocLimit)
 				}
 				if record.Heap <= 0 {

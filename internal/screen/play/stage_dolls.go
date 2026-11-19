@@ -108,6 +108,16 @@ func (g *Game) waitsForDolls() bool {
 		g.in.script != nil && g.in.script.shot != ""
 }
 
+// pictureTimeout is how long a draw that needs completed pictures waits for
+// them: ten seconds unless a test set pictureWait (instrumented baking on a
+// shared runner is several times slower than the program people run).
+func (g *Game) pictureTimeout() time.Duration {
+	if g.pictureWait > 0 {
+		return g.pictureWait
+	}
+	return 10 * time.Second
+}
+
 // waitDoll waits only for the requested picture, sharing one deadline across a
 // draw. No simulation updates run here. A timeout must fail the capture instead
 // of silently recording a timing-dependent placeholder.
@@ -120,7 +130,7 @@ func (g *Game) waitDoll(done <-chan struct{}) bool {
 	}
 
 	if g.pictureDeadline.IsZero() {
-		g.pictureDeadline = time.Now().Add(10 * time.Second)
+		g.pictureDeadline = time.Now().Add(g.pictureTimeout())
 	}
 	timer := time.NewTimer(time.Until(g.pictureDeadline))
 	defer timer.Stop()

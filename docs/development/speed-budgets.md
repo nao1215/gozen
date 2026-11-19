@@ -115,8 +115,11 @@ seconds for reading the entire conversation (1,434 ticks in the headless check).
 The large map retains its static point-and-label layer while the visible state
 is unchanged. State, focus, camera, viewport and theme changes redraw it;
 animated tokens remain live.
-The fixed map ceilings are 13,000 startup and 600 steady allocations/frame,
-512 MiB sampled heap and 15 seconds per section. A local CPU-side benchmark
+The fixed map ceilings are 300,000 startup allocations in total, 600 steady
+allocations/frame, 512 MiB sampled heap and 15 seconds per section. Startup
+was once 13,000 allocations/frame, but CI drew 17 to 28 of the 31 startup ticks
+while the total stayed at 225,000–231,000, so a slow runner failed the ratio on
+its smallest total. A local CPU-side benchmark
 measured 12,443 startup allocations/frame over 30 updates/draws, and 391 per
 warm update/draw over 120 iterations, including periodic state refreshes.
 A Linux Xvfb runtime run measured 9,924 startup and 404 steady allocations
