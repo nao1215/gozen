@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A browser export opens again without a network once it has been played (ADR 0065). The export writes `sw.js`, a service worker the page registers: it asks the host first, keeps every file the page reads and answers from them when the host cannot be reached. Online the page plays the export the host serves now, and the files of an earlier export are removed once the new one has come whole. The recorded voices of a stream are kept once heard. Service workers need an HTTPS host or `localhost`.
+
 ### Changed
 
 - Breaking: the title screen is written under `ui.title`, beside `hide_disabled`: `title_background` is now `ui.title.background`, `title_art` is `ui.title.picture`, `title_figures` is `ui.title.pictures`, `title_text` is `ui.title.text` and `title_music` is `ui.title.music`. In the text, `subtitle_size` and `subtitle_tracking` are now `subtitle: {size, tracking}`. `ui.title` needs schema version 10 only for `hide_disabled`.

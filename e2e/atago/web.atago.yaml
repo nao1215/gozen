@@ -1133,3 +1133,140 @@ scenarios:
         - {path: $.onTitle, equals: false}
         - {path: $.saved, equals: true}
         - {path: $.drawing, equals: true}
+- name: a page played once opens again offline and an update replaces the kept export
+  tags: [web]
+  services:
+  # While the file offline exists the host answers nothing (a network error in the
+  # browser) and writes the path asked for to refused.
+  - name: site
+    command: |
+      python3 -c '
+      from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+      from pathlib import Path
+      class Site(SimpleHTTPRequestHandler):
+          def do_GET(self):
+              if Path("offline").exists():
+                  with open("refused", "a") as f:
+                      f.write(self.path + "\n")
+                  self.close_connection = True
+                  return
+              return super().do_GET()
+      s = ThreadingHTTPServer(("127.0.0.1", 0), Site)
+      Path("address").write_text("http://127.0.0.1:" + str(s.server_port))
+      s.serve_forever()
+      '
+    ready: {file: address, store: origin, timeout: 5s}
+  steps:
+  - run: {command: 'gozen new game --id offline-page'}
+  - assert: {exit_code: 0}
+  - fixture:
+      file: game/game.yaml
+      content: |
+        schema_version: 4
+        id: offline-page
+        title: 'First export'
+        language: en
+        screen: {width: 960, height: 540}
+        start: {location: village, party: [hero]}
+  - fixture:
+      file: 'game/assets/space #%.png'
+      from: fixtures/game/assets/mote.png
+  - fixture:
+      file: game/data/world.yaml
+      content: |
+        locations:
+          village: {name: Village, safe: true, background: 'space #%.png'}
+  - run:
+      command: 'gozen export game --target web --out site --runtime "${env:GOZEN_WEB_RUNTIME}"'
+  - assert: {exit_code: 0}
+  - assert: {file: {path: site/sw.js, contains: 'const version = "'}}
+  # waitKept waits until one cache of this game holds the page, the player and every file
+  # of game/files.json, and gives the number of this game's caches and the title.
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: &kept |
+          window.waitKept = async () => {
+            const escape = (name) => Array.from(new TextEncoder().encode(name), (b) =>
+              /[A-Za-z0-9\-_.~$&+,\/:;=@]/.test(String.fromCharCode(b)) ? String.fromCharCode(b) : '%' + b.toString(16).toUpperCase().padStart(2, '0')).join('');
+            const files = await (await fetch('game/files.json')).json();
+            const wanted = ['./', 'index.html', 'wasm_exec.js', 'gozen-player.wasm.gz', 'game/files.json', ...files.map((f) => 'game/' + escape(f.file))]
+              .map((name) => new URL(name, location.href).href);
+            const deadline = Date.now() + 60000;
+            for (;;) {
+              const names = (await caches.keys()).filter((name) => name.startsWith('gozen ' + new URL('./', location.href).href));
+              let missing = wanted.length;
+              if (names.length === 1) {
+                const cache = await caches.open(names[0]);
+                missing = 0;
+                for (const url of wanted) if (!(await cache.match(url))) missing++;
+              }
+              if (missing === 0 || Date.now() > deadline) {
+                document.body.dataset.kept = JSON.stringify({caches: names.length, missing, title: document.title, controlled: !!navigator.serviceWorker.controller});
+                return;
+              }
+              await new Promise((r) => setTimeout(r, 200));
+            }
+          }; true
+      - eval: "delete document.body.dataset.kept; waitKept(); true"
+      - wait_visible: 'body[data-kept]'
+      - eval: 'JSON.parse(document.body.dataset.kept)'
+  - assert:
+      value:
+        json:
+        - {path: $.caches, equals: 1}
+        - {path: $.missing, equals: 0}
+        - {path: $.title, equals: First export}
+  # Offline, the page, the player and the game's files come from the cache: the game
+  # starts and every file of the game has come.
+  - run: {command: 'touch offline'}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: |
+          ({title: document.title, controlled: !!navigator.serviceWorker.controller,
+            files: goZenLoad.files.total > 0 && goZenLoad.files.done === goZenLoad.files.total})
+  - assert:
+      value:
+        json:
+        - {path: $.title, equals: First export}
+        - {path: $.controlled, equals: true}
+        - {path: $.files, equals: true}
+  - assert: {file: {path: refused, contains: 'gozen-player.wasm.gz'}}
+  # A new export of the game: online the page plays it at once, the earlier export's
+  # cache is let go once the new one holds every file, and offline the new one opens.
+  - run:
+      shell: true
+      command: >-
+        rm offline &&
+        sed -i 's/First export/Second export/' game/game.yaml &&
+        gozen export game --target web --out next --runtime "${env:GOZEN_WEB_RUNTIME}" &&
+        rm -r site && mv next site
+  - assert: {exit_code: 0}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - eval: *kept
+      - eval: "delete document.body.dataset.kept; waitKept(); true"
+      - wait_visible: 'body[data-kept]'
+      - eval: 'JSON.parse(document.body.dataset.kept)'
+  - assert:
+      value:
+        json:
+        - {path: $.caches, equals: 1}
+        - {path: $.missing, equals: 0}
+        - {path: $.title, equals: Second export}
+  - run: {command: 'touch offline'}
+  - cdp:
+      runner: browser
+      actions:
+      - navigate: '${origin}/site/'
+      - wait_visible: 'body:not(:has(#loading))'
+      - title: true
+  - assert: {value: {equals: Second export}}
