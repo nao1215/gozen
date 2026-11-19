@@ -1606,7 +1606,7 @@ func TestPhoneThemeColors(t *testing.T) {
 	if g.phoneAccent() != phoneMine || g.pageInk(g.phone) != phoneInk {
 		t.Fatal("default palette changed")
 	}
-	g.db.Game.UI.PhoneAccent = data.Color{Valid: true, NRGBA: phoneHeart}
+	g.db.Game.UI.Phone.Accent = data.Color{Valid: true, NRGBA: phoneHeart}
 	if g.phoneAccent() != phoneHeart {
 		t.Fatal("custom accent ignored")
 	}
@@ -1617,11 +1617,11 @@ func TestPhoneThemeColors(t *testing.T) {
 	if c, bar := g.pageAccent(g.phone); c.R != 0x11 || !bar {
 		t.Fatal("explicit page color lost")
 	}
-	g.db.Game.UI.PhoneText = data.Color{Valid: true, NRGBA: phoneHeart}
+	g.db.Game.UI.Phone.Text = data.Color{Valid: true, NRGBA: phoneHeart}
 	if g.pageInk(g.phone) != phoneHeart {
 		t.Fatal("page theme ink ignored")
 	}
-	if g.db.Game.UI.PhoneBackground.Or(phoneBubble) != phoneBubble {
+	if g.db.Game.UI.Phone.Background.Or(phoneBubble) != phoneBubble {
 		t.Fatal("default background changed")
 	}
 }

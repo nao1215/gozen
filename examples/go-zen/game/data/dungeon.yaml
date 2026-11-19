@@ -88,7 +88,7 @@ locations:
           mark: "#e7b66b"
           symbol: "?"
           do: [{call: kes_meet}]
-        T:
+        T: &chest
           name: Old chest
           picture: tiles/chest.png
           size: 0.45
@@ -102,14 +102,7 @@ locations:
             - say: "Inside the chest, a pouch of coins and a note. The note says, in a neat hand, NOT THIS WAY."
             - gold: 25
         U:
-          name: Old chest
-          picture: tiles/chest.png
-          size: 0.45
-          solid: "true"
-          once: true
-          after: t
-          mark: "#e7b66b"
-          symbol: T
+          <<: *chest
           do:
             - sfx: treasure
             - say: "Two glass vials, still corked."
@@ -287,41 +280,20 @@ locations:
           mark: "#6fb7c4"
           symbol: "~"
         T:
-          name: Old chest
-          picture: tiles/chest.png
-          size: 0.45
-          solid: "true"
-          once: true
-          after: t
-          mark: "#e7b66b"
-          symbol: T
+          <<: *chest
           do:
             - sfx: treasure
             - say: "A drawer of gears, a few coins, and a lot of dust."
             - gold: 30
             - give: {item: old_gear, count: 2}
         Y:
-          name: Old chest
-          picture: tiles/chest.png
-          size: 0.45
-          solid: "true"
-          once: true
-          after: t
-          mark: "#e7b66b"
-          symbol: T
+          <<: *chest
           do:
             - sfx: treasure
             - say: "Tonics, neatly wrapped. Somebody planned for company."
             - give: {item: tonic, count: 3}
         Z:
-          name: Old chest
-          picture: tiles/chest.png
-          size: 0.45
-          solid: "true"
-          once: true
-          after: t
-          mark: "#e7b66b"
-          symbol: T
+          <<: *chest
           do:
             - sfx: treasure
             - say: "A stiff leather coat in a waxed bag. It fits somebody."

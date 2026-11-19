@@ -4171,8 +4171,30 @@
           "x-type": "string"
         },
         "label": {
-          "description": "The text shown for this answer.",
-          "type": "string",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "expr": {
+                  "description": "An expression. gozen check checks its syntax, names and types.",
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "expr"
+              ],
+              "type": "object"
+            }
+          ],
+          "description": "The text shown for this answer. `{expr: ...}` picks the source template with a pure string expression, before translation and read-key hashing.",
           "x-contract": {
             "default": "empty string",
             "legacy_default": "empty string",
@@ -4181,25 +4203,7 @@
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "string"
-        },
-        "label_expr": {
-          "description": "Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.",
-          "type": [
-            "string",
-            "number",
-            "boolean",
-            "null"
-          ],
-          "x-contract": {
-            "default": "no expression (true as a condition, 0 as a number)",
-            "legacy_default": "no expression (true as a condition, 0 as a number)",
-            "zero": "expression value 0 (false as a condition)",
-            "required": "optional",
-            "reference": "expression; checked by gozen check",
-            "version": "0, 1, 2"
-          },
-          "x-type": "expression"
+          "x-type": "string or {expr}"
         },
         "when": {
           "description": "An expression that decides whether the answer is offered.",
@@ -12101,77 +12105,6 @@
           },
           "x-type": "string"
         },
-        "title_art": {
-          "$ref": "#/$defs/Picture",
-          "description": "A picture drawn on the title screen, such as a logo or key art.",
-          "x-contract": {
-            "default": "empty (its fields take their defaults)",
-            "legacy_default": "empty (its fields take their defaults)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[Picture](#picture) or string"
-        },
-        "title_background": {
-          "$ref": "#/$defs/Picture",
-          "description": "The background picture of the title screen.",
-          "x-contract": {
-            "default": "empty (its fields take their defaults)",
-            "legacy_default": "empty (its fields take their defaults)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[Picture](#picture) or string"
-        },
-        "title_figures": {
-          "description": "Pictures standing on the title screen in order, with later ones in front. When used, `title_art` is not drawn.",
-          "items": {
-            "$ref": "#/$defs/TitleFigure"
-          },
-          "type": [
-            "array",
-            "null"
-          ],
-          "x-contract": {
-            "default": "empty list",
-            "legacy_default": "empty list",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[TitleFigure](#titlefigure)[]"
-        },
-        "title_music": {
-          "$ref": "#/$defs/MusicCue",
-          "description": "The song and mood played on the title screen.",
-          "x-contract": {
-            "default": "empty (its fields take their defaults)",
-            "legacy_default": "empty (its fields take their defaults)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "[MusicCue](#musiccue) or string"
-        },
-        "title_text": {
-          "$ref": "#/$defs/TitleText",
-          "description": "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3.",
-          "x-contract": {
-            "default": "empty (its fields take their defaults)",
-            "legacy_default": "empty (its fields take their defaults)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "3"
-          },
-          "x-type": "[TitleText](#titletext)"
-        },
         "ui": {
           "$ref": "#/$defs/UIStyle",
           "description": "The look of the game's menus and windows.",
@@ -16843,6 +16776,69 @@
       },
       "type": "object"
     },
+    "PhoneStyle": {
+      "additionalProperties": false,
+      "description": "The phone's colors, game-wide, with no per-cue flag.",
+      "properties": {
+        "accent": {
+          "description": "Owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "background": {
+          "description": "Page body color; default white (#ffffff).",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "muted": {
+          "description": "Page caption and secondary text color; default #808690.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "text": {
+          "description": "Page body text color; default #1d1f24.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        }
+      },
+      "type": "object"
+    },
     "PhoneVideo": {
       "additionalProperties": false,
       "description": "A clip on the phone: footage (frames) or a picture pushed in slowly, with an optional puppet in front.",
@@ -19826,8 +19822,30 @@
               "x-type": "string"
             },
             "face": {
-              "description": "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`.",
-              "type": "string",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "expr": {
+                      "description": "An expression. gozen check checks its syntax, names and types.",
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "expr"
+                  ],
+                  "type": "object"
+                }
+              ],
+              "description": "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`. `{expr: ...}` picks it with a pure string expression; an empty result uses the actor default (schema 10).",
               "x-contract": {
                 "default": "empty string",
                 "legacy_default": "empty string",
@@ -19836,25 +19854,7 @@
                 "reference": "party member's face or image in assets/",
                 "version": "0, 1, 2"
               },
-              "x-type": "string"
-            },
-            "face_expr": {
-              "description": "Pure string expression selecting a speaker face (or an image path for a named speaker); exclusive with face. Empty uses the actor default (schema 10).",
-              "type": [
-                "string",
-                "number",
-                "boolean",
-                "null"
-              ],
-              "x-contract": {
-                "default": "no expression (true as a condition, 0 as a number)",
-                "legacy_default": "no expression (true as a condition, 0 as a number)",
-                "zero": "expression value 0 (false as a condition)",
-                "required": "optional",
-                "reference": "expression; checked by gozen check",
-                "version": "0, 1, 2"
-              },
-              "x-type": "expression"
+              "x-type": "string or {expr}"
             },
             "instant": {
               "description": "Show each page in full immediately; one advance moves to the next page or line.",
@@ -19902,8 +19902,30 @@
               "x-type": "string"
             },
             "text": {
-              "description": "The line. A line may be written as just this text.",
-              "type": "string",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "expr": {
+                      "description": "An expression. gozen check checks its syntax, names and types.",
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "expr"
+                  ],
+                  "type": "object"
+                }
+              ],
+              "description": "The line. A line may be written as just this text. `{expr: ...}` picks the source template with a pure string expression, before read-key hashing and translation (schema 10).",
               "x-contract": {
                 "default": "empty string",
                 "legacy_default": "empty string",
@@ -19912,25 +19934,7 @@
                 "reference": "-",
                 "version": "0, 1, 2"
               },
-              "x-type": "string"
-            },
-            "text_expr": {
-              "description": "Pure string expression selecting the source template before read-key hashing and translation; exclusive with text (schema 10).",
-              "type": [
-                "string",
-                "number",
-                "boolean",
-                "null"
-              ],
-              "x-contract": {
-                "default": "no expression (true as a condition, 0 as a number)",
-                "legacy_default": "no expression (true as a condition, 0 as a number)",
-                "zero": "expression value 0 (false as a condition)",
-                "required": "optional",
-                "reference": "expression; checked by gozen check",
-                "version": "0, 1, 2"
-              },
-              "x-type": "expression"
+              "x-type": "string or {expr}"
             },
             "voice": {
               "description": "The line's voice: for an actor with `voices`, a name in that folder (the `.ogg` or `.wav` may be left out); for anyone else, a path under `assets/`. Needs schema version 4.",
@@ -24321,6 +24325,39 @@
       },
       "type": "object"
     },
+    "SubtitleText": {
+      "additionalProperties": false,
+      "description": "The subtitle's lettering on the title screen.",
+      "properties": {
+        "size": {
+          "description": "The subtitle's letter size in pixels. The default is 30.",
+          "type": "number",
+          "x-contract": {
+            "default": "0 (30 pixels)",
+            "legacy_default": "0 (30 pixels)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "tracking": {
+          "description": "The space between the subtitle's letters, as a part of its size. The default is 0.3.",
+          "type": "number",
+          "x-contract": {
+            "default": "not set (0.3)",
+            "legacy_default": "not set (0.3)",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "TacticAction": {
       "additionalProperties": false,
       "description": "An action an ally can pick in the tactics screen, together with its automatic target.",
@@ -25742,12 +25779,25 @@
       ],
       "type": "object"
     },
-    "TitleMenu": {
+    "TitleScreen": {
       "additionalProperties": false,
-      "description": "Schema 10: the title screen's menu.",
+      "description": "The title screen: its pictures, lettering, music and menu.",
       "properties": {
+        "background": {
+          "$ref": "#/$defs/Picture",
+          "description": "The background picture of the title screen.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Picture](#picture) or string"
+        },
         "hide_disabled": {
-          "description": "Leave out the entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default.",
+          "description": "Schema 10: leave out the menu entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default.",
           "type": "boolean",
           "x-contract": {
             "default": "false",
@@ -25758,6 +25808,64 @@
             "version": "10"
           },
           "x-type": "boolean"
+        },
+        "music": {
+          "$ref": "#/$defs/MusicCue",
+          "description": "The song and mood played on the title screen.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[MusicCue](#musiccue) or string"
+        },
+        "picture": {
+          "$ref": "#/$defs/Picture",
+          "description": "A picture drawn on the title screen, such as a logo or key art.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[Picture](#picture) or string"
+        },
+        "pictures": {
+          "description": "Pictures standing on the title screen in order, with later ones in front. When used, `picture` is not drawn.",
+          "items": {
+            "$ref": "#/$defs/TitleFigure"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[TitleFigure](#titlefigure)[]"
+        },
+        "text": {
+          "$ref": "#/$defs/TitleText",
+          "description": "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3.",
+          "x-contract": {
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "3"
+          },
+          "x-type": "[TitleText](#titletext)"
         }
       },
       "type": "object"
@@ -25807,31 +25915,18 @@
           },
           "x-type": "number"
         },
-        "subtitle_size": {
-          "description": "The subtitle's letter size in pixels. The default is 30.",
-          "type": "number",
+        "subtitle": {
+          "$ref": "#/$defs/SubtitleText",
+          "description": "How the subtitle is lettered: its size and the space between its letters.",
           "x-contract": {
-            "default": "0 (30 pixels)",
-            "legacy_default": "0 (30 pixels)",
-            "zero": "0 is kept",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
+            "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "3"
           },
-          "x-type": "number"
-        },
-        "subtitle_tracking": {
-          "description": "The space between the subtitle's letters, as a part of its size. The default is 0.3.",
-          "type": "number",
-          "x-contract": {
-            "default": "not set (0.3)",
-            "legacy_default": "not set (0.3)",
-            "zero": "0 is kept",
-            "required": "optional",
-            "reference": "-",
-            "version": "3"
-          },
-          "x-type": "number"
+          "x-type": "[SubtitleText](#subtitletext)"
         },
         "tracking": {
           "description": "The space between the title's letters, as a part of its size. The default is 0.12.",
@@ -26694,61 +26789,18 @@
           },
           "x-type": "[NovelWindow](#novelwindow)"
         },
-        "phone_accent": {
-          "description": "Phone owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette.",
-          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
-          "type": "string",
+        "phone": {
+          "$ref": "#/$defs/PhoneStyle",
+          "description": "The phone's colors: page bodies, their text and owner bubbles.",
           "x-contract": {
-            "default": "no color (the default of where it is drawn)",
-            "legacy_default": "no color (the default of where it is drawn)",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "optional",
             "reference": "-",
             "version": "0, 1, 2"
           },
-          "x-type": "color string"
-        },
-        "phone_background": {
-          "description": "Game-wide phone page body color; default white (#ffffff), with no per-cue flag.",
-          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
-          "type": "string",
-          "x-contract": {
-            "default": "no color (the default of where it is drawn)",
-            "legacy_default": "no color (the default of where it is drawn)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "color string"
-        },
-        "phone_muted": {
-          "description": "Phone page caption and secondary text color; default #808690.",
-          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
-          "type": "string",
-          "x-contract": {
-            "default": "no color (the default of where it is drawn)",
-            "legacy_default": "no color (the default of where it is drawn)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "color string"
-        },
-        "phone_text": {
-          "description": "Phone page body text color; default #1d1f24.",
-          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
-          "type": "string",
-          "x-contract": {
-            "default": "no color (the default of where it is drawn)",
-            "legacy_default": "no color (the default of where it is drawn)",
-            "zero": "-",
-            "required": "optional",
-            "reference": "-",
-            "version": "0, 1, 2"
-          },
-          "x-type": "color string"
+          "x-type": "[PhoneStyle](#phonestyle)"
         },
         "profile_book": {
           "$ref": "#/$defs/ProfileBook",
@@ -26940,17 +26992,17 @@
           "x-type": "color string"
         },
         "title": {
-          "$ref": "#/$defs/TitleMenu",
-          "description": "Schema 10: the title screen's menu. Omitted, every entry is shown and the ones that cannot be chosen are grayed.",
+          "$ref": "#/$defs/TitleScreen",
+          "description": "The title screen: its background, picture or pictures, lettering, music and menu. Omitted, the menu shows every entry and grays the ones that cannot be chosen.",
           "x-contract": {
-            "default": "nil; nothing is defined",
-            "legacy_default": "nil; nothing is defined",
+            "default": "empty (its fields take their defaults)",
+            "legacy_default": "empty (its fields take their defaults)",
             "zero": "-",
             "required": "optional",
             "reference": "-",
-            "version": "10"
+            "version": "0, 1, 2"
           },
-          "x-type": "[TitleMenu](#titlemenu)"
+          "x-type": "[TitleScreen](#titlescreen)"
         },
         "tones": {
           "$ref": "#/$defs/ToneStyle",

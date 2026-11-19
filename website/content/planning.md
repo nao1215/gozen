@@ -104,7 +104,7 @@ language-specific rules, including endings anchored with `$`. Patterns match
 discouraged forms, not required ones: absence of a pronoun is not an error.
 GZN0123 is a warning. Quoted speech can legitimately match; review it manually.
 Only literal source lines with a known actor are checked. Dynamic speakers,
-`text_expr`, interpolated values and translated alternatives are not inferred.
+`text: {expr}`, interpolated values and translated alternatives are not inferred.
 
 ## Appearance and compatibility
 

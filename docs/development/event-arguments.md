@@ -549,7 +549,7 @@ sentence is identical.
 
 ## Selecting a source template
 
-Schema 10 accepts `say.text_expr` instead of `say.text`. A pure expression must
+From schema 10, `say.text` may be `{expr: ...}` in place of a literal. A pure expression must
 return a string. The runner evaluates it once, then uses that selected source
 for the read key, translation lookup and ordinary `{expression}` interpolation.
 For example, the workshop's `selected_text_demo` calls this event twice:
@@ -559,13 +559,13 @@ For example, the workshop's `selected_text_demo` calls this event twice:
 report_resident:
   params: {name: string}
   do:
-  - say: {text_expr: 'arg.name + " visits the workshop."'}
+  - say: {text: {expr: 'arg.name + " visits the workshop."'}}
 ```
 
 Selecting `Potter visits the workshop.` has exactly the same read key as a
 literal line with that source and speaker. This is useful when replacing copied
 resident conversations while preserving their read records. Ordinary `text`
-interpolation still shares a key across displayed values. Choose `text_expr`
+interpolation still shares a key across displayed values. Choose `text: {expr}`
 only when the source identity itself should vary, not for counters or prices.
 
 Unknown values, non-string results and random expressions are errors and display
@@ -620,7 +620,7 @@ own scope before calling the action; other arguments on the repeated call do
 not receive its selected item as a caller variable.
 
 For a meeting, finish the summary pass before starting the speech pass. Reuse
-`say.text_expr` when the former literal source contains a resident ID and its
+`say.text: {expr}` when the former literal source contains a resident ID and its
 read key must survive the change. Preserve the resolved speaker, source text,
 ensemble, selection condition and order. An actor parameter identifies an actor;
 only query a planning entity with that ID when the game explicitly defines both.
@@ -699,11 +699,11 @@ commands. Definition changes are covered by the existing screen fingerprint.
 The workshop `roster_demo` exercises selection, confirmation, refreshed membership
 and cross-process continuation in planning atago.
 
-A choice can use `label_expr` instead of `label` when its **source template**
-varies by row. For example, `label_expr: '"Confirm " + arg.resident'` selects
+A choice can write its `label` as `{expr: ...}` when its **source template**
+varies by row. For example, `label: {expr: '"Confirm " + arg.resident'}` selects
 `Confirm weaver`. The expression is pure and must return a string. Translation,
 interpolation and the choice read key use the selected source, just as `say` uses
-`text_expr`. Selecting the former literal source preserves its read identity;
+`text: {expr}`. Selecting the former literal source preserves its read identity;
 putting a new interpolation placeholder in `label` would create a different
 source key. Literal choices retain their existing fingerprint representation.
 

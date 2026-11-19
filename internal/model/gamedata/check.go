@@ -686,7 +686,8 @@ func (c *checker) puppetFaces(who string, a *Actor) ([]string, bool) {
 	return names, names != nil
 }
 
-// requiredDefinitions checks, before completion, the required values that must not be filled with defaults.
+// requiredDefinitions checks, before completion, the required values that must not be filled with defaults
+// (conventions has filled what the names say: an enemy's picture, a monster's class and the stats left at 0).
 // Checks that use completed values, such as map characters and reference targets, stay in Check.
 func (c *checker) requiredDefinitions() {
 	for _, id := range c.db.Ordered("classes") {
@@ -882,10 +883,10 @@ func (db *DB) Check() []error {
 	}
 	c.file("game.yaml fonts.regular", g.Fonts.Regular)
 	c.file("game.yaml fonts.pop", g.Fonts.Pop)
-	c.picture("game.yaml title_background", g.TitleBG)
-	c.picture("game.yaml title_art", g.TitleArt)
-	for i, f := range g.TitleFigures {
-		w := fmt.Sprintf("game.yaml title_figures[%d]", i)
+	c.picture("game.yaml ui.title.background", g.UI.Title.Background)
+	c.picture("game.yaml ui.title.picture", g.UI.Title.Picture)
+	for i, f := range g.UI.Title.Pictures {
+		w := fmt.Sprintf("game.yaml ui.title.pictures[%d]", i)
 		c.picture(w, Picture{File: f.File})
 		if f.File == "" || !finiteNumber(f.X) || !finiteNumber(f.Bottom) || !finiteNumber(f.Height) || f.X < 0 || f.X > 1 || f.Bottom < 0 || f.Height < 0 {
 			c.errorf(diag.OutOfRange, w, "a figure needs a file, x from 0 to 1, and bottom and height of 0 or more")
@@ -893,18 +894,18 @@ func (db *DB) Check() []error {
 	}
 	c.file("game.yaml fonts.title", g.Fonts.Title)
 	c.file("game.yaml fonts.subtitle", g.Fonts.Subtitle)
-	if tt := g.TitleText; tt != (TitleText{}) {
-		c.needsVersion("game.yaml title_text", "title_text", SchemaVersion3)
-		bad := !finiteNumber(tt.Size) || tt.Size < 0 || !finiteNumber(tt.SubtitleSize) || tt.SubtitleSize < 0 || tt.Tracking != nil && (!finiteNumber(*tt.Tracking) || *tt.Tracking < 0) || tt.SubtitleTracking != nil && (!finiteNumber(*tt.SubtitleTracking) || *tt.SubtitleTracking < 0)
+	if tt := g.UI.Title.Text; tt != (TitleText{}) {
+		c.needsVersion("game.yaml ui.title.text", "ui.title.text", SchemaVersion3)
+		bad := !finiteNumber(tt.Size) || tt.Size < 0 || !finiteNumber(tt.Subtitle.Size) || tt.Subtitle.Size < 0 || tt.Tracking != nil && (!finiteNumber(*tt.Tracking) || *tt.Tracking < 0) || tt.Subtitle.Tracking != nil && (!finiteNumber(*tt.Subtitle.Tracking) || *tt.Subtitle.Tracking < 0)
 		if bad {
-			c.errorf(diag.OutOfRange, "game.yaml title_text", "sizes and tracking must be 0 or more")
+			c.errorf(diag.OutOfRange, "game.yaml ui.title.text", "sizes and tracking must be 0 or more")
 		}
 	}
 	c.file("game.yaml stand_ins", g.StandIns)
 	c.picture("game.yaml game_over.background", g.GameOver.Background)
 	_, ok = db.Events[g.GameOver.Event]
 	c.ref("game.yaml game_over.event", "event", g.GameOver.Event, ok)
-	c.music("game.yaml title_music", g.TitleBGM)
+	c.music("game.yaml ui.title.music", g.UI.Title.Music)
 	for i, cg := range g.Gallery.CGs {
 		w := fmt.Sprintf("game.yaml gallery.cgs[%d]", i)
 		if (cg.File == "") == (len(cg.Files) == 0) {
@@ -2035,18 +2036,12 @@ func (c *checker) say(w string, s *Say, names []string) {
 	}
 	c.text(w, s.Text, names)
 	if s.FaceExpr.Set() {
-		c.needsVersion(w+".face_expr", "portrait expressions", SchemaVersion10)
-		if s.Face != "" {
-			c.errorf(diag.Shape, w, "use face or face_expr, not both")
-		}
-		c.argumentExpression(w+".face_expr", s.FaceExpr, "string", names, nil)
+		c.needsVersion(w+".face.expr", "portrait expressions", SchemaVersion10)
+		c.argumentExpression(w+".face.expr", s.FaceExpr, "string", names, nil)
 	}
 	if s.TextExpr.Set() {
-		c.needsVersion(w+".text_expr", "source text expressions", SchemaVersion10)
-		if s.Text != "" {
-			c.errorf(diag.Shape, w, "use text or text_expr, not both")
-		}
-		c.argumentExpression(w+".text_expr", s.TextExpr, "string", names, nil)
+		c.needsVersion(w+".text.expr", "source text expressions", SchemaVersion10)
+		c.argumentExpression(w+".text.expr", s.TextExpr, "string", names, nil)
 	}
 }
 
@@ -2120,11 +2115,8 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 					ids[o.ID] = true
 				}
 				if o.LabelExpr.Set() {
-					c.needsVersion(ww+".label_expr", "choice source expressions", SchemaVersion10)
-					if o.Label != "" {
-						c.errorf(diag.Shape, ww, "use label or label_expr, not both")
-					}
-					c.argumentExpression(ww+".label_expr", o.LabelExpr, "string", names, nil)
+					c.needsVersion(ww+".label.expr", "choice source expressions", SchemaVersion10)
+					c.argumentExpression(ww+".label.expr", o.LabelExpr, "string", names, nil)
 				}
 				c.text(ww+".label", o.Label, names)
 				c.expr(ww+".when", o.When, names)

@@ -4,13 +4,15 @@ schema_version: 11
 id: five-banners
 title: Five Banners
 subtitle: Take the land in ten turns
-title_music: title
 language: en
 written_in: en
 languages: [en, ja]
 screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf}
-title_background: maps/town.jpg
+ui:
+  title:
+    music: title
+    background: maps/town.jpg
 start:
   location: war
   party: [corin, hilde]

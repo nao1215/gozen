@@ -180,6 +180,7 @@ func Load(fsys fs.FS) (*DB, error) {
 	if len(errs) > 0 {
 		return nil, joinDiagnostics(errs)
 	}
+	db.conventions()
 	c := &checker{db: db}
 	c.requiredDefinitions()
 	if len(c.errs) > 0 {
@@ -320,6 +321,40 @@ func (g *Game) word(key string) string {
 		}
 	}
 	return key
+}
+
+// conventions fills, before the required values are checked, what the names already say:
+// an enemy's picture is assets/enemies/<id>.png when that file is there, a monster's class
+// is monster_<family> when the game has that class, and a stat left out of an enemy or a
+// class is 0 (mhp stays required).
+func (db *DB) conventions() {
+	for id, e := range db.Enemies {
+		if e.Image.File == "" && db.Exists("assets/enemies/"+id+".png") {
+			e.Image.File = "enemies/" + id + ".png"
+		}
+		if e.MonsterClass == "" && e.Family != "" && db.Classes["monster_"+e.Family] != nil {
+			e.MonsterClass = "monster_" + e.Family
+		}
+		if e.Stats == nil {
+			e.Stats = Stats{}
+		}
+		for _, st := range StatNames[1:] {
+			if _, ok := e.Stats[st]; !ok {
+				e.Stats[st] = 0
+			}
+		}
+	}
+	zero := MustExpr("0")
+	for _, cl := range db.Classes {
+		if cl.Stats == nil {
+			cl.Stats = StatFormulas{}
+		}
+		for _, st := range StatNames[1:] {
+			if _, ok := cl.Stats[st]; !ok {
+				cl.Stats[st] = zero
+			}
+		}
+	}
 }
 
 // defaults fills in what was left out.

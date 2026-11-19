@@ -681,13 +681,14 @@ func atLeast(v any, n float64) bool {
 // TestWholeExactExceptAndLineLists checks a lexicon word matched only as a whole word
 // of the text as written, an exact word not matched through normalization, an
 // occurrence inside an except word not counted while another one is, a rule saying a
-// list of lines in order, and {text}.
+// list of lines in order, and {text}. A tag's whole list matches like whole words.
 func TestWholeExactExceptAndLineLists(t *testing.T) {
 	book, err := Parse([]byte(`
 lexicon:
   cat: [{word: cat, whole: true}]
   sun: {words: [sun], except: [sunday]}
   moon: [{word: ムーン, exact: true}]
+  dog: {whole: [dog]}
 people:
   - id: host
     rules:
@@ -700,6 +701,9 @@ people:
       - id: moon
         when: tag.moon > 0
         say: [Moon.]
+      - id: dog
+        when: tag.dog > 0
+        say: [Dogs.]
     dodge:
       unknown: [Hm.]
 `))
@@ -722,6 +726,8 @@ people:
 		{"sunday sun", []string{"Sunny."}},
 		{"むーん", []string{"Hm."}},
 		{"ムーンだ", []string{"Moon."}},
+		{"hotdogs", []string{"Hm."}},
+		{"a DOG here", []string{"Dogs."}},
 	} {
 		r, err := m.React(Stimulus{Kind: KindSay, From: "viewer", Text: tc.text})
 		if err != nil {

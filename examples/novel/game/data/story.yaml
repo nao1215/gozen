@@ -1,11 +1,8 @@
-classes:
-  guest: {stats: {mhp: 1, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}
-skills: {attack: {}, guard: {}}
 actors:
-  you: {name: You, class: guest}
-  brenna: {name: Brenna, class: guest, faces: brenna}
-  wren: {name: Wren, class: guest, faces: wren}
-  hedda: {name: Hedda, class: guest, faces: hedda}
+  you: {name: You}
+  brenna: {name: Brenna, faces: brenna}
+  wren: {name: Wren, faces: wren}
+  hedda: {name: Hedda, faces: hedda}
 music:
   songs:
     evening: {name: Evening, file: bgm/evening.ogg}
@@ -135,16 +132,10 @@ events:
     - say: {who: hedda, text: "Past midnight. Door's locked. Nobody has to be anywhere."}
     - say: {who: hedda, text: "The last hour's the best one. Spend it however you like."}
     - choice:
-        - {id: brenna, label: "One more round with Brenna at the bar"}
-        - {id: wren, label: "Share the barrels with Wren"}
-        - {id: hedda, label: "Help Hedda close up"}
+        - {id: brenna, label: "One more round with Brenna at the bar", do: [{call: with_brenna}]}
+        - {id: wren, label: "Share the barrels with Wren", do: [{call: with_wren}]}
+        - {id: hedda, label: "Help Hedda close up", do: [{call: with_hedda}]}
       id: night
-    - if: chose.night == "brenna"
-      then: [{call: with_brenna}]
-    - if: chose.night == "wren"
-      then: [{call: with_wren}]
-    - if: chose.night == "hedda"
-      then: [{call: with_hedda}]
   with_brenna:
     - stand: {who: wren, leave: fade}
     - stand: {who: hedda, leave: fade}

@@ -28,16 +28,24 @@ SaveStyle:
   _: "The save screens: how many slots there are and whether a quick slot is offered."
   slots: "How many slots the player saves to, from 1 to 99. The default is 3. More slots than the screen holds scroll."
   quick: "Add Quick save and Quick load to the novel band. Quick save writes one slot at once without a menu; Quick load reads it back after one question. The load screen lists the quick slot after the autosave. Off by default."
-TitleMenu:
-  _: "Schema 10: the title screen's menu."
-  hide_disabled: "Leave out the entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default."
+TitleScreen:
+  _: "The title screen: its pictures, lettering, music and menu."
+  background: "The background picture of the title screen."
+  picture: "A picture drawn on the title screen, such as a logo or key art."
+  pictures: "Pictures standing on the title screen in order, with later ones in front. When used, `picture` is not drawn."
+  text: "How the title screen letters the title and the subtitle: sizes, the space between letters and colors. Needs schema version 3."
+  music: "The song and mood played on the title screen."
+  hide_disabled: "Schema 10: leave out the menu entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default."
+PhoneStyle:
+  _: "The phone's colors, game-wide, with no per-cue flag."
+  background: "Page body color; default white (#ffffff)."
+  text: "Page body text color; default #1d1f24."
+  muted: "Page caption and secondary text color; default #808690."
+  accent: "Owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette."
 UIStyle:
-  phone_background: "Game-wide phone page body color; default white (#ffffff), with no per-cue flag."
-  phone_text: "Phone page body text color; default #1d1f24."
-  phone_muted: "Phone page caption and secondary text color; default #808690."
-  phone_accent: "Phone owner bubble and page control color; unset keeps #3d8bf2. A page color overrides its controls. Independent of ui.accent. Use the same color to match the game palette."
+  phone: "The phone's colors: page bodies, their text and owner bubbles."
   saves: "The save screens: the number of slots and the quick slot. Omitted, three slots and the autosave, without a quick slot."
-  title: "Schema 10: the title screen's menu. Omitted, every entry is shown and the ones that cannot be chosen are grayed."
+  title: "The title screen: its background, picture or pictures, lettering, music and menu. Omitted, the menu shows every entry and grays the ones that cannot be chosen."
   profile_book: "Schema 10: the character book's title and layout (list or grid). Omission keeps Characters as a list."
   material: Optional layered panel finish; omission retains classic windows.
   chrome: "Schema 10: colors and marks of the title bar and browser decoration of windowed planning surfaces and calls. Omission keeps the built-in light desktop look."

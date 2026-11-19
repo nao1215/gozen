@@ -194,12 +194,12 @@ func (u *stateUses) commands(where string, cs []Command) {
 		}
 		if c.Say != nil {
 			u.text(w+".say", c.Say.Text)
-			u.expr(w+".say.text_expr", c.Say.TextExpr)
-			u.expr(w+".say.face_expr", c.Say.FaceExpr)
+			u.expr(w+".say.text.expr", c.Say.TextExpr)
+			u.expr(w+".say.face.expr", c.Say.FaceExpr)
 			for j, alt := range c.Say.Instead {
 				u.text(fmt.Sprintf("%s.say.instead[%d]", w, j), alt.Text)
-				u.expr(fmt.Sprintf("%s.say.instead[%d].text_expr", w, j), alt.TextExpr)
-				u.expr(fmt.Sprintf("%s.say.instead[%d].face_expr", w, j), alt.FaceExpr)
+				u.expr(fmt.Sprintf("%s.say.instead[%d].text.expr", w, j), alt.TextExpr)
+				u.expr(fmt.Sprintf("%s.say.instead[%d].face.expr", w, j), alt.FaceExpr)
 			}
 		}
 		u.expr(w+".if", c.If)
@@ -239,7 +239,7 @@ func (u *stateUses) commands(where string, cs []Command) {
 			ow := fmt.Sprintf("%s.choice[%d]", w, j)
 			u.expr(ow+".when", o.When)
 			u.text(ow+".label", o.Label)
-			u.expr(ow+".label_expr", o.LabelExpr)
+			u.expr(ow+".label.expr", o.LabelExpr)
 		}
 		c.branches(func(field string, option int, cs []Command) { u.commands(branchPath(w, field, option), cs) })
 	}

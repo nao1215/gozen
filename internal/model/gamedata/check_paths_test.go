@@ -28,7 +28,7 @@ func TestCheckRejectsMistakes(t *testing.T) {
 		{"rollback needs version 4", game("ui: {rollback: 3}\n"), "ui.rollback needs schema_version: 4"},
 		{"balloon needs version 3", game("ui: {balloon: 0.05}\n"), "ui.balloon needs schema_version: 3"},
 		{"talk portrait needs version 3", game("ui: {talk_portrait: {x: 0.5}}\n"), "ui.talk_portrait needs schema_version: 3"},
-		{"title text needs version 3", game("title_text: {size: 4}\n"), "title_text needs schema_version: 3"},
+		{"title text needs version 3", game("ui: {title: {text: {size: 4}}}\n"), "ui.title.text needs schema_version: 3"},
 		{"gallery picture without a title", game("gallery: {cgs: [{file: x.png, flag: a}]}\n"), "a picture of the gallery needs a title"},
 		{"gallery scene with a missing picture", game("gallery: {scenes: [{title: A, event: sub, flag: a, seen: gone.png}]}\n"), "no file assets/gone.png"},
 		{"gallery music pictures without pictures", map[string]string{"game.yaml": testgame.Game + "gallery: {music_pictures: {theme: []}}\n", "data/z.yaml": "music: {songs: {theme: {file: x.png}}}"}, "a song needs one picture or more"},

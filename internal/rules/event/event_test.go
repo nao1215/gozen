@@ -1080,7 +1080,7 @@ func TestSelectedSourceKeepsLiteralReadIdentity(t *testing.T) {
 	for _, dynamic := range []bool{false, true} {
 		field := `text: 'Potter has {gold} coins.'`
 		if dynamic {
-			field = `text_expr: 'arg.name + " has {gold} coins."'`
+			field = `text: {expr: 'arg.name + " has {gold} coins."'}`
 		}
 		db := testgame.Load(t, map[string]string{"game.yaml": "schema_version: 10\nid: sources\n" + testgame.Game, "data/source.yaml": `events:
   speak:
@@ -1172,7 +1172,7 @@ func TestSelectedChoiceSourcePreservesReadIdentity(t *testing.T) {
     params: {name: string}
     do:
     - choice:
-      - label_expr: '"Encourage " + arg.name + " {gold}"'
+      - label: {expr: '"Encourage " + arg.name + " {gold}"'}
         do: [{say: 'Selected {arg.name}'}]
       - label: Cancel
 `,

@@ -2,7 +2,7 @@
 
 A speaker can select an existing face with a pure expression. The selection does
 not consume random numbers or change the line's read identity. An empty result
-uses the actor's default face. `face` and `face_expr` are mutually exclusive.
+uses the actor's default face. `face` is a face name or `{expr: ...}`.
 The author supplies the images in the actor's `faces` directory.
 
 <!-- verify: parse presentation fragment; merge with the sample actors, planning data and assets -->
@@ -12,7 +12,7 @@ schema_version: 11
 do:
   - say:
       who: potter
-      face_expr: 'flag.festival ? "ceremony" : "work"'
+      face: {expr: 'flag.festival ? "ceremony" : "work"'}
       text: The kiln is ready.
   - say:
       instant: true

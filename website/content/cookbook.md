@@ -59,7 +59,7 @@ dependencies, materials and optional character voice checks.
 | [Wear stone sets and fuse stones](#wear-stone-sets-and-fuse-stones) | `stone_sets`, `fusions`, `equip_stones`, `stone_suggest`, `open: fusion` |
 | [Set a retry point with a checkpoint](#set-a-retry-point-with-a-checkpoint) | `checkpoint`, `restore_checkpoint` |
 | [Insert a thought after a speaker's lines](#insert-a-thought-after-a-speakers-lines) | `asides` |
-| [Dress the title screen](#dress-the-title-screen) | `title_background`, `title_art`, `title_figures` |
+| [Dress the title screen](#dress-the-title-screen) | `ui.title`: `background`, `picture`, `pictures` |
 | [Review pictures and scenes while writing](#review-pictures-and-scenes-while-writing) | `cg_review`, `scene_review`, `--review-log` |
 | [Tune a place, the windows and the battle pace](#tune-a-place-the-windows-and-the-battle-pace) | `no_menu`, `outfit`, `resume_to`, `talk_on_enter`, `ui.hide_gold`, `battle.tempo`, `battle.passives` |
 | [Change states, duels and skill points from an event](#change-states-duels-and-skill-points-from-an-event) | `affect`, `fighters`, `reset_tree`, `sp_suggest`, `open_wall` |
@@ -443,7 +443,7 @@ items:
 
 ## Set up troops and enemy AI
 
-An enemy needs a picture, all eight stats and its AI: rules tried by `priority`, each with an optional condition and target. A troop is the group met together; `encounters` sets how often troops are met here.
+An enemy needs `mhp` and its AI (a stat left out is 0, and the picture defaults to `assets/enemies/<id>.png`): rules tried by `priority`, each with an optional condition and target. A troop is the group met together; `encounters` sets how often troops are met here.
 
 <!-- verify: load group=troops -->
 ```yaml
@@ -625,11 +625,11 @@ locations:
     dungeon:
       map: |
         #######
-        #S...T#
+        #S.U.T#
         #######
       tiles:
         S: {start: true, facing: east}
-        T:
+        T: &chest
           name: Old chest
           picture: chest.png
           solid: "true"
@@ -637,8 +637,13 @@ locations:
           after: t
           mark: "#edbe70"
           do: [{gold: 20}, {say: Inside the chest are 20 gold coins.}]
+        U:
+          <<: *chest
+          do: [{say: The chest is empty but for dust.}]
         t: {name: Open chest, picture: chest_open.png, solid: "true"}
 ```
+
+The second chest copies the first with a YAML anchor: `&chest` names the first tile, `<<: *chest` takes its keys, and the keys written after it (`do` here) replace the copied ones. Write `<<` first: a key written before it is replaced by the copied one. Anchors work anywhere in one file.
 
 Reference: [Tile](/schema/#tile). Go Zen's floors have the same chests.
 
@@ -1366,7 +1371,7 @@ events:
 <!-- verify: load group=music as=game.yaml -->
 ```yaml
 # game.yaml
-title_music: town
+ui: {title: {music: town}}
 battle: {music: battle, boss_win_music: town}
 ```
 
@@ -1752,18 +1757,20 @@ An aside is not inserted during a battle, inside another aside, or while an even
 
 ## Dress the title screen
 
-`title_background` is the picture behind the title, and `title_art` a logo or key art drawn over it. `title_figures` stand pictures on the title screen instead, the later ones in front; with figures, `title_art` is not drawn.
+`ui.title` dresses the title screen: `background` is the picture behind the title, and `picture` a logo or key art drawn over it. `pictures` stand pictures on the title screen instead, the later ones in front; with figures, `picture` is not drawn. `text` letters the title and the subtitle, and `music` plays.
 
 <!-- verify: load group=title as=game.yaml -->
 ```yaml
 # game.yaml
-title_background: title/sky.jpg
-title_figures:
-  - {file: title/guide.png, x: 0.3}
-  - {file: title/walker.png, x: 0.62, height: 0.8, bottom: 0.98}
+ui:
+  title:
+    background: title/sky.jpg
+    pictures:
+      - {file: title/guide.png, x: 0.3}
+      - {file: title/walker.png, x: 0.62, height: 0.8, bottom: 0.98}
 ```
 
-`x` is the horizontal center as a fraction of the screen width; `height` (default 0.95) and `bottom` (default 1, the bottom edge) are fractions of the screen height. Reference: [Game](/schema/#game), [TitleFigure](/schema/#titlefigure).
+`x` is the horizontal center as a fraction of the screen width; `height` (default 0.95) and `bottom` (default 1, the bottom edge) are fractions of the screen height. Reference: [TitleScreen](/schema/#titlescreen), [TitleFigure](/schema/#titlefigure).
 
 ## Review pictures and scenes while writing
 

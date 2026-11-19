@@ -245,7 +245,7 @@ events:
   report_resident:
     params: {resident: entity}
     do:
-    - say: {text_expr: 'entity[arg.resident].data.reports[0]'}
+    - say: {text: {expr: 'entity[arg.resident].data.reports[0]'}}
   roster_demo:
   - say: Ready for roster.
   - open: {screen: roster, args: {amount: '2'}}

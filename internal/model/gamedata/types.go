@@ -186,14 +186,6 @@ type Game struct {
 	Subtitle  string   `yaml:"subtitle"`
 	Screen    Screen   `yaml:"screen"`
 	Fonts     Fonts    `yaml:"fonts"`
-	TitleBG   Picture  `yaml:"title_background"`
-	TitleArt  Picture  `yaml:"title_art"`
-	// TitleFigures stand on the title screen in their order (the later ones in front); with
-	// them, title_art is not drawn.
-	TitleFigures []TitleFigure `yaml:"title_figures"`
-	// TitleText letters the title and the subtitle on the title screen (schema_version 3).
-	TitleText TitleText `yaml:"title_text"`
-	TitleBGM  MusicCue  `yaml:"title_music"`
 	// Menus is "none" for a game without the title screen and the game menu (schema_version
 	// 9, ADR 0049): it opens on the newest save, the autosave included, or a new game, and
 	// keeps the play in the autosave alone.
@@ -406,13 +398,18 @@ type Fonts struct {
 // TitleText is how the title screen letters the title and the subtitle. Sizes are in the
 // screen's pixels; tracking is the space between letters as a part of the size.
 type TitleText struct {
-	Size             float64  `yaml:"size"`              // 0: 96
-	Tracking         *float64 `yaml:"tracking"`          // nil: 0.12
-	SubtitleSize     float64  `yaml:"subtitle_size"`     // 0: 30
-	SubtitleTracking *float64 `yaml:"subtitle_tracking"` // nil: 0.3
+	Size     float64      `yaml:"size"`     // 0: 96
+	Tracking *float64     `yaml:"tracking"` // nil: 0.12
+	Subtitle SubtitleText `yaml:"subtitle"`
 	// Color fills the letters and Edge outlines them (none: the ui's text and window colors).
 	Color Color `yaml:"color"`
 	Edge  Color `yaml:"edge"`
+}
+
+// SubtitleText letters the subtitle: its size (0: 30) and tracking (nil: 0.3).
+type SubtitleText struct {
+	Size     float64  `yaml:"size"`
+	Tracking *float64 `yaml:"tracking"`
 }
 
 // TitleFigure is one picture standing on the title screen. X is its center and Bottom its
@@ -574,22 +571,36 @@ type SaveStyle struct {
 	Quick bool `yaml:"quick"`
 }
 
-// TitleMenu shapes the title screen's menu (schema_version 10).
-type TitleMenu struct {
-	// HideDisabled leaves out the entries that cannot be chosen now (Continue with no
-	// save, Gallery with nothing to show) instead of graying them.
+// TitleScreen dresses the title screen: its background, a picture over it (a logo or key
+// art) or pictures standing in its place, the lettering of the title and the music.
+type TitleScreen struct {
+	Background Picture `yaml:"background"`
+	Picture    Picture `yaml:"picture"`
+	// Pictures stand in their order (the later ones in front); with them, picture is not drawn.
+	Pictures []TitleFigure `yaml:"pictures"`
+	// Text letters the title and the subtitle (schema_version 3).
+	Text  TitleText `yaml:"text"`
+	Music MusicCue  `yaml:"music"`
+	// HideDisabled leaves out the menu entries that cannot be chosen now (Continue with no
+	// save, Gallery with nothing to show) instead of graying them (schema_version 10).
 	HideDisabled bool `yaml:"hide_disabled"`
+}
+
+// PhoneStyle are the phone's colors: Background fills page bodies, Text and Muted color
+// their text, and Accent colors owner chat bubbles, the chat back mark and page controls.
+// Unset preserves the white page, dark text and blue accent.
+type PhoneStyle struct {
+	Background Color `yaml:"background"`
+	Text       Color `yaml:"text"`
+	Muted      Color `yaml:"muted"`
+	Accent     Color `yaml:"accent"`
 }
 
 // UIStyle are the colors of the windows.
 type UIStyle struct {
-	// Phone colors are consumed by play for page bodies/text and owner bubbles.
-	// Unset preserves the white page, dark text and blue accent.
-	PhoneBackground Color          `yaml:"phone_background"`
-	PhoneText       Color          `yaml:"phone_text"`
-	PhoneMuted      Color          `yaml:"phone_muted"`
-	PhoneAccent     Color          `yaml:"phone_accent"`
-	Material        *MaterialStyle `yaml:"material"`
+	// Phone colors the phone's page bodies, text and owner bubbles.
+	Phone    PhoneStyle     `yaml:"phone"`
+	Material *MaterialStyle `yaml:"material"`
 	// Chrome recolors the title bar and browser decoration of windowed planning
 	// surfaces and calls (schema_version 10).
 	Chrome *ChromeStyle `yaml:"chrome"`
@@ -653,9 +664,9 @@ type UIStyle struct {
 	// Saves shapes the save screens: the number of slots and the quick slot. Omitted,
 	// three slots and the autosave, without a quick slot.
 	Saves *SaveStyle `yaml:"saves"`
-	// Title shapes the title screen's menu (schema_version 10). Omitted, the menu shows
-	// every entry, the ones that cannot be chosen grayed.
-	Title *TitleMenu `yaml:"title"`
+	// Title dresses the title screen and shapes its menu. Omitted, the menu shows every
+	// entry, the ones that cannot be chosen grayed.
+	Title TitleScreen `yaml:"title"`
 	// HideGold are the kinds of place (field, dungeon, map, stage) where the windows of
 	// the money (the field's, with the play time, and the menu's) are not shown.
 	HideGold []string `yaml:"hide_gold"`

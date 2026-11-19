@@ -410,9 +410,9 @@ func TestActorFacesPictureBudget(t *testing.T) {
 
 func TestCheckRejectsNonfinitePresentationValues(t *testing.T) {
 	cases := []struct{ name, field, format string }{
-		{"figure-x", "title_figures", "title_figures: [{file: x.png, x: %s}]"},
-		{"figure-bottom", "title_figures", "title_figures: [{file: x.png, bottom: %s}]"},
-		{"figure-height", "title_figures", "title_figures: [{file: x.png, height: %s}]"},
+		{"figure-x", "ui.title.pictures", "ui: {title: {pictures: [{file: x.png, x: %s}]}}"},
+		{"figure-bottom", "ui.title.pictures", "ui: {title: {pictures: [{file: x.png, bottom: %s}]}}"},
+		{"figure-height", "ui.title.pictures", "ui: {title: {pictures: [{file: x.png, height: %s}]}}"},
 		{"meter-max", "meters", "meters: [{value: '1', max: %s}]"},
 		{"meter-mark", "meters", "meters: [{value: '1', marks: [%s]}]"},
 		{"bubble-size", "card_bubbles", "card_bubbles: [{size: %s}]"},
@@ -428,10 +428,10 @@ func TestCheckRejectsNonfinitePresentationValues(t *testing.T) {
 		{"portrait-x", "ui.talk_portrait", "ui: {talk_portrait: {x: %s}}"},
 		{"portrait-bottom", "ui.talk_portrait", "ui: {talk_portrait: {bottom: %s}}"},
 		{"portrait-height", "ui.talk_portrait", "ui: {talk_portrait: {height: %s}}"},
-		{"title-size", "title_text", "title_text: {size: %s}"},
-		{"title-subtitle-size", "title_text", "title_text: {subtitle_size: %s}"},
-		{"title-tracking", "title_text", "title_text: {tracking: %s}"},
-		{"title-subtitle-tracking", "title_text", "title_text: {subtitle_tracking: %s}"},
+		{"title-size", "ui.title.text", "ui: {title: {text: {size: %s}}}"},
+		{"title-subtitle-size", "ui.title.text", "ui: {title: {text: {subtitle: {size: %s}}}}"},
+		{"title-tracking", "ui.title.text", "ui: {title: {text: {tracking: %s}}}"},
+		{"title-subtitle-tracking", "ui.title.text", "ui: {title: {text: {subtitle: {tracking: %s}}}}"},
 	}
 	for _, tc := range cases {
 		for _, value := range []string{".nan", ".inf", "-.inf", "0.1"} {

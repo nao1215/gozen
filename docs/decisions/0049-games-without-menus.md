@@ -17,4 +17,4 @@ Every game opens on the title screen (new game, continue, gallery, settings) and
 
 ## Consequences
 
-A stream game opens straight on the lobby and saves only by its autosaves (ADR 0048). The settings are no longer reachable by default in such a game; the author places them as an entry. The replays and test runs are unchanged: a trial play uses a memory store without saves, so it opens on a new game. Title screen keys (`title_background`, `title_music` and the rest) mean nothing with `menus: none`; the title music is not played.
+A stream game opens straight on the lobby and saves only by its autosaves (ADR 0048). The settings are no longer reachable by default in such a game; the author places them as an entry. The replays and test runs are unchanged: a trial play uses a memory store without saves, so it opens on a new game. Title screen keys (`ui.title.background`, `ui.title.music` and the rest) mean nothing with `menus: none`; the title music is not played.

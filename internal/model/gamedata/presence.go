@@ -295,6 +295,9 @@ func (db *DB) resolveNumbers(raw yaml.MapSlice, into any, source string) error {
 			if _, given := numberEntry(m, "enabled"); !given && db.Game.SchemaVersion >= SchemaVersion11 {
 				v.FieldByName("Enabled").SetBool(true)
 			}
+			if c := v.FieldByName("Condition"); c.String() == "" {
+				c.SetString("any")
+			}
 		}
 		if short && db.Game.SchemaVersion < SchemaVersion11 {
 			errs = append(errs, fmt.Errorf(lang.T("%s: 短縮形には game.yaml の schema_version: 11 が必要です"), where))

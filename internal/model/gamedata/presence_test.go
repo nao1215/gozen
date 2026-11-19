@@ -35,7 +35,12 @@ func numericFixture(t *testing.T, version int, target, value string) (*data.DB, 
 	}
 	game["schema_version"], game["id"] = version, "neutral"
 	mapAt(t, definitions, "actors", "scout")["faces"] = "portrait"
-	game["title_figures"] = []any{map[string]any{"file": "x.png", "x": 0.5}}
+	ui, ok := game["ui"].(map[string]any)
+	if !ok {
+		ui = map[string]any{}
+		game["ui"] = ui
+	}
+	ui["title"] = map[string]any{"pictures": []any{map[string]any{"file": "x.png", "x": 0.5}}}
 	game["card_bubbles"] = []any{map[string]any{}}
 	game["meters"] = []any{map[string]any{"value": "gold"}}
 	definitions["music"] = map[string]any{"songs": map[string]any{}}
@@ -152,7 +157,7 @@ func TestNumericPresenceContract(t *testing.T) {
 		{"data.states.sleep.restrict_chance", "States.sleep.RestrictChance", 0., 0., 0.5, true},
 		{"game.battle.tempo", "Game.Battle.Tempo", 1., 0., 2, false},
 		{"game.battle.auto_tempo", "Game.Battle.AutoTempo", 1., 0., 2, false},
-		{"game.title_background.brightness", "Game.TitleBG.Bright", 1., 0., 0.5, true},
+		{"game.ui.title.background.brightness", "Game.UI.Title.Background.Bright", 1., 0., 0.5, true},
 		{"data.events.numeric.do.0.image.brightness", "Events.numeric.Do.0.Image.Bright", 1., 0., 0.5, true},
 		{"data.events.numeric.do.0.image.auto", "Events.numeric.Do.0.Image.Auto", 0., 0., 2, true},
 		{"data.events.numeric.do.0.image.page", "Events.numeric.Do.0.Image.Page", 0., 0., 2, true},
@@ -172,8 +177,8 @@ func TestNumericPresenceContract(t *testing.T) {
 		{"data.locations.maze.dungeon.roamers.0.troops.0.weight", "Locations.maze.Dungeon.Roamers.0.Troops.0.Weight", 1., 0., 2, false},
 		{"game.ui.backlog", "Game.UI.Backlog", 300., 0., 2, true},
 		{"game.meters.0.max", "Game.Meters.0.Max", 100., 0., 80, false},
-		{"game.title_figures.0.bottom", "Game.TitleFigures.0.Bottom", 1., 0., 0.8, true},
-		{"game.title_figures.0.height", "Game.TitleFigures.0.Height", 0.95, 0., 0.8, false},
+		{"game.ui.title.pictures.0.bottom", "Game.UI.Title.Pictures.0.Bottom", 1., 0., 0.8, true},
+		{"game.ui.title.pictures.0.height", "Game.UI.Title.Pictures.0.Height", 0.95, 0., 0.8, false},
 		{"game.card_bubbles.0.count", "Game.CardBubbles.0.Count", 4., 0., 2, true},
 		{"game.card_bubbles.0.size", "Game.CardBubbles.0.Size", 3., 0., 2, false},
 		{"game.card_bubbles.0.speed", "Game.CardBubbles.0.Speed", 30., 0., 20, false},
@@ -207,7 +212,7 @@ func TestNumericPresenceContract(t *testing.T) {
 	}
 	legacyNegativeRejected := map[string]bool{}
 	for _, name := range []string{
-		"game.max_party", "game.title_figures.0.bottom", "game.title_figures.0.height", "data.classes.ranger.sp", "data.classes.ranger.start_sp",
+		"game.max_party", "game.ui.title.pictures.0.bottom", "game.ui.title.pictures.0.height", "data.classes.ranger.sp", "data.classes.ranger.start_sp",
 		"data.classes.ranger.tree.0.max", "data.classes.ranger.tree.1.requires.0.level",
 		"data.actors.scout.level", "data.actors.scout.face_shade", "data.actors.scout.face_shade_top",
 		"data.states.sleep.restrict_chance", "data.events.numeric.do.0.image.fade",

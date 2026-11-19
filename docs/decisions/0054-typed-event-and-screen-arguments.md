@@ -795,7 +795,7 @@ runtime tests cover toggling, save/load and invalid targets without RNG changes.
 
 ## Selected narrative sources
 
-Schema 10 additionally accepts the pure string expression `say.text_expr`,
+Schema 10 additionally accepts the pure string expression `say.text: {expr}`,
 exclusive with `text`. The selected source is used before translation and text
 interpolation, including for the ADR 0026 source key. This allows a shared
 resident conversation to retain the literal read identities it replaces.

@@ -1,13 +1,3 @@
-skills:
-  attack: {name: Attack, scope: one_enemy, effects: [{damage: "a.atk"}]}
-  guard: {name: Guard, scope: self, effects: []}
-classes:
-  visitor:
-    name: Visitor
-    stats: {mhp: '100', mmp: '10', atk: '10', def: '10', mat: '10', mdf: '10', agi: '10', luk: '10'}
-    exp_for: 'level * 100'
-actors:
-  walker: {name: Walker, class: visitor}
 locations:
   courtyard:
     name: Terrace Quarter

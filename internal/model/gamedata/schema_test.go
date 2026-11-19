@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/goccy/go-yaml"
 )
 
 // updateSchema is true when the environment variable GOZEN_UPDATE_SCHEMA=1 is set, and rewrites the YAML schema and item list.
@@ -76,7 +78,7 @@ var schemaDefaults = map[string]string{
 	"LevelScale.stats": "[mhp, atk, mat]", "Music.volume": "0.7", "UIStyle.message": "box",
 	"UIStyle.field_notices": "true", "UIStyle.stage_scale": "空の対応表。未指定の絵は倍率１", "UIStyle.stage_drop": "空の対応表。未指定の絵は移動０",
 	"TalkPortrait.x": "０（窓の左端から230ピクセル右）", "TalkPortrait.bottom": "０（画面の下端より120ピクセル下）", "TalkPortrait.height": "０（画面の高さの1.02倍）",
-	"TitleText.size": "０（96ピクセル）", "TitleText.subtitle_size": "０（30ピクセル）", "TitleText.tracking": "未指定（0.12）", "TitleText.subtitle_tracking": "未指定（0.3）", "TitleText.color": "未指定の色（ui の text）", "TitleText.edge": "未指定の色（ui の window）", "Fonts.subtitle": "空文字（題の書体）",
+	"TitleText.size": "０（96ピクセル）", "SubtitleText.size": "０（30ピクセル）", "TitleText.tracking": "未指定（0.12）", "SubtitleText.tracking": "未指定（0.3）", "TitleText.color": "未指定の色（ui の text）", "TitleText.edge": "未指定の色（ui の window）", "Fonts.subtitle": "空文字（題の書体）",
 	"CG.fit": "contain", "CG.look": "通常表示", "CG.haze": "dream の場合は薄い桃色",
 	"CG.fade": "表示は0.25秒。消去は表示中の秒数を継承", "CG.page": "0（全頁を順に表示）",
 	"DungeonLook.darkness": "元の迷宮の darkness を継承", "Roamer.far": "通常は max(6, 最遠距離 × 3/5)、appear ありは０",
@@ -205,8 +207,14 @@ func (b *schemaBuilder) node(t reflect.Type) schemaNode {
 				contract := schemaContract(owner, field, f.name)
 				b.rows[name][f.name] = contract
 				n := b.node(field.Type)
+				label := schemaTypeLabel(field.Type) // the Type column of the site's Schema page
+				if _, ok := exprSource(owner, f.name, yaml.MapSlice{yaml.MapItem{Key: "expr"}}); ok {
+					// face, text and label may be {expr: ...} (exprSource).
+					n = schemaNode{"anyOf": []any{n, schemaNode{"type": "object", "properties": schemaNode{"expr": b.node(reflect.TypeFor[Expr]())}, "required": []string{"expr"}, "additionalProperties": false}}}
+					label += " or {expr}"
+				}
 				n["x-contract"] = contract
-				n["x-type"] = schemaTypeLabel(field.Type) // the Type column of the site's Schema page
+				n["x-type"] = label
 				props[f.name] = n
 			}
 			n := schemaNode{"type": "object", "properties": props, "additionalProperties": false}
@@ -308,7 +316,7 @@ var version2Fields = map[string]bool{
 
 // version3Fields are the fields added in spec version 3 (ADR 0022). version3Types are types whose fields are all spec version 3.
 var (
-	version3Fields = map[string]bool{"Location.map": true, "Location.stage": true, "Person.bubbles": true, "Actor.doll": true, "UIStyle.balloon": true, "UIStyle.talk_portrait": true, "Game.title_text": true, "Fonts.subtitle": true}
+	version3Fields = map[string]bool{"Location.map": true, "Location.stage": true, "Person.bubbles": true, "Actor.doll": true, "UIStyle.balloon": true, "UIStyle.talk_portrait": true, "TitleScreen.text": true, "Fonts.subtitle": true}
 	version3Types  = map[reflect.Type]bool{
 		reflect.TypeFor[Atlas](): true, reflect.TypeFor[AtlasCamera](): true, reflect.TypeFor[AtlasPanel](): true, reflect.TypeFor[MapAdvice](): true, reflect.TypeFor[Token](): true, reflect.TypeFor[MapPoint](): true, reflect.TypeFor[Road](): true,
 		reflect.TypeFor[Stage](): true, reflect.TypeFor[ScaleMark](): true, reflect.TypeFor[Front](): true, reflect.TypeFor[Spot](): true,
@@ -353,7 +361,7 @@ func schemaContract(owner reflect.Type, field reflect.StructField, name string) 
 	}
 
 	key := owner.Name() + "." + name
-	if owner == reflect.TypeFor[IDRef]() || owner == reflect.TypeFor[NovelWindow]() || key == "UIStyle.quick_menu" || key == "UIStyle.novel_window" || key == "UIStyle.choice_position" || key == "UIStyle.title" || owner == reflect.TypeFor[TitleMenu]() || key == "MaterialStyle.opacities" {
+	if owner == reflect.TypeFor[IDRef]() || owner == reflect.TypeFor[NovelWindow]() || key == "UIStyle.quick_menu" || key == "UIStyle.novel_window" || key == "UIStyle.choice_position" || key == "TitleScreen.hide_disabled" || key == "MaterialStyle.opacities" {
 		c.Version = "10"
 	}
 	if value, ok := schemaDefaults[key]; ok {

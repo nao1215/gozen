@@ -607,7 +607,7 @@ func (r *cgReview) draw(g *Game, dst *ebiten.Image) {
 		r.drawToast(g, dst)
 		return
 	}
-	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+	g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xb0))
 	gfx.DrawTextOutlineColor(dst, lang.T("一枚絵の流し見"), sw/2, 60, sizeL, g.th.accent, g.th.window, 1)
 	head := gfx.Ellipsis(fmt.Sprintf(lang.T("全部 %d 枚　記録 %s"), len(r.all), g.reviewLog()), sizeS*0.8, sw-80)

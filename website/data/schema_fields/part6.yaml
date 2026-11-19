@@ -138,12 +138,11 @@ TalkPortrait:
   height: "Its height as a fraction of the screen height, from 0 to 4. The default is 1.02."
   x: "Its horizontal center as a fraction of the screen width, from 0 to 1; the right speaker stands at 1 minus it. The default is 230 pixels right of the window's left end."
 TitleText:
+  subtitle: "How the subtitle is lettered: its size and the space between its letters."
   _: "How the title screen letters the title and the subtitle. Sizes are in the screen's pixels; tracking is the space between letters as a part of the size."
   color: "The color that fills the letters. The default is the `ui` text color."
   edge: "The color of the letters' outline. The default is the `ui` window color."
   size: "The title's letter size in pixels. The default is 96."
-  subtitle_size: "The subtitle's letter size in pixels. The default is 30."
-  subtitle_tracking: "The space between the subtitle's letters, as a part of its size. The default is 0.3."
   tracking: "The space between the title's letters, as a part of its size. The default is 0.12."
 TitleFigure:
   _: "A picture standing on the title screen."
@@ -172,3 +171,7 @@ TreeNode:
   row: "The row where it is drawn."
   skill: "An ID of skills learned at level 1. Leave empty for a passive node."
   stats: "Stats added for each level of the node."
+SubtitleText:
+  _: "The subtitle's lettering on the title screen."
+  size: "The subtitle's letter size in pixels. The default is 30."
+  tracking: "The space between the subtitle's letters, as a part of its size. The default is 0.3."

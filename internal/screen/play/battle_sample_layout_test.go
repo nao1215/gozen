@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/goccy/go-yaml"
-
 	data "github.com/nao1215/gozen/internal/model/gamedata"
 	"github.com/nao1215/gozen/internal/rules/battle"
 )
@@ -14,18 +12,11 @@ import (
 // the source pictures' pixel dimensions.
 func TestGoZenTroopPictureLayout(t *testing.T) {
 	root := "../../../examples/go-zen/game"
-	raw, err := os.ReadFile(root + "/data/enemies.yaml")
+	fsys := os.DirFS(root)
+	sample, err := data.Load(fsys)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sample struct {
-		Enemies map[string]*data.Enemy `yaml:"enemies"`
-		Troops  map[string]*data.Troop `yaml:"troops"`
-	}
-	if err := yaml.Unmarshal(raw, &sample); err != nil {
-		t.Fatal(err)
-	}
-	fsys := os.DirFS(root)
 	for _, size := range [][2]int{{1280, 720}, {1920, 1080}} {
 		g := &Game{db: &data.DB{Game: data.Game{Screen: data.Screen{Width: size[0], Height: size[1]}}}, pics: newPictures(fsys), ui: 1}
 		for id, troop := range sample.Troops {

@@ -205,7 +205,7 @@ events:
           - {label: Light the room, do: [{say: Lit.}]}
           - {label: "Wait ({var.battery}%)", do: [{say: Waited.}]}
           - {label: Never offered, when: "var.battery > 100", do: [{say: Charged.}]}
-          - {label_expr: "'Go back'", do: [{say: Back.}]}
+          - {label: {expr: "'Go back'"}, do: [{say: Back.}]}
       - clear: true
 `
 	files := fstest.MapFS{

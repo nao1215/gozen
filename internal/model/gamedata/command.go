@@ -243,16 +243,17 @@ func customFields(c *Command) []string { return c.custom }
 
 // Say is a line of dialog.
 type Say struct {
-	Instant  bool `yaml:"instant"`
-	FaceExpr Expr `yaml:"face_expr,omitempty" json:",omitzero"`
+	Instant bool `yaml:"instant"`
+	// FaceExpr is face written as {expr: ...}: a pure string expression picking the face.
+	FaceExpr Expr `yaml:"-" json:",omitzero"`
 	// Ensemble names a planning participant screen shown behind this line.
 	Ensemble string `yaml:"ensemble"`
 	Who      IDRef  `yaml:"who"`  // a literal name, or an actor expression
 	Face     string `yaml:"face"` // a face of the actor (or a picture path)
 	Text     string `yaml:"text"`
-	// TextExpr selects a source template before translation and read-key hashing.
-	// Narrative consumers require a pure string expression, exclusive with Text.
-	TextExpr Expr   `yaml:"text_expr,omitempty" json:",omitzero"`
+	// TextExpr is text written as {expr: ...}: it selects a source template before
+	// translation and read-key hashing. Narrative consumers require a pure string expression.
+	TextExpr Expr   `yaml:"-" json:",omitzero"`
 	Side     string `yaml:"side"` // left, right (default: left for party, right for others)
 	// Voice is the line's voice: a name in the speaker's voices folder, or a path under
 	// assets/ (schema_version 4, ADR 0028).
@@ -266,14 +267,76 @@ type Say struct {
 	Values map[string]string `yaml:"-"`
 }
 
-func (s *Say) UnmarshalYAML(unmarshal func(any) error) error {
-	var t string
-	if err := unmarshal(&t); err == nil {
-		s.Text = t
-		return nil
+// UnmarshalYAML reads a line as its text, or a map whose face and text may be {expr: ...}.
+func (s *Say) UnmarshalYAML(n ast.Node) error {
+	rest, exprs, err := exprSources(n, "face", "text")
+	if err != nil || rest == nil {
+		if err == nil {
+			err = yaml.NodeToValue(n, &s.Text)
+		}
+		return err
 	}
+	s.FaceExpr, s.TextExpr = exprs["face"], exprs["text"]
 	type plain Say
-	return unmarshal((*plain)(s))
+	return yaml.NodeToValue(rest, (*plain)(s), yaml.Strict())
+}
+
+// exprSources splits from a map the keys whose value is {expr: ...}, parsing each
+// expression, and returns the rest of the map. rest is nil when n is not a map.
+func exprSources(n ast.Node, keys ...string) (rest ast.Node, exprs map[string]Expr, err error) {
+	var values []*ast.MappingValueNode
+	switch x := n.(type) {
+	case *ast.MappingNode:
+		values = x.Values
+	case *ast.MappingValueNode:
+		values = []*ast.MappingValueNode{x}
+	default:
+		return nil, nil, nil
+	}
+	exprs = map[string]Expr{}
+	kept := make([]*ast.MappingValueNode, 0, len(values))
+	for _, v := range values {
+		key := v.Key.String()
+		inner, ok := exprOnly(v.Value)
+		if !ok || !slices.Contains(keys, key) {
+			kept = append(kept, v)
+			continue
+		}
+		var e Expr
+		if err := e.UnmarshalYAML(inner); err != nil {
+			return nil, nil, err
+		}
+		exprs[key] = e
+	}
+	if m, ok := n.(*ast.MappingNode); ok {
+		cp := *m
+		cp.Values = kept
+		return &cp, exprs, nil
+	}
+	if len(kept) == 0 {
+		return &ast.MappingNode{BaseNode: &ast.BaseNode{}, Start: n.GetToken(), IsFlowStyle: true}, exprs, nil
+	}
+	return n, exprs, nil
+}
+
+// exprOnly is the value of {expr: value}.
+func exprOnly(n ast.Node) (ast.Node, bool) {
+	var v *ast.MappingValueNode
+	switch x := n.(type) {
+	case *ast.MappingNode:
+		if len(x.Values) != 1 {
+			return nil, false
+		}
+		v = x.Values[0]
+	case *ast.MappingValueNode:
+		v = x
+	default:
+		return nil, false
+	}
+	if v.Key.String() != "expr" {
+		return nil, false
+	}
+	return v.Value, true
 }
 
 // ChoiceMuted holds a choice behind a muted microphone: only an unmute button
@@ -287,13 +350,27 @@ type ChoiceMuted struct {
 
 // ChoiceOption is one answer of a choice.
 type ChoiceOption struct {
-	// LabelExpr selects a source template before translation and choice read-key hashing.
-	// It is exclusive with Label, pure, and must return a string.
-	LabelExpr Expr      `yaml:"label_expr,omitempty" json:",omitzero"`
+	// LabelExpr is label written as {expr: ...}: it selects a source template before
+	// translation and choice read-key hashing. It is pure and must return a string.
+	LabelExpr Expr      `yaml:"-" json:",omitzero"`
 	ID        string    `yaml:"id"` // unique identifier within the same question
 	Label     string    `yaml:"label"`
 	When      Expr      `yaml:"when"`
 	Do        []Command `yaml:"do"`
+}
+
+// UnmarshalYAML reads an option whose label may be {expr: ...}.
+func (o *ChoiceOption) UnmarshalYAML(n ast.Node) error {
+	type plain ChoiceOption
+	rest, exprs, err := exprSources(n, "label")
+	if err != nil {
+		return err
+	}
+	if rest == nil {
+		return yaml.NodeToValue(n, (*plain)(o), yaml.Strict())
+	}
+	o.LabelExpr = exprs["label"]
+	return yaml.NodeToValue(rest, (*plain)(o), yaml.Strict())
 }
 
 // ItemCount is an item and how many.

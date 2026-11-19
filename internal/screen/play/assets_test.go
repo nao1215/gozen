@@ -230,7 +230,7 @@ func TestBlurredPictureIsSmallerAndCached(t *testing.T) {
 // TestTitleFiguresAreLoadedAndDrawn: the title's standing figures are fetched when the title
 // is drawn, and the frame goes on for the figures' rise.
 func TestTitleFiguresAreLoadedAndDrawn(t *testing.T) {
-	g := sysOpen4(t, Options{}, map[string]string{"game.yaml+": "title_figures: [{file: x.png, x: 0.7, height: 0.8}]\ntitle_text: {size: 80}\nsubtitle: Part one\n"})
+	g := sysOpen4(t, Options{}, map[string]string{"game.yaml+": "ui: {title: {pictures: [{file: x.png, x: 0.7, height: 0.8}], text: {size: 80}}}\nsubtitle: Part one\n"})
 	sysFrames(t, g, 50)
 	if g.pics.imgs["x.png"] == nil {
 		t.Fatal("the figure was never loaded")
@@ -241,9 +241,9 @@ func TestTitleFiguresAreLoadedAndDrawn(t *testing.T) {
 	time.Sleep(time.Millisecond)
 }
 
-// TestTitleArtAndBackground: title_art and title_bg pictures are loaded for the title.
+// TestTitleArtAndBackground: ui.title picture and background are loaded for the title.
 func TestTitleArtAndBackground(t *testing.T) {
-	g := sysOpen(t, Options{}, map[string]string{"game.yaml+": "title_art: {file: x.png}\ntitle_background: {file: x.png}\n"})
+	g := sysOpen(t, Options{}, map[string]string{"game.yaml+": "ui: {title: {picture: {file: x.png}, background: {file: x.png}}}\n"})
 	sysFrames(t, g, 40)
 	if g.pics.imgs["x.png"] == nil {
 		t.Fatal("the picture was never loaded")

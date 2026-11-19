@@ -153,11 +153,17 @@ func (doc *sourceDocument) definitionShape(raw any, typ reflect.Type, where stri
 					continue
 				}
 			}
+			if e, ok := exprSource(typ, key, it.Value); ok {
+				errs = append(errs, doc.definitionShape(e, reflect.TypeFor[Expr](), numberPath(numberPath(where, key), "expr"))...)
+				continue
+			}
 			if field, ok := fields[key]; ok {
 				errs = append(errs, doc.definitionShape(it.Value, field, numberPath(where, key))...)
 			} else if typ != reflect.TypeFor[Command]() {
 				message := fmt.Sprintf("unknown field %q", key)
-				if near := nearestName(key, slices.Sorted(maps.Keys(fields))); near != "" {
+				if now, ok := movedKeys[key]; ok {
+					message += fmt.Sprintf(" (now %s)", now)
+				} else if near := nearestName(key, slices.Sorted(maps.Keys(fields))); near != "" {
 					message += fmt.Sprintf(lang.T("（%q の誤りですか？）"), near)
 				}
 				errs = append(errs, coded(doc.diagnostic(numberPath(where, key), message), diag.Shape))
@@ -206,6 +212,39 @@ var definitionFieldsOf sync.Map // reflect.Type -> map[string]reflect.Type
 
 // definitionFields maps YAML fields, including inline ones, to types. The map is shared:
 // the callers only read it.
+// movedKeys are keys that moved, by where they are written now: a game that uses one is
+// told where it went.
+var movedKeys = map[string]string{
+	"face_expr":         "face: {expr: ...}",
+	"text_expr":         "text: {expr: ...}",
+	"label_expr":        "label: {expr: ...}",
+	"phone_background":  "ui.phone.background",
+	"phone_text":        "ui.phone.text",
+	"phone_muted":       "ui.phone.muted",
+	"phone_accent":      "ui.phone.accent",
+	"title_background":  "ui.title.background",
+	"title_art":         "ui.title.picture",
+	"title_figures":     "ui.title.pictures",
+	"title_text":        "ui.title.text",
+	"title_music":       "ui.title.music",
+	"subtitle_size":     "subtitle: {size}",
+	"subtitle_tracking": "subtitle: {tracking}",
+}
+
+// exprSource is the expression of a source text written as {expr: ...}: a line's face or
+// text, or an option's label.
+func exprSource(typ reflect.Type, key string, raw any) (any, bool) {
+	m, ok := raw.(yaml.MapSlice)
+	if !ok || len(m) != 1 || fmt.Sprint(m[0].Key) != "expr" {
+		return nil, false
+	}
+	switch {
+	case typ == reflect.TypeFor[Say]() && (key == "face" || key == "text"), typ == reflect.TypeFor[ChoiceOption]() && key == "label":
+		return m[0].Value, true
+	}
+	return nil, false
+}
+
 func definitionFields(typ reflect.Type) map[string]reflect.Type {
 	if v, ok := definitionFieldsOf.Load(typ); ok {
 		if fields, ok := v.(map[string]reflect.Type); ok {

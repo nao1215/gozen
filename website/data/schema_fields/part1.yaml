@@ -182,11 +182,10 @@ ChoiceMuted:
   seconds: "Seconds the choice waits muted; left that long, the player kept quiet and do runs instead of an option."
   do: "The commands that run when the player keeps quiet."
 ChoiceOption:
-  label_expr: Pure expression selecting a string source template before translation and read-key hashing; exclusive with label.
   _: "One answer of a `choice` command."
   do: "The commands that run when this answer is picked."
   id: "An identifier that is unique within the same question."
-  label: "The text shown for this answer."
+  label: "The text shown for this answer. `{expr: ...}` picks the source template with a pure string expression, before translation and read-key hashing."
   when: "An expression that decides whether the answer is offered."
 Class:
   _: "A kind of character: how stats grow with level, which skills are learned and what equipment is allowed."

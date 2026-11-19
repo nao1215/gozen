@@ -239,10 +239,10 @@ func TestNestedCommandAliases(t *testing.T) {
 
 func TestSourceTextDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ field, want string }{
-		{`text_expr: '"Ready"'`, ""},
-		{`text_expr: '42'`, "expected string"},
-		{`text_expr: 'rand()'`, "pure"},
-		{`text: Ready, text_expr: '"Ready"'`, "not both"},
+		{`text: {expr: '"Ready"'}`, ""},
+		{`text: {expr: '42'}`, "expected string"},
+		{`text: {expr: 'rand()'}`, "pure"},
+		{`text_expr: '"Ready"'`, "now text: {expr"},
 	} {
 		_, err := data.Load(fstest.MapFS{
 			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},
@@ -287,10 +287,10 @@ func TestChoiceMutedDiagnostics(t *testing.T) {
 
 func TestChoiceSourceDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ field, want string }{
-		{`label_expr: '"Ready"'`, ""},
-		{`label_expr: '42'`, "expected string"},
-		{`label_expr: 'rand()'`, "pure"},
-		{`label: Ready, label_expr: '"Ready"'`, "not both"},
+		{`label: {expr: '"Ready"'}`, ""},
+		{`label: {expr: '42'}`, "expected string"},
+		{`label: {expr: 'rand()'}`, "pure"},
+		{`label_expr: '"Ready"'`, "now label: {expr"},
 	} {
 		_, err := data.Load(fstest.MapFS{
 			"game.yaml":       {Data: []byte("schema_version: 10\nid: sources\nstart: {location: room}\n")},

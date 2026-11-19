@@ -7,17 +7,17 @@ written_in: en
 languages: [en, ja]
 screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf}
-title_background: bg/hill.jpg
-title_text: {size: 120, subtitle_size: 34, subtitle_tracking: 0, color: "#fff4e0", edge: "#3a2414"}
-title_music: town
 # A phone that adds the browser page to its home screen shows this icon.
 web: {icon: icon.png}
 start:
   location: kettle
-  party: [you]
   event: opening
 data_version: 1
 ui:
+  title:
+    background: bg/hill.jpg
+    text: {size: 120, color: "#fff4e0", edge: "#3a2414", subtitle: {size: 34, tracking: 0}}
+    music: town
   message: novel
   rollback: 16
   window: "#2a1a12e0"

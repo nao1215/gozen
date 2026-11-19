@@ -59,19 +59,28 @@ func (b *Book) YAML(path string) ([]byte, error) { return yamlpath.At(b.src, pat
 
 // lexTag is the words of a lexicon tag, and the words that hold one of them without
 // meaning it: an occurrence of a word inside an occurrence of an except word is not
-// counted. In YAML it is a list of words, or {words: [...], except: [...]}.
+// counted. In YAML it is a list of words, or {words: [...], whole: [...], except: [...]},
+// where whole lists whole words of weight 1 (the same as {word: w, whole: true} in words).
 type lexTag struct {
 	Words  []lexEntry `yaml:"words"`
+	Whole  []string   `yaml:"whole"`
 	Except []string   `yaml:"except"`
 }
 
-// UnmarshalYAML reads a list of words or {words, except}.
+// UnmarshalYAML reads a list of words or {words, whole, except}.
 func (t *lexTag) UnmarshalYAML(unmarshal func(any) error) error {
 	if err := unmarshal(&t.Words); err == nil {
 		return nil
 	}
 	type plain lexTag
-	return unmarshal((*plain)(t))
+	if err := unmarshal((*plain)(t)); err != nil {
+		return err
+	}
+	for _, w := range t.Whole {
+		t.Words = append(t.Words, lexEntry{Text: w, Weight: 1, Whole: true})
+	}
+	t.Whole = nil
+	return nil
 }
 
 // lexEntry is a lexicon entry. In YAML it is a plain string (weight 1), a one-entry

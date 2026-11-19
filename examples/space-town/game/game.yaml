@@ -4,7 +4,7 @@ title: Lantern Inn
 language: en
 written_in: en
 screen: {width: 960, height: 540}
-start: {location: inn, party: [walker]}
+start: {location: inn}
 state:
   names:
     flag.bed_seen: {type: bool, initial: false}
