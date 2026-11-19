@@ -185,6 +185,59 @@ scenarios:
       exit_code: 1
       stderr:
         contains: ['stand needs schema_version: 4', 'wait as a map needs schema_version: 4']
+- name: check reports weather and tone out of their words and ranges
+  steps:
+  - fixture:
+      file: look/game.yaml
+      content: "schema_version: 12\nid: look\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: look/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events:
+          scene:
+            do:
+              - weather: hail
+              - weather: {kind: rain, power: 2}
+              - tone: noir
+              - tone: {vignette: 1.5}
+              - weather: {kind: snow, wind: -0.5, seconds: 2}
+              - tone: {color: "#ffd8a8", gray: 1, bright: -0.2, vignette: 0.3, seconds: 0}
+  - run:
+      command: gozen check --format json --only structure look
+  - assert:
+      exit_code: 1
+      stdout:
+        contains:
+        - '"path":"events.scene.do[0].weather"'
+        - '"path":"events.scene.do[1].weather.power"'
+        - '"path":"events.scene.do[2].tone"'
+        - '"path":"events.scene.do[3].tone.vignette"'
+        - '"code":"GZN1107"'
+        - '"code":"GZN1106"'
+        not_contains: 'do[4]'
+- name: weather and tone at schema_version 11 ask for version 12
+  steps:
+  - fixture:
+      file: old11/game.yaml
+      content: "schema_version: 11\nid: old11\nstart: {location: room, party: [reader]}\n"
+  - fixture:
+      file: old11/data/world.yaml
+      content: |
+        classes: {walker: {stats: {mhp: 9, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 9}}
+        actors: {reader: {class: walker}}
+        skills: {attack: {}, guard: {}}
+        locations: {room: {}}
+        events: {scene: {do: [{weather: rain}, {tone: sepia}]}}
+  - run:
+      command: gozen check --only structure old11
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: ['weather needs schema_version: 12', 'tone needs schema_version: 12']
 - name: check lists every text not translated in json and lays out each language
   steps:
   - fixture:

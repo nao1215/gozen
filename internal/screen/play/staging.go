@@ -192,6 +192,8 @@ func (g *Game) visual(e event.VisualEffect) {
 			col.A = 0xff
 		}
 		g.fadeColor = &colorFade{c: col, out: ticks(30), hold: int(math.Round(c.Hold * 60))}
+	case "weather", "tone":
+		g.changeLook(c.Name, int(math.Round(c.Seconds*60)))
 	default:
 		g.react(c.Who, c.Name)
 	}

@@ -5423,6 +5423,24 @@
         {
           "additionalProperties": false,
           "properties": {
+            "weather": {}
+          },
+          "required": [
+            "weather"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "tone": {}
+          },
+          "required": [
+            "tone"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "stand": {}
           },
           "required": [
@@ -6835,6 +6853,19 @@
           },
           "x-type": "[Command](#command)[]"
         },
+        "tone": {
+          "$ref": "#/$defs/ToneCue",
+          "description": "Changes how the scene is colored from now on, kept in saves: `gray`, `sepia`, `night`, `dusk` or `none`, or a map with `color`, `gray`, `bright`, `vignette` and `seconds`. Needs schema version 12.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[ToneCue](#tonecue) or string"
+        },
         "turn": {
           "description": "Turns in a dungeon: `left`, `right` or `back`.",
           "type": "string",
@@ -6886,6 +6917,19 @@
             "version": "2"
           },
           "x-type": "string"
+        },
+        "weather": {
+          "$ref": "#/$defs/WeatherCue",
+          "description": "Changes what falls over the scene from now on, kept in saves: `rain`, `snow`, `petals`, `embers` or `none`, or a map with `kind`, `power`, `wind`, `color` and `seconds`. Needs schema version 12.",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[WeatherCue](#weathercue) or string"
         }
       },
       "type": "object"
@@ -11556,7 +11600,8 @@
               8,
               9,
               10,
-              11
+              11,
+              12
             ]
           }
         },
@@ -11950,7 +11995,8 @@
             8,
             9,
             10,
-            11
+            11,
+            12
           ],
           "type": "integer",
           "x-contract": {
@@ -26000,6 +26046,86 @@
       ],
       "description": "The piece standing for the party on a map. Write a map, or the word `doll`."
     },
+    "ToneCue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bright": {
+              "description": "Darkens (down to -1, black) or lightens (up to 1, white) the scene. The default is 0.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "color": {
+              "description": "A color the scene is multiplied by. The default is white, which leaves it as drawn.",
+              "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+              "type": "string",
+              "x-contract": {
+                "default": "no color (the default of where it is drawn)",
+                "legacy_default": "no color (the default of where it is drawn)",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "color string"
+            },
+            "gray": {
+              "description": "Takes the color away, from 0 to 1 (gray). Applied before `color`, so gray and a warm color make sepia.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "seconds": {
+              "description": "How long the change takes, from 0 (at once) to 60. The default is 1.",
+              "type": "number",
+              "x-contract": {
+                "default": "nil; nothing is defined",
+                "legacy_default": "nil; nothing is defined",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "vignette": {
+              "description": "Darkens the edges of the screen, from 0 to 1. The default is 0.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "How the scene is colored, written as a preset word (`gray`, `sepia`, `night`, `dusk`, `none`) or a map of its parts (schema version 12). It colors the place and its pictures, not the windows or a battle."
+    },
     "ToneStyle": {
       "additionalProperties": false,
       "description": "Fills of workspace entry tones; unset colors keep the built-in look.",
@@ -27358,6 +27484,86 @@
         }
       ],
       "description": "A pause, written as seconds or a map (the map needs schema version 4)."
+    },
+    "WeatherCue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "description": "The color of the drops, flakes, petals or sparks. The default is each kind's own.",
+              "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+              "type": "string",
+              "x-contract": {
+                "default": "no color (the default of where it is drawn)",
+                "legacy_default": "no color (the default of where it is drawn)",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "color string"
+            },
+            "kind": {
+              "description": "`rain`, `snow`, `petals`, `embers`, or `none` to stop it.",
+              "type": "string",
+              "x-contract": {
+                "default": "empty string",
+                "legacy_default": "empty string",
+                "zero": "-",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "string"
+            },
+            "power": {
+              "description": "How much falls, from 0 to 1. The default is 0.5.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "seconds": {
+              "description": "How long the change takes, from 0 (at once) to 60. The default is 1.",
+              "type": "number",
+              "x-contract": {
+                "default": "nil; nothing is defined",
+                "legacy_default": "nil; nothing is defined",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            },
+            "wind": {
+              "description": "Leans the fall, from -1 (to the left) to 1 (to the right). The default is 0.",
+              "type": "number",
+              "x-contract": {
+                "default": "0",
+                "legacy_default": "0",
+                "zero": "0 is kept",
+                "required": "optional",
+                "reference": "-",
+                "version": "0, 1, 2"
+              },
+              "x-type": "number"
+            }
+          },
+          "type": "object"
+        }
+      ],
+      "description": "What falls over the scene, written as a word (the kind) or a map (schema version 12). It is drawn over the place and its pictures and under the windows, not in battle."
     },
     "WebPage": {
       "additionalProperties": false,

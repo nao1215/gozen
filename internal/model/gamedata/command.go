@@ -131,6 +131,10 @@ type Command struct {
 	ResetActor string    `yaml:"reset_actor" command:"verb"`
 	Level      int       `yaml:"level" command:"reset_actor"`
 	Effect     EffectCue `yaml:"effect" command:"verb"`
+	// Weather changes what falls over the scene, and Tone how the scene is colored, from
+	// now on and in saves (schema_version 12, ADR 0066).
+	Weather *WeatherCue `yaml:"weather" command:"verb" json:",omitempty"`
+	Tone    *ToneCue    `yaml:"tone" command:"verb" json:",omitempty"`
 	// Stand brings a portrait onto the stage of the novel window or takes it off
 	// (schema_version 4, ADR 0028).
 	Stand *Stand `yaml:"stand" command:"verb"`

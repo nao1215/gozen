@@ -205,8 +205,9 @@ func repositoryTexts(t *testing.T, visit func(name string, contents []byte)) {
 // come back as code, YAML, schema, documentation or fixtures; only the changelog keeps
 // their history. Returning one needs a new ADR, which also deletes its line here.
 var removedFeatures = []string{
-	// The casual-game runner: runners in game.yaml, the run_game command and schema 12.
-	"run_game", "RunnerDefinition", "SchemaVersion12", "rules/casual", "0064-casual-game-runtime", "casual-activities",
+	// The casual-game runner: runners in game.yaml and the run_game command. Its schema 12
+	// was never released, and ADR 0066 gives the number to weather and tone.
+	"run_game", "RunnerDefinition", "rules/casual", "0064-casual-game-runtime", "casual-activities",
 	// The gozen migrate command; YAML and saves have no migration tools before v1.0.0.
 	"gozen migrate",
 }

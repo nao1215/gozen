@@ -59,6 +59,9 @@ type State struct {
 	Chose map[string]string `json:"chose,omitempty"`
 	// Flows is how far each flow of screens has come (game.yaml flows).
 	Flows map[string]FlowProgress `json:"flows,omitempty"`
+	// Look is the weather and the tone the weather and tone commands left (nil: neither;
+	// ADR 0066). The time a change takes is the screen's, not saved.
+	Look *Look `json:"look,omitempty"`
 	// Inbox holds the chat messages not yet opened, oldest first (message command).
 	Inbox []InboxMessage `json:"inbox,omitempty"`
 	// RecruitSeed and RecruitDraws keep capture and birth draws separate from
@@ -1044,4 +1047,34 @@ type FlowProgress struct {
 	Reached int    `json:"reached"`
 	Key     string `json:"key,omitempty"`
 	Entered []int  `json:"entered,omitempty"`
+}
+
+// Look is how the scene looks over what its place and pictures draw: what falls over it and
+// how it is colored (ADR 0066).
+type Look struct {
+	Weather *data.Weather `json:"weather,omitempty"`
+	Tone    *data.Tone    `json:"tone,omitempty"`
+}
+
+// SetWeather keeps w as the weather (nil: none), and drops the look when nothing is left.
+func (s *State) SetWeather(w *data.Weather) {
+	s.setLook(func(l *Look) { l.Weather = w })
+}
+
+// SetTone keeps t as the tone (nil: the scene as drawn), and drops the look when nothing is left.
+func (s *State) SetTone(t *data.Tone) {
+	s.setLook(func(l *Look) { l.Tone = t })
+}
+
+func (s *State) setLook(change func(*Look)) {
+	l := Look{}
+	if s.Look != nil {
+		l = *s.Look
+	}
+	change(&l)
+	if l.Weather == nil && l.Tone == nil {
+		s.Look = nil
+		return
+	}
+	s.Look = &l
 }

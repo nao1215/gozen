@@ -7,6 +7,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 ### Added
 
 - A browser export opens again without a network once it has been played (ADR 0065). The export writes `sw.js`, a service worker the page registers: it asks the host first, keeps every file the page reads and answers from them when the host cannot be reached. Online the page plays the export the host serves now, and the files of an earlier export are removed once the new one has come whole. The recorded voices of a stream are kept once heard. Service workers need an HTTPS host or `localhost`.
+- The `weather` command makes rain, snow, petals or embers fall over the scene (`power`, `wind`, `color`), and `tone` colors it with a preset (`gray`, `sepia`, `night`, `dusk`) or its parts (`color`, `gray`, `bright`, `vignette`) (ADR 0066). Both last until changed, ease in over `seconds`, are kept in saves, and are drawn over the place, its pictures and portraits and under the windows, not in battle. They need schema version 12. Visual change: After the Pass lets snow fall on the hill and colors Brenna's memory, and Go Zen colors the memory of the brass wall and scatters petals over the final square.
 
 ### Changed
 

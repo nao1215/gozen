@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/nao1215/gozen/internal/base/diag"
+	"github.com/nao1215/gozen/internal/base/safeint"
 	"github.com/nao1215/gozen/internal/model/puppetdef"
 )
 
@@ -276,5 +277,214 @@ func (c *checker) musicCommand(w string, m MusicCue) {
 	if !m.Stop {
 		m.Fade = 0
 		c.music(w, m)
+	}
+}
+
+// Weather kinds fall over the scene (ADR 0066): WeatherNone clears it.
+const (
+	WeatherNone   = "none"
+	WeatherRain   = "rain"
+	WeatherSnow   = "snow"
+	WeatherPetals = "petals"
+	WeatherEmbers = "embers"
+)
+
+// WeatherKinds are the words weather takes, in the order the documentation lists them.
+func WeatherKinds() []string {
+	return []string{WeatherRain, WeatherSnow, WeatherPetals, WeatherEmbers, WeatherNone}
+}
+
+// WeatherCue is the weather command: what falls over the scene from now on, until another
+// weather command changes it, kept in saves. A word is the kind at its default power.
+type WeatherCue struct {
+	// Kind is rain, snow, petals, embers or none.
+	Kind string `yaml:"kind"`
+	// Power is how much falls, from 0 (nothing) to 1 (a storm); 0.5 when left out.
+	Power float64 `yaml:"power"`
+	// Wind leans the fall, from -1 (to the left) to 1 (to the right).
+	Wind float64 `yaml:"wind"`
+	// Color is the color of the drops, flakes, petals or sparks (each kind's own when left out).
+	Color Color `yaml:"color"`
+	// Seconds is how long the change takes (1 when left out; 0 with seconds: 0 is at once).
+	Seconds *float64 `yaml:"seconds"`
+}
+
+// UnmarshalYAML reads a word (the kind) or a map.
+func (w *WeatherCue) UnmarshalYAML(unmarshal func(any) error) error {
+	var t string
+	if err := unmarshal(&t); err == nil {
+		*w = WeatherCue{Kind: t}
+		return nil
+	}
+	type plain WeatherCue
+	return unmarshal((*plain)(w))
+}
+
+// Weather is what the state keeps of a weather command: the kind and how it falls, without
+// the time the change took.
+type Weather struct {
+	Kind  string  `json:"kind"`
+	Power float64 `json:"power"`
+	Wind  float64 `json:"wind,omitempty"`
+	// Color is #rrggbb, empty for the kind's own.
+	Color string `json:"color,omitempty"`
+}
+
+// Weather is what the cue leaves falling; nil for none.
+func (w WeatherCue) Weather() *Weather {
+	if w.Kind == WeatherNone || w.Kind == "" {
+		return nil
+	}
+	out := &Weather{Kind: w.Kind, Power: w.Power, Wind: w.Wind}
+	if out.Power == 0 {
+		out.Power = 0.5
+	}
+	if w.Color.Valid {
+		out.Color = fmt.Sprintf("#%02x%02x%02x", w.Color.R, w.Color.G, w.Color.B)
+	}
+	return out
+}
+
+// Ticks is how long the change takes at 60 ticks a second.
+func (w WeatherCue) Ticks() int { return cueTicks(w.Seconds) }
+
+// cueTicks is seconds at 60 ticks a second, a second when left out.
+func cueTicks(seconds *float64) int {
+	if seconds == nil {
+		return 60
+	}
+	return safeint.From(math.Round(*seconds * 60))
+}
+
+// Tone presets are the words tone takes (ADR 0066): ToneNone restores the colors.
+const (
+	ToneNone  = "none"
+	ToneGray  = "gray"
+	ToneSepia = "sepia"
+	ToneNight = "night"
+	ToneDusk  = "dusk"
+)
+
+// TonePreset is the tone a word names (false for none or a word that is not a preset).
+func TonePreset(word string) (Tone, bool) {
+	switch word {
+	case ToneGray:
+		return Tone{Gray: 1}, true
+	case ToneSepia:
+		return Tone{Gray: 1, Color: "#ffdcaa", Vignette: 0.3}, true
+	case ToneNight:
+		return Tone{Color: "#7080c0", Bright: -0.25, Vignette: 0.45}, true
+	case ToneDusk:
+		return Tone{Color: "#ffb88a", Vignette: 0.2}, true
+	}
+	return Tone{}, false
+}
+
+// ToneCue is the tone command: how the scene is colored from now on, until another tone
+// command changes it, kept in saves. A word is a preset (gray, sepia, night, dusk, none);
+// a map sets the parts itself, starting from the scene as drawn.
+type ToneCue struct {
+	// Preset is the word of the word form.
+	Preset string `yaml:"-"`
+	// Color multiplies the scene (white leaves it as drawn).
+	Color Color `yaml:"color"`
+	// Gray takes the color away, from 0 (none) to 1 (gray).
+	Gray float64 `yaml:"gray"`
+	// Bright darkens (down to -1, black) or lightens (up to 1, white) the scene.
+	Bright float64 `yaml:"bright"`
+	// Vignette darkens the edges of the screen, from 0 to 1.
+	Vignette float64 `yaml:"vignette"`
+	// Seconds is how long the change takes (1 when left out; seconds: 0 is at once).
+	Seconds *float64 `yaml:"seconds"`
+}
+
+// UnmarshalYAML reads a word (a preset) or a map.
+func (t *ToneCue) UnmarshalYAML(unmarshal func(any) error) error {
+	var word string
+	if err := unmarshal(&word); err == nil {
+		*t = ToneCue{Preset: word}
+		return nil
+	}
+	type plain ToneCue
+	return unmarshal((*plain)(t))
+}
+
+// Tone is what the state keeps of a tone command: the parts, without the time the change took.
+type Tone struct {
+	// Color is #rrggbb, empty for white.
+	Color    string  `json:"color,omitempty"`
+	Gray     float64 `json:"gray,omitempty"`
+	Bright   float64 `json:"bright,omitempty"`
+	Vignette float64 `json:"vignette,omitempty"`
+}
+
+// Tone is how the cue leaves the scene colored; nil for the scene as drawn.
+func (t ToneCue) Tone() *Tone {
+	if t.Preset != "" {
+		p, ok := TonePreset(t.Preset)
+		if !ok {
+			return nil
+		}
+		return &p
+	}
+	out := Tone{Gray: t.Gray, Bright: t.Bright, Vignette: t.Vignette}
+	if t.Color.Valid {
+		out.Color = fmt.Sprintf("#%02x%02x%02x", t.Color.R, t.Color.G, t.Color.B)
+	}
+	if out == (Tone{}) || out == (Tone{Color: "#ffffff"}) {
+		return nil
+	}
+	return &out
+}
+
+// Ticks is how long the change takes at 60 ticks a second.
+func (t ToneCue) Ticks() int { return cueTicks(t.Seconds) }
+
+// weatherCue checks a weather command: its kind, and its numbers in their ranges.
+func (c *checker) weatherCue(w string, cue WeatherCue) {
+	if !c.needsVersion(w, "weather", SchemaVersion12) {
+		return
+	}
+	if kinds := WeatherKinds(); !slices.Contains(kinds, cue.Kind) {
+		c.errorf(diag.NotAWord, w, "want %s, not %q", strings.Join(kinds, ", "), cue.Kind)
+	}
+	if !finiteNumber(cue.Power) || cue.Power < 0 || cue.Power > 1 {
+		c.errorf(diag.OutOfRange, w+".power", "power is from 0 to 1")
+	}
+	if !finiteNumber(cue.Wind) || cue.Wind < -1 || cue.Wind > 1 {
+		c.errorf(diag.OutOfRange, w+".wind", "wind is from -1 to 1")
+	}
+	c.cueSeconds(w, cue.Seconds)
+	if cue.Kind == WeatherNone && (cue.Power != 0 || cue.Wind != 0 || cue.Color.Valid) {
+		c.errorf(diag.Shape, w, "weather none takes only seconds")
+	}
+}
+
+// toneCue checks a tone command: a preset word, or its parts in their ranges.
+func (c *checker) toneCue(w string, cue ToneCue) {
+	if !c.needsVersion(w, "tone", SchemaVersion12) {
+		return
+	}
+	if cue.Preset != "" {
+		if _, ok := TonePreset(cue.Preset); !ok && cue.Preset != ToneNone {
+			c.errorf(diag.NotAWord, w, "want %s, %s, %s, %s, %s or a map, not %q", ToneGray, ToneSepia, ToneNight, ToneDusk, ToneNone, cue.Preset)
+		}
+		return
+	}
+	for _, part := range []struct {
+		name      string
+		v, lo, hi float64
+	}{{"gray", cue.Gray, 0, 1}, {"bright", cue.Bright, -1, 1}, {"vignette", cue.Vignette, 0, 1}} {
+		if !finiteNumber(part.v) || part.v < part.lo || part.v > part.hi {
+			c.errorf(diag.OutOfRange, w+"."+part.name, "%s is from %g to %g", part.name, part.lo, part.hi)
+		}
+	}
+	c.cueSeconds(w, cue.Seconds)
+}
+
+// cueSeconds checks the seconds a weather or tone change takes.
+func (c *checker) cueSeconds(w string, seconds *float64) {
+	if seconds != nil && (!finiteNumber(*seconds) || *seconds < 0 || *seconds > 60) {
+		c.errorf(diag.OutOfRange, w+".seconds", "seconds is from 0 to 60")
 	}
 }
