@@ -736,7 +736,7 @@ func (g *Game) initializeAudio() error {
 		}
 		songs := songsOf(db)
 		if len(songs) > 0 {
-			first := db.Game.TitleBGM.Song
+			first := db.Game.UI.Title.Music.Song
 			if first == "" {
 				first = songs[0].Name
 			}

@@ -326,7 +326,7 @@ func (s *galleryScreen) syncMusicList() {
 func (g *Game) drawMusicBG(dst *ebiten.Image, r *musicRoom) {
 	sw, sh := g.screen()
 	if r.bg == "" {
-		g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+		g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 		return
 	}
 	a := float32(min(1, float64(r.bgT)/float64(max(1, r.fade))))

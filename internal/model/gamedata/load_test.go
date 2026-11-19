@@ -1,7 +1,10 @@
 package gamedata
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/png"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -97,6 +100,7 @@ func TestTacticYAMLDefaults(t *testing.T) {
 		{"{condition: any, action: attack}", false},
 		{"{enabled: true, condition: any, action: attack}", true},
 		{"{enabled: false, condition: any, action: attack}", false},
+		{"{action: attack}", false},
 	} {
 		for _, version := range []int{10, 11} {
 			var row TacticRow
@@ -116,7 +120,67 @@ func TestTacticYAMLDefaults(t *testing.T) {
 			if row.Enabled != want {
 				t.Fatalf("version %d %s: got %v", version, tc.body, row.Enabled)
 			}
+			if row.Condition != "any" {
+				t.Fatalf("version %d %s: condition %q, want any", version, tc.body, row.Condition)
+			}
 		}
+	}
+}
+
+// TestLoadFillsConventions: an enemy without image takes assets/enemies/<id>.png when the
+// file is there, a monster without monster_class takes monster_<family> when the game has
+// it, and a stat left out of an enemy or a class is 0, while mhp stays required.
+func TestLoadFillsConventions(t *testing.T) {
+	game := "schema_version: 11\nid: t\nstart: {location: a, party: [hero]}\n"
+	data := `skills:
+  attack: {name: Attack, effects: [{damage: 1}]}
+  guard: {name: Guard, scope: self}
+classes:
+  hero: {name: Hero, stats: {mhp: 10, atk: 2}, exp_for: level * 10}
+  monster_slime: {name: Slime, stats: {mhp: 5}, exp_for: level * 10}
+actors: {hero: {name: Hero, class: hero}}
+locations: {a: {name: A}}
+monster_families: {slime: Slime}
+enemies:
+  slime: {name: Slime, family: slime, rank: 1, stats: {mhp: 5, atk: 1}}
+  bat: {name: Bat, image: other/bat.png, monster_class: hero, family: slime, rank: 1, stats: {mhp: 3}}
+`
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	pic := &fstest.MapFile{Data: b.Bytes()}
+	fsys := fstest.MapFS{
+		"game.yaml":                {Data: []byte(game)},
+		"data/w.yaml":              {Data: []byte(data)},
+		"assets/enemies/slime.png": pic,
+		"assets/other/bat.png":     pic,
+	}
+	db, err := Load(fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slime, bat := db.Enemies["slime"], db.Enemies["bat"]
+	if slime.Image.File != "enemies/slime.png" || slime.MonsterClass != "monster_slime" {
+		t.Fatalf("slime: image %q, class %q", slime.Image.File, slime.MonsterClass)
+	}
+	if bat.Image.File != "other/bat.png" || bat.MonsterClass != "hero" {
+		t.Fatalf("bat kept its own: image %q, class %q", bat.Image.File, bat.MonsterClass)
+	}
+	if v, ok := slime.Stats["luk"]; !ok || v != 0 || slime.Stats["atk"] != 1 {
+		t.Fatalf("slime stats %v", slime.Stats)
+	}
+	if e, ok := db.Classes["hero"].Stats["mdf"]; !ok || !e.Set() {
+		t.Fatalf("hero stats %v", db.Classes["hero"].Stats)
+	}
+	fsys["data/w.yaml"] = &fstest.MapFile{Data: []byte(strings.Replace(data, "stats: {mhp: 10, atk: 2}", "stats: {atk: 2}", 1))}
+	if _, err := Load(fsys); err == nil || !strings.Contains(err.Error(), "stats.mhp is missing") {
+		t.Fatalf("a class without mhp: %v", err)
+	}
+	delete(fsys, "assets/enemies/slime.png")
+	fsys["data/w.yaml"] = &fstest.MapFile{Data: []byte(data)}
+	if _, err := Load(fsys); err == nil || !strings.Contains(err.Error(), "image is missing") {
+		t.Fatalf("an enemy without its picture: %v", err)
 	}
 }
 

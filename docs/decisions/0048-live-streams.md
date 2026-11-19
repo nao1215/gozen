@@ -55,6 +55,7 @@ Comments go to the host's `react` person (`reactions:` in `game.yaml`, ADR 0015)
 - a lexicon word may be `{word: cat, whole: true}`: matched in the text as written, ignoring case, between word boundaries (for Latin words);
 - a lexicon word may be `{word: WORD, exact: true}`: matched in the text as written, ignoring only case (a katakana word that the normalization would turn into unrelated words);
 - a tag may be `{words: [...], except: [...]}`: an occurrence of a word inside an occurrence of an except word is not counted, while another occurrence of a word still is;
+- a tag may list its whole words apart, `{words: [...], whole: [kid, kids], except: [...]}`, which reads as `{word: kid, whole: true}` for each (a book of many Latin words writes each once);
 - a rule's `say` entry may be a list of lines spoken in order, and `{text}` inserts the comment.
 
 ### Rules (`internal/rules/broadcast`, no drawing)

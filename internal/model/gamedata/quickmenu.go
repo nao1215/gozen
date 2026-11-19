@@ -40,8 +40,8 @@ func (c *checker) novelWindow(u *UIStyle) {
 	if sv := u.Saves; sv != nil && (sv.Slots < 0 || sv.Slots > MaxSaveSlots) {
 		c.errorf(diag.OutOfRange, "game.yaml ui.saves.slots", "want 1 to %d slots (0 keeps 3), got %d", MaxSaveSlots, sv.Slots)
 	}
-	if u.Title != nil {
-		c.needsVersion("game.yaml ui.title", "ui.title", SchemaVersion10)
+	if u.Title.HideDisabled {
+		c.needsVersion("game.yaml ui.title.hide_disabled", "ui.title.hide_disabled", SchemaVersion10)
 	}
 	if m := u.Material; m != nil {
 		for role, o := range m.Opacities {

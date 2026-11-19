@@ -725,9 +725,9 @@ func TestGraphicsNovelPhonePalette(t *testing.T) {
 	}{
 		{"default-page", "page", "", phoneBubble},
 		{"default-chat", "chat", "", phoneMine},
-		{"theme-page", "themed", "phone_background: '#503020', phone_text: '#ffffff'", color.NRGBA{0x50, 0x30, 0x20, 255}},
-		{"accent-page", "page", "phone_accent: '#b030a0'", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
-		{"accent-chat", "chat", "phone_accent: '#b030a0'", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
+		{"theme-page", "themed", "phone: {background: '#503020', text: '#ffffff'}", color.NRGBA{0x50, 0x30, 0x20, 255}},
+		{"accent-page", "page", "phone: {accent: '#b030a0'}", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
+		{"accent-chat", "chat", "phone: {accent: '#b030a0'}", color.NRGBA{0xb0, 0x30, 0xa0, 255}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			write("game.yaml", "schema_version: 11\nid: phone-palette\n"+testgame.Game+"\nfonts: {regular: test.ttf}\nscreen: {width: 1280, height: 720}\nui: {"+tc.ui+"}\n")

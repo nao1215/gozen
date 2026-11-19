@@ -88,11 +88,12 @@ enabled by default in schema 11:
 battle:
   auto_tactics:
     scout_ai:
-      - {condition: any, action: attack}
       - {enabled: false, condition: low_hp, action: guard}
+      - {action: attack}
 ```
 
-The IDs in this fragment must be defined in the game's tactic catalog. A false
+The IDs in this fragment must be defined in the game's tactic catalog. A row
+without `condition` uses `any`. A false
 row remains editable but does not run. Old schema versions retain the old
 omitted-is-false rule.
 

@@ -4,4 +4,4 @@ title: Terrace Quarter
 language: en
 written_in: en
 screen: {width: 960, height: 540}
-start: {location: courtyard, party: [walker]}
+start: {location: courtyard}

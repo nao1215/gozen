@@ -266,7 +266,7 @@ func (s *profileScreen) drawGrid(g *Game, dst *ebiten.Image) {
 		}
 		g.prepareMaterial(dst, "")
 	} else {
-		g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+		g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 		fill(dst, withAlpha(colorBlack, 0xa8))
 	}
 	// The band: the way back, the title and how many are met. Read-only text sits on

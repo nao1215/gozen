@@ -258,7 +258,7 @@ func (g *Game) pageAccent(p *phoneView) (color.NRGBA, bool) {
 
 func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 	textStart, controlStart := g.screenOffsets()
-	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.PhoneBackground.Or(phoneBubble), false)
+	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.Phone.Background.Or(phoneBubble), false)
 	for i, l := range p.pageLayout(g, w) {
 		if l.h == 0 {
 			continue
@@ -456,15 +456,15 @@ func (p *phoneView) drawQR(dst *ebiten.Image, text string, cx, y, side float64) 
 }
 
 func (g *Game) phoneAccent() color.NRGBA {
-	return g.db.Game.UI.PhoneAccent.Or(phoneMine)
+	return g.db.Game.UI.Phone.Accent.Or(phoneMine)
 }
 
 func (g *Game) pageInk(_ *phoneView) color.NRGBA {
-	return g.db.Game.UI.PhoneText.Or(phoneInk)
+	return g.db.Game.UI.Phone.Text.Or(phoneInk)
 }
 
 func (g *Game) pageMuted(_ *phoneView) color.NRGBA {
-	return g.db.Game.UI.PhoneMuted.Or(phoneMuted)
+	return g.db.Game.UI.Phone.Muted.Or(phoneMuted)
 }
 
 // homeLayout shares authored row identities with page outcomes while arranging
@@ -537,7 +537,7 @@ func (g *Game) updatePhoneHome(p *phoneView) {
 
 func (g *Game) drawPhoneHome(p *phoneView, dst *ebiten.Image, w, h float64) {
 	textStart, controlStart := g.screenOffsets()
-	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.PhoneBackground.Or(phoneBubble), false)
+	gfx.FillRect(dst, 0, 0, float32(w), float32(h), g.db.Game.UI.Phone.Background.Or(phoneBubble), false)
 	for i, row := range p.pageLayout(g, w) {
 		y := phoneFeedTop + row.top - p.scroll
 		if row.h == 0 || y+row.h <= phoneFeedTop || y >= h {

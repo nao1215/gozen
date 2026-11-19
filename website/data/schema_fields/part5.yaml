@@ -49,14 +49,12 @@ Rule:
   weight: "The weight when one of the top-priority rules is drawn at random. The default is 1."
   when: "A condition for the rule, with `self`, `allies`, `foes`, `turn`, `flag` and `var` available."
 Say:
-  face_expr: Pure string expression selecting a speaker face (or an image path for a named speaker); exclusive with face. Empty uses the actor default (schema 10).
   instant: Show each page in full immediately; one advance moves to the next page or line.
-  text_expr: Pure string expression selecting the source template before read-key hashing and translation; exclusive with text (schema 10).
   ensemble: "Optional ensemble planning screen displayed behind a box-style dialogue line with the active speaker highlighted."
   _: "A line of dialogue, written as a plain string or as a map with the speaker, face and text."
   who: "Who speaks: an actor ID, or any name to show."
-  face: "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`."
-  text: "The line. A line may be written as just this text."
+  face: "A face of the speaking actor (the actor's own face when left out), or for a speaker who is not an actor, a picture path under `assets/`. `{expr: ...}` picks it with a pure string expression; an empty result uses the actor default (schema 10)."
+  text: "The line. A line may be written as just this text. `{expr: ...}` picks the source template with a pure string expression, before read-key hashing and translation (schema 10)."
   side: "`left` or `right`, where the speaker stands. The default is `left` for an actor and `right` for any other speaker."
   instead: "In battle, replacement lines by other actors, said when `who` is down: the first speaker not down says theirs. Not used outside battle."
   voice: "The line's voice: for an actor with `voices`, a name in that folder (the `.ogg` or `.wav` may be left out); for anyone else, a path under `assets/`. Needs schema version 4."

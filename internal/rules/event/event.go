@@ -1093,7 +1093,7 @@ func (r *Runner) run(c *data.Command) Request {
 			if ok {
 				source, err := selectedSource(o.Label, o.LabelExpr, env)
 				if err != nil {
-					r.logf(fmt.Errorf("choice.label_expr: %w", err))
+					r.logf(fmt.Errorf("choice.label.expr: %w", err))
 					continue
 				}
 				r.options = append(r.options, o)
@@ -1660,16 +1660,16 @@ func (r *Runner) line(s *data.Say, env expr.Env) (Say, bool) {
 	}
 	source, err := selectedSource(s.Text, s.TextExpr, env)
 	if err != nil {
-		r.logf(fmt.Errorf("say.text_expr: %w", err))
+		r.logf(fmt.Errorf("say.text.expr: %w", err))
 		return Say{}, false
 	}
 	if s.TextExpr.Set() && s.Values != nil {
-		r.logf(errors.New("say.text_expr: expected a string source without reaction values"))
+		r.logf(errors.New("say.text.expr: expected a string source without reaction values"))
 		return Say{}, false
 	}
 	face, err := selectedSource(s.Face, s.FaceExpr, env)
 	if err != nil {
-		r.logf(fmt.Errorf("say.face_expr: %w", err))
+		r.logf(fmt.Errorf("say.face.expr: %w", err))
 		return Say{}, false
 	}
 	out := Say{Name: who, Key: SourceKey(who, source), Ensemble: s.Ensemble, Instant: s.Instant}

@@ -5,9 +5,6 @@ subtitle: Every Line Walked
 language: en
 screen: {width: 1920, height: 1080}
 fonts: {regular: fonts/mplus-1p-regular.ttf, title: fonts/uncial-antiqua-regular.ttf, subtitle: fonts/cinzel.ttf}
-title_background: maps/town.jpg
-title_text: {size: 120, tracking: 0.02, subtitle_size: 32, subtitle_tracking: 0.04, color: "#fff7e4", edge: "#183e4a"}
-title_music: title
 start:
   location: plaza
   party: [maren]
@@ -20,6 +17,10 @@ max_party: 4
 join_exp: party.avg_exp
 terms: {currency: G, level: Lv, hp: HP, mp: MP, exp: EXP}
 ui:
+  title:
+    background: maps/town.jpg
+    text: {size: 120, tracking: 0.02, color: "#fff7e4", edge: "#183e4a", subtitle: {size: 32, tracking: 0.04}}
+    music: title
   bestiary: true
   profiles: true
   window: "#10303ce8"
@@ -46,22 +47,22 @@ battle:
       - {condition: boss_fight, action: forged_map}
       - {condition: unmarked, action: chart}
       - {condition: low_mp, action: guard}
-      - {condition: any, action: ink_burst}
-      - {condition: any, action: attack}
+      - {action: ink_burst}
+      - {action: attack}
     ox_ai:
       - {condition: unwarded, action: hold_line}
-      - {condition: any, action: shield_rush}
-      - {condition: any, action: attack}
+      - {action: shield_rush}
+      - {action: attack}
     tilly_ai:
       - {condition: ally_hurt, action: mend}
-      - {condition: any, action: blessing}
-      - {condition: any, action: lucky_toss}
-      - {condition: any, action: attack}
+      - {action: blessing}
+      - {action: lucky_toss}
+      - {action: attack}
     kes_ai:
       - {condition: crowd, action: storm_coil}
       - {condition: ally_hurt, action: overclock}
-      - {condition: any, action: arc_bolt}
-      - {condition: any, action: attack}
+      - {action: arc_bolt}
+      - {action: attack}
   tactic_presets:
     balanced:
       name: Balanced
@@ -70,20 +71,20 @@ battle:
         maren_ai:
           - {condition: boss_fight, action: forged_map}
           - {condition: unmarked, action: chart}
-          - {condition: any, action: ink_burst}
-          - {condition: any, action: attack}
+          - {action: ink_burst}
+          - {action: attack}
         ox_ai:
           - {condition: unwarded, action: hold_line}
-          - {condition: any, action: shield_rush}
-          - {condition: any, action: attack}
+          - {action: shield_rush}
+          - {action: attack}
         tilly_ai:
           - {condition: ally_hurt, action: mend}
-          - {condition: any, action: blessing}
-          - {condition: any, action: attack}
+          - {action: blessing}
+          - {action: attack}
         kes_ai:
           - {condition: crowd, action: storm_coil}
-          - {condition: any, action: arc_bolt}
-          - {condition: any, action: attack}
+          - {action: arc_bolt}
+          - {action: attack}
     cautious:
       name: Cautious
       description: "Mend early, brace when the ink runs low, and let Ox stand in front."
@@ -92,36 +93,36 @@ battle:
           - {condition: low_mp, action: guard}
           - {condition: boss_fight, action: forged_map}
           - {condition: unmarked, action: chart}
-          - {condition: any, action: attack}
+          - {action: attack}
         ox_ai:
           - {condition: unwarded, action: hold_line}
-          - {condition: any, action: attack}
+          - {action: attack}
         tilly_ai:
           - {condition: ally_hurt, action: mend}
-          - {condition: any, action: blessing}
-          - {condition: any, action: attack}
+          - {action: blessing}
+          - {action: attack}
         kes_ai:
           - {condition: ally_hurt, action: overclock}
-          - {condition: any, action: arc_bolt}
-          - {condition: any, action: attack}
+          - {action: arc_bolt}
+          - {action: attack}
     all_out:
       name: All out
       description: "Throw everything at it and get home for supper."
       rows:
         maren_ai:
           - {condition: boss_fight, action: forged_map}
-          - {condition: any, action: ink_burst}
-          - {condition: any, action: attack}
+          - {action: ink_burst}
+          - {action: attack}
         ox_ai:
-          - {condition: any, action: shield_rush}
-          - {condition: any, action: attack}
+          - {action: shield_rush}
+          - {action: attack}
         tilly_ai:
-          - {condition: any, action: lucky_toss}
-          - {condition: any, action: attack}
+          - {action: lucky_toss}
+          - {action: attack}
         kes_ai:
           - {condition: crowd, action: storm_coil}
-          - {condition: any, action: arc_bolt}
-          - {condition: any, action: attack}
+          - {action: arc_bolt}
+          - {action: attack}
 gallery:
   music: town
   cgs:

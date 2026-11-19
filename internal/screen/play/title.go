@@ -21,7 +21,7 @@ type title struct {
 func newTitle(g *Game) *title {
 	t := &title{menu: g.titleMenu()}
 	// a game with menus: none makes a title only to open in its place (New)
-	if c := g.db.Game.TitleBGM; c.Song != "" && !g.db.Game.NoMenus() {
+	if c := g.db.Game.UI.Title.Music; c.Song != "" && !g.db.Game.NoMenus() {
 		mood := c.Mood
 		if mood == "" {
 			mood = sound.Neutral
@@ -61,7 +61,7 @@ func (g *Game) titleMenu() *list {
 	if canQuit {
 		items = append(items, listItem{label: lang.T("おわる"), id: "quit"})
 	}
-	if t := g.db.Game.UI.Title; t != nil && t.HideDisabled {
+	if g.db.Game.UI.Title.HideDisabled {
 		// ui.title.hide_disabled: an entry that cannot be chosen now is left out, not grayed.
 		items = slices.DeleteFunc(items, func(it listItem) bool { return it.disabled })
 	}
@@ -113,10 +113,10 @@ func (t *title) update(g *Game) {
 func (t *title) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
 	gm := g.db.Game
-	g.drawPicture(dst, gm.TitleBG, 0, 0, sw, sh, 1)
+	g.drawPicture(dst, gm.UI.Title.Background, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0x40))
-	if len(gm.TitleFigures) > 0 {
-		for i, f := range gm.TitleFigures {
+	if len(gm.UI.Title.Pictures) > 0 {
+		for i, f := range gm.UI.Title.Pictures {
 			rise := math.Max(0, math.Min(1, float64(t.age-i*8)/40))
 			bottom, h := f.Bottom, f.Height
 			if bottom == 0 && gm.SchemaVersion == data.LegacySchemaVersion {
@@ -127,19 +127,19 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 			}
 			g.drawStanding(dst, f.File, sw*f.X, sh*bottom+(1-rise)*30, sh*h, float32(rise), false, nil)
 		}
-	} else if gm.TitleArt.File != "" {
+	} else if gm.UI.Title.Picture.File != "" {
 		rise := math.Min(1, float64(t.age)/40)
 		const bob = 0
 		cs := &ebiten.ColorScale{}
-		tint(cs, gm.TitleArt)
-		g.drawStanding(dst, gm.TitleArt.File, sw*0.72, sh*1.25+bob+(1-rise)*60, sh*1.25-headRoom, float32(rise), false, cs)
+		tint(cs, gm.UI.Title.Picture)
+		g.drawStanding(dst, gm.UI.Title.Picture.File, sw*0.72, sh*1.25+bob+(1-rise)*60, sh*1.25-headRoom, float32(rise), false, cs)
 	}
 	a := float32(math.Min(1, float64(t.age)/30))
 	tx := sw * 0.3
 	if g.titleCentered() {
 		tx = sw / 2
 	}
-	tt := gm.TitleText
+	tt := gm.UI.Title.Text
 	size, track, subSize, subTrack := 96.0, 0.12, 30.0, 0.3
 	if tt.Size > 0 {
 		size = tt.Size
@@ -147,11 +147,11 @@ func (t *title) draw(g *Game, dst *ebiten.Image) {
 	if tt.Tracking != nil {
 		track = *tt.Tracking
 	}
-	if tt.SubtitleSize > 0 {
-		subSize = tt.SubtitleSize
+	if tt.Subtitle.Size > 0 {
+		subSize = tt.Subtitle.Size
 	}
-	if tt.SubtitleTracking != nil {
-		subTrack = *tt.SubtitleTracking
+	if tt.Subtitle.Tracking != nil {
+		subTrack = *tt.Subtitle.Tracking
 	}
 	fill, edge := tt.Color.Or(g.th.text), tt.Edge.Or(withAlpha(g.th.window, 0xff))
 	gfx.DrawTitleText(dst, gm.Title, tx, sh*0.1, size, track, fill, edge, a, false)
@@ -264,7 +264,7 @@ func newEnding(g *Game) *ending {
 	}
 	e := &ending{pic: pic}
 	if e.pic == "" {
-		e.pic = g.db.Game.TitleBG.File
+		e.pic = g.db.Game.UI.Title.Background.File
 	}
 	return e
 }
@@ -296,5 +296,5 @@ func (s *ending) draw(g *Game, dst *ebiten.Image) {
 }
 
 func (g *Game) titleCentered() bool {
-	return len(g.db.Game.TitleFigures) == 0 && g.db.Game.TitleArt.File == ""
+	return len(g.db.Game.UI.Title.Pictures) == 0 && g.db.Game.UI.Title.Picture.File == ""
 }

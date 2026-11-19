@@ -395,7 +395,7 @@ func (s *profileScreen) chartEdgeVisible(g *Game, from, to string) bool {
 
 func (s *profileScreen) drawChart(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
-	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+	g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xe8))
 	gfx.FillRoundRect(dst, 16, profileBand+12, float32(sw-32), float32(sh-profileBand-72), 14, color.NRGBA{0x0d, 0x1b, 0x25, 0xec})
 	gfx.FillRect(dst, 0, 0, float32(sw), profileBand, withAlpha(g.th.window, 0xe0), false)

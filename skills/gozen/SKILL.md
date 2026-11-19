@@ -39,9 +39,9 @@ In GitHub Actions, `nao1215/setup-gozen` installs the version in the game's `go.
 ## What every game needs
 
 - `game.yaml` with `schema_version: 11`, a stable `id`, and `start.location`. Add `start.party` only for a combat game.
-- Combat party members need a class with all eight stats (`mhp mmp atk def mat mdf agi luk`) and `exp_for`. Narrative speakers use `actors` with a `name` and optional portraits; omit `class`.
+- Combat party members need a class with `mhp` and `exp_for`; a stat left out of a class or an enemy (`mmp atk def mat mdf agi luk`) is 0. Narrative speakers use `actors` with a `name` and optional portraits; omit `class`.
 - Combat games need their attack and guard skills. A narrative game needs neither skills, classes nor a dummy party.
-- Pictures under `assets/` for every `image` and `background` you name. Enemies need an `image`.
+- Pictures under `assets/` for every `image` and `background` you name. An enemy without `image` uses `assets/enemies/<id>.png`.
 - No `fonts` is needed: the built-in Go font has Latin letters only. For Japanese or other scripts, put a font under `assets/` and name it in `fonts.regular`.
 
 A complete small game is in references/minimal.md. For schema 11, write an event

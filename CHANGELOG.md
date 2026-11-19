@@ -4,6 +4,17 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Changed
+
+- Breaking: the title screen is written under `ui.title`, beside `hide_disabled`: `title_background` is now `ui.title.background`, `title_art` is `ui.title.picture`, `title_figures` is `ui.title.pictures`, `title_text` is `ui.title.text` and `title_music` is `ui.title.music`. In the text, `subtitle_size` and `subtitle_tracking` are now `subtitle: {size, tracking}`. `ui.title` needs schema version 10 only for `hide_disabled`.
+- Breaking: the phone's colors are `ui.phone: {background, text, muted, accent}` in place of `ui.phone_background`, `ui.phone_text`, `ui.phone_muted` and `ui.phone_accent`.
+- Breaking: an expression that picks a line's face or text, or an option's label, is written in the key itself, `face: {expr: ...}`, `text: {expr: ...}` and `label: {expr: ...}`, in place of `face_expr`, `text_expr` and `label_expr`.
+- `gozen check` names where a moved key went (`unknown field "title_music" (now ui.title.music)`).
+- An enemy without `image` uses `assets/enemies/<id>.png` when that file is there, a monster without `monster_class` uses `monster_<family>` when the game has that class, and a stat left out of an enemy or a class is 0 (`mhp` stays required).
+- A tactic row without `condition` uses `any`.
+- A reaction book's tag may list its whole words apart, `{words: [...], whole: [kid, kids], except: [...]}`, the same as `{word: kid, whole: true}` for each.
+- The samples write less: the space samples and After the Pass drop the combat setup they did not use (visual change: the space walk no longer shows a Walker panel with HP and MP), Go Zen drops the enemy pictures, monster classes, zero stats and `condition: any` that the defaults give and copies its chests with a YAML anchor, and the cookbook and the skill show the anchor. 13 YAML words are gone and none was added; a test keeps the exceptions to the word rule from growing.
+
 ## v0.26.0 - 2026-11-19
 
 ### Added

@@ -339,7 +339,7 @@ func (s *bestiaryScreen) openLineage(g *Game) bool {
 
 func (s *bestiaryScreen) draw(g *Game, dst *ebiten.Image) {
 	sw, sh := g.screen()
-	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+	g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xb8))
 	bestiaryPanel(g, dst, 20, 20, sw-40, sh-40)
 	g.text(dst, lang.T("まもののほん"), 48, 40, sizeL, g.th.text)

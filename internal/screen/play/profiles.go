@@ -499,7 +499,7 @@ func (s *profileScreen) draw(g *Game, dst *ebiten.Image) {
 		return
 	}
 	sw, sh := g.screen()
-	g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+	g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 	fill(dst, withAlpha(colorBlack, 0xa8))
 	gfx.FillRect(dst, 0, 0, float32(sw), profileBand, withAlpha(g.th.window, 0xe0), false)
 	gfx.FillRect(dst, 0, profileBand-1, float32(sw), 2, withAlpha(g.th.border, 0xa0), false)

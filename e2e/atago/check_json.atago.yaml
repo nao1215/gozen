@@ -375,7 +375,7 @@ scenarios:
         id: phone-options
         language: en
         start: {location: studio}
-        ui: {phone_accent: '#6750a4', phone_background: '#182430', phone_text: '#ffffff', phone_muted: '#cccccc'}
+        ui: {phone: {accent: '#6750a4', background: '#182430', text: '#ffffff', muted: '#cccccc'}}
   - fixture:
       file: phone/data/world.yaml
       content: |
@@ -410,11 +410,11 @@ scenarios:
       content: |
         schema_version: 11
         id: phone-options
-        ui: {phone_accent: not-a-color}
+        ui: {phone: {accent: not-a-color}}
   - run: {command: 'gozen check phone --format json'}
   - assert:
       exit_code: 1
-      stdout: {contains: ['phone_accent']}
+      stdout: {contains: ['phone.accent']}
 - name: missing game inputs are fatal diagnostics in every format
   steps:
   - run: {command: 'gozen check absent-game --format text'}

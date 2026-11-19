@@ -443,7 +443,7 @@ func (s *galleryScreen) update(g *Game) {
 		if s.music != nil && s.music.played {
 
 			s.music.played = false
-			if c := g.db.Game.TitleBGM; c.Song != "" {
+			if c := g.db.Game.UI.Title.Music; c.Song != "" {
 				g.Music(c)
 			} else {
 				s.music.play(g, -1)
@@ -505,7 +505,7 @@ func (s *galleryScreen) draw(g *Game, dst *ebiten.Image) {
 		}
 		fill(dst, withAlpha(colorBlack, 0x20))
 	} else {
-		g.drawPicture(dst, g.db.Game.TitleBG, 0, 0, sw, sh, 1)
+		g.drawPicture(dst, g.db.Game.UI.Title.Background, 0, 0, sw, sh, 1)
 		fill(dst, withAlpha(colorBlack, 0x90))
 	}
 	if s.view != "" {
@@ -716,7 +716,7 @@ func (r *sceneReplay) update(g *Game) {
 		g.fast = nil
 	}
 	g.Image(data.CG{})
-	if c := g.db.Game.TitleBGM; c.Song != "" {
+	if c := g.db.Game.UI.Title.Music; c.Song != "" {
 		g.Music(c)
 	}
 	g.pop()

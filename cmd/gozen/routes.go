@@ -123,7 +123,7 @@ func (c *command) routes() clihelp.Operation {
 		db.EachCommand(func(cmd *gamedata.Command) {
 			for _, option := range cmd.Choice {
 				if option.LabelExpr.Set() {
-					// label_expr picks its source while playing, so no written label names it.
+					// A label written as {expr} picks its source while playing, so no written label names it.
 					continue
 				}
 				if !offered[event.ChoiceKey(cmd.Prompt, option.Label)] {

@@ -89,7 +89,7 @@ func TestRepeatedRowsAndSelectedLabelsStateUses(t *testing.T) {
 		},
 	}}}
 	uses := db.StateUses()
-	for name, field := range map[string]string{"var.omit": "each.in", "var.target": "target.expr", "var.caption": "do[0].choice[0].label_expr"} {
+	for name, field := range map[string]string{"var.omit": "each.in", "var.target": "target.expr", "var.caption": "do[0].choice[0].label.expr"} {
 		want := "game.yaml.screens.roster.entries[0]." + field
 		if u := uses[name]; u == nil || !slices.Contains(u.Reads, want) {
 			t.Fatalf("%s missing read %s", name, want)

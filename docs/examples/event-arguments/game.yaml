@@ -138,7 +138,7 @@ screens:
       text: 'Give {arg.resident} {arg.amount} encouragement.'
       do:
       - choice:
-        - label_expr: '"Confirm " + arg.resident'
+        - label: {expr: '"Confirm " + arg.resident'}
           do:
           - plan: {op: set, entity: {expr: arg.resident}, attribute: vigor, value: 'self.vigor + arg.amount'}
         - label: Cancel

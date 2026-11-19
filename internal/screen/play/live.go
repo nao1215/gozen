@@ -436,7 +436,7 @@ func (g *Game) reloadReplay(r *sceneReplay, at int) string {
 	}
 	if !found || g.db.Events[sc.Event] == nil {
 		g.dropReplay(r, at)
-		if c := g.db.Game.TitleBGM; c.Song != "" {
+		if c := g.db.Game.UI.Title.Music; c.Song != "" {
 			g.Music(c)
 		}
 		return lang.T("読み直した（回想が無いのでギャラリーへ）")

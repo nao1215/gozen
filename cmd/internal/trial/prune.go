@@ -370,7 +370,7 @@ var refKeys = map[string]string{
 	"battle": "troops", "troop": "troops",
 	"members": "enemies", "summon": "enemies",
 	"move": "locations", "to": "locations", "dive": "locations", "location": "locations",
-	"music": "songs", "play": "songs", "battle_music": "songs", "title_music": "songs", "song": "songs",
+	"music": "songs", "play": "songs", "battle_music": "songs", "song": "songs",
 	"skill": "skills", "use": "skills", "skills": "skills", "attack_skill": "skills", "guard_skill": "skills",
 	"ai": "ai", "shop": "shops",
 }

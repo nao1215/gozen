@@ -6,6 +6,9 @@
 - An ID is the key of a map (`locations: {village: ...}`). Every reference names that key: `start.location`, `exits[].to`, `troops.*.members`, `actors.*.class`, `battle: TROOP`. A typo is GZN1101 with the file and line.
 - Expressions are strings: `mhp: "20 + level * 6"`, `when: flag.asked`. Quote one that starts with `!` or holds `: `.
 - `data/` may hold any number of files; they are merged. The same ID in two files is an error.
+- Repeat a block with a YAML anchor instead of copying it: `T: &chest {name: Old chest, ...}`, then `U: {<<: *chest, do: [...]}`. Write `<<` first; the keys after it replace the copied ones (a key before it is replaced by the copy). An anchor reaches only within its file.
+- The title screen is `ui.title`: `background`, `picture` (a logo or key art) or `pictures` standing in its place, `text` (sizes, spacing, colors, `subtitle: {size, tracking}`), `music` and `hide_disabled`. The phone's colors are `ui.phone: {background, text, muted, accent}`. An expression that picks a line's face or text, or an option's label, is `{expr: ...}` in that key.
+- Leave out what has a default: a stat of a class or an enemy other than `mhp` is 0, an enemy's `image` is `enemies/<id>.png` when that file exists, `monster_class` is `monster_<family>` when that class exists, and a tactic row's `condition` is `any`.
 
 ## Compact authoring (schema 11)
 
@@ -75,11 +78,6 @@ provides the field contracts; these tables explain which section to open first.
 | `game.terms` | The words the menus use, such as the currency name and level label. |
 | `game.text` | Replaces the engine's built-in words on the screens, as a map from the engine's key to your text. |
 | `game.title` | The game's title. |
-| `game.title_art` | A picture drawn on the title screen, such as a logo or key art. |
-| `game.title_background` | The background picture of the title screen. |
-| `game.title_figures` | Layer title-screen figures in place of `title_art`. |
-| `game.title_music` | The song and mood played on the title screen. |
-| `game.title_text` | Set title and subtitle sizes, spacing and colors. |
 | `game.ui` | The look of the game's menus and windows. |
 | `game.verbs` | Maps reusable command names to event IDs. Invoke with `NAME: true`, or call the event directly with `call`. |
 | `game.web` | Set browser-export address, description and social preview image. |
