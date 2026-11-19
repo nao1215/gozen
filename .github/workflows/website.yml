@@ -62,10 +62,31 @@ jobs:
           go-version-file: go.mod
 
       # scripts/web/assets.py writes the samples' pictures as WebP with Pillow.
+      # Ubuntu packages come from a cache keyed by the runner image when it has them
+      # (scripts/ci_apt_install.sh); main saves what it downloaded.
+      - name: Name the apt package cache
+        id: apt-key
+        if: ${{ (steps.scope.outputs.docs_runtime != 'false') && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+        run: echo "key=apt-$ImageOS-$ImageVersion-python3-pil" >> "$GITHUB_OUTPUT"
+      - name: Restore the apt packages
+        id: apt-cache
+        if: ${{ (steps.scope.outputs.docs_runtime != 'false') && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/apt-debs
+          key: ${{ steps.apt-key.outputs.key }}
       - name: Install Pillow
         if: steps.scope.outputs.docs_runtime != 'false'
         timeout-minutes: 15
+        env:
+          APT_DEB_CACHE: ${{ steps.apt-key.outputs.key && format('{0}/apt-debs', runner.temp) || '' }}
         run: ./scripts/ci_apt_install.sh python3-pil
+      - name: Save the apt packages
+        if: ${{ (steps.scope.outputs.docs_runtime != 'false') && (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.apt-cache.outputs.cache-hit != 'true') }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/apt-debs
+          key: ${{ steps.apt-key.outputs.key }}
 
       # make website also builds Go Zen, the novel and the campaign samples for the browser into
       # public/play/go-zen, public/play/novel and public/play/campaign.
