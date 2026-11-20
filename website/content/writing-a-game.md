@@ -5,7 +5,7 @@ weight: 30
 toc: true
 ---
 
-A Gozen game is data. Run the directory with `gozen run`; no Go source or compiler is required. Everything a player sees comes from YAML and the pictures beside it. This page is the map. The [Schema](/schema/) has every field, and the [Cookbook](/cookbook/) has short recipes for common tasks, such as a shop, a boss fight or a locked door.
+A Gozen game is a directory of YAML and pictures that `gozen run` plays, with no Go source or compiler. This page shows how the parts fit together. The [Schema](/schema/) has every field, and the [Cookbook](/cookbook/) has recipes such as a shop, a boss fight or a locked door.
 
 ## The game directory
 
@@ -18,11 +18,11 @@ game/
 └── assets/          # pictures, fonts, music and sounds, referred to by file name
 ```
 
-`game.yaml` is a [Game](/schema/#game). Each file in `data/` is a [DataFile](/schema/#datafile) and may hold any of its sections, so split by area (`town.yaml`, `cave.yaml`) or by kind (`enemies.yaml`, `skills.yaml`) as you like. Every ID lives in one namespace per section, and a duplicate is an error.
+`game.yaml` is a [Game](/schema/#game). Each file in `data/` is a [DataFile](/schema/#datafile) and may hold any of its sections, so split by area (`town.yaml`, `cave.yaml`) or by kind (`enemies.yaml`, `skills.yaml`). IDs share one namespace per section, and a duplicate is an error.
 
-Start a new `game.yaml` with `schema_version: 11`, as the bundled templates do. To move an older game to schema 11, change the header and write `enabled: false` on every tactic row that omitted `enabled`, because an omitted switch changed from false to true. Before v1.0.0 the formats may change between versions and gozen has no migration command.
+New games start with `schema_version: 11`, as the templates do. To move an older game to 11, change the header and add `enabled: false` to every tactic row without `enabled`, since an omitted switch now means true. Before v1.0.0 the formats may change between versions, and there is no migration command.
 
-From version 1 on, a number you leave out and a `0` you write are different, and the game `id` (used for the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads the same as before.
+From version 1 on, a number left out and a written `0` differ, and the game `id` (the save directory) is required. Version 2 adds the commands and `set` targets marked "version 2" below; a version 1 game reads as before.
 
 ## What goes where
 
@@ -39,7 +39,7 @@ From version 1 on, a number you leave out and a `0` you write are different, and
 | `profiles` | the character book: a page per character | `mira: {title: Courier, text: ...}` |
 | `enemies` with `ui.bestiary` | the monster book: a page per enemy | `mote: {lore: "Lives near the river stones."}` |
 
-Combat games need `attack` and `guard`, the battle commands; `game.yaml`'s `battle:` can point them elsewhere. A narrative game can use actors without classes and needs no dummy party or combat skills.
+Combat games need the battle commands `attack` and `guard` (`battle:` in `game.yaml` can point them elsewhere). A narrative game can use actors without classes, with no dummy party or combat skills.
 
 ## Places
 
@@ -68,7 +68,7 @@ Anything with `when` appears only while its expression holds. `on_enter` runs on
 
 ### Maps and painted scenes
 
-A location can also be shown as a map or as a painted scene (`schema_version: 3`). Its people, actions and exits stay the same; these only say where things are.
+A location can also be a map or a painted scene (`schema_version: 3`). These only say where things are; the people, actions and exits stay the same.
 
 <!-- verify: load -->
 ```yaml
@@ -110,9 +110,11 @@ locations:
       - {to: town, label: Back to town, at: square}   # at is the point of the map to stand on
 ```
 
-On a map the party goes from point to point along the open roads (paint the roads in the picture: their lines in the YAML are what the token walks, drawn only with `draw_roads: true` (on a campaign's map `region_roads` and `region_borders`, `selected` by default, decide instead whether all roads and borders are drawn or only the region chosen's); each point stands a small `marker`, a pin unless you give a picture; the name plates keep clear of each other, their text sized by `label_size`, 0.03 of the screen's height by default; the token is the leader's round face, as in the balloons, sliding along the roads, unless `token` gives a picture or says `doll`); a point with `to` leads into that location, and coming back puts the party on the point that leads to where it came from. In a scene the party walks the painting as a small doll; the picture and its `fronts` hide whoever stands behind them, and walking into an exit's area leaves. The rules know only where the party stands, `spot` (a point of the map or one of the scene's `spots`): every point, person, thing and spot is an ordinary menu entry, so `pick`, `gozen sim design` and the tests walk them without a screen, and `exits[].at` names the spot or point to arrive at.
+On a map the party walks the open roads from point to point. Paint the roads into the picture: the YAML lines are the path the token walks, drawn only with `draw_roads: true` (on a campaign's map, `region_roads` and `region_borders`, `selected` by default, decide whether all roads and borders show or only the chosen region's). Each point has a small `marker`, a pin unless you give a picture, and name plates keep clear of each other, with text sized by `label_size` (0.03 of the screen height by default). The token is the leader's round face, as in the balloons, unless `token` gives a picture or says `doll`. A point with `to` leads into that location, and coming back puts the party on the point that leads where it came from.
 
-On a map point, `hide: closed` removes the point, marker, name plate and its roads while `when` is false. Keyboard, pointer, selection-panel and headless choices skip it. It becomes available after an event opens it, without leaving the location. Omit `hide` to keep the usual gray closed pin; `unknown` continues to control unvisited points once they are open.
+In a scene the party walks the painting as a small doll; the picture and its `fronts` hide whoever stands behind them, and walking into an exit's area leaves. The rules only track `spot`, where the party stands (a map point or one of the scene's `spots`). Every point, person, thing and spot is an ordinary menu entry, so `pick`, `gozen sim design` and the tests walk them without a screen. `exits[].at` names the spot or point to arrive at.
+
+`hide: closed` on a map point removes the point, its marker, name plate and roads while `when` is false, and keyboard, pointer, selection panel and headless choices skip it. An event can open it without the party leaving the location. Without `hide` the point shows as the usual gray closed pin; `unknown` still controls unvisited points once they are open.
 
 <!-- verify: parse fragment of a map point; the flag is set by a game event -->
 ```yaml
@@ -153,13 +155,11 @@ The full list, with the options each verb accepts, is [Command](/schema/#command
 
 `set` writes flags and variables, and from version 2 also `gold`, `item.ID` (how many), `party`, `location` (without the arrival events) and `actor.ID.tactics` (`auto`, `manual` or a preset). The values of flags, variables, `gold` and `item.ID` are expressions; `location`, `party` and `actor.ID.tactics` take names as written: `{location: camp, party: [hero, sela], actor.hero.tactics: auto}`. `actor.ID.tactics` also takes the rows themselves: `{mode: manual, rows: [{enabled: true, condition: always, action: guard}]}`. In the development mode (`--dev`) `set` also moves the party in a dungeon (`pos.x`, `pos.y`, `pos.facing`; `pos.x` and `pos.y` elsewhere are an error), sets `steps`, and sends the floor's strong foes away (`roamers: none`).
 
-`actor.ID.hp`, `mp`, `exp`, `level` and `sp` can be set too, but only in the development mode (`--dev`) and in tests. A game played normally skips them, and `gozen check` warns where game data sets them. Grow a party in the game with `exp`, `heal` and `learn`. To start someone over, for a new game plus, use `reset_actor` ([cookbook](/cookbook/#grow-by-level-and-learn-skills)).
+`actor.ID.hp`, `mp`, `exp`, `level` and `sp` can be set only in the development mode (`--dev`) and in tests; normal play skips them, and `gozen check` warns where game data sets them. In the game, grow a party with `exp`, `heal` and `learn`, and start someone over for a new game plus with `reset_actor` ([cookbook](/cookbook/#grow-by-level-and-learn-skills)).
 
 ### Your own commands and screens
 
-Declare reusable commands as event aliases in `game.yaml`. Invoke an alias with
-`true`, for example `- greet: true`; its target event runs like `call: greeting`.
-Unknown targets, cycles and unsupported arguments are validation errors.
+Event aliases in `game.yaml` are reusable commands: `- greet: true` runs the target event like `call: greeting`. Unknown targets, cycles and unsupported arguments are validation errors.
 
 <!-- verify: parse game.yaml fragment; the event target is defined in data/ -->
 ```yaml
@@ -173,10 +173,7 @@ screens:
         when: flag.found_station
 ```
 
-Define `greeting` in `data/` as an ordinary event. Open the journal with
-`- open: journal`. Entries accept an optional `picture` asset, interpolated text
-and `when` conditions. Use the arrows to select an entry and Cancel to return.
-An optional `do` list runs ordinary event commands once when the entry is confirmed:
+Define `greeting` in `data/` as an ordinary event, and open the journal with `- open: journal`. Entries take an optional `picture`, interpolated text and `when`. The arrows select an entry and Cancel returns. An optional `do` list runs event commands once when the entry is confirmed:
 
 <!-- verify: parse game.yaml fragment -->
 ```yaml
@@ -189,51 +186,23 @@ screens:
         do: [{set: {var.boards: 'var.boards + 1'}}]
 ```
 
-After an action, text and conditions refresh and the selected authored entry stays
-selected where possible. Hidden entries are checked again before execution. A
-removed selection moves to an available entry; an empty list can still be closed.
-Entries without `do` remain information pages.
+After an action, text and conditions refresh and the selection stays where it can. Hidden entries are checked again before they run, a removed selection moves to an available entry, and an empty list can still be closed. Entries without `do` are information pages.
 
-Actions suspend the event that opened the screen. Dialogue uses the normal message
-window; opening another screen or saving uses its normal interface, then returns
-to the list. A location change closes the originating list after the action ends.
-Clear, game over and loading replace the current screen normally. Closing the list
-resumes the opening event after its `open` command.
+An action suspends the event that opened the screen. Dialogue, other screens and saving use their normal interfaces and return to the list. A location change closes the list after the action ends, and clear, game over and loading replace the screen as usual. Closing the list resumes the opening event after its `open`.
 
-A save in an action's dialogue resumes that named entry's commands at the saved
-line without applying earlier changes twice. After loading, the action finishes
-at the current location; transient lists and the suspended opening event are not
-restored. Keep changes that must follow the dialogue in the entry's `do` list.
-Entries are identified by screen name and authored index, so keep their order
-stable when maintaining saves. Scripted `press ok` uses the same path, and traces
-record `screen_action` with the screen name and authored entry index.
-No Go registration is required. The former lists of names are no longer accepted.
+A save made in an action's dialogue resumes that entry's commands at the saved line without applying earlier changes twice. After loading, the action finishes at the current location, but the list and the suspended opening event are not restored, so keep changes that must follow the dialogue in the entry's `do`. Entries are identified by screen name and position, so keep their order stable for old saves. Scripted `press ok` takes the same path, and traces record `screen_action` with the screen name and entry index. No Go registration is needed, and the former lists of names are no longer accepted.
 
 ### Stories without combat
 
-Start with `gozen new my-story --template novel`. A speaker needs only a name:
-`actors: {rowan: {name: Rowan}}`. Use `say: {who: rowan, text: Welcome.}` as
-usual. Faces, voices and profiles work without classes, stats, attack skills or a
-starting party. Saves preserve story state with an empty party. Adding `class`
-to a speaker makes that same ID eligible for combat; games with combat still
-require a valid starting party and battle rules.
+Start with `gozen new my-story --template novel`. A speaker needs only a name, `actors: {rowan: {name: Rowan}}`, and `say: {who: rowan, text: Welcome.}` works as usual. Faces, voices and profiles need no class, stats, attack skills or starting party, and saves keep story state with an empty party. Giving a speaker a `class` lets the same ID fight; a game with combat still needs a valid starting party and battle rules.
 
 ### Conversation reactions
 
-Map speakers to reaction books under `assets/` using
-`reactions: {rowan: rowan.yaml}` in `game.yaml`. A command such as
-`respond: {who: rowan, text: Hello., from: player}` sends text to the book and
-shows its reply through normal dialogue. `from` defaults to `player`; both input
-fields support interpolation. Books must contain the matching character ID.
-Reaction memory is included in saves and random replies use the game's seeded
-random stream. This is an authored rules interpreter, without a model or network
-service. See the [narrative recipe](/cookbook/#a-speaker-who-remembers-a-greeting)
-for a complete book.
+`reactions: {rowan: rowan.yaml}` in `game.yaml` maps a speaker to a reaction book under `assets/`. `respond: {who: rowan, text: Hello., from: player}` sends text to the book and shows its reply as a normal line; `from` defaults to `player`, and both fields take interpolation. The book must contain the matching character ID. Saves keep the reaction memory, and random replies use the game's seeded random stream. The book is a set of authored rules, with no model or network service ([a complete book](/cookbook/#a-speaker-who-remembers-a-greeting)).
 
 ## Events
 
-An event is a named list of commands. In schema 11, write the list directly when
-it needs no metadata, and call it with `call: greeting`:
+An event is a named list of commands. In schema 11, write the list directly when it needs no metadata, and run it with `call: greeting`:
 
 <!-- verify: parse schema-11 event fragment; ticket is defined by the game -->
 ```yaml
@@ -243,9 +212,7 @@ events:
     - give: ticket
 ```
 
-`give: ticket` and `take: ticket` mean one item. For another quantity, use
-`give: {item: ticket, count: 2}`. Keep the event's mapping form when it needs
-metadata such as a trigger, condition or parameters:
+`give: ticket` and `take: ticket` mean one item; `give: {item: ticket, count: 2}` gives more. Use the mapping form when the event needs a trigger, a condition or parameters:
 
 <!-- verify: load -->
 ```yaml
@@ -262,7 +229,7 @@ events:
 
 `trigger: auto` runs the event as soon as its `when` holds. `once: true` runs it a single time per save.
 
-A choice with `muted` waits behind a muted microphone, as the floor of a video call does: only an Unmute button shows, and the answers come when the player presses it (OK, a click, or on a call a click on its struck-through mic control). Left muted for `seconds`, the player has kept quiet: the muted `do` runs instead of an answer, a named choice keeps `muted` in `chose.<id>`, and the story goes on. The call stays on the screen, its mic struck, for a choice without a `prompt` right after a line of the call; a choice whose options are all hidden by `when` is not asked, and its muted `do` does not run either. `gozen sim routes` explores keeping quiet as one more branch.
+A choice with `muted` waits behind a muted microphone, as on a video call: only an Unmute button shows, and the answers appear when the player presses it (OK, a click, or on a call a click on the struck-through mic). If the player stays muted for `seconds`, the muted `do` runs instead of an answer, a named choice records `muted` in `chose.<id>`, and the story goes on. For a choice without a `prompt` right after a line of the call, the call stays on screen with its mic struck. A choice whose options are all hidden by `when` is not asked, and its muted `do` does not run. `gozen sim routes` explores staying quiet as one more branch.
 
 <!-- verify: parse a fragment of an event -->
 ```yaml
@@ -328,7 +295,7 @@ enemies:
     puppet: sprite/puppet.yaml
 ```
 
-An actor's `images` list uses `face` in place of `file`. A puppet file can add `soft_sway` with a `rect` or `ellipse` region, `follow: body`, and spring strength to move a part softly with breathing and battle reactions. Enemy and actor puppets share this YAML format. See [the battle recipes](/cookbook/#transform-an-enemy).
+An actor's `images` list uses `face` in place of `file`. A puppet file can add `soft_sway`, a `rect` or `ellipse` region with `follow: body` and a spring strength, so a part moves softly with breathing and battle reactions. Enemies and actors share the puppet format ([the battle recipes](/cookbook/#transform-an-enemy)).
 
 <!-- verify: load -->
 ```yaml
@@ -341,9 +308,7 @@ actors:
       - {use: attack}
 ```
 
-`battle:` in `game.yaml` sets the global rules: hit variance, critical hits, escape chance, turn speed, the events before and after every battle. `cutin: true` on a skill shows the actor's standing picture across the screen.
-
-Measure before you tune: `gozen sim battle game --troop TROOP` prints the win rate, and the F7 panel shows the same numbers in the game.
+`battle:` in `game.yaml` sets the global rules: hit variance, critical hits, escape chance, turn speed, and the events before and after every battle. `cutin: true` on a skill shows the actor's standing picture across the screen. `gozen sim battle game --troop TROOP` prints the win rate before you tune, and the F7 panel shows the same numbers in the game.
 
 ## Dungeons
 
@@ -369,19 +334,15 @@ Tiles are characters with their own pictures, conditions and commands; `trigger:
 
 ## Pictures, faces and text
 
-Every file name is relative to `assets/`. A character's `faces` is a directory of expressions (`normal.png`, `smile.png`, ...), and `say` lines pick one with `face`. `gozen check` reports every picture that does not exist, and lays out every line with the game's font to catch text that overflows its window.
+Every file name is relative to `assets/`. A character's `faces` is a directory of expressions (`normal.png`, `smile.png`, ...), and `say` lines pick one with `face`. `gozen check` reports every missing picture and lays out every line with the game's font to catch text that overflows its window.
 
-The engine's own words (menus, battle messages, settings, saves) come in English and Japanese. `language:` in `game.yaml` picks one: `en` (the default) or `ja`. `text:` lays the game's own wording over that language; a key is the engine's Japanese source text, a format with its `%d` and `%s` too, and the value may reorder them (`%[2]d`). [The English catalog](https://github.com/nao1215/gozen/blob/main/internal/base/text/catalog/english.go) lists every key. `terms:` names the currency and stats. `gozen check` warns when `language` is unset but the game is written in Japanese, and when the regular font lacks letters of the chosen words.
+The engine's own words (menus, battle messages, settings, saves) come in English and Japanese; `language:` in `game.yaml` picks `en` (the default) or `ja`, and `text:` and `terms:` reword them ([the recipe](/cookbook/#change-the-language-and-the-engines-wording)).
 
-`profiles` keeps who each character is in the game itself: a page with the standing picture and its faces, your own fields (role, likes, anything), an introduction and how the character sees the others. Under `--dev` the title and the menu open it as Characters, so you can check a line against the character while you write; `ui.profiles: true` shows it to players, each page opening when its `when` holds ([the recipe](/cookbook/#keep-a-character-book)).
+`profiles` keeps a page per character in the game: the standing picture and its faces, your own fields (role, likes, anything), an introduction and how the character sees the others, with a relationship chart on Tab. Under `--dev` the title and menu open it as Characters, so you can check a line against the character while writing; `ui.profiles: true` shows it to players, each page opening when its `when` holds ([the recipe](/cookbook/#keep-a-character-book)).
 
-Press Tab in the book to see the relationship chart. Select a character and press Z to gather everyone connected to that character in either direction around them; press Z again for the page or X to return to the full chart. Each `relations` entry can set `kind` to `like`, `love`, `rival`, `enemy`, `family`, `friend`, or `other`; these colours carry only the meaning you give them. `affiliation` keeps members of a group together. Locked characters appear as `?` and hide their lines. The chart uses face crops from `assets/faces.json`, made by `gozen faces`.
+`enemies.<id>.lore` adds a short habitat description to an enemy, and `ui.bestiary: true` adds Monsters to the title and field menu. Meeting an enemy in battle reveals its name, picture and lore; beating it reveals its stats, resistances, skills and drops, with a defeat count. Under `--dev`, F4 opens every page ([the recipe](/cookbook/#keep-a-monster-book)).
 
-`enemies.<id>.lore` adds a short habitat description to an enemy. Set `ui.bestiary: true` to add Monsters to the title and field menu. A battle encounter reveals its name, picture and lore; a victory reveals its stats, resistances, skills and drops, with a defeat count. Under `--dev`, F4 opens every page ([the recipe](/cookbook/#keep-a-monster-book)).
-
-For collection, use schema version 6 and give each non-boss species a `family` and `rank`; `monster_class` defaults to `monster_<family>` when the game has that class. `recruit` lets it ask to join after a won battle; the Yes/No request also works in Session scripts and traces. Extra members go to the reserve by default. Set `recruit.admission: party_only` to require a free active-party slot for battle offers and `capture: SPECIES`; rejection leaves the owned instances unchanged. `var.capture_result` reports `party`, `reserve`, `party_full` or `unavailable` for event branches. An inn or another safe place can run `open: ranch` to swap, release and breed monster instances. `enemies.<id>.sex` permits `any` (default), `male` or `female`, and optional `sex_ratio` gives the male probability for `any`. Each captured or born monster has a saved sex; breeding requires a male and a female. `breeding` defines specific species pairs and ranked family rules. `gozen check` validates the graph, `gozen sim breed game --format json` reports reachable and unreachable species, and `gozen book` prints the rules ([the collection recipe](/cookbook/#collect-raise-and-breed-monsters)).
-
-The monster book also presents a buildable family tree: caught leaves give their encounter locations, specific recipes show both species, and family rules show both families and one concrete pair. The shortest recipe opens first. The screen shows up to seven monster pictures: the current species, two parents and four grandparents. Arrows select a picture, Z makes it the top of a two-generation view, X returns along a breadcrumb history, Tab switches the top species' recipe, and Q opens the selected known species' page. Parent cards with deeper recipes have a `more` mark; captures show their location and family recipes name the families and example parents. Unseen pictures appear as `?`; development play reveals every node. `gozen book --format json` exports the same structure.
+To collect monsters (schema version 6), give each non-boss species a `family` and `rank`; `recruit` lets it ask to join after a won battle, `open: ranch` at a safe place swaps, releases and breeds the caught ones, and `breeding` defines species pairs and ranked family rules. The monster book then shows a family tree of recipes. [The collection recipe](/cookbook/#collect-raise-and-breed-monsters) has the rules and the commands that check them.
 
 ## Languages
 
@@ -397,17 +358,21 @@ ui:
   message: novel
 ```
 
-The band has buttons to roll back a line, for the backlog, auto, skip, saving and loading, hiding the window and the settings; `ui.saves.quick` adds a quick save and load. Rolling back (Q, or the wheel) takes the state back with the line, and a save made in the middle of a scene goes on at its line with a picture of the scene on the save screen ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)). The player can also hold Ctrl to pass the lines already read, press N to turn skip mode on (it stays on until a line not read, a choice, a phone that keeps a result, a battle or the end of the events), and press Page Down, or the "Skip scene" button that shows when every line of the running event was read, to go at once to the next choice or line not read. The setting "Text to skip" set to all makes skip mode, Ctrl and scene skip pass lines not read too (scene skip is then offered in any event with lines); they still stop at a choice, a phone that keeps a result and a battle. The setting "Text size" draws the lines of the message window larger (two lines a page), for a small screen such as a phone's.
+The band has buttons to roll back a line, open the backlog, auto, skip, save, load, hide the window and open the settings; `ui.saves.quick` adds a quick save and load. Rolling back (Q, or the wheel) takes the state back with the line, and a save made mid-scene resumes at its line, with a picture of the scene on the save screen ([the recipe](/cookbook/#let-the-player-roll-back-and-save-in-a-scene)).
+
+Holding Ctrl passes lines already read. N turns on skip mode, which stays on until an unread line, a choice, a phone that keeps a result, a battle or the end of the events. Page Down, or the "Skip scene" button shown once every line of the running event was read, jumps to the next choice or unread line. With the setting "Text to skip" at all, skip mode, Ctrl and scene skip pass unread lines too (and scene skip is offered in any event with lines), but they still stop at choices, phones that keep a result and battles. The setting "Text size" draws the message window's lines larger, two lines a page, for a small screen such as a phone.
+
+A line counts as read by its source, the speaker and the text as written before `{expressions}` are filled. Read lines are kept in `read.json` beside the saves, across saves and new games. Test runs (`--script`, `--start`, autoplay) leave them alone unless you pass `--save-dir`. In a trace every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed an unread line.
 
 ![the settings raise the text size twice, and the line behind them comes back larger, two lines a page, as does the next](/images/novel-text-size.mp4)
 
 Portraits come and go with the speakers unless an event places them with `stand` ([the recipe](/cookbook/#stage-portraits-and-effects)). A line can have a recorded voice, played again from the backlog ([Add voices](/cookbook/#add-voices)), and readings over its words (`|base《reading》`, [the recipe](/cookbook/#offer-the-game-in-two-languages)). The gallery lists event pictures, scenes to play again and the endings reached ([the recipe](/cookbook/#show-event-pictures-and-fill-the-gallery)). [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel), the novel sample, is a short one with choices, staging and a Japanese translation ([play it in the browser](/play/), on a phone too: [Phones](/commands/#phones)).
 
-Pictures support up to 8192 pixels per side, 33,554,432 pixels total and 64 MiB encoded input. A 4096 by 6144 portrait is supported without additional settings. `gozen check` checks actor face PNGs even when no profile refers to them. The maximum decoded RGBA image uses 128 MiB; GPU limits and memory vary by device, so export pictures near their displayed size and test the target devices.
+Pictures can be up to 8192 pixels a side, 33,554,432 pixels in all and 64 MiB encoded, so a 4096 by 6144 portrait works without extra settings. The largest decoded RGBA picture takes 128 MiB, and GPU limits and memory vary by device, so export pictures near their displayed size and test on the target devices. `gozen check` checks actor face PNGs even when no profile refers to them.
 
 ### Frame portraits by their heads
 
-For static novel portraits with transparent padding, `ui.stage_framing` aligns heads instead of guessing from the whole canvas. This is opt-in per image and requires `schema_version: 8`:
+For static novel portraits with transparent padding, `ui.stage_framing` aligns the heads instead of the whole canvas. It is set per picture and needs `schema_version: 8`:
 
 <!-- verify: parse requires the author's portrait image and its measured head coordinates -->
 ```yaml
@@ -420,11 +385,11 @@ ui:
       top: 0.08
 ```
 
-The `head` values are the head's horizontal center, top and height within the source image. The center is a fraction of image width; top and height are fractions of image height. In this example, the head starts 10% down the image, is 20% of its height, and is centered 40% across it. All three values must be finite and within the image; the source head height must be positive and fit below its top.
+`head` is the head's horizontal center, top and height in the source picture: the center as a fraction of its width, top and height as fractions of its height. Here the head starts 10% down, is 20% of the height and is centered 40% across. All three must be finite and inside the picture, and the height must be positive and fit below the top.
 
-`height` is the required displayed head height as a fraction of screen height (greater than 0, at most 1). `top` places its top using the same screen-height units (0 to 1, default 0). The head's horizontal center follows `stand.at` or automatic speaker placement, even when the scaled image extends beyond the viewport. Off-screen content is clipped; transparent padding never forces both speakers to screen center. Small source images also use the full novel stage when configured this way.
+`height` is the head's displayed height as a fraction of the screen height (above 0, at most 1), and `top` places its top in the same units (0 to 1, default 0). The head's horizontal center follows `stand.at` or the automatic speaker placement, even when the scaled picture runs past the screen. What is off screen is clipped, so transparent padding never pushes both speakers to the center, and small pictures use the full novel stage.
 
-Give each expression image its own entry when its canvas or head coordinates differ. `stage_scale` still multiplies size, now around the head anchor; `stage_drop` adds a screen-height offset to the head's top. Pictures without `stage_framing` retain the existing canvas-based layout. This setting applies to novel portraits (and, with `ui.stage_puppets`, to the moving portraits standing in their place), not battle cut-ins or the `box` message window. It is game metadata: save/load restores the standing cast, while reload or a screen resize recomputes framing from the current image and configuration.
+Give each expression its own entry when its canvas or head differs. `stage_scale` still multiplies the size, now around the head, and `stage_drop` adds a screen-height offset to the head's top. Pictures without an entry keep the canvas-based layout. The setting applies to novel portraits (and, with `ui.stage_puppets`, to the moving portraits standing in their place), not to battle cut-ins or the `box` window. Saves restore the standing cast; a reload or a resize recomputes the framing from the current picture and settings.
 
 ### Move the standing portraits
 
@@ -437,31 +402,27 @@ ui:
   stage_puppets: true
 ```
 
-Every standing figure breathes, blinks and sways its hair and swaying parts; only the speaker's mouth moves while the text is typing. A line's `face` or a `stand` with `face` fades the figure to that face over the puppet's `fade`, and `effect: nod` and the other reactions play on it. A face the puppet does not have, or a figure that is not an actor, shows the picture as before. Give the puppet's base the canvas of the face pictures, so `stage_framing`, `stage_scale` and `stage_drop`, written for the pictures, fit it. A large base is composed near the size it is drawn at, so a 4096 by 6144 portrait does not cost its full size every frame. Without the setting the stage shows the pictures as before.
-
-A line counts as read by its source: the speaker and the text as written, before `{expressions}` are filled in. The read lines are kept in `read.json` beside the saves, so they last across saves and new games. Runs for testing (`--script`, `--start`, autoplay) do not touch them unless you pass `--save-dir`. In a trace, every `say` line says whether it was read, and `gozen trace --check` fails when skipping passed a line that was not.
+Every standing figure breathes, blinks and sways its hair and swaying parts; only the speaker's mouth moves while the text types. A line's `face`, or a `stand` with `face`, fades the figure to that face over the puppet's `fade`, and `effect: nod` and the other reactions play on it. A face the puppet lacks, or a figure that is not an actor, shows the picture as before. Give the puppet's base the canvas of the face pictures so that `stage_framing`, `stage_scale` and `stage_drop` fit it. A large base is composed near its drawn size, so a 4096 by 6144 portrait does not cost its full size every frame.
 
 ### A phone on the screen
 
 #### Games inside the phone
 
-Gozen 0.23.0 can open another Gozen game inside the phone, in portrait or landscape. The host supplies a Back control; closing the app resumes the host. Each game has its own icon, progress and saves.
+Since 0.23.0 the phone can open another Gozen game, in portrait or landscape. The host supplies a Back control, and closing the app resumes the host. Each game has its own icon, progress and saves.
 
 ![Counter collects four tokens inside the office phone](/images/phone-game-counter.mp4)
 
-Authors choose bundled games or optional downloads from an approved catalog. Players choose when to install or update. The public catalog includes Counter, a small example game. See the [phone game recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) for setup, package metadata, browser limits and replay behavior.
+Authors bundle games or offer optional downloads from an approved catalog, and players choose when to install or update. The public catalog has Counter, a small example game. The [phone game recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) covers setup, package metadata, browser limits and replay.
 
-To share your game, [submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submissions are reviewed before publication; submitting does not install or publish a game automatically.
+To share your game, [submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submissions are reviewed before publication; submitting does not install or publish anything.
 
 #### Chats, feeds and other apps
 
-A home screen opens contacts, chats and feeds. Authors define history and replies in YAML; flags reveal contacts, messages and posts. Players choose fixed replies without typing, and read-only apps need no reply handling. See the [flag-based phone recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-flags.md).
+A home screen opens contacts, chats and feeds. YAML defines the history and replies, and flags reveal contacts, messages and posts. Players pick fixed replies without typing, and read-only apps need no replies. See the [flag-based phone recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-flags.md).
 
 ![Opening Contacts and a chat, then returning to the phone home](/images/phone-navigation.mp4)
 
-The other apps below display authored information and handle fixed choices.
-
-`phone` shows a phone over the scene and waits until the player puts it down. It changes no state of its own, only what its buttons, calls and liked posts keep. Skip and Ctrl pass a phone that only shows, and stop at one that keeps a result (a button, a call, a liked post), as they stop at a choice. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
+`phone` shows a phone over the scene and waits until the player puts it down. It changes no state itself; only its buttons, calls and liked posts keep anything. Skip and Ctrl pass a phone that only shows and stop at one that keeps a result (a button, a call, a liked post), as at a choice. `app` names what is on it, each with its own list, and `hold: landscape` turns the phone on its side.
 
 <!-- verify: parse a fragment of an event; the pictures and the puppet are the author's files -->
 ```yaml
@@ -491,24 +452,13 @@ The other apps below display authored information and handle fixed choices.
     video: {picture: bg/stage.png, puppet: ann/puppet.yaml, text: Live clip, seconds: 30, bounce: [4, 9.5]}
 ```
 
-A chat shows its first message when the phone comes up, and each press brings the next, someone else's after typing dots; a message is text, a picture or a video, and a press on the newest video turns the phone on its side and plays it until Cancel turns it back. A feed stacks its posts top to bottom and scrolls with the wheel, the up and down keys or a drag; a click or a tap on a post (its picture, a text card or the heart) likes it and a second one takes the like back, OK at the bottom puts the phone down, and a post's video plays in its place while it is on the screen. `scroll: across` shows one post a screen instead, swiped sideways as a carousel is: a drag follows the finger and settles on the nearest post or, flicked, the next; left and right, the wheel and OK step a post, and dots under it show where. A post's `set`, written as the `set` command, runs when the phone is put down with that post liked, so the story can answer a like given by mistake; a like taken back keeps nothing. Only the pointer likes (the keys and the pad scroll), so a story does not hang on a like the player must give. A feed has no `var`, at most 31 of its posts have `set`, and `browse: true` makes a feed only looked at: a click likes nothing, and `gozen check` rejects a `set` on its posts. A caption too long for its three lines is wrapped smaller and drawn at that size. A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame's height (1.5, its upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`.
+A chat shows its first message when the phone comes up, and each press brings the next, other people's after typing dots. A message is text, a picture or a video; a press on the newest video turns the phone sideways and plays it until Cancel turns it back.
 
-For real footage, `frames` lists pictures under assets/ (or a pattern such as `clips/battle/*.jpg`, sorted) that play in order at `fps` (12 by default) over the `picture`, which becomes the poster; a feed loops them, elsewhere the clip stops on its last frame, and `seconds` defaults to their length. Cut a video into pictures beforehand (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`); the engine decodes no video files.
+A feed stacks its posts and scrolls with the wheel, the up and down keys or a drag. A click or tap on a post (its picture, a text card or the heart) likes it, a second one takes the like back, and OK at the bottom puts the phone down; a post's video plays in place while it is on screen. `scroll: across` shows one post a screen, swiped sideways like a carousel: a drag follows the finger and settles on the nearest post, or on the next when flicked, and left, right, the wheel and OK step a post, with dots underneath. A post's `set`, written as the `set` command, runs when the phone is put down with that post liked, so the story can answer a mistaken like; a like taken back keeps nothing. Only the pointer likes (keys and pad scroll), so a story never waits on a like. A feed has no `var`, at most 31 of its posts may have `set`, and `browse: true` makes a feed look-only: a click likes nothing and `gozen check` rejects `set` on its posts. A caption too long for its three lines is drawn smaller.
 
-Lock screens, pages and banners share `timeout` (seconds after the entrance),
-`timeout_result` (default `expired`) and `var`. A timeout requires `var`.
-Without a timeout, `var` requires a page button or a lock-screen call; banners
-can always keep an outcome. If no outcome is chosen before
-the deadline, the phone closes, stores the timeout result and continues the
-event. Input wins on the deadline tick. Page buttons keep their IDs. On pages
-with `var`, Cancel returns `dismiss` even without a timeout; finishing the
-page without pressing a button returns `open`. Timed plain locks and ordinary
-notices in a lock with calls also return `dismiss` or `open`. Declining a call
-advances to the next notice when one remains; declining the last notice
-returns `decline`. Scrolling does not extend the deadline. Auto and Skip cannot
-answer a phone that keeps a result. Outcomes are saved for replay.
-Existing incoming-call `ring` / `missed` remain unchanged: their timer starts
-when that notice arrives, and their assignments still run when it rings out.
+A video is a picture pushed in slowly with an optional puppet in front, `zoom` times the frame height (1.5, the upper body, by default), breathing and swaying as on the stage and jiggling at each second in `bounce`. For real footage, `frames` lists pictures under assets/ (or a sorted pattern such as `clips/battle/*.jpg`) played at `fps` (12 by default) over `picture`, which becomes the poster. A feed loops them; elsewhere the clip stops on its last frame, and `seconds` defaults to their length. The engine decodes no video files, so cut the video into pictures first (for example `ffmpeg -i clip.mp4 -vf fps=12,scale=640:-1 clips/battle/%03d.jpg`).
+
+Lock screens, pages and banners share `timeout` (seconds after the phone appears), `timeout_result` (default `expired`) and `var`. A timeout needs `var`; without a timeout, `var` needs a page button or a lock-screen call, while banners can always keep an outcome. When the deadline passes with no outcome, the phone closes, stores the timeout result and the event goes on; input on the deadline tick wins, and scrolling does not extend the deadline. Page buttons keep their IDs. On a page with `var`, Cancel returns `dismiss` even without a timeout, and finishing without pressing a button returns `open`; timed plain locks and ordinary notices in a lock with calls also return `dismiss` or `open`. Declining a call moves to the next notice, and declining the last returns `decline`. Auto and Skip cannot answer a phone that keeps a result, and outcomes are saved for replay. Incoming-call `ring` and `missed` work as before: the timer starts when that notice arrives, and the assignments run when it rings out.
 
 <!-- verify: load group=phone-outcomes -->
 ```yaml
@@ -535,17 +485,9 @@ events:
       then: [{phone: {app: page, title: Mail, rows: [{text: Welcome!}]}}]
 ```
 
-A banner with `var` waits until Enter or a click on the banner returns `open`,
-Esc/Cancel returns `dismiss`, or the shared timeout returns `expired` (or the
-specified `timeout_result`). It takes exactly one notice without `event`;
-branch after the cue instead. Without `timeout` it waits for input. Banners
-without `var` retain the asynchronous notification/event behavior.
+A banner with `var` waits: Enter or a click on it returns `open`, Esc or Cancel returns `dismiss`, and the shared timeout returns `expired` (or `timeout_result`). It takes exactly one notice without `event`; branch after it instead. Without `timeout` it waits for input. A banner without `var` is an ordinary asynchronous notification.
 
-Repetition belongs in ordinary event YAML. This example rings again after a
-short wait whenever the call is left unanswered; answering or declining ends
-the loop. There is no alarm, snooze or vibration mode. The existing
-`effect: shake` can precede a phone cue to shake the whole scene briefly;
-it does not repeat or add a phone vibration.
+Repetition is ordinary event YAML. This call rings again after a short wait while it is left unanswered, and answering or declining ends the loop. There is no alarm, snooze or vibration mode; `effect: shake` before a phone cue shakes the whole scene once.
 
 <!-- verify: load group=phone-outcomes -->
 ```yaml
@@ -563,13 +505,7 @@ events:
         - call: ring_again
 ```
 
-Phone colors are the game-wide `ui.phone` in `game.yaml`, independent of dungeon
-asset themes. No per-page flag is needed. `background` fills page bodies,
-`text` and `muted` color their text, and `accent` colors owner
-chat bubbles, the chat back mark and page controls. An explicit page `color`
-still wins for its controls. Defaults remain white (`#ffffff`), dark ink
-(`#1d1f24`), muted ink (`#808690`) and blue (`#3d8bf2`). Bubble and button labels
-remain white; choose an accent with sufficient contrast.
+Phone colors are the game-wide `ui.phone` in `game.yaml`, separate from dungeon themes. `background` fills page bodies, `text` and `muted` color text, and `accent` colors the owner's chat bubbles, the chat back mark and page controls; a page's own `color` still wins for its controls. The defaults are white (`#ffffff`), dark ink (`#1d1f24`), muted ink (`#808690`) and blue (`#3d8bf2`). Bubble and button labels stay white, so pick an accent with enough contrast.
 
 <!-- verify: load group=phone-outcomes as=game.yaml -->
 ```yaml
@@ -578,7 +514,11 @@ ui:
   phone: {background: "#182430", text: "#ffffff", muted: "#bec8d2", accent: "#6750a4"}
 ```
 
-A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` stacked and scrolled as a feed is; a row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), an `item` of a list (icon, title, text, a value on the right) or a `button`, which puts the phone down. An `item`, or a page's single `picture`, may carry a `button` (with its `id` and `set`) too: the product row or the photo is then what the player taps, as a phone app chooses, instead of a separate button under it; the label names it for the keys and in traces. A grid of `pictures` stays one row that is only looked at. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or a grid with a lock and its `label`. A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press (or by themselves with `auto`); a notice with `call` fills the screen as an incoming call, OK (or a click on the green button) answers it and Cancel (or the red one) declines, and the next notice rings again when it is a call too. A call with `ring: 8` stops ringing after eight seconds unanswered and puts the phone down with `missed`, setting the call's `missed` (written as the `set` command), even when more notices would follow; without `ring` it rings until it is answered, declined or the shared `timeout` expires. `var` keeps what the phone was put down with (a button's `id` or label, `answer`, `decline`, `missed`, or one of the shared outcomes above), and a button's or a call's `set` is written as the `set` command, so the story can branch after it. A feed post with only `text` is a timeline's card, with `replies` and `reposts` next to its likes. A page's buttons answer the keys and the pad too: left, right or Tab ring one and OK presses it. A script's `pick` presses a page, home or contacts button on the screen by its label, as a tap would, and `look` lists those buttons (`on: phone:page`). A `qr` row draws its text as a QR code, crisp, with a `caption`, for a contact or a link to scan. In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read and `day` puts a separator over it; a picture keeps its shape and opens over the screen on a press or a click. A post's `time` shows beside the name, and a poster without an `icon` gets a circle of the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` without `var` does not wait: each notice slides down from the top of the screen for a few seconds as a push notification, over any scene, and a click on it opens its `event` after the event running.
+A `page` is any app or web page: a browser bar with `url`, or an app bar with `title` and `color`, over `rows` that stack and scroll as a feed does. A row is `text` (`size: large` or `small`, `bold`), a `picture` shown whole with its `caption`, `pictures` in a grid of `columns` (3 by default), a list `item` (icon, title, text, a value on the right), a `qr` code of its text with a `caption`, or a `button`, which puts the phone down. An `item`, or a page's single `picture`, may carry a `button` (with `id` and `set`) so that the product row or the photo is what the player taps; the label names it for the keys and in traces. A grid of `pictures` is one row that is only looked at. `locked` (true or a condition, worked out when the phone comes up) darkens a picture or grid with a lock and its `label`. Left, right or Tab select a page button and OK presses it. A script's `pick` presses a page, home or contacts button by its label, and `look` lists them (`on: phone:page`).
+
+A `lock` screen shows a large clock (`time`, the phone's clock by default) and `date` over `notices` that arrive one a press, or by themselves with `auto`. A notice with `call` fills the screen as an incoming call: OK or the green button answers, Cancel or the red one declines, and the next notice rings again if it is a call too. With `ring: 8` an unanswered call stops after eight seconds and puts the phone down with `missed`, running the call's `missed` (written as `set`) even if more notices follow; without `ring` it rings until answered, declined or the shared `timeout` expires. `var` keeps how the phone was put down (a button's `id` or label, `answer`, `decline`, `missed`, or a shared outcome above), and a button's or call's `set` is written as the `set` command, so the story can branch after it.
+
+In a chat, `time` shows beside a bubble, `read: true` marks the owner's message read, and `day` puts a separator above it; a picture keeps its shape and opens over the screen on a press or click. A feed post with only `text` is a timeline card, with `replies` and `reposts` beside its likes. A post's `time` shows beside the name, and a poster without an `icon` gets a circle with the name's first letter. A clip with `frames` may `fade` each frame into the next and `pan` in on each, so a few pictures at a low `fps` play smoothly. `app: banner` without `var` does not wait: each notice slides down from the top for a few seconds like a push notification, over any scene, and a click on it runs its `event` after the running event.
 
 <!-- verify: parse a fragment of an event; the pictures are the author's files -->
 ```yaml
@@ -607,13 +547,13 @@ A `page` is any app or web page: a browser bar with `url`, or an app bar with `t
 
 ## Campaigns
 
-A campaign (`schema_version: 5`) is a war of regions over turns in the same game as its towns and dungeons. `regions` are the land (who borders whom, the owner, the garrison, the values such as wealth, the terrain, the troop that defends it), `factions` the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` the player's side, the turns, the generals (actors, with their troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).
+A campaign (`schema_version: 5`) is a war of regions over turns, in the same game as its towns and dungeons. `regions` are the land (neighbours, owner, garrison, values such as wealth, terrain, the defending troop), `factions` are the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` sets the player's side, the turns, the generals (actors with troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).
 
-The campaign's place is a map whose points are named like the regions. Each region shows its owner's flag, or its `area` filled in the owner's colour; OK on it lists the orders. An order costs actions (or, with `count: orders`, can be given once a turn), may need a general and a target, and runs its `do` with `general` and `target` bound. A march (`march: true`) is decided by the numbers of `campaign.clash`, by a battle of the game (`fight: battle`), or by a clash of units shown on its own screen (`fight: clash_view`): the generals the sortie screen sends, each with a tactic and its skills, against the members of the region's `defend` troop, up to `clash.units` a side. `on_win`, `on_lose` and `on_draw` run a general's word after it.
+The campaign's place is a map whose points are named like the regions. Each region shows its owner's flag, or its `area` filled in the owner's colour, and OK on it lists the orders. An order costs actions (or, with `count: orders`, can be given once a turn), may need a general and a target, and runs its `do` with `general` and `target` bound. A march (`march: true`) is decided by the numbers of `campaign.clash`, by a battle of the game (`fight: battle`), or by a clash of units on its own screen (`fight: clash_view`): the generals sent from the sortie screen, each with a tactic and skills, against the members of the region's `defend` troop, up to `clash.units` a side. `on_win`, `on_lose` and `on_draw` run a general's word after it.
 
-When the player ends the turn, each other faction follows its `ai` rules in order, every one that holds (draft troops, march on a neighbour), the turn's `on_turn` event runs, and the campaign ends with `won` or `lost` when `win` or `lose` holds or the turns run out. Expressions read `region.<id>.owner`, `faction.<id>.regions`, `campaign.turn`, `generals.<id>.troops` and more ([Expressions](#expressions)); `set` changes a region's owner, troops and values. A generals' troops and HP are the same state as the rest of the game, so a dungeon can feed the war. `gozen sim campaign` measures the win rate before you tune the numbers.
+When the player ends the turn, each other faction runs every `ai` rule that holds, in order (draft troops, march on a neighbour), the `on_turn` event runs, and the campaign ends `won` or `lost` when `win` or `lose` holds or the turns run out. Expressions read `region.<id>.owner`, `faction.<id>.regions`, `campaign.turn`, `generals.<id>.troops` and more ([Expressions](#expressions)), and `set` changes a region's owner, troops and values. `gozen sim campaign` measures the win rate before you tune the numbers.
 
-A campaign can share a game with dungeons and towns. The generals are the same actors as the party, so their level, stats and HP carry over, and a clash's formulas read them (`a.atk`, `a.level`); `move` goes between the campaign's place and any other, both ways ([the recipe](/cookbook/#mix-a-campaign-with-a-dungeon)):
+The generals are the same actors as the party, so their level, stats and HP carry over, a clash's formulas can read them (`a.atk`, `a.level`), and a dungeon can feed the war. `move` goes between the campaign's place and any other, both ways ([the recipe](/cookbook/#mix-a-campaign-with-a-dungeon)):
 
 <!-- verify: load as=game.yaml group=mixed -->
 ```yaml
@@ -650,7 +590,7 @@ locations:
 
 ## Saves
 
-Saves are JSON files in the OS config directory, under the game `id`, each with a small JPEG of the scene beside it, kept as base64 text so a browser can store it too (`save1.json` and `save1.jpg.b64`). `ui.saves.slots` sets the number of slots and `ui.saves.quick` adds a quick slot (`quick.json`). They record the schema and data versions; raise `data_version` in `game.yaml` when you change definitions in a way old saves should notice, and the loader reports what it repaired.
+Saves are JSON files in the OS config directory, under the game `id`, each beside a small JPEG of the scene kept as base64 text so a browser can store it too (`save1.json` and `save1.jpg.b64`). `ui.saves.slots` sets the number of slots and `ui.saves.quick` adds a quick slot (`quick.json`). Saves record the schema and data versions; raise `data_version` in `game.yaml` when old saves should notice a change in the definitions, and the loader reports what it repaired.
 
 ## A bigger example
 
@@ -658,7 +598,7 @@ Saves are JSON files in the OS config directory, under the game `id`, each with 
 
 ## Battle AI history visibility
 
-The battle AI history panel shows recorded AI decisions and rule matches. It is available by default through the button, B/PageUp or controller L1. To hide it in a game that has not introduced AI rules, set this in `game.yaml`:
+The battle AI history panel lists recorded AI decisions and rule matches. It opens by default from its button, B/PageUp or controller L1. A game that has not introduced AI rules can hide it in `game.yaml`:
 
 <!-- verify: parse game.yaml presentation settings -->
 ```yaml
@@ -666,4 +606,4 @@ ui:
   battle_ai_history: false
 ```
 
-This disables the panel's button and input activation. Battle decisions, action messages, rewards, trace recording and replay verification remain the same. Omit the setting or use `true` to enable it. The development `battle-log` switch can still hide tactic explanations for captures, but cannot override an author's disabled history panel.
+This turns off the button and the keys; battle decisions, messages, rewards, traces and replay checks stay the same. Omit the setting or write `true` to show the panel. The development `battle-log` switch can hide tactic explanations in captures but cannot bring back a panel the author turned off.
