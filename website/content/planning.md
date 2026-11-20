@@ -5,22 +5,11 @@ weight: 38
 toc: true
 ---
 
-Planning is optional in schema 10. Start with a plain authored list for choices.
-Use `entities` for a roster, `timeline` for work, `calendar` for dates, `islands`
-for seats, `ensemble` for a conversation, and `workspace` only when controls need
-explicit positions. The neutral workshop under `examples/workshop/game` contains
-working definitions. The [workspace recipes](../workspaces/) explain
-the larger layouts, and [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) the event arguments.
+Planning is optional in schema 10. Start with a plain list of choices. Use `entities` for a roster, `timeline` for work, `calendar` for dates, `islands` for seats, `ensemble` for a conversation, and `workspace` only when controls need fixed positions. `examples/workshop/game` has working definitions; the [workspace recipes](../workspaces/) cover the larger layouts and [typed arguments and repeated calls](https://github.com/nao1215/gozen/blob/main/docs/development/event-arguments.md) the event arguments.
 
 ## Start with a list
 
-A plain screen needs a title and entries. A label with `do` is an action; a label
-without an action is explanatory content. `when` hides a row. On a bounded
-action (an entry with `bounds` and `do` or `destination`), `unavailable`
-keeps it visible but refuses activation, and `reason` explains why. These two
-fields are not supported on plain list rows. Mouse,
-keyboard, scripts, headless sessions and saved-screen replay share the same
-activation check. An evaluation error refuses activation.
+A plain screen needs a title and entries. A label with `do` is an action and a label without one is text. `when` hides a row. On a bounded action (an entry with `bounds` and `do` or `destination`), `unavailable` keeps it visible but refuses it and `reason` says why; plain list rows do not take these two fields. Mouse, keyboard, scripts, headless sessions and saved-screen replay share the same check, and an evaluation error refuses the action.
 
 <!-- verify: parse illustrative screen fragment; requires an existing game -->
 ```yaml
@@ -33,26 +22,13 @@ screens:
       - label: Work can resume after inspection.
 ```
 
-Add a planning calendar, entities and activities only when the game needs these
-rules. An activity's `after` refers to other activities and gates work. A
-reservation's `after` refers to other reservations and gates scene selection;
-these are separate namespaces.
+Add a planning calendar, entities and activities only when the game needs those rules. An activity's `after` names other activities and holds back work; a reservation's `after` names other reservations and holds back scenes. The two sets of IDs are separate.
 
 ## Scene dependencies without bookkeeping flags
 
-`planning.schedule` accepts optional `after`, `exclusive` and `when`. `after`
-lists reservation IDs whose events must already have started, recorded by the
-engine's existing saved `ran` state. A dependent is not selected merely because
-its prerequisite was queued by the same dispatch. Call `plan: {op: dispatch}`
-again after the prerequisite returns. Normal execution runs each selected event
-in order. A recursive dispatch inside a prerequisite can see that event as
-started; this is not a promise that all its dialogue was read.
+`planning.schedule` takes optional `after`, `exclusive` and `when`. `after` lists reservations whose events must already have started, as the saved `ran` state records. A prerequisite queued by the same dispatch does not count, so call `plan: {op: dispatch}` again after it returns. Selected events run in order. A dispatch nested inside a prerequisite sees that event as started, even if not all of its dialogue was read.
 
-`exclusive` admits at most one reservation from the group on a calendar date,
-across phases and save/load. Authored order breaks ties. `when` is a pure
-expression; use public entity attributes for presence or other eligibility.
-False leaves a reservation pending. Expression errors roll back the whole
-dispatch. Existing schedules without these fields keep their behavior.
+`exclusive` lets at most one reservation of the group run on a calendar date, across phases and save/load, with authored order breaking ties. `when` is a pure expression (use public entity attributes for presence and the like); false leaves the reservation pending, and an expression error rolls back the whole dispatch.
 
 <!-- verify: parse illustrative schedule fragment; requires the listed events -->
 ```yaml
@@ -67,22 +43,11 @@ planning:
       when: entity.potter.present
 ```
 
-`gozen check` rejects missing reservation references, dependency cycles, fixed
-dates outside the calendar, prerequisites fixed later than their dependent,
-and same-day dependencies in one exclusive group. Existing flag diagnostics
-still report flags never written or never read. Arbitrary conditions are not
-solved: the checker cannot prove general reachability, presence, or the order
-of dynamically indexed flag writes. Repeated dispatch plus a script is the
-runtime check for those conditions. An exclusive group chooses one event;
-it does not guarantee that every member eventually runs.
+`gozen check` rejects missing reservation references, dependency cycles, fixed dates outside the calendar, prerequisites fixed later than their dependent, and same-day dependencies in one exclusive group; flags never written or never read are reported as usual. It does not solve arbitrary conditions such as reachability, presence or the order of flag writes by computed index; test those with repeated dispatches in a script. An exclusive group picks one event and does not promise that every member runs eventually.
 
 ## Optional character voice checks
 
-An actor may declare `speech` keyed by the game's language. Without a matching
-language declaration, no dialogue is inspected. `first_person`, `addresses`
-and `endings` name preferred forms and explicit alternatives to flag. They do
-not rewrite lines. Address keys identify the author's intended recipient;
-the check is lexical and cannot infer the addressee from narrative prose.
+An actor may declare `speech` keyed by the game's language; without an entry for the game's language nothing is checked. `first_person`, `addresses` and `endings` name the preferred forms and the alternatives to flag, without rewriting lines. Address keys name the recipient the author means, since the check reads words and cannot tell the addressee from the prose.
 
 <!-- verify: parse illustrative actor fragment -->
 ```yaml
@@ -98,45 +63,18 @@ actors:
         endings: {preferred: please, patterns: ['dude[.!]?$']}
 ```
 
-`word` is the default and uses Unicode letter/number boundaries. `substring`
-is useful for languages without word spaces. RE2 `patterns` allow different
-language-specific rules, including endings anchored with `$`. Patterns match
-discouraged forms, not required ones: absence of a pronoun is not an error.
-GZN0123 is a warning. Quoted speech can legitimately match; review it manually.
-Only literal source lines with a known actor are checked. Dynamic speakers,
-`text: {expr}`, interpolated values and translated alternatives are not inferred.
+`word`, the default, matches at Unicode letter and number boundaries; `substring` suits languages without spaces between words. RE2 `patterns` add rules of a language, such as endings anchored with `$`. Patterns match the forms to avoid, so a missing pronoun is not an error. The finding is the warning GZN0123; quoted speech can match on purpose, so review it by hand. Only literal lines with a known actor are checked, not dynamic speakers, `text: {expr}`, interpolated values or translations.
 
 ## Appearance and compatibility
 
-A `plate` presents information; a `button` acts; a `ticket` presents progress;
-a `carousel` groups bounded controls. Use the existing theme before adding
-individual colors. `ui.material` controls surface finish; `ui.light` controls a
-light surface palette; `ui.tones` distinguishes authored emphasis; `ui.chrome`
-controls decorative frames. Call and chat views require `kind: ensemble`.
-Call views require at least 640 by 360 logical pixels. Larger fonts can require
-more caption pages. Call control strings draw labels without implied icons;
-use `{label: Leave, icon: leave}` to request an exit icon and color explicitly.
-The unused `view.door` field was removed before release.
+A `plate` shows information, a `button` acts, a `ticket` shows progress, and a `carousel` groups bounded controls. Try the theme before setting colors one by one. `ui.material` sets the surface finish, `ui.light` a light surface palette, `ui.tones` the authored emphasis and `ui.chrome` the decorative frames. Call and chat views need `kind: ensemble`, and call views at least 640 by 360 logical pixels; larger fonts can need more caption pages. A call control given as a string draws a label without an icon; `{label: Leave, icon: leave}` asks for the exit icon and color.
 
-Material panels sample the current layer, including previously drawn panels
-and content. Overlapping panels therefore blur what is already behind them. Wallpaper is regenerated when its colors or
-strength change, and GPU resources are released on reload and close.
+Material panels sample the current layer, panels drawn before included, so overlapping panels blur what is behind them. Wallpaper is redrawn when its colors or strength change, and GPU resources are released on reload and close.
 
 ## Saves and automation
 
-New saves record authored effort and calendar bounds. Values are validated
-against the saved effort before definition changes are reconciled. Without
-this metadata an old save must fit the current effort and calendar; out-of-range
-values are rejected rather than silently repaired. Definition additions and
-removals retain their existing reconciliation behavior. Checkpoint commands
-require schema 10. Carry values are filtered through the current allowlist on
-read, application and write, including when the allowlist becomes empty.
+Saves record the authored effort and calendar bounds, and values are checked against the saved effort before changed definitions are applied. An older save without these records must fit the current effort and calendar; values out of range are rejected, not repaired. Checkpoint commands need schema 10. Carry values pass through the current allowlist when read, applied and written, even when the allowlist is empty.
 
-`sim script` retains every simulation tick and seed. Idle planning screens skip
-input-only geometry work. Capture preparation advances in bounded bursts before
-image sampling. These changes do not skip event waits or random draws.
-Web export has a separate four-worker ceiling and a 2 GiB estimated image-work
-budget, using 56 bytes per pixel. A source exceeding the budget remains in its
-original format. This is an estimate, not an operating-system RSS limit.
+`sim script` keeps every tick and seed. Idle planning screens skip geometry work that only input needs, and capture prepares in bounded bursts before sampling the image; neither skips event waits or random draws. Web export uses at most four workers and an estimated 2 GiB for image work at 56 bytes per pixel; a picture over that budget keeps its original format. The budget is an estimate, not an operating-system RSS limit.
 
 For complete card, flow, call and guide examples, see [workspace recipes](../workspaces/).

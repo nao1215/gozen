@@ -4,31 +4,31 @@ description: Install the Gozen binary without a programming toolchain, and prepa
 weight: 10
 ---
 
-To create and play games, install the prebuilt `gozen` binary for your operating system. No Go compiler is required. Go 1.26.11 or later is needed only when building the engine.
+Making and playing games needs only the prebuilt `gozen` binary for your operating system. Go 1.26.11 or later is needed only to build the engine.
 
 ## The gozen command
 
-Download the archive for your OS and processor from [Releases](https://github.com/nao1215/gozen/releases), extract it, and put its executable in a directory on your PATH. Keep the license notices from the archive. You can also install it with Homebrew:
+Download the archive for your OS and processor from [Releases](https://github.com/nao1215/gozen/releases), extract it, and put the executable on your PATH, keeping the license notices. Or use Homebrew:
 
 <!-- verify: skip installs from the Homebrew tap, outside the repository -->
 ```shell
 brew install --cask nao1215/tap/gozen   # macOS and Linux with Homebrew
 ```
 
-[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so they have no ONNX inference for `gozen mosaic`. Each release signs `checksums.txt` with cosign and attaches SBOMs and SLSA provenance; [Verifying a release](#verifying-a-release) shows the commands.
+[The release page](https://github.com/nao1215/gozen/releases) has `.tar.gz` and `.zip` archives for Linux, macOS and Windows (amd64 and arm64) and `.deb`, `.rpm` and `.apk` packages for Linux. The prebuilt binaries are built without cgo, so `gozen mosaic` has no ONNX inference in them. [Verifying a release](#verifying-a-release) shows how to check the signatures.
 
-After installation, `gozen version` reports the installed version. Follow [Getting started](/getting-started/) to create your first game. `new`, `check` and simulation do not need a display; `run` needs the graphics runtime described below. Inference tools have additional prerequisites described in [Production tools](/production-tools/).
+`gozen version` prints the installed version, and [Getting started](/getting-started/) creates a first game. `new`, `check` and simulation need no display; `run` needs the graphics runtime [below](#what-the-window-needs), and the inference tools need what [Production tools](/production-tools/) lists.
 
 ## Optional installation from Go source
 
-These steps are for engine developers and existing Go projects. They are not needed for YAML game creation.
+For engine developers and existing Go projects; making a game in YAML does not need this.
 
 ```shell
 go install github.com/nao1215/gozen/cmd/gozen@latest
 gozen version
 ```
 
-To keep the command pinned with your game, add it as a Go tool in your module and run it with `go tool gozen`:
+To pin the command with your game, add it as a Go tool in your module and run `go tool gozen`:
 
 <!-- verify: run fixture=module -->
 ```shell
@@ -78,7 +78,7 @@ slsa-verifier verify-artifact gozen_<version>_<os>_<arch>.tar.gz \
 
 ## What the window needs
 
-Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build needs no C compiler. The race detector needs cgo and a C compiler on every OS.
+Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build needs no C compiler; the race detector needs cgo and a C compiler on every OS.
 
 | OS | Prepare |
 |:--|:--|
@@ -86,7 +86,7 @@ Gozen draws with [Ebitengine](https://ebitengine.org/) v2.10. A normal build nee
 | Windows | A GPU driver with OpenGL and a logged-in desktop. |
 | macOS | A desktop session. For the race detector, `xcode-select --install`. |
 
-Check the setup by opening a generated game:
+Open a generated game to check the setup:
 
 ```shell
 gozen new window-check
@@ -97,12 +97,11 @@ gozen new window-check
 gozen run window-check
 ```
 
-CI runs the screen tests and a packaged game on Linux, Windows and macOS runners, with the sound muted. Play by hand has been done on Linux only; reports from Windows and macOS are welcome.
+CI runs the screen tests and a packaged game, muted, on Linux, Windows and macOS. Play by hand has been on Linux only; reports from Windows and macOS are welcome.
 
 ## Without a screen (CI, servers)
 
-On Linux, run the window inside Xvfb, a virtual display. This creates a game,
-captures its title screen and quits:
+On Linux, run the window inside Xvfb, a virtual display. This creates a game, captures its title screen and quits:
 
 <!-- verify: run except=1 installs system packages with sudo; the check runs inside Xvfb -->
 ```shell
@@ -112,9 +111,7 @@ printf 'wait 20\nshot title\nquit\n' > check.txt
 xvfb-run -a gozen run ci-check --dev --mute --script check.txt --shots frames
 ```
 
-`frames/title.png` contains the title screen. Scripted runs, traces and screenshot
-capture use the same runner as ordinary play. `gozen check` and `gozen sim` need no
-display at all.
+`frames/title.png` holds the title screen. Scripts, traces and screenshots use the same runner as ordinary play; `gozen check` and `gozen sim` need no display.
 
 ## Optional tools
 

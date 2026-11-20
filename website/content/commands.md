@@ -33,19 +33,17 @@ A group alone (`gozen sim`) exits 2 and lists its commands. `gozen sim --help` s
 
 ## Conventions
 
-- Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments. A name the command line gives that the game does not have (a troop, a location, a persona, a shot) is an invalid argument.
-- A diagnostic may end with a code such as `[GZN1101]`; its first digit is the default exit status. Warning enforcement with `check --strict` or `--baseline` uses exit 1 without changing the code. `gozen help GZN1101` explains it, and [Error codes](/errors/) lists them all.
-- Options follow the GNU style. `--seed 7` and `--seed=7` both work, a few common options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
-- Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) refuse one that already exists, even if empty, and an output inside an input. They never overwrite.
-- Every command except `export`, `run`, `capture`, `faces` and `mosaic` detection needs nothing beyond the `gozen` binary: no cgo, display or sound device. `export` also needs a matching prebuilt runtime bundle.
+- Exit status: 0 for success and help, 1 when a check, I/O, simulation or capture fails, 2 for invalid arguments, including a name the game does not have (a troop, a location, a persona, a shot).
+- A diagnostic may end with a code such as `[GZN1101]` whose first digit is the default exit status; `check --strict` and `--baseline` exit 1 on warnings without changing the code. `gozen help GZN1101` explains a code, and [Error codes](/errors/) lists them all.
+- Options follow the GNU style: `--seed 7` and `--seed=7` both work, a few options have a one-letter form (`-n 100`, `-o DIR`, `-v`, `-h`), options may come before or after the arguments, and `--` ends the options. A single-dash long option such as `-seed` is rejected with exit status 2.
+- Commands that write a directory (`sim design`, `notes`, `export`, `release`, `trial`, `capture`) never overwrite: they refuse a directory that exists, even an empty one, and an output inside an input.
+- Only `export`, `run`, `capture`, `faces` and `mosaic` detection need more than the `gozen` binary (cgo, a display or a sound device). `export` also needs a matching prebuilt runtime bundle.
 
-The examples below use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location. Explicit configuration and output paths are relative to the working directory. Game asset paths, including `release --prefix`, remain game-relative. Omitted configuration paths use the defaults listed for each command. Use `--version` or `version` to print the version; `-v` is reserved for verbose command output.
+The examples use `game` as the game directory, `lesson` as a troop and `grotto` as a dungeon location. Configuration and output paths given on the command line are relative to the working directory; game asset paths, including `release --prefix`, are relative to the game. `--version` or `version` prints the version; `-v` means verbose.
 
 ## new
 
-Create an editable game directory from a bundled template. No Go compiler is needed.
-The destination must not exist. A random game ID prevents save collisions; use
-`--id` to choose one deliberately and keep it unchanged after distributing a game.
+Creates a game directory from a bundled template; no Go compiler is needed. The destination must not exist. The game gets a random ID so saves do not collide; `--id` sets your own, which should not change after you distribute the game.
 
 ```sh
 gozen new first-game --template rpg --title "My first game"
@@ -54,10 +52,7 @@ gozen new first-story --template novel
 gozen new first-campaign --template campaign
 ```
 
-Run `gozen run first-game` to play. Edit `game.yaml` for the title,
-`data/world.yaml` for dialogue and places, and `data/rules.yaml` for characters
-and battle rules. The starter pictures are original placeholders you can replace.
-
+Play it with `gozen run first-game`. The title is in `game.yaml`, dialogue and places in `data/world.yaml`, characters and battle rules in `data/rules.yaml`. The starter pictures are placeholders to replace.
 
 `new` and `theme list` also accept `--format json` or `--format jsonl`:
 
@@ -66,14 +61,11 @@ gozen new machine-game --id machine-game --format json
 gozen theme list --format jsonl
 ```
 
-JSON is one versioned result document. JSONL theme listings contain one item per
-theme and a final summary. Machine-mode errors are JSONL on stderr with the same
-GZN codes and exit statuses; output formatting does not change the created game.
-Other commands currently retain the result shapes described in their sections.
+JSON is one versioned result document; the JSONL theme listing has one item per theme and a final summary. In these modes errors are JSONL on stderr with the same GZN codes and exit statuses, and the created game is the same.
 
 ## check
 
-Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr. By default they do not fail the check. `--strict` fails with exit 1 when any warning is reported; diagnostic codes stay unchanged, including `GZN0xxx` warnings.
+Loads every definition, resolves references and expressions, checks that the assets exist, and lays out dialogue with the game's font. Warnings go to stderr and do not fail the check unless you pass `--strict`, which exits 1 on any warning and keeps the `GZN0xxx` codes.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -113,7 +105,7 @@ The `data` field contains diagnostics such as:
 ]
 ```
 
-`--only layout` lays out every line of dialogue and every choice with the game's font and display rules, and reports the ones that overflow. Warnings alone exit 0.
+`--only layout` reports the lines and choices that overflow the window. Warnings alone exit 0.
 
 <!-- verify: run fixture=cli -->
 ```shell
@@ -129,25 +121,13 @@ gozen check game --write-baseline warnings.json
 gozen check game --baseline warnings.json
 ```
 
-`--baseline FILE` enables enforcement on its own. It allows the recorded warning
-counts for each diagnostic code and game-relative source file; only increased
-counts fail (exit 1). New codes and files start with zero allowance. Decreases
-pass, but do not rewrite the baseline. Combining `--strict` with `--baseline`
-uses these allowances instead of zero. All warnings remain visible in text,
-JSON and JSONL, including those within the budget. Errors always fail.
+`--baseline FILE` turns on enforcement by itself. It allows the recorded number of warnings for each code and source file, and fails (exit 1) only when a number grows; a new code or file is allowed zero. A drop passes but does not rewrite the file. With `--strict` as well, the recorded numbers replace zero. Every warning is still printed in text, JSON and JSONL, and errors always fail.
 
-`--write-baseline FILE` writes versioned JSON to a **new** file after a valid
-check, including zero counts when clean. It does not overwrite an existing file
-or record a game with validation errors. Review a newly written baseline before
-replacing an older one. It does not disable `--strict` or comparison when those
-options are also supplied. Paths are relative to the current working directory;
-warning file names inside the JSON are relative to the game. A baseline records
-the `--only` scope, which must match when it is used. It detects count growth,
-not replacement of one warning by another within the same code/file bucket.
+`--write-baseline FILE` writes versioned JSON to a new file after a check without errors, with zero counts when the game is clean. It never overwrites a file, and it still applies `--strict` or `--baseline` given with it. The file path is relative to the working directory; the file names inside are relative to the game. A baseline records the `--only` scope, which must match when it is used. It counts warnings per code and file, so one warning replaced by another in the same bucket goes unnoticed.
 
 ## sim
 
-Plays the game by its rules alone, with no window or sound. Every `sim` command but `sim script`, which writes a trace, accepts `--format text|json|jsonl`. JSON returns `{"version":1,"command":"sim ...","status":"ok","data":...}`. JSONL emits ordered items when the result has multiple entries, followed by one summary. Fatal diagnostics go to stderr as JSONL and retain their GZN codes. Selectors, seeds and output paths have the same effect in every format.
+Plays the game by its rules alone, with no window or sound. Every `sim` command but `sim script` (which writes a trace) accepts `--format text|json|jsonl`. JSON returns `{"version":1,"command":"sim ...","status":"ok","data":...}`; JSONL writes one item per entry and then a summary. Fatal diagnostics go to stderr as JSONL with their GZN codes. The format changes only the output, not what is simulated.
 
 | Command | JSON `data` | JSONL items |
 |:--|:--|:--|
@@ -161,7 +141,7 @@ Plays the game by its rules alone, with no window or sound. Every `sim` command 
 
 ### sim battle
 
-Fights the troop with the starting party (or `--party`, or a saved state) under AUTO and prints the win, loss, flight and draw rates and the average turns. The numbers are the same as the [F7 balance panel](/edit-play-loop/#f7-balance-panel). The same `--seed` gives the same result.
+Fights the troop on AUTO with the starting party (or `--party`, or a saved state) and prints the win, loss, flight and draw rates and the average turns, the same numbers as the [F7 balance panel](/edit-play-loop/#f7-balance-panel). The same `--seed` gives the same result.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -194,7 +174,7 @@ lesson: 100 battles  win 100%  lose 0%  fled 0%  draw 0%  avg turns 1.0  avg sta
 
 ### sim dive
 
-Takes the starting party down a dungeon location, fighting `--battles` battles on each floor, buying better equipment from `--shops`, resting, and fighting the bosses. Prints the level, HP, gold and win rates of each floor.
+Takes the starting party down a dungeon location: `--battles` battles on each floor, better equipment from `--shops`, rests and bosses. Prints the level, HP, gold and win rates of each floor.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -250,7 +230,7 @@ gozen sim floors game --location grotto --no-map
 
 ### sim design
 
-Plays the game headless with the personas of `designeval.yaml` (players, rewards and time weights). With `--out`, also writes `summary.json`, timelines, `band.png` and `report.md` to a new directory. Without `--out`, it creates no report files. A simulation error keeps the report and exits 1. A small configuration is in [the CLI test fixture](https://github.com/nao1215/gozen/blob/main/e2e/atago/fixtures/game/designeval.yaml).
+Plays the game headless with the personas of `designeval.yaml` (players, rewards and time weights). Only with `--out` does it write `summary.json`, timelines, `band.png` and `report.md`, to a new directory. A simulation error keeps the report and exits 1. [The CLI test fixture](https://github.com/nao1215/gozen/blob/main/e2e/atago/fixtures/game/designeval.yaml) has a small configuration.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -271,7 +251,9 @@ gozen sim design game -o report --only walker -v
 
 ### sim campaign
 
-Plays the game's campaign ([Campaigns](/writing-a-game/#campaigns)) many times, headless, with a strategy for the player, and prints the win rate, the turns the campaigns ended in, the mean of the regions each faction held at the start of each turn, the factions that fell and when, the orders given, and how the marches went. Campaign *i* uses the seed `--seed` + *i*, so the same `--seed` gives the same result. Use `--compare strategies` or `--compare tactics` to play each entry on that same seed range. The comparison table includes win rate, mean ending turn, and mean regions held; its region details show ownership changes per campaign, mean turn of the first ownership change, end holder counts, and the player's win rate by turn when it held that region. `--format json` writes the comparison and region details as JSON.
+Plays the game's [campaign](/writing-a-game/#campaigns) many times, headless, with a strategy for the player. It prints the win rate, the turns the campaigns ended in, the mean number of regions each faction held at the start of each turn, which factions fell and when, the orders given, and how the marches went. Campaign *i* uses the seed `--seed` + *i*, so the same `--seed` gives the same result.
+
+`--compare strategies` or `--compare tactics` plays each entry on the same seeds. The table gives the win rate, mean ending turn and mean regions held. For each region it gives the ownership changes per campaign, the mean turn of the first change, who held it at the end, and the player's win rate by the turn it held the region. `--format json` writes both as JSON.
 
 <!-- verify: skip the CLI fixture has no campaign; e2e/atago/campaign.atago.yaml runs these -->
 ```shell
@@ -292,11 +274,7 @@ gozen sim campaign game --compare tactics --format json
 
 ### sim routes
 
-Explores the game's starting event and automatic arrivals without a display. It reports paths that
-reach clear and game-over outcomes, authored options that were never offered on explored paths, and
-flags already reported as set but never read by `gozen check` (GZN0112).
-The run is bounded by path count, event requests per path, and elapsed time. Findings are informational
-unless `--fail-unreachable` is set. Runtime errors and timeouts exit 1 regardless of that flag. JSON includes whether the path limit cut exploration short.
+Explores the game's starting event and automatic arrivals without a display. It reports the paths that reach a clear or a game over, choice options never offered on the explored paths, and flags that `gozen check` reports as set but never read (GZN0112). Path count, event requests per path and time bound the run, and JSON says whether the path limit cut it short. Findings exit 0 unless `--fail-unreachable` is set; runtime errors and timeouts always exit 1.
 
 ```sh
 gozen sim routes game
@@ -313,13 +291,13 @@ gozen sim routes game --format json
 
 ### sim breed
 
-`gozen sim breed <game-dir>` starts from species with a positive recruit chance and follows the breeding rules. It prints each reachable species, the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. The recipe gives the male and female parent sexes and the obtainable child sex (`sex` and `parent_sexes` in JSON). The graph tracks obtainable sexes and plus values. Parent levels are assumed raisable for this graph; test `min_plus` recipes in an actual playthrough as well. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
+`gozen sim breed <game-dir>` starts from the species with a positive recruit chance and follows the breeding rules. It prints each reachable species with the fewest generations and one recipe, then the unreachable species. `--format json` returns `reachable` rows (`id`, `family`, `rank`, `steps`, `parents`) and an `unreachable` ID list. A recipe gives the parents' sexes and the child's sex (`parent_sexes` and `sex` in JSON); the graph follows obtainable sexes and plus values. It assumes parents can be raised to any level, so try `min_plus` recipes in a real play too. See [the collection recipe](/cookbook/#collect-raise-and-breed-monsters).
 
-For example, run `gozen sim breed examples/go-zen/game --format json` after `gozen check examples/go-zen/game` to inspect the sample's 40 non-boss species. `gozen book examples/go-zen/game` also prints their recruit settings and rules.
+`gozen sim breed examples/go-zen/game --format json` lists the sample's 40 non-boss species.
 
-`gozen book GAME` describes the game in Markdown. `--format text` is the same Markdown; `--format json` returns the same sections in a version-1 result envelope. Definitions are keyed by ID. `--format jsonl` emits one item per section and a terminal summary.
+`gozen book GAME` describes the game in Markdown (`--format text` is the same). `--format json` returns the same sections, keyed by ID, in a version-1 envelope; `--format jsonl` writes one item per section and a summary.
 
-Use `--section lineage` for only the monster family trees. Its JSON `data.monsters` array includes recipes, capture locations and nested lineage trees. Family recipes carry concrete `parents` and `families`; repeated species use `ref`, and an unreachable species has a null lineage.
+`--section lineage` gives only the monster family trees. Its JSON `data.monsters` array has recipes, capture locations and nested lineage trees. Family recipes name concrete `parents` and `families`, a repeated species is a `ref`, and an unreachable species has a null lineage.
 
 ```sh
 gozen book game --format json
@@ -328,7 +306,7 @@ gozen book game --section lineage --format json
 
 ### sim script
 
-Plays the game with a script of [`run --dev --script`](/edit-play-loop/#scripts-and-screenshots), without a window, sound or screenshots, as fast as it goes, and writes the same [trace](/edit-play-loop/#trace-and-replay). The same options and `--seed` give the same game as `run` with the same script: the same `say`, `request`, `order`, `dev_do`, `battle`, `autosave` and `state` lines at the same ticks, and the same state in `end`. Use it to measure long plays without Xvfb.
+Plays a script of [`run --dev --script`](/edit-play-loop/#scripts-and-screenshots) as fast as it can, without a window, sound or screenshots, and writes the same [trace](/edit-play-loop/#trace-and-replay). With the same options and `--seed` it plays the same game as `run`: the same `say`, `request`, `order`, `dev_do`, `battle`, `autosave` and `state` lines at the same ticks, and the same state in `end`. Use it to measure long plays without Xvfb.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -340,16 +318,16 @@ What needs the window is left out:
 
 - `shot NAME` takes no picture, and neither do the automatic shots of `lines`, `play` and walking; the trace has no `shot` line.
 - The trace lines that come from drawing, `view`, `stand`, `layout` and `menu`, are not written, and `--trace-shots` is not available. `music` lines say which song was asked for; whether it had started depends on how fast songs decode in the background.
-- Every other command, `wait`, `gap`, `press`, `hold`, `read`, `until`, `walk`, `do`, `order`, `end_turn`, `skip`, `quit` and the rest, runs as in `run`, tick for tick. `click X Y` and `drag X Y TO_X TO_Y` (press, move over eight ticks, let go) run too, but a position that is only known once drawn is not checked.
+- Every other command (`wait`, `gap`, `press`, `hold`, `read`, `until`, `walk`, `do`, `order`, `end_turn`, `skip`, `quit` and the rest) runs as in `run`, tick for tick. `click X Y` and `drag X Y TO_X TO_Y` (press, move over eight ticks, let go) run too, without checking positions known only once drawn.
 
-With `--script -` the script is read line by line from the standard input and the trace goes to the standard output (unless `--trace FILE` is given). Each time the game is ready for the next command, a line `{"t":"ready","tick":N,"busy":false,"location":"camp","waiting":""}` is written and the trace flushed; `waiting` is `text`, `choice`, `command` (a battle waits for a command) or empty. A program can read the trace up to `ready`, decide, and send the next line, so one process plays as long as needed. The command `snapshot` writes `{"t":"snapshot","state":{...}}` with the whole state, the same as the state of `end`; it works in `run --script` as well. A line that does not parse is written as `script_error` and skipped. The end of the input, or `quit`, ends the run with `end`.
+With `--script -` the script is read line by line from the standard input and the trace goes to the standard output unless `--trace FILE` is given. Whenever the game is ready for the next command it writes `{"t":"ready","tick":N,"busy":false,"location":"camp","waiting":""}` and flushes the trace; `waiting` is `text`, `choice`, `command` (a battle waits for a command) or empty. A program can read up to `ready`, decide and send the next line, and keep one process playing as long as it likes. The command `snapshot` writes `{"t":"snapshot","state":{...}}` with the whole state, as in `end`; it works in `run --script` too. A line that does not parse is written as `script_error` and skipped. The end of the input, or `quit`, ends the run with `end`.
 
 <!-- verify: skip reads the script from the standard input -->
 ```shell
 gozen sim script game --start camp --script - < check.txt
 ```
 
-Saves are kept in memory unless `--save-dir` is given. Startup options that `run` has for scripted plays are available: `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm`, `--event`, `--line` and `--answers`. The default `--seed` is 1. Without `--trace -`, it prints the ticks played and the lines written.
+Saves stay in memory unless `--save-dir` is given. The startup options of `run` work here too: `--start`, `--battle`, `--party`, `--level`, `--flags`, `--gold`, `--items`, `--floor`, `--calm`, `--event`, `--line` and `--answers`. The default `--seed` is 1. Without `--trace -`, it prints the ticks played and the lines written.
 
 | Option | Meaning |
 |:--|:--|
@@ -360,9 +338,9 @@ Saves are kept in memory unless `--save-dir` is given. Startup options that `run
 
 ### sim batch
 
-Plays many `sim script` cases in one process. Starting `sim script` reads and checks the whole game, which for a large game takes longer than a short script plays; `sim batch` reads each game directory once and plays every case from a new game on those definitions. A directory is read again only when one of its files changes.
+Plays many `sim script` cases in one process. It reads and checks each game directory once (again only when a file changes) instead of once a case, and plays every case from a new game.
 
-The cases are JSON Lines, one object a line, from `--cases FILE` (`-` is the standard input). `args` are the arguments of `sim script`, the game directory first; `id` is any name the result carries back:
+The cases are JSON Lines from `--cases FILE` (`-` is the standard input). `args` are the arguments of `sim script`, game directory first, and `id` is a name the result carries back:
 
 ```json
 {"id": "night", "args": ["game", "--start", "camp", "--seed", "5", "--script", "night.txt", "--trace", "night.jsonl"]}
@@ -374,9 +352,9 @@ The cases are JSON Lines, one object a line, from `--cases FILE` (`-` is the sta
 gozen sim batch --cases cases.jsonl
 ```
 
-When a case ends, stdout receives a version-1 JSONL envelope with `command: "sim batch"`, `type: "item"`, its `id` and `status` (`ok` or `failed`). Its `data` contains the case's `id`, `exit`, `stdout` and `stderr`: the exit status and output that `sim script` with the same arguments would have produced. A final `summary` contains `succeeded` and `failed` counts; any failed case makes the batch exit 1. Fatal input or processing errors go to stderr and may prevent this summary.
+When a case ends, stdout gets a version-1 JSONL envelope with `command: "sim batch"`, `type: "item"`, its `id` and `status` (`ok` or `failed`). Its `data` holds the case's `id`, `exit`, `stdout` and `stderr`, as `sim script` with the same arguments would have produced them. A final `summary` counts `succeeded` and `failed`, and any failed case makes the batch exit 1. A fatal input or processing error goes to stderr and may leave out the summary.
 
-The trace goes where the case's `--trace` says, and is the same as `sim script` writes. Each case has its own seed, saves and state. A line that does not parse gives a result with exit 2, and the next line is played. Cases cannot use `-` for their script or trace. A program can stream cases and read each result before it sends the next. Cases play one at a time; to play them in parallel, run several processes.
+Each case writes its own `--trace` and has its own seed, saves and state; it cannot use `-` for its script or trace. A line that does not parse gets a result with exit 2 and the batch goes on. A program can stream cases and read each result before sending the next. Cases play one at a time; run several processes for parallel play.
 
 | Option | Meaning |
 |:--|:--|
@@ -385,7 +363,7 @@ The trace goes where the case's `--trace` says, and is the same as `sim script` 
 
 ## run
 
-Opens a game directory containing `game.yaml`, `data/` and `assets/`. No Go source or game-specific executable is needed. It uses the same runtime as exported games.
+Opens a game directory (`game.yaml`, `data/`, `assets/`) in a window with the same runtime as exported games. No Go source or game-specific executable is needed.
 
 <!-- verify: skip opens a window; covered by e2e/atago/graphics.atago.yaml -->
 ```sh
@@ -395,19 +373,19 @@ gozen run game --dev --save-dir test-saves
 gozen run game --dev --script check.txt --shots shots --trace run.jsonl
 ```
 
-Options can come before or after the directory; use `--` before a directory starting with a dash. `gozen run --help` lists the shared game options. Pass the game directory as an operand.
+Use `--` before a directory whose name starts with a dash. `gozen run --help` lists the game options.
 
-`--dev` enables author tools and live reload from that directory. Scripted runs isolate saves unless `--save-dir` is supplied. Ordinary play uses the game's id under the user's Gozen configuration directory; use `--save-dir` to keep separate copies apart. Relative output paths are relative to the working directory, which the command does not change.
+`--dev` turns on the author tools and live reload. Scripted runs keep their saves apart unless `--save-dir` is given. Ordinary play saves under the game's ID in the user's Gozen configuration directory; `--save-dir` keeps separate copies apart. Relative output paths are relative to the working directory.
 
-A display and the platform graphics and audio libraries are required; use Xvfb for unattended Linux runs. Recording additionally needs ffmpeg. Help, `check`, and `sim` do not need a display. Closing the window exits 0; startup and I/O failures exit 1; argument parsing and startup option errors exit 2.
+It needs a display and the platform graphics and audio libraries (use Xvfb for unattended Linux runs), and ffmpeg for recording. Closing the window exits 0, startup and I/O failures exit 1, and argument and startup option errors exit 2.
 
-The command reads loose assets; it does not encrypt or package them. Keep the runner version with a distributed game. Custom Go loops and save-store callbacks are outside the supported authoring interface.
+Assets are read as loose files, not packaged. Custom Go loops and save-store callbacks are not supported.
 
 ## trace
 
-Prints a trace written by the game's `--trace` in recorded order. Use `-` instead of a file to read standard input. With `--check`, lists faults of the standing pictures and the music and exits 1 if there are any. Check mode rejects display filters.
+Prints a trace written by `--trace` in recorded order; `-` reads the standard input. `--check` lists faults of the standing pictures and the music, exits 1 if there are any, and takes no display filters.
 
-`--format json` returns selected records and counts of every input kind in the result's `data`. `--format jsonl` emits the selected records as items, then a summary with counts. Check mode returns issues with their GZN codes, ticks and messages; `standing_pictures_checked` is false when the trace contains no standing-picture records.
+`--format json` returns the selected records and a count of every kind in `data`; `--format jsonl` writes the records as items, then a summary with the counts. With `--check` it returns the issues with their GZN codes, ticks and messages, and `standing_pictures_checked` is false when the trace has no standing-picture records.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -432,7 +410,7 @@ gozen trace run.jsonl --check
 
 ## notes
 
-Reads the notes the game writes with F9 and builds an HTML page with thumbnails in a new directory. The notes are not changed.
+Builds an HTML page with thumbnails from the notes written with F9, in a new directory. The notes are not changed.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -446,8 +424,7 @@ gozen notes notes -o review-html
 
 ## capture
 
-Capture PNG images and animated GIFs directly from game YAML. No separate game
-binary or ffmpeg is needed. Each job starts with fresh state and memory-only saves.
+Takes PNG images and animated GIFs straight from the game YAML, without a game binary or ffmpeg. Each job starts from a fresh state with saves in memory.
 
 <!-- verify: skip needs a display; e2e/atago/graphics.atago.yaml exercises direct capture -->
 ```shell
@@ -480,17 +457,9 @@ shots:
         press ok
 ```
 
-`id` names the output file. `start` selects a location; `event` or `scene`
-selects an event or gallery scene. `line`, `picture` and `answers` select a
-position within that event. `battle` requires `start` without `scene` or `event`.
-`party`, `level`, `floor`, `flags` and `calm` configure a location start.
-`setup` uses existing YAML commands and must finish without waiting for player
-input. Gallery defaults run before setup.
+`id` names the output file. `start` picks a location, `event` or `scene` an event or gallery scene, and `line`, `picture` and `answers` a position in that event. `battle` needs `start` without `scene` or `event`. `party`, `level`, `floor`, `flags` and `calm` set up a location start. `setup` runs YAML commands that must finish without waiting for the player, after the gallery defaults.
 
-The top-level `script` runs before `wait` (default: 120 simulation ticks).
-`gif.script` runs during the animation. Scripts use the existing
-[input commands](/edit-play-loop/); capture jobs own image output, so script commands
-that also write images are rejected.
+The top-level `script` runs before `wait` (default: 120 simulation ticks), and `gif.script` during the animation. Scripts use the [input commands](/edit-play-loop/); script commands that write images are rejected, since the job writes the images.
 
 | Option | Meaning |
 | --- | --- |
@@ -503,26 +472,17 @@ that also write images are rejected.
 | `--timeout DURATION` | Cooperative limit per job; default `4m` |
 | `--against DIR` | Compare each job with the same job ID of an earlier capture directory |
 
-Output contains the images, `shots.json` and `index.html`. Configuration and script validation errors stop the batch before rendering.
-Runtime job failures have a reason in the report and no image; other jobs continue. A partial batch exits 1.
+The output holds the images, `shots.json` and `index.html`. A configuration or script error stops the batch before anything is drawn. A job that fails while running gets a reason in the report and no image, the other jobs go on, and the batch exits 1.
 
-With `--against previous`, each row of `shots.json` also says how the job differs from `previous/shots.json`: `change` (`unchanged`, `changed`, `new` or `removed`), `changed`, `diff_pixels`, `diff_ratio` and `diff_bbox` (`[x, y, width, height]`, or null when no pixel changed). A difference is reported, never an error: it does not change the exit status.
-Existing output directories are preserved. Asset policies check every sampled
-frame, including transient GIF images. Ordinary games need no `--raw`.
+With `--against previous`, each row of `shots.json` also compares the job with `previous/shots.json`: `change` (`unchanged`, `changed`, `new` or `removed`), `changed`, `diff_pixels`, `diff_ratio` and `diff_bbox` (`[x, y, width, height]`, or null when no pixel changed). A difference does not change the exit status. The asset policy checks every sampled frame, GIF frames included; ordinary games need no `--raw`.
 
-GIF defaults are 10 FPS, three seconds and at most 640 pixels wide. Limits are
-1–30 FPS, 10 seconds, 1280 pixels per side, 921600 pixels per frame, 2–300 frames,
-and 64 MiB of retained paletted pixels. Combined limits may require reducing
-width, FPS or duration. GIFs loop without sound. Frame delays use centiseconds;
-the final delay includes any fractional frame interval.
+GIFs default to 10 FPS, three seconds and at most 640 pixels wide. The limits are 1 to 30 FPS, 10 seconds, 1280 pixels a side, 921600 pixels a frame, 2 to 300 frames and 64 MiB of paletted pixels, so a long or wide GIF may need a lower width, FPS or duration. GIFs loop without sound. Frame delays are in centiseconds, and the last one takes up any fraction left over.
 
-Capture needs a display and platform graphics libraries. Use Xvfb for unattended
-Linux runs. Timeout checks occur between game updates and draws; they cannot
-terminate a stalled graphics driver.
+Capture needs a display and the platform graphics libraries; use Xvfb for unattended Linux runs. The timeout is checked between updates and draws, so it cannot stop a stalled graphics driver.
 
 ## book
 
-Writes the locations, events, scenes, troops and items of the game to stdout as one Markdown document. A quick way to review a whole game, or what an agent wrote. The headings follow the game's `language`.
+Writes the game's locations, events, scenes, troops and items to stdout as one Markdown document, for reviewing a whole game or what an agent wrote. The headings follow the game's `language`.
 
 <!-- verify: run fixture=cli -->
 ```shell
@@ -531,7 +491,7 @@ gozen book game > book.md
 
 ## release
 
-Checks the approval records and the assets the game refers to, then copies the game to a new directory, taking replaced assets from an overlay. Any unapproved reference fails the build.
+Checks the approval records against the assets the game uses and copies the game to a new directory, with replaced assets taken from an overlay. An unapproved reference fails the build.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -548,7 +508,7 @@ gozen release game --out release --overlay overlay --inspect inspect.jsonl
 
 ## trial
 
-Builds a demo tree using the range in `trial.yaml`. Analysis retains branches it cannot prove unreachable and reports their conditions. Use `forbid` patterns to reject retained definitions or assets that must not ship; see [trial checks](/cookbook/#check-the-contents-of-a-trial).
+Builds a demo tree from the range in `trial.yaml`. A branch it cannot prove unreachable is kept, with its condition reported. `forbid` patterns fail the build when a kept definition or asset must not ship; see [trial checks](/cookbook/#check-the-contents-of-a-trial).
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -565,17 +525,17 @@ gozen trial game --out trial --overlay overlay --inspect inspect.jsonl
 | `--list FILE` | Write what was kept and dropped to this new file |
 | `-n, --dry-run` | Write nothing; print only how much would be kept |
 
-The trial holds what [`gozen export`](#export) takes from a game: the pruned `game.yaml` and `data/`, the assets the kept part uses, and, unchanged, `lang/`, `streams/`, the license notices and `LICENSES/`. The translations are copied whole, so they still hold the text of what was cut. A symlink anywhere in the game fails the build, as it fails an export. The YAML is written anew: comments and flow style are not kept, and every text is quoted.
+The trial holds what [`gozen export`](#export) takes from a game: the pruned `game.yaml` and `data/`, the assets the kept part uses, and `lang/`, `streams/`, the license notices and `LICENSES/` unchanged. Translations are copied whole, so they still hold the text of what was cut. A symlink anywhere in the game fails the build, as in an export. The YAML is written anew, without comments or flow style and with every text quoted.
 
-Without `--overlay`, the trial of a game that has `asset-policy.yaml` keeps that file: its assets are as unapproved as the game's, so `gozen export` refuses the trial as it refuses the game. Build the trial with `--overlay` and `--inspect` to get an approved tree, which holds no policy. The list is written after the tree, and a run that fails leaves neither.
+Without `--overlay`, a game's `asset-policy.yaml` stays in the trial, and `gozen export` refuses the trial as it refuses the game. `--overlay` with `--inspect` gives an approved tree without a policy. The list is written after the tree, and a failed run leaves neither.
 
 ## Picture tools
 
-Tools for the pictures of a game. [prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog, and [mosaic](/production-tools/#gozen-mosaic) pixelates regions of images; both are described on [Production tools](/production-tools/).
+[prompt](/production-tools/#gozen-prompt) assembles image-generation text from a catalog and [mosaic](/production-tools/#gozen-mosaic) pixelates regions of images; [Production tools](/production-tools/) describes both.
 
 ### models fetch
 
-Downloads fixed revisions of the detection models (`censor`, `face`, `head`) into the user cache and checks each file against a SHA-256 written in gozen. `mosaic` and `faces` use a model in the cache when `--model` is omitted.
+Downloads pinned revisions of the detection models (`censor`, `face`, `head`) into the user cache and checks each file against a SHA-256 built into gozen. Without `--model`, `mosaic` and `faces` use the cached model.
 
 <!-- verify: skip downloads models from the network -->
 ```shell
@@ -585,7 +545,7 @@ gozen models fetch face       # the face detector of faces
 
 ### faces
 
-Finds the face in each standing picture a painted scene (`stage:`) cuts a balloon face from (the people placed in a stage and the actors' face pictures) with the anime face detector that `gozen models fetch face` downloads, and writes the boxes with each picture's size and SHA-256 to `assets/faces.json`. The game only reads that file and runs no model, so a web build shows the same faces. A doll's `icon` (a face drawn for the balloons) comes first and is not searched, then its `face_at`, then the box; a picture without a box gets a guessed face, and `gozen check` warns of it and of a picture changed since.
+Painted scenes (`stage:`) cut balloon faces from standing pictures. `faces` finds the face in each picture a stage uses with the anime face detector from `gozen models fetch face` and writes the boxes, with each picture's size and SHA-256, to `assets/faces.json`. The game only reads that file, so a web build shows the same faces. A doll's `icon` (a face drawn for the balloons) comes first, then its `face_at`, then the box; a picture without a box gets a guessed face, and `gozen check` warns about it and about pictures changed since.
 
 <!-- verify: skip downloads a model and needs a cgo build with ONNX Runtime -->
 ```shell
@@ -601,11 +561,11 @@ gozen faces game --preview faces-check           # and look at the boxes and the
 | `--min SCORE` | The lowest score of a face (0.3). |
 | `--preview DIR` | Also write each picture with its face box and its balloon face to this new directory. |
 
-It needs a gozen built with cgo, an ONNX Runtime shared library and the model, as `gozen mosaic` does; a build without cgo says so and fails.
+Like `gozen mosaic`, it needs a cgo build, the ONNX Runtime shared library and the model; a build without cgo fails and says so.
 
 ### puppet
 
-Loads a moving portrait ([portrait YAML](/cookbook/#give-a-character-faces-and-a-moving-portrait)) with the game renderer's validation and prints where each face, closed-eyes and mouth picture lies on the base picture. A difference picture as large as the base is cut down to the part that differs.
+Loads a moving portrait ([portrait YAML](/cookbook/#give-a-character-faces-and-a-moving-portrait)) with the renderer's checks and prints where each face, closed-eyes and mouth picture sits on the base picture. With `--out`, a difference picture as large as the base is cut down to the part that differs.
 
 <!-- verify: each fixture=puppet -->
 ```shell
@@ -621,11 +581,11 @@ It needs nothing beyond the gozen binary: no cgo, display or sound device.
 
 ## theme
 
-A dungeon theme is a wall, a floor, a ceiling and a door picture with colors that go together. The `gozen` binary carries thirteen themes (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine`, `vine`); `gozen theme add` copies one into a game, and `theme: cave` in a [dungeon](/schema/#dungeon) or one of its [looks](/schema/#dungeonlook) then fills the walls, floor, ceiling, door and colors that the YAML does not write. The pictures are not part of the game runtime, so a game that uses no theme does not carry them.
+A dungeon theme is a wall, floor, ceiling and door picture with matching colors. The `gozen` binary carries thirteen (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine`, `vine`). `gozen theme add` copies one into a game, and `theme: cave` in a [dungeon](/schema/#dungeon) or one of its [looks](/schema/#dungeonlook) fills whatever the YAML leaves out. The pictures are not in the game runtime, so a game without a theme does not carry them.
 
 ### theme list
 
-Prints the name of each theme with a line on how it looks.
+Prints each theme's name with a line on how it looks.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -634,7 +594,7 @@ gozen theme list
 
 ### theme add
 
-Copies `wall.jpg`, `floor.jpg`, `ceiling.jpg`, `door.jpg` (1024x1024) and `theme.yaml` (the far fog and map colors), with `LICENSE.txt` for the pictures, to `assets/dungeon/themes/<name>/` of the game. No network is used. A file the game already has is kept, so your own edits stay.
+Copies `wall.jpg`, `floor.jpg`, `ceiling.jpg`, `door.jpg` (1024x1024), `theme.yaml` (the far fog and map colors) and `LICENSE.txt` to `assets/dungeon/themes/<name>/` in the game, offline. Files the game already has are kept.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -646,7 +606,7 @@ gozen theme add game --name cave --force  # replace the files that are already t
 |:--|:--|
 | `--force` | Replace the files the game already has. |
 
-An unknown theme name exits 2 (`GZN2402`), and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures claim no copyright (CC0 1.0), see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
+An unknown theme exits 2 (`GZN2402`) and a directory without `game.yaml` exits 1 (`GZN1110`). A game that says `theme: cave` without the folder fails `gozen check` with `GZN1111` and the line `run gozen theme add <game-dir> --name cave`. The pictures are CC0 1.0; see [ASSETS.md](https://github.com/nao1215/gozen/blob/main/ASSETS.md).
 
 ## version and help
 
@@ -665,20 +625,13 @@ gozen help sim battle
 gozen help GZN2101
 ```
 
-
 ## export
 
-Use `--out DIR` for the new output directory and `--runtime DIR` for the
-matching runtime bundle. Both paths are relative to the working directory.
-`--format json` returns one version-1 envelope whose `data` contains `directory`
-and `target`; `--format jsonl` returns one terminal summary. Both formats create
-the same package as text output. Errors go to stderr with their existing GZN
-codes where available.
+`--out DIR` is the new output directory and `--runtime DIR` the matching runtime bundle, both relative to the working directory. `--format json` returns one version-1 envelope whose `data` has `directory` and `target`, and `--format jsonl` one summary; the package is the same in every format. Errors go to stderr, with GZN codes where they have one.
 
 ### Desktop
 
-Unpack the CLI archive and the `gozen-runtime` archive from the same release.
-Choose the runtime for the computer that will play the game.
+Unpack the CLI archive and the `gozen-runtime` archive of the same release, choosing the runtime for the computer that will play the game.
 
 <!-- verify: skip Uses a release runtime bundle; exercised by the desktop artifact E2E. -->
 ```sh
@@ -698,39 +651,19 @@ output/
   runtime-licenses/
 ```
 
-Move the whole output directory to the player's computer and run
-`gozen-player.exe`. On Linux and macOS, the executable is `gozen-player`.
-Go, Python and the authoring CLI are not needed to play. A display and the
-platform graphics and audio libraries are required. Saves use the game's existing
-ID and per-user save directory; they are not written into the package.
+Copy the whole output directory to the player's computer and run `gozen-player.exe` (`gozen-player` on Linux and macOS). Playing needs no Go, Python or authoring CLI, only a display and the platform graphics and audio libraries. Saves go to the per-user save directory under the game's ID, not into the package.
 
-The target defaults to the current computer. Accepted targets are `linux-amd64`,
-`linux-arm64`, `windows-amd64`, `windows-arm64`, `darwin-amd64` and `darwin-arm64`.
-Cross-target packaging does not execute the target binary. macOS packages are
-plain directories, without signing or notarization.
+The target defaults to the current computer; the others are `linux-amd64`, `linux-arm64`, `windows-amd64`, `windows-arm64`, `darwin-amd64` and `darwin-arm64`. Packaging for another target does not run its binary. macOS packages are plain directories, not signed or notarized.
 
-The command checks the runtime version, target and player checksum. It performs
-no download or compilation. The destination must not exist or overlap an input.
-A game with `asset-policy.yaml` must first pass `gozen release`; export the
-resulting approved tree. A [trial](#trial) built without `--overlay` keeps the
-policy of its game and is refused in the same way.
+The command checks the runtime version, target and player checksum, and downloads and compiles nothing. The destination must not exist or overlap an input. A game with `asset-policy.yaml` must pass `gozen release` first, and you export the approved tree; a [trial](#trial) built without `--overlay` keeps its game's policy and is refused the same way.
 
-Export copies `game.yaml`, YAML under `data/`, `lang/` and `streams/`, runtime asset formats
-under `assets/`, root license notices and the contents of `LICENSES/`. Other root
-directories, including `saves/` and `shots/`, are not copied. Hidden paths are
-excluded and symlinks are rejected.
+Export copies `game.yaml`, the YAML under `data/`, `lang/` and `streams/`, runtime asset formats under `assets/`, the license notices at the root and `LICENSES/`. Other root directories such as `saves/` and `shots/` are left out, hidden paths are skipped and symlinks are rejected.
 
-Under `assets/`, export includes images (PNG, JPEG, GIF, WebP), audio (OGG, WAV,
-MP3), fonts (TTF, OTF, TTC), YAML, TXT, Markdown and `faces.json`. Files named
-`LICENSE*` or `NOTICE*` are also retained. This selects files by path and extension;
-it does not inspect their contents. Keep author notes, captures and source art
-outside these runtime directories. Assets are copied without conversion or
-encryption. Keep third-party notices in `LICENSES/` or alongside their assets.
+Under `assets/` it takes images (PNG, JPEG, GIF, WebP), audio (OGG, WAV, MP3), fonts (TTF, OTF, TTC), YAML, TXT, Markdown, `faces.json` and files named `LICENSE*` or `NOTICE*`. It picks files by path and extension without reading them, so keep author notes, captures and source art out of these directories. Assets are copied as they are, not converted or encrypted. Keep third-party notices in `LICENSES/` or next to their assets.
 
 ### Web
 
-Use the `gozen-runtime_VERSION_js_wasm.tar.gz` archive from the same release as
-the CLI. Unpack it into `web-runtime`.
+Unpack the `gozen-runtime_VERSION_js_wasm.tar.gz` archive of the same release as the CLI into `web-runtime`.
 
 <!-- verify: skip Uses a release runtime bundle; exercised by the browser artifact E2E. -->
 ```sh
@@ -754,37 +687,17 @@ site/
     assets/
 ```
 
-The same WASM player runs every exported game. Editing YAML or replacing assets
-requires a new export, not a new Go build. `wasm_exec.js` is supplied by the same
-Go toolchain that built the player; export verifies both files' checksums.
-Opening the HTML directly with a `file:` URL is unsupported.
+One WASM player runs every exported game, so changing YAML or assets needs a new export, not a Go build. `wasm_exec.js` comes from the Go toolchain that built the player, and export checks both files' checksums. Opening the HTML through a `file:` URL does not work.
 
-Relative URLs support hosting under a subdirectory, such as `/games/my-game/`.
-The player is served gzipped, which the page undoes as it downloads. Pictures
-become WebP (paletted pictures lossless) and other files that gzip makes smaller
-are served gzipped; `game/files.json` lists what each file is served as. The
-browser downloads the files listed there, the pictures and sounds last, and starts
-once the others have come; the recorded stream voices are fetched only as the watch
-view comes to their lines. Large asset sets still increase startup time and memory
-use. The file selection and approval requirements are the same as
-[desktop export](#desktop).
+URLs are relative, so the site can live under a subdirectory such as `/games/my-game/`. The player is served gzipped and unpacked as it downloads. Pictures become WebP (paletted ones lossless), other files that gzip shrinks are served gzipped, and `game/files.json` lists how each file is served. The browser starts once everything but the pictures and sounds has arrived; recorded stream voices are fetched when the watch view reaches their lines. Files are chosen and approved as in a [desktop export](#desktop).
 
-Saves use browser local storage. They persist on the same origin (scheme, host
-and port) with the same game ID. They do not sync across devices or move with a
-changed origin. YAML and assets remain downloadable; export does not hide them.
+Saves are in browser local storage, kept for the same origin (scheme, host and port) and game ID. They do not sync across devices or follow a changed origin. The YAML and assets can still be downloaded; export does not hide them.
 
 #### Phones
 
-A phone plays the exported page in its browser. A tap is a click, a long press or a
-two-finger tap is the right click, and a swipe scrolls; the title explains the taps
-once the player has touched the screen. A phone held the other way from the game's
-screen is asked to turn, in the first of the device's languages the game offers, and
-can choose to play as it is. Fullscreen in the settings also keeps the screen turned
-the game's way where the browser allows it.
+A phone plays the page in its browser. A tap is a click, a long press or a two-finger tap is the right click, and a swipe scrolls; the title explains the taps after the first touch. A phone held the other way from the game's screen is asked to turn, in the first of the device's languages the game offers, and may play as it is. Fullscreen in the settings also locks the screen to the game's orientation where the browser allows it.
 
-Every page can be added to the home screen, from where it opens fullscreen, turned
-the game's way. `web.icon` names the icon: a square PNG under `assets/` of 192x192
-or more, copied beside the page as `icon.png` and named in `manifest.webmanifest`.
+A page added to the home screen opens fullscreen in the game's orientation. `web.icon` names its icon, a square PNG of at least 192x192 under `assets/`, copied next to the page as `icon.png` and named in `manifest.webmanifest`.
 
 <!-- verify: parse game.yaml fragment; the icon is a picture of the game, checked by gozen check -->
 ```yaml
@@ -793,22 +706,13 @@ schema_version: 9
 web: {icon: icon.png}
 ```
 
-A page played once opens again without a network, from the home screen too. The
-export writes `sw.js`, a service worker the page registers. It asks the host first and
-keeps every file the page reads, then answers from those files when the host cannot be
-reached. Online, the page always plays the export the host serves now: export again and
-the next load plays the new game, and the files kept of the earlier export are removed
-once the new one has come whole. The recorded voices of a stream are kept once they have
-been heard. Service workers need an HTTPS host, or this computer (`localhost`,
-`127.0.0.1`); elsewhere the page plays online as before.
+Once played, a page opens again offline, from the home screen too. The export writes `sw.js`, a service worker that asks the host first, keeps every file the page reads (stream voices once heard), and answers from those copies when the host is unreachable. Online, the page plays what the host serves now, and the old copies are removed once a new export has fully arrived. Service workers need an HTTPS host or `localhost`/`127.0.0.1`; elsewhere the page plays online only.
 
-When the page is hidden in the middle of play (the player switches to another app,
-and the browser may then close the page unseen), the game writes the autosave where
-the save screen could save, and the next visit continues from it.
+When the page is hidden mid-play (the player switches apps, and the browser may close the page unseen), the game autosaves wherever the save screen could save, and the next visit continues from there.
 
 ## CPU profiles and reusable exports
 
-Set `GOZEN_CPUPROFILE=cpu.pprof` before a command to record its CPU activity:
+`GOZEN_CPUPROFILE=cpu.pprof` before a command records its CPU activity:
 
 <!-- verify: skip needs a game checkout and a script of your own; internal/screen/play's WorkspaceFrameTime test profiles the same way -->
 ```sh
@@ -816,21 +720,13 @@ GOZEN_CPUPROFILE=cpu.pprof gozen sim script examples/workshop/game --start works
 go tool pprof cpu.pprof
 ```
 
-A profile includes setup and decoding as well as gameplay. Compare the same
-fixture and seed; use `go test -benchmem` benchmarks for allocations. Profile creation
-and closing failures are reported on stderr.
+The profile includes setup and decoding, so compare runs on the same fixture and seed; for allocations use `go test -benchmem`.
 
-`gozen export game --target web --runtime web-runtime --out site2 --reuse site` reuses compatible generated output where the
-exporter permits it. Keep the earlier export directory when iterating; omit
-`--reuse` for a fresh export. See `gozen export --help` for output and
-runtime options. Reuse does not replace checking the authored game.
+`gozen export game --target web --runtime web-runtime --out site2 --reuse site` reuses what it can of an earlier export; leave out `--reuse` for a fresh one.
 
 ## Command and option index
 
-This complete inventory is checked against `gozen help --format json`.
-Options are listed per command, including short aliases; use that command
-with `--help` for values, defaults and requirements. Shared implementation
-options can appear on several image tools; their effect depends on the action.
+This list is checked against `gozen help --format json`. It names every option of each command, short forms included; the command's `--help` gives values, defaults and requirements. The image tools share many options, whose effect depends on the action.
 
 | CLI command | Purpose | Options |
 | --- | --- | --- |

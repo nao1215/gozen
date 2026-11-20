@@ -4,7 +4,7 @@ description: Let a coding agent write a Gozen game - give it the schema, make go
 weight: 70
 ---
 
-A Gozen game is plain text with a checker that answers in file and line. That suits a coding agent: it writes YAML, runs `gozen check`, reads the errors, and fixes them until the check passes. You keep the parts an agent cannot judge: whether a line reads well and whether a fight feels right.
+A Gozen game is plain text with a checker that answers in file and line, so a coding agent can write YAML, run `gozen check`, and fix the errors until the check passes. You judge whether a line reads well and whether a fight feels right.
 
 ## The loop
 
@@ -22,11 +22,11 @@ gozen sim dive game --location cave --floors 5 --boss 5:cave_boss    # a whole d
 gozen book game > book.md                              # everything, as one Markdown file
 ```
 
-`check` exits 1 on any error, so it works as a gate in a script, a git hook, or CI ([setup-gozen](/cookbook/#check-and-measure-in-ci) installs it in GitHub Actions). `gozen check --format json game` prints a version-1 result (`version`, `command`, `status`, `data`) whose `data` is the array of the same errors and warnings (`file`, `line`, `col`, `path`, `code`, `message`, `severity`) for a tool that reads them.
+`check` exits 1 on any error, so it can gate a script, a git hook or CI ([setup-gozen](/cookbook/#check-and-measure-in-ci) installs it in GitHub Actions). `gozen check --format json game` prints a version-1 result (`version`, `command`, `status`, `data`) whose `data` is the array of errors and warnings (`file`, `line`, `col`, `path`, `code`, `message`, `severity`).
 
 ## The gozen skill
 
-[skills/gozen](https://github.com/nao1215/gozen/tree/main/skills/gozen) is an Agent Skill: a `SKILL.md` with short references for the minimal game, the required parts, the YAML traps, the error codes and `gozen sim`. Its rule is the loop above: edit, run `gozen check`, fix until it passes.
+[skills/gozen](https://github.com/nao1215/gozen/tree/main/skills/gozen) is an Agent Skill: a `SKILL.md` with short references for the minimal game, the required parts, the YAML traps, the error codes and `gozen sim`, and the loop above as its rule.
 
 - Claude Code: copy `skills/gozen` to `~/.claude/skills/gozen`.
 - Codex: copy `skills/gozen` to `~/.codex/skills/gozen`.
@@ -35,7 +35,7 @@ The agent loads it when you ask it to make or fix a Gozen game.
 
 ## Editor completion
 
-The JSON Schema gives editors completion and inline errors for the YAML. With the YAML language server (VS Code's YAML extension, Neovim, Helix), add a line at the top of a file:
+With the YAML language server (VS Code's YAML extension, Neovim, Helix), the JSON Schema gives completion and inline errors. Add a line at the top of a file:
 
 <!-- verify: load -->
 ```yaml
@@ -51,6 +51,6 @@ Use `game.schema.json` for `game.yaml`. The JSON Schema checks shapes and types;
 
 - Ask for small rounds: one place, one troop, one event at a time, each ending with a passing check.
 - Ask the agent to quote the `gozen sim battle` output after a balance change, instead of describing it.
-- Keep the agent away from `assets/` unless you want it to manage files; a missing picture is an error `check` will report, which keeps the agent honest.
-- Treat the warnings of flags as part of the gate: a flag set but never read (GZN0112) or read but never set (GZN0113) is most often a typo. Declare a flag kept on purpose in `state.names`. `gozen book` has a Flow section of what each event sets, reads, calls and moves to, with a mermaid graph.
-- For dialogue, have the agent draft and you rewrite. `gozen check --only layout` makes sure the result still fits the window.
+- Keep the agent out of `assets/` unless you want it to manage files; `check` reports a missing picture as an error.
+- Treat flag warnings as part of the gate: a flag set but never read (GZN0112) or read but never set (GZN0113) is usually a typo. Declare a flag kept on purpose in `state.names`. The Flow section of `gozen book` shows what each event sets, reads, calls and moves to, with a mermaid graph.
+- For dialogue, let the agent draft and rewrite it yourself; `gozen check --only layout` confirms it still fits the window.

@@ -5,7 +5,7 @@ weight: 90
 toc: true
 ---
 
-Two subcommands help with pictures. Neither is needed to make or play a game, and neither contacts a service, downloads a model, or changes your original images.
+Two subcommands help with pictures. A game does not need either, and neither contacts a service, downloads a model unasked or changes your original images.
 
 | Command | Does | Needs |
 |:--|:--|:--|
@@ -14,7 +14,7 @@ Two subcommands help with pictures. Neither is needed to make or play a game, an
 
 ## gozen prompt
 
-You describe the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits, and prints the text. The JSON output records where every word came from, so a surprising word can be traced to its item.
+The catalog describes the words once, in layers (setting, subject, lighting, ...), with IDs, defaults, dependencies, conflicts, priorities and emphasis. `gozen prompt` picks the items for a scene, merges duplicates, resolves conflicts, applies the limits and prints the text. The JSON output records which item each word came from.
 
 <!-- verify: each fixture=production -->
 ```shell
@@ -71,19 +71,19 @@ scenes:
 
 - Emphasis has five steps, 0.9 to 1.5, in SDXL weight syntax. The token count is an estimate, not the model's tokenizer.
 - Unknown fields, several YAML documents in one file, broken references and control characters are rejected.
-- When a catalog selects a person layer, the tool adds its own fixed age constraints. A catalog cannot replace or drop them.
+- When a person layer is selected, the tool adds fixed age constraints that a catalog cannot replace or drop.
 - `lint` fails on errors and passes on warnings alone.
 
-Text is the default output. Machine formats use the version-1 result envelope; `data` contains the assembled result, a batch array, or lint diagnostics. Send the assembled text to any generator you like; `gozen prompt` never does.
+JSON and JSONL use the version-1 result envelope, whose `data` is the assembled result, a batch array or the lint diagnostics. `gozen prompt` only prints the text; you send it to the generator.
 
 ## gozen mosaic
 
-The main use is to pixelate adult-oriented anime-style images distributed in Japan, following the distribution standard. Swap the model and its classes and it also serves other uses, such as anonymizing faces.
+The main use is pixelating adult anime-style images distributed in Japan, as the distribution standard requires. With another model and classes it can also anonymize faces and the like.
 
-`gozen mosaic` pixelates regions of the images in `<game-dir>/assets/` and writes the results and a `report.json` outside `assets/`. The originals are never changed. Regions come from three places, which can be combined:
+`gozen mosaic` pixelates regions of the images in `<game-dir>/assets/` and writes the results and a `report.json` outside `assets/`, leaving the originals alone. Regions can come from any mix of:
 
 - a fix file (`--fix`) written by hand, which needs no model;
-- `gozen mosaic`, which edits a per-image instruction file by coordinates;
+- the manual subcommands, which edit a per-image instruction file by coordinates;
 - a detection model (`--model`), optionally with face detection (`--face`), segmentation masks (`--seg`) and a tagger (`--tagger`).
 
 <!-- verify: run fixture=production except=2 needs a detection model and ONNX Runtime -->
@@ -115,20 +115,20 @@ pattern.png:
 How it pixelates:
 
 - Each cell is the average of the original pixels in it. `--block 0` uses `max(4, ceil(long side / 100))` pixels; `1` leaves the image unchanged.
-- Every cell a region touches is filled, so a region's outline is covered. Regions can be rectangles, boxes, polygons, ellipses or masks.
+- Every cell a region touches is filled, so the outline is covered. Regions can be rectangles, boxes, polygons, ellipses or masks.
 - Input is PNG, JPEG or WebP; output is PNG or JPEG (a WebP input is written as `<name>.png`).
-- `IMAGE` is a path below `<game-dir>/assets/`. Every subcommand reads it the same way: a leading `assets/` and a backslash as the separator are accepted, the asset comes before a file of the same name in the working directory, and a path to a file in `--out` stands for the asset it was made from.
-- A `--fix` file that does not exist is an error. The `--manual` file may be absent, because the manual subcommands create it.
-- When one image fails, `auto` stops with exit status 1 after recording the images it finished in `report.json`.
-- Class names of the `--model` output are read from `--classes a,b,c`, then a `labels.json` (a JSON array of strings) beside the model, then the ONNX metadata `names` (the Ultralytics export form `{0: 'a', 1: 'b'}`), then the built-in `nipple_f,penis,pussy` (`nipple_f` is a female nipple, the class name of deepghs/anime_censor_detection). `--face` models use the same lookup. `auto --dry-run` and `inspect` print the classes and where they came from (`--classes`, `labels.json`, `metadata` or `default`). An empty name, a duplicate, or a count that does not match the model output is an error.
-- `--labels` picks the classes to pixelate; the default is `penis,pussy`, because the Japanese distribution standard does not pixelate nipples by default. With `--classes`, or a model whose classes differ from the default, and no `--labels`, every class is pixelated. For example, `--model face.onnx --classes face` pixelates faces.
-- `--threshold` and `--sure` (default 0.5) set the detection confidence; detections below `--sure` are pixelated and also listed for review. Automatic detection does not replace a person looking at the result.
+- `IMAGE` is a path below `<game-dir>/assets/`, read the same way by every subcommand: a leading `assets/` and backslash separators are accepted, the asset wins over a file of the same name in the working directory, and a file in `--out` stands for the asset it was made from.
+- A missing `--fix` file is an error; a missing `--manual` file is not, since the manual subcommands create it.
+- When one image fails, `auto` records the finished images in `report.json` and exits 1.
+- The class names of the `--model` output come from `--classes a,b,c`, else a `labels.json` (a JSON array of strings) beside the model, else the ONNX metadata `names` (the Ultralytics form `{0: 'a', 1: 'b'}`), else the built-in `nipple_f,penis,pussy` (`nipple_f`, a female nipple, is the class name of deepghs/anime_censor_detection). `--face` models are looked up the same way. `auto --dry-run` and `inspect` print the classes and their source (`--classes`, `labels.json`, `metadata` or `default`). An empty or duplicate name, or a count that does not match the model output, is an error.
+- `--labels` picks the classes to pixelate. The default is `penis,pussy`, since the Japanese distribution standard does not pixelate nipples by default. With `--classes`, or a model whose classes differ from the default, and no `--labels`, every class is pixelated; `--model face.onnx --classes face` pixelates faces.
+- `--threshold` and `--sure` (default 0.5) set the detection confidence; detections below `--sure` are pixelated and also listed for review. A person still has to look at the result.
 
-Run `gozen mosaic <subcommand> --help` for every option, including `--margin`, `--pad`, `--min`, `--dilate`, `--classes`, `--labels`, `--passes` and the `MOSAIC_*` environment variables.
+`gozen mosaic <subcommand> --help` lists every option, including `--margin`, `--pad`, `--min`, `--dilate`, `--classes`, `--labels`, `--passes` and the `MOSAIC_*` environment variables.
 
 ### Fetching models
 
-`gozen models fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 written in gozen; a mismatch deletes the download and fails. A model already in the cache with matching checksums is not downloaded again. A cached file is hashed once and recorded in `verified.json` beside it; after that only its size and modification time are compared, and a file that changed is hashed again. `gozen models list` shows the models and whether each is fetched.
+`gozen models fetch [NAME...]` downloads pinned revisions of models from Hugging Face into `os.UserCacheDir()/gozen/mosaic/<name>/` and checks each file against a SHA-256 built into gozen; on a mismatch it deletes the download and fails. A cached model with matching checksums is not downloaded again. A cached file is hashed once and recorded in `verified.json` beside it; later runs compare only its size and modification time and hash a changed file again. `gozen models list` shows which models are fetched.
 
 | Name | Source (license) | Classes | Use |
 |---|---|---|---|
@@ -136,13 +136,13 @@ Run `gozen mosaic <subcommand> --help` for every option, including `--margin`, `
 | `face` | deepghs/anime_face_detection, face_detect_v1.4_s (MIT) | `face` | anonymizing people |
 | `head` | deepghs/anime_head_detection, head_detect_v2.0_s (MIT) | `head` | anonymizing people |
 
-Class names are read from the `labels.json` that is fetched with each model. The text detector deepghs/text_detection (MIT) is a DBNet model, not the YOLO output `[1, 4+classes, N]` that `--model` needs, so it is not offered; to hide names, IDs or garbled signatures, supply a YOLO-format text detector with `--model` and `--classes`.
+Each model comes with its `labels.json`. The text detector deepghs/text_detection (MIT) is not offered: it is a DBNet model, not the YOLO output `[1, 4+classes, N]` that `--model` needs. To hide names, IDs or garbled signatures, pass a YOLO-format text detector with `--model` and `--classes`.
 
-When `--model` is omitted, the cached `censor` model is used. If it is not cached, gozen asks "Download the model? About N MB from URL to PATH [y/N]" only when standard input and output are a terminal; otherwise it fails and points at `gozen models fetch`. `--yes` skips the question. Only `gozen models fetch` and a confirmed download use the network.
+Without `--model`, the cached `censor` model is used. If it is not cached, gozen asks "Download the model? About N MB from URL to PATH [y/N]" when standard input and output are a terminal, and otherwise fails and points at `gozen models fetch`. `--yes` skips the question. Only `gozen models fetch` and a confirmed download use the network.
 
 ### Detection setup
 
-Detection runs an ONNX model you supply, through ONNX Runtime. Models, the runtime library and training data are not bundled. Model downloads happen only through `gozen models fetch` or an accepted download prompt (including `--yes`). Check the license of any model you use.
+Detection runs an ONNX model you supply through ONNX Runtime. Models, the runtime library and training data are not bundled. Check the license of any model you use.
 
 1. Build `gozen` with cgo and a C compiler:
 
@@ -158,17 +158,16 @@ Detection runs an ONNX model you supply, through ONNX Runtime. Models, the runti
 | macOS | `xcode-select --install` | `lib/libonnxruntime.1.29.0.dylib` |
 | Windows | MSYS2 MinGW64: `pacman -S mingw-w64-x86_64-gcc`, and its `bin` on `PATH` | `lib/onnxruntime.dll` and the DLLs beside it |
 
-The detection model is a YOLO-style ONNX model with an `images` input and an `output0` output shaped `[1, 4 + classes, N]`. A model that is given but cannot be read is an error; Gozen never falls back to another method silently.
+The model must be YOLO-style ONNX with an `images` input and an `output0` output shaped `[1, 4 + classes, N]`. A model that cannot be read is an error; Gozen does not fall back to another method.
 
-Without a C compiler, `go install` builds `gozen` without inference. Help, hand-written regions and `inspect` of an existing report still work; a command that needs detection says how to rebuild and exits 1.
+Without a C compiler, `go install` builds `gozen` without inference. Help, hand-written regions and `inspect` of an existing report still work, and a command that needs detection says how to rebuild and exits 1.
 
 ## Recording voices
 
-Voices need no tool of their own: they are sound files under `assets/` that the lines name ([Add voices](/cookbook/#add-voices)). A convention that keeps a recording session in order:
+Voices are sound files under `assets/` that the lines name ([Add voices](/cookbook/#add-voices)), so they need no tool. A layout that keeps a recording session in order:
 
 - one folder per actor, given as the actor's `voices` (`assets/keeper/voice/`);
-- one file per line, named by the event and the line's number in it (`dinner_001.ogg`, `dinner_002.ogg`), so that a script for the actor can be sorted by event;
+- one file per line, named by the event and the line's number in it (`dinner_001.ogg`, `dinner_002.ogg`), so an actor's script sorts by event;
 - Ogg Vorbis or WAV, mono or stereo, any sample rate (the engine resamples).
 
-`gozen check` warns of the lines of an actor with `voices` that have no voice yet (GZN0109), with their paths; `--format json` gives them to a script that writes the list of lines still to record.
-
+`gozen check` warns about lines of an actor with `voices` that have no voice file yet (GZN0109) and prints their paths; with `--format json` a script can turn them into the list of lines left to record.

@@ -190,7 +190,7 @@ Start the game with `--dev` and these keys work while you play.
 ## Limitations
 
 - Gozen is young. The API may change before v1.
-- Runtime checks are done on Linux. Windows and macOS are built in CI but not yet played.
+- Gameplay tests cover Linux, Windows and macOS; play by hand has been on Linux only.
 - There is no graphical map or event editor; the game is text.
 
 ## Install
