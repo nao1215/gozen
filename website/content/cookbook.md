@@ -1487,7 +1487,7 @@ memo:
     - {name: steps, value: steps}
 ```
 
-The commands are in [Test play](#test-play). Reference: [MemoCfg](/schema/#memocfg), and [The edit–play loop](/edit-play-loop/) for every key and option.
+The commands are in [Test play](#test-play). Reference: [MemoCfg](/schema/#memocfg), and [The edit-play loop](/edit-play-loop/) for every key and option.
 
 ## Measure battles with sim battle and sim dive
 
