@@ -2,9 +2,9 @@
 title: Gozen
 ---
 
-Gozen is a no-code toolkit for making 2D RPGs, visual novels and strategy games with YAML and assets. Start with a playable template, edit its dialogue and rules, then check and play it. No Go code or compiler is required for this workflow. YAML and terminal commands are the interface; there is no visual editor. Go and Ebitengine power the engine behind it.
+Gozen is a no-code toolkit for 2D RPGs, visual novels and strategy games. You start from a playable template, edit its YAML dialogue and rules, then check and play it. You need no Go code or compiler, and there is no visual editor: the game is YAML and terminal commands. The engine is built on Go and Ebitengine.
 
-The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything a game needs. The name also starts with Go.
+The name: Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine, with everything a game needs, and the name starts with Go.
 
 | RPG: [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) | Novel: [After the Pass](https://github.com/nao1215/gozen/tree/main/examples/novel) |
 |:--|:--|
@@ -66,7 +66,7 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 
 #### Phone apps
 
-`phone` shows a phone over the scene, upright or on its side, in a story or any other game ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)). All from the office sample. Authors write history and fixed replies in YAML; flags reveal contacts, messages and posts. Read-only apps need no reply handling.
+`phone` shows a phone over the scene, upright or on its side, in any kind of game ([A phone on the screen](/writing-a-game/#a-phone-on-the-screen)). The history and fixed replies are YAML, and flags reveal contacts, messages and posts; read-only apps need no reply handling. All captures are from the office sample.
 
 | Home → contacts → chat → home | Read history → send a reply → reveal new information |
 |:--|:--|
@@ -86,7 +86,7 @@ All from [Go Zen](https://github.com/nao1215/gozen/tree/main/examples/go-zen) at
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](/images/phone-contact.mp4) |  |
 
-**Games inside the phone (Gozen 0.23.0).** The phone opens standalone Gozen games and returns to the host when they close. Each game has its own app icon, state and saves. Authors choose bundled games or optional downloads from a pinned catalog; players choose when to install or update. These captures show two small neutral games running inside the office sample. See the [authoring recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) for package, browser and replay limits. The public catalog includes Counter, a small example game. To offer your own game, [submit it for review](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses. Submission does not automatically approve or publish a game.
+Since Gozen 0.23.0 the phone can open a standalone Gozen game, with its own app icon, state and saves, and return to the host when it closes. Authors bundle games or offer optional downloads from a pinned catalog, and players choose when to install or update. The captures below are two small games inside the office sample; the [authoring recipe](https://github.com/nao1215/gozen/blob/main/docs/examples/phone-games.md) covers packaging and the browser and replay limits. The public catalog includes Counter, a small example game. To list your own, [submit it for review](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml) with its source, release package, custom icon and licenses; a submission is not published automatically.
 
 | Counter in portrait | Trail in landscape |
 |:--|:--|
@@ -120,7 +120,7 @@ Workspace, call, calendar and timeline screens with a day `flow` (schema 10) mak
 
 ### Monster collection
 
-Monsters ask to join after a battle, wait at the ranch, and two raised monsters, one male and one female, are bred into a new one at Yorn's altar, in the manner of Dragon Quest Monsters (schema version 6). The monster book opens a page as the party meets each monster and shows how to breed it, two generations up. The recipe is [Collect, raise and breed monsters](/cookbook/#collect-raise-and-breed-monsters).
+Monsters ask to join after a battle and wait at the ranch. At Yorn's altar a raised male and female are bred into a new one, as in Dragon Quest Monsters (schema version 6). The monster book adds a page for each monster the party meets, with how to breed it two generations up ([Collect, raise and breed monsters](/cookbook/#collect-raise-and-breed-monsters)).
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
@@ -130,7 +130,7 @@ Monsters ask to join after a battle, wait at the ranch, and two raised monsters,
 
 ### Battles
 
-Enemies can change form at an HP threshold, combine with allies, change pictures as HP falls, and move with a puppet portrait. Go Zen shows the Tollkeeper's second form, Drip Slimes gathering into King Slime, and a moving Succubus face with a soft sway region (schema version 7).
+Enemies can change form at an HP threshold, combine with allies, change pictures as HP falls, and move with a puppet portrait (schema version 7). In Go Zen: the Tollkeeper's second form, Drip Slimes gathering into King Slime, and the Succubus's moving face with a sway region.
 
 | Transform | Merge |
 |:--|:--|
@@ -160,9 +160,7 @@ Start the game with `--dev` and these keys work while you play.
 | F6: the character book | Tab: the relationship chart (Z focuses a face) |
 | ![Wren's page in the character book: her picture, fields, introduction and how she sees the others](/images/novel-characters.jpg) | ![Go Zen's relationship chart: the cursor moves to Ox, and Z gathers his neighbors in a circle around him](/images/go-zen-relations.mp4) |
 
-More on each key in [the edit–play loop](/edit-play-loop/).
-
-`gozen check`, `gozen sim battle`, `gozen sim dive` and the notes of F9 are in [the edit–play loop](/edit-play-loop/).
+[The edit-play loop](/edit-play-loop/) covers each key, `gozen check`, `gozen sim battle`, `gozen sim dive` and the F9 notes.
 
 ## Where to go
 
@@ -170,7 +168,7 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 - [Getting started](/getting-started/): run the samples, then start your own game.
 - [Writing a game](/writing-a-game/): how the YAML is laid out, with expressions and events.
 - [Schema](/schema/): every YAML field, its type, default and references.
-- [The edit–play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
+- [The edit-play loop](/edit-play-loop/): `--dev`, F5, F7, F9, autoplay, traces and notes.
 - [Commands](/commands/): every `gozen` subcommand and its options.
 - [Using AI agents](/ai-agents/): let an agent write the game and keep `gozen check` green.
 
@@ -180,12 +178,12 @@ More on each key in [the edit–play loop](/edit-play-loop/).
 - Turn-based battles with a party, auto battle and per-enemy tactics
 - Skill trees, shops, a field menu and a picture gallery
 - First-person grid dungeons, fixed or generated floors
-- Management games: workspace cards, drag and drop, tickets, messages, video calls with screen sharing, calendars, timelines and first-visit guides ([recipes](/workspaces/))
-- Moving portraits from one picture and a few difference pictures: blinking, talking, breathing, head, hair and swaying parts, reactions and face changes
+- Management games ([recipes](/workspaces/))
+- Moving portraits made from one picture and a few difference pictures
 - Characters that react to typed words and events, and a chat log
-- Campaigns: regions held by factions over turns, orders with generals, a sortie screen with tactics, clashes of armies, and `gozen sim campaign` for the win rate
+- Campaigns, with `gozen sim campaign` for the win rate
 - Dungeon themes: `theme: cave` fills a dungeon's pictures, and `gozen theme add` copies them into the game
-- Visual novels: roll back with the state, skip what was read, save in the middle of a scene, choices read as `chose`, staging with `stand`, and a development panel (F8) for the flags
+- Visual novels, with choices read as `chose` and a development panel (F8) for the flags
 - Engine words in English and Japanese, chosen by `language` in game.yaml, and the game's own text in two languages
 - A headless driver that shares the rules with the window
 
