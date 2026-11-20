@@ -23,7 +23,7 @@
 
 # Gozen
 
-Gozen is a no-code toolkit for creating 2D RPGs, visual novels and strategy games with YAML and assets. Create a template, edit its text and rules, and play it with one command. No Go code or compiler is required to create and play a game. Built with Go and Ebitengine.
+Gozen is a no-code toolkit for 2D RPGs, visual novels and strategy games. You create a template, edit its YAML text and rules, and play it with one command, without writing Go or installing a compiler. The engine is built on Go and Ebitengine.
 
 Documentation: https://nao1215.github.io/gozen/
 
@@ -49,9 +49,7 @@ gozen check my-game
 gozen run my-game
 ```
 
-Choose `novel` or `campaign` for another template. Follow [your first game](https://nao1215.github.io/gozen/getting-started/) to edit and play it.
-
-Play the larger samples in your browser: https://nao1215.github.io/gozen/play/
+`--template novel` and `--template campaign` give the other templates. [Your first game](https://nao1215.github.io/gozen/getting-started/) walks through editing one, and the larger samples [play in your browser](https://nao1215.github.io/gozen/play/).
 
 ## Screens
 
@@ -87,7 +85,7 @@ From [After the Pass](examples/novel). See the [visual novel recipes](https://na
 
 #### Phone apps
 
-A phone home screen opens contacts, chats, feeds and games. Messages and fixed replies unlock as the story progresses. See [phone authoring](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen).
+A phone home screen opens contacts, chats, feeds and games, and messages and fixed replies unlock as the story goes on ([phone authoring](https://nao1215.github.io/gozen/writing-a-game/#a-phone-on-the-screen)).
 
 | Home → contacts → chat → home | Read history → send a reply → reveal new information |
 |:--|:--|
@@ -107,7 +105,7 @@ A phone home screen opens contacts, chats, feeds and games. Messages and fixed r
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](docs/images/phone-contact.gif) |  |
 
-**Games inside the phone.** Play another Gozen game, then return to the host. Bundle apps or let players download them from the store. [How it works](https://nao1215.github.io/gozen/writing-a-game/#games-inside-the-phone). Have a game to share? [Submit it for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml).
+The phone can also run another Gozen game and return to the host when it closes. Games are bundled or downloaded from the store ([how it works](https://nao1215.github.io/gozen/writing-a-game/#games-inside-the-phone)), and you can [submit your own for registration](https://github.com/nao1215/gozen/issues/new?template=game-registration.yml).
 
 | Counter in portrait | Trail in landscape |
 |:--|:--|
@@ -115,7 +113,7 @@ A phone home screen opens contacts, chats, feeds and games. Messages and fixed r
 
 ### Management workspaces
 
-Run a team through workspaces, calls, calendars and timelines. From [Harbor app team](examples/office); see the [management game recipes](https://nao1215.github.io/gozen/workspaces/).
+Workspaces, calls, calendars and timelines for running a team, from [Harbor app team](examples/office) ([management game recipes](https://nao1215.github.io/gozen/workspaces/)).
 
 | Standup: busts, meters, dots, signs, burnup | People: press for a peek |
 |:--|:--|
@@ -133,7 +131,7 @@ Run a team through workspaces, calls, calendars and timelines. From [Harbor app 
 
 ### Campaigns
 
-Lead armies and compete for regions in [Five Banners](examples/campaign). See the [campaign recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign).
+Armies fight over regions in [Five Banners](examples/campaign) ([campaign recipes](https://nao1215.github.io/gozen/cookbook/#make-a-campaign)).
 
 | The war map | A clash of armies |
 |:--|:--|
@@ -141,7 +139,7 @@ Lead armies and compete for regions in [Five Banners](examples/campaign). See th
 
 ### Monster collection
 
-Recruit, raise and breed monsters, with a bestiary and family trees. See the [monster collection recipes](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters).
+Recruit, raise and breed monsters, with a bestiary and family trees ([monster collection recipes](https://nao1215.github.io/gozen/cookbook/#collect-raise-and-breed-monsters)).
 
 | A monster asks to join | Breeding at Yorn's altar |
 |:--|:--|
@@ -151,15 +149,13 @@ Recruit, raise and breed monsters, with a bestiary and family trees. See the [mo
 
 ### Battles
 
-Enemies can transform, merge, change appearance when hurt and react with animated portraits.
+Enemies can transform, merge, change pictures as they lose HP, and react with moving portraits ([battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy)).
 
 | Transform | Merge |
 |:--|:--|
 | ![The Tollkeeper changes into its second form](docs/images/go-zen-transform.gif) | ![Drip Slimes gather into King Slime](docs/images/go-zen-merge.gif) |
 | Pictures by HP | Motion and sway |
 | ![Maren and the Drip Slime drop to low HP and their pictures switch](docs/images/go-zen-hp-pictures.gif) | ![The Succubus blinks, a soft region sways, and she reacts to a hit](docs/images/go-zen-motion.gif) |
-
-See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-enemy).
 
 ### Multi-level maps
 
@@ -169,7 +165,7 @@ See [the battle recipes](https://nao1215.github.io/gozen/cookbook/#transform-an-
 
 ![Play, script or autoplay to a trace; reproduce a screen, inspect its structure, read play metrics or section frames. Capture and compare with the previous capture.](docs/images/playtesting-flow.svg)
 
-Reload edits while playing, inspect state, record a playthrough and reproduce a screen. See the [edit–play loop](https://nao1215.github.io/gozen/edit-play-loop/) for controls, scripts and trace tools.
+With `--dev` you can reload edits while playing, inspect state, record a playthrough and reproduce a screen. The [edit-play loop](https://nao1215.github.io/gozen/edit-play-loop/) lists the keys, scripts and trace tools.
 
 | F5: edit the YAML, the line changes in place | F9: a note with the screen and the state |
 |:--|:--|
@@ -233,11 +229,11 @@ The code is [MIT](LICENSE). The Go Zen, After the Pass and Five Banners pictures
 
 ## The name
 
-Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine: the engine served with everything an RPG needs. The name also starts with Go.
+Ebitengine is named after ebiten (海老天), shrimp tempura. In Japan, an ebiten gozen (御膳) is a set meal on one tray: shrimp tempura with soba, small side dishes, and a sweet such as dango. Gozen is that tray for Ebitengine, with everything an RPG needs, and the name starts with Go.
 
 ## Contributors ✨
 
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
+Thanks to these people ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
