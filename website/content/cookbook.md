@@ -5,12 +5,9 @@ weight: 35
 toc: true
 ---
 
-Find what you want to make, copy the YAML into a file under `data/` (or into `game.yaml` where the recipe says so), and change the names. Every block on this page is loaded by the tests over a small game, so it works as written; each recipe links to the full reference on the [Schema](/schema/) page and, where it has the same feature, to the [Go Zen sample](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game/data). The `gozen` commands the recipes use are collected at the end, in [Commands used by the recipes](#commands-used-by-the-recipes).
+Copy a recipe's YAML into a file under `data/` (or into `game.yaml` where it says so) and change the names. The tests load every block over a small game, so each works as written. Recipes link to the [Schema](/schema/) and, where it has the feature, the [Go Zen sample](https://github.com/nao1215/gozen/tree/main/examples/go-zen/game/data); the commands they use are at the end, in [Commands used by the recipes](#commands-used-by-the-recipes).
 
-The recipes refer to a few IDs they do not define: the actor and class `walker`, the class `mender`, the skills `attack` and `guard`, the item `key`, the enemy `mote`, the troop `wolves` and the locations `field`, `ridge`, `shop` and `gate`. Use your own in their place.
-
-See [Planning screens and narrative checks](/planning/) for rosters, work, scene
-dependencies, materials and optional character voice checks.
+The recipes use a few IDs they do not define: the actor and class `walker`, the class `mender`, the skills `attack` and `guard`, the item `key`, the enemy `mote`, the troop `wolves` and the locations `field`, `ridge`, `shop` and `gate`. Use your own instead. Rosters, work, scene dependencies, materials and character voice checks are in [Planning screens and narrative checks](/planning/).
 
 ## By task
 
@@ -215,7 +212,7 @@ Reference: [Command](/schema/#command) (`set`, `if`), [Event](/schema/#event), [
 
 ## Let the player roll back and save in a scene
 
-In the novel window, the player can step back a line with the "Back" button, Q or the mouse wheel: the flags, variables, items and the answers given go back too, and a choice comes back to be answered again. Read lines, the gallery and the settings stay. Rolling back stops at a battle, a shop, a save command, a screen, a move or the end, and reaches up to 8 earlier events; `ui.rollback` changes that number, and 0 turns rolling back off. "Save" and "Load" on the band save in the middle of a scene: loading begins the event again from its start and reads on to the line, with the same answers and the same random numbers.
+In the novel window, "Back", Q or the mouse wheel steps back a line, and flags, variables, items and answers go back with it, so a choice can be answered again. Read lines, the gallery and the settings stay. Rolling back stops at a battle, a shop, a save command, a screen, a move or the end, and reaches up to 8 earlier events; `ui.rollback` changes that number, and 0 turns it off. "Save" and "Load" on the band work mid-scene: loading replays the event from its start to the line, with the same answers and random numbers.
 
 ![Back goes over two lines and a choice, with the state](/images/novel-back.mp4)
 ![the option taken again, then Skip stops at the first line not read](/images/novel-skip.mp4)
@@ -229,7 +226,7 @@ ui:
   rollback: 16
 ```
 
-A choice with an `id` remembers the option taken, read as `chose.<id>`: the option's `id`, or its number from 0. It is part of the state, so it rolls back and is saved.
+A choice with an `id` records the option taken in `chose.<id>` (the option's `id`, or its number from 0), which rolls back and is saved with the state.
 
 <!-- verify: load group=rollback -->
 ```yaml
@@ -246,9 +243,9 @@ events:
         else: [{say: Crisp.}]
 ```
 
-The game resumes a save made in the middle of an event at its saved line. Use a separate `--save-dir` when testing save and load through `gozen run`. Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
+Use a separate `--save-dir` when testing save and load through `gozen run`. Reference: [UIStyle](/schema/#uistyle), [Command](/schema/#command) (`id`).
 
-Each save keeps a small picture of the scene the player left, shown at the left of its row on the save and load screens. `ui.saves.slots` sets how many slots there are (3 by default, up to 99; more than the screen holds scroll), and `ui.saves.quick` adds "Q.Save" and "Q.Load" to the band: Q.Save writes one quick slot at once, without a menu, and Q.Load asks once and goes back to it. The load screen lists the quick slot after the autosave. A script presses them with `press quick_save` and `press quick_load`.
+Each save row on the save and load screens shows a small picture of the scene. `ui.saves.slots` sets the number of slots (3 by default, up to 99; extra rows scroll), and `ui.saves.quick` adds "Q.Save" and "Q.Load" to the band: Q.Save writes the quick slot at once, and Q.Load asks once and goes back to it. The load screen lists the quick slot after the autosave, and a script presses them with `press quick_save` and `press quick_load`.
 
 ![Save writes slot 1 with a picture of the scene, Q.Save keeps a later line, Q.Load asks once and goes back to it, and the load screen shows each save with its picture](/images/novel-saves.mp4)
 
@@ -265,7 +262,7 @@ Reference: [SaveStyle](/schema/#savestyle).
 
 ## Stage portraits and effects
 
-In the novel window, portraits come and go with the speakers by themselves. An event that uses `stand` places them as written instead: who stands where, how they come in (`fade` or `slide`) and when they leave. A line's `face` still changes the expression of a portrait standing. `effect` shakes one portrait or the screen, plays a reaction of a moving portrait, or fades the screen through a color; `music` fades in and out; a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
+In the novel window, portraits come and go with the speakers. `stand` places them as written instead: who stands where, how they enter (`fade` or `slide`) and when they leave, and a line's `face` still changes a standing portrait's expression. `effect` shakes a portrait or the screen, plays a moving portrait's reaction, or fades the screen through a color. `music` fades in and out, a `wait` with `skip: false` holds even in skip mode, and a `sfx` with `wait: true` holds until the sound ends.
 
 ![Brenna slides in and her portrait shakes](/images/novel-stage.mp4)
 
@@ -299,11 +296,11 @@ events:
       - music: {stop: true, fade: 3}
 ```
 
-`at` is `left`, `center`, `right` or a fraction of the screen's width. A name that is not an actor needs `face`, a picture under `assets/`; an actor's `face` is one of its faces. The headless session sees `stand` as an effect (`Effect.Kind` `stand`, with the actor), so a test can check who stands in a scene. Every map form needs `schema_version: 4`; the old string forms work as before. Reference: [Stand](/schema/#stand), [EffectCue](/schema/#effectcue), [WaitCue](/schema/#waitcue), [SFXCue](/schema/#sfxcue), [MusicCue](/schema/#musiccue).
+`at` is `left`, `center`, `right` or a fraction of the screen width. A name that is not an actor needs `face`, a picture under `assets/`; for an actor, `face` is one of its faces. The headless session reports `stand` as an effect (`Effect.Kind` `stand`, with the actor), so a test can check who stands in a scene. The map forms need `schema_version: 4`; the old string forms still work. Reference: [Stand](/schema/#stand), [EffectCue](/schema/#effectcue), [WaitCue](/schema/#waitcue), [SFXCue](/schema/#sfxcue), [MusicCue](/schema/#musiccue).
 
 ## Set the weather and the tone
 
-`weather` makes rain, snow, petals or embers fall over the scene, and `tone` colors it: a preset (`gray`, `sepia`, `night`, `dusk`) or its parts, `color` (multiplied), `gray`, `bright` and `vignette` (dark edges). Both stay from the command on, over every place and line, until another `weather` or `tone` changes them, and a save keeps them. `none` takes each away. A change eases in over `seconds` (1 by default; 0 is at once).
+`weather` makes rain, snow, petals or embers fall over the scene, and `tone` colors it with a preset (`gray`, `sepia`, `night`, `dusk`) or its parts: `color` (multiplied), `gray`, `bright` and `vignette` (dark edges). Both last over every place and line until the next `weather` or `tone`, saves keep them, and `none` removes each. A change eases in over `seconds` (1 by default; 0 is at once).
 
 ![the painted plaza in rain at night, then snow, petals in sepia and embers at dusk](/images/go-zen-weather.mp4)
 
@@ -339,11 +336,11 @@ events:
       - tone: night
 ```
 
-The weather and the tone are drawn over the place, its pictures and the portraits standing, and under the windows; a battle has neither. The drops fall the same way in every capture of the same play. The headless session sees each command as an effect (`Effect.Kind` `visual`, named `weather` or `tone`), and the state's `look` holds what is falling and the tone. Both need `schema_version: 12`. Reference: [WeatherCue](/schema/#weathercue), [ToneCue](/schema/#tonecue).
+Both are drawn over the place, its pictures and standing portraits, and under the windows; battles have neither. The drops fall the same way in every capture of the same play. The headless session reports each command as an effect (`Effect.Kind` `visual`, named `weather` or `tone`), and the state's `look` holds what is falling and the tone. Both need `schema_version: 12`. Reference: [WeatherCue](/schema/#weathercue), [ToneCue](/schema/#tonecue).
 
 ## Add voices
 
-A line's `voice` names its recording. For an actor with `voices`, a folder under `assets/`, it is a name in that folder, and the extension (`.ogg` or `.wav`) may be left out; for anyone else it is a path under `assets/`. A voice or a sound effect lasts at most 60 seconds; a longer file is skipped with a line in the log.
+A line's `voice` names its recording: for an actor with `voices` (a folder under `assets/`), a name in that folder, extension (`.ogg` or `.wav`) optional; for anyone else, a path under `assets/`. Voices and sound effects last at most 60 seconds, and a longer file is skipped with a line in the log.
 
 <!-- verify: load group=voices as=game.yaml -->
 ```yaml
@@ -368,7 +365,7 @@ events:
       - say: {who: Traveler, voice: voice/traveler_001.ogg, text: Thank you.}
 ```
 
-A voice plays when its line opens and stops at the next line. In the backlog, a voiced line has a ▶ at its left: a click or a tap on it plays the voice again, and the log stays open. Skip mode, Ctrl over a line read, scene skip and the replay of rolling back pass the voices of the lines they pass; the line they land on speaks. The settings have a voice volume and a volume for each actor with `voices`. `gozen check` reports a voice file that is not there and counts the lines of a voiced actor without one (GZN0109). The headless session sees each voice as an effect (`Effect.Kind` `voice`, with the file), and a trace has a `voice` line for each voice played. Reference: [Say](/schema/#say) (`voice`), [Actor](/schema/#actor) (`voices`), [VoiceStyle](/schema/#voicestyle).
+A voice plays when its line opens and stops at the next line. In the backlog a voiced line has a ▶ that plays it again without closing the log. Skip mode, Ctrl, scene skip and the replay of rolling back stay silent over the lines they pass, and the line they land on speaks. The settings have a voice volume and one for each actor with `voices`. `gozen check` reports a missing voice file and counts a voiced actor's lines without one (GZN0109). The headless session reports each voice as an effect (`Effect.Kind` `voice`, with the file), and a trace has a `voice` line for each voice played. Reference: [Say](/schema/#say) (`voice`), [Actor](/schema/#actor) (`voices`), [VoiceStyle](/schema/#voicestyle).
 
 ## Add a companion who joins
 
@@ -420,7 +417,7 @@ actors:
 
 Experience comes from enemies' `exp` and the `exp` command; `learn` teaches a skill at any time. A class `tree` adds a skill tree paid with SP.
 
-`reset_actor` puts one actor back to the start, for a new game plus where only some companions begin again. It resets the level, experience, learnt skills, skill tree and SP, restores HP and MP and clears states. Equipment, the name, the row and whether the actor has joined stay. Add `level` to start from another level (1 to the class's max); without it the level in the actors file is used. An unknown actor ID is a `gozen check` error, and an actor who has not joined yet is already at the start.
+`reset_actor` starts one actor over, for a new game plus where only some companions begin again. It resets level, experience, learnt skills, skill tree and SP, restores HP and MP and clears states, and keeps equipment, name, row and whether the actor has joined. `level` picks the starting level (1 to the class's max); otherwise the level in the actors file is used. An unknown actor ID is a `gozen check` error, and an actor who has not joined is already at the start.
 
 <!-- verify: load group=growth -->
 ```yaml
@@ -484,7 +481,7 @@ items:
 
 ## Set up troops and enemy AI
 
-An enemy needs `mhp` and its AI (a stat left out is 0, and the picture defaults to `assets/enemies/<id>.png`): rules tried by `priority`, each with an optional condition and target. A troop is the group met together; `encounters` sets how often troops are met here.
+An enemy needs `mhp` and its AI, rules tried by `priority`, each with an optional condition and target; other stats default to 0 and the picture to `assets/enemies/<id>.png`. A troop is a group met together, and `encounters` sets how often troops are met here.
 
 <!-- verify: load group=troops -->
 ```yaml
@@ -516,7 +513,7 @@ Reference: [Enemy](/schema/#enemy), [Rule](/schema/#rule), [Target](/schema/#tar
 
 ## Give the party tactics
 
-Party members on Auto follow their own `ai`, written inline or as a shared set under `ai`. The tactics screen lets the player change them; the catalogs say which conditions, targets and actions it offers.
+Party members on Auto follow their `ai`, written inline or as a shared set under `ai`. The player changes them on the tactics screen, which offers the conditions, targets and actions of the catalogs.
 
 <!-- verify: load group=tactics -->
 ```yaml
@@ -601,7 +598,7 @@ locations:
 
 ## Send the party home instead of game over
 
-`game_over.event` runs after the game over screen, in place of the return to the title: the screen shows, and on the next press the party is recovered and the event runs. `battle.retry` offers to fight a lost battle again.
+`game_over.event` replaces the return to the title: after the game over screen, the next press recovers the party and runs the event. `battle.retry` offers to fight a lost battle again.
 
 <!-- verify: load group=gameover as=game.yaml -->
 ```yaml
@@ -684,7 +681,7 @@ locations:
         t: {name: Open chest, picture: chest_open.png, solid: "true"}
 ```
 
-The second chest copies the first with a YAML anchor: `&chest` names the first tile, `<<: *chest` takes its keys, and the keys written after it (`do` here) replace the copied ones. Write `<<` first: a key written before it is replaced by the copied one. Anchors work anywhere in one file.
+The second chest copies the first with a YAML anchor: `&chest` names the first tile, `<<: *chest` takes its keys, and keys written after it (`do` here) replace the copied ones. Write `<<` first, since a key before it is overwritten by the copy. Anchors work anywhere within one file.
 
 Reference: [Tile](/schema/#tile). Go Zen's floors have the same chests.
 
@@ -741,7 +738,7 @@ locations:
 
 ## Generate dungeon floors
 
-With `generate` instead of `map`, every floor is built anew: a maze of rooms and corridors with the characters of `place` put in it. `dive` goes down; `var.floor` is the floor number. Inside `generate` and `roamers` (such as a `count`), plain `floor` is that number too; in the commands of a tile it is the `floor()` function, so write `var.floor` there. The `size` of `generate` and the `count` of `place` read `floor` and nothing else (no `var`, `flag`, `rand` or `chance`), because a loaded save builds the same floor again from its seed; a roamer's `count` may read the rest.
+With `generate` instead of `map`, each floor is built anew as a maze of rooms and corridors holding the characters of `place`. `dive` goes down, and `var.floor` is the floor number. Inside `generate` and `roamers` (a `count`, say) plain `floor` is that number too, but in a tile's commands `floor` is the `floor()` function, so write `var.floor` there. The `size` of `generate` and the `count` of `place` may read only `floor` (no `var`, `flag`, `rand` or `chance`), because a loaded save rebuilds the floor from its seed; a roamer's `count` may read anything.
 
 <!-- verify: load group=generate -->
 ```yaml
@@ -819,7 +816,7 @@ A look can also set `battle_background`, `music`, `battle_music` and `no_map`. R
 
 ## Use a dungeon theme
 
-A theme is a wall, a floor, a ceiling and a door picture with matching colors. `gozen theme list` names the thirteen that come with the `gozen` binary (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine`, `vine`); `gozen theme add` copies one into the game, with no network.
+A theme is a wall, floor, ceiling and door picture with matching colors. `gozen theme list` names the thirteen built into `gozen` (`cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine`, `vine`), and `gozen theme add` copies one into the game without network access.
 
 <!-- verify: each fixture=cli -->
 ```shell
@@ -827,7 +824,7 @@ gozen theme add game --name cave
 gozen theme add game --name ice
 ```
 
-Then name it in the dungeon, and in a look for the deeper floors. What the YAML writes itself (`wall`, `door`, `floor`, `ceiling`, `floor_texture`, `ceiling_texture`) wins over the theme, and a look with a theme replaces the dungeon's theme for what the look does not write.
+Then name it in the dungeon, and in a look for deeper floors. Keys written in the YAML (`wall`, `door`, `floor`, `ceiling`, `floor_texture`, `ceiling_texture`) win over the theme, and a look's theme replaces the dungeon's for whatever the look does not write.
 
 <!-- verify: parse the theme folders come from gozen theme add, which the snippet above runs on its own copy -->
 ```yaml
@@ -844,7 +841,7 @@ locations:
         - {when: "var.floor >= 3", area: Deeper floors, theme: ice, door: gate.jpg}
 ```
 
-The thirteen themes in the same corridor, `cave`, `ice`, `ruins`, `castle`, `crystal`, `temple`, `sewer`, `forest`, `tomb`, `keep`, `dream`, `mine` and `vine`:
+The thirteen themes in the same corridor, in the order listed above:
 
 ![The thirteen dungeon themes seen in one corridor](/images/dungeon-themes.jpg)
 
@@ -852,7 +849,7 @@ The thirteen themes in the same corridor, `cave`, `ice`, `ruins`, `castle`, `cry
 
 ## Show a map with points and roads
 
-A location with `map` is a picture with points on it (`schema_version: 3`). The party walks the open roads from point to point; a point with `to` leads into that location, and one with only `do` runs its commands there.
+A location with `map` is a picture with points (`schema_version: 3`), and the party walks the open roads between them. A point with `to` leads into that location; one with only `do` runs its commands.
 
 ![the party's face walks the road to the well](/images/go-zen-map.mp4)
 
@@ -875,11 +872,11 @@ locations:
         - {between: [shrine, pass], steps: 3, encounters: {rate: "0.2", troops: [{troop: wolves}]}}
 ```
 
-Paint the roads in the picture: the lines in the YAML are what the token walks, drawn only with `draw_roads: true`. Reference: [Atlas](/schema/#atlas), [MapPoint](/schema/#mappoint), [Road](/schema/#road), and [Maps and painted scenes](/writing-a-game/#maps-and-painted-scenes).
+Paint the roads into the picture; the YAML lines, which the token walks, are drawn only with `draw_roads: true`. Reference: [Atlas](/schema/#atlas), [MapPoint](/schema/#mappoint), [Road](/schema/#road), and [Maps and painted scenes](/writing-a-game/#maps-and-painted-scenes).
 
 ## Make a campaign
 
-A campaign is a war of regions over turns (`schema_version: 5`): factions hold regions, the player gives a few orders a turn with the generals (actors of the game), and the other factions move by their `ai` rules when the turn ends. Its place is a map whose points are named like the regions.
+A campaign (`schema_version: 5`) is a war of regions over turns. The player gives a few orders a turn with the generals (actors of the game), and the other factions move by their `ai` rules when the turn ends. Its place is a map whose points are named like the regions.
 
 ![Five Banners, the campaign sample: the war map, the sortie screen, a clash of two armies, and the region in the Crown's colour](/images/campaign.mp4)
 
@@ -940,13 +937,13 @@ locations:
         - {between: [ford, well]}
 ```
 
-OK on a region lists the orders it can be given. Attack asks for the target and opens the sortie screen: the generals go in the front and back slots, each with a tactic (the engine's `front`, `weakest`, `strongest`, `leader` and `guard`, or your `clash.tactics`). `fight: clash_view` plays the march as two armies on the terrain's picture: the soldiers in the ranks are the troops, a skill fires when charged, and a table tells the losses. Leave out `fight` and the march is decided by the numbers of `clash` (`power` against `defense`); `fight: battle` fights the region's `defend` troop as a battle of the game. An `area` fills a region in its owner's colour; without one the region shows as a flag. On a map of one picture only the region chosen gets its roads and outline; `region_roads: always` and `region_borders: always` on the map draw them all. A region may also stand a cut-out `landmark` (its city or fort) on its point; it is optional.
+Attack asks for the target and opens the sortie screen, where the generals take the front and back slots, each with a tactic (the engine's `front`, `weakest`, `strongest`, `leader` and `guard`, or your `clash.tactics`). `fight: clash_view` plays the march as two armies on the terrain's picture: the soldiers in the ranks are the troops, a skill fires when charged, and a table shows the losses. Without `fight` the numbers of `clash` decide (`power` against `defense`); `fight: battle` fights the region's `defend` troop as a battle of the game. A region without an `area` shows as a flag. On a map of one picture only the chosen region gets its roads and outline, unless the map sets `region_roads: always` and `region_borders: always`. A region may also stand an optional cut-out `landmark` (its city or fort) on its point.
 
-Measure it before you tune it: `gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns and the regions each side held turn by turn; `--tactic guard` marches every general with one tactic to compare them. Reference: [Campaign](/schema/#campaign), [Region](/schema/#region), [Faction](/schema/#faction), [Clash](/schema/#clash), [Order](/schema/#order), and [Campaigns](/writing-a-game/#campaigns). [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) is a complete one ([play it in the browser](/play/campaign/)).
+`gozen sim campaign game` plays 200 campaigns and prints the win rate, the turns and the regions each side held turn by turn; `--tactic guard` marches every general with one tactic, to compare tactics. Reference: [Campaign](/schema/#campaign), [Region](/schema/#region), [Faction](/schema/#faction), [Clash](/schema/#clash), [Order](/schema/#order), and [Campaigns](/writing-a-game/#campaigns). [Five Banners](https://github.com/nao1215/gozen/tree/main/examples/campaign) is a complete one ([play it in the browser](/play/campaign/)).
 
 ## Mix a campaign with a dungeon
 
-A campaign shares its game with the towns and dungeons: the generals are the party's actors, and `move` goes between the war map and any other place. Here an order sends the party into a mine whose way out leads back to the war, and the clash reads the general's attack, so levels won in the mine make the marches stronger.
+The generals are the party's actors, and `move` goes between the war map and any other place. Here an order sends the party into a mine whose way out leads back to the war, and the clash reads the general's attack, so levels won in the mine make the marches stronger.
 
 <!-- verify: load as=game.yaml group=mixed -->
 ```yaml
@@ -996,11 +993,11 @@ locations:
     encounters: {rate: "0.2", troops: [{troop: wolves}]}
 ```
 
-Gold, items, flags, experience and HP are one state: what the party finds in the mine is there on the map, and `generals.walker.troops` is there in the mine. Reference: [Campaigns](/writing-a-game/#campaigns) and [Make a campaign](#make-a-campaign).
+Gold, items, flags, experience and HP are one state, so the mine's finds count on the map and `generals.walker.troops` can be read in the mine. Reference: [Campaigns](/writing-a-game/#campaigns) and [Make a campaign](#make-a-campaign).
 
 ## Paint a scene with people and balloons
 
-A location with `stage` shows its background as a painting the party walks as a small doll (`schema_version: 3`). The stage says where one can walk, how tall people are at two depths, where the location's people stand, and what can be looked at; `bubbles` are lines said now and then in balloons.
+A location with `stage` (`schema_version: 3`) is a painting the party walks as a small doll. The stage says where one can walk, how tall people are at two depths, where the people stand and what can be looked at; `bubbles` are lines said now and then in balloons.
 
 ![Maren walks the plaza and Ox says a line in a balloon](/images/go-zen-plaza.mp4)
 
@@ -1036,7 +1033,7 @@ locations:
 
 ## Give a character faces and a moving portrait
 
-`faces` is a directory with one picture per expression; a line picks one with `face`. A `puppet` makes the talk portrait blink, move its mouth while the text runs and sway; its faces use the same names.
+`faces` is a directory with one picture per expression, and a line picks one with `face`. A `puppet` makes the talk portrait blink, sway and move its mouth while the text runs, with faces of the same names.
 
 ![Maren talks, a moving portrait that blinks and changes its face](/images/go-zen-face.mp4)
 
@@ -1077,7 +1074,7 @@ hair:
 
 ## Set the face icons
 
-Menus and battle cards show a round face icon cut from the standing picture. `face_box` says where the face is (the center as fractions of the width and height, then the size as a fraction of the width), and `face_shade` darkens the icon.
+Menus and battle cards show a round face icon cut from the standing picture. `face_box` places the face (the center as fractions of width and height, then the size as a fraction of width), and `face_shade` darkens the icon.
 
 <!-- verify: load group=faceicons -->
 ```yaml
@@ -1106,7 +1103,7 @@ In a painted scene, a balloon's face comes from the doll's `icon`, then `face_at
 
 ## Show event pictures and fill the gallery
 
-`image` shows a full-screen picture under the lines that follow, and `image: ""` takes it away. The gallery on the title screen opens a picture once it has been shown, and a scene once its flag is set.
+`image` shows a full-screen picture under the following lines, and `image: ""` removes it. The title screen's gallery opens a picture once it has been shown, and a scene once its flag is set.
 
 <!-- verify: load group=gallery -->
 ```yaml
@@ -1131,7 +1128,7 @@ gallery:
 
 `files` shows several pictures in turn, and `look: dream` blurs the edges for a memory.
 
-`gallery.endings` lists the game's endings in an Endings tab after Scenes. An ending is reached once its `flag` is set or its `when` holds, and stays reached across saves and new games; the tab counts how many were reached. One not reached shows ??? and its `hint`, and one reached its title and `picture`. Set the flag on the ending's last lines: it is recorded before the game returns to the title.
+`gallery.endings` adds an Endings tab after Scenes. An ending is reached once its `flag` is set or its `when` holds, and stays reached across saves and new games; the tab counts them. An unreached ending shows ??? and its `hint`, a reached one its title and `picture`. Set the flag on the ending's last lines, and it is recorded before the game returns to the title.
 
 ![Brenna's ending runs out to THE END; the gallery's Endings tab lists it with its picture, the other two as ??? with a hint](/images/novel-endings.mp4)
 
@@ -1158,9 +1155,9 @@ gallery:
 
 ## Keep a character book
 
-`profiles` gives each character a page on the Characters screen: the standing picture with its faces, a few lines of your own labels, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and the menu offer Characters, F6 opens it anywhere and every page is open, so you can check your characters while you write. Run `gozen faces` once to center the list's face icons on the faces. Every text is translated through `lang/` like the lines.
+`profiles` gives each character a page on the Characters screen: the standing picture with its faces, your own labeled fields, an introduction and how they see the others. A profile whose ID is an actor's shows that actor; `picture` shows anyone else. Under `--dev` the title and menu offer Characters, F6 opens it anywhere and every page is open, so you can check characters while writing. `gozen faces` centers the list's face icons on the faces. Every text is translated through `lang/` like the lines.
 
-To open a page when the player meets the character, write `met: true` (schema 10): the page opens the first time a line of the actor is shown, and stays open in later plays. A face with `seen: true` is offered once a line shows the actor with it, and `label` names its button. `ui.profile_book: {title: Who's who, layout: grid}` names the book and lays it out as a grid of face cards grouped by `affiliation`.
+`met: true` (schema 10) opens a page the first time a line of the actor is shown, and it stays open in later plays. A face with `seen: true` is offered once a line shows the actor with it, and `label` names its button. `ui.profile_book: {title: Who's who, layout: grid}` names the book and lays it out as a grid of face cards grouped by `affiliation`.
 
 <!-- verify: load group=profiles as=game.yaml -->
 ```yaml
@@ -1202,11 +1199,11 @@ events:
 
 `open: profiles` opens the book from an event, and a test reads `profile.mira.unlocked`. Reference: [Profile](/schema/#profile), [ProfileField](/schema/#profilefield), [ProfileRelation](/schema/#profilerelation), [UIStyle](/schema/#uistyle).
 
-Press Tab in the book for the chart, use arrows to select a face, then Z to focus it. Its incoming and outgoing neighbours gather around it; other faces and lines fade. Press Z again to read its page, X to animate back to the full chart, or use the wheel to zoom. The `kind` colour is chosen by the author; `love` has no engine rule. A line to a locked profile is hidden until it opens. Run `gozen faces <game-dir>` to generate face boxes, then `gozen check <game-dir>` to catch unknown targets and kinds.
+Tab in the book shows the relationship chart. Select a face with the arrows and press Z: everyone connected to it in either direction gathers around it, and other faces and lines fade. Z again reads its page, X goes back to the full chart, and the wheel zooms. A relation's `kind` is `like`, `love`, `rival`, `enemy`, `family`, `friend` or `other`; the colours mean only what you give them, and `love` has no engine rule. `affiliation` keeps a group's members together. Locked characters show as `?`, and their lines stay hidden until they open. The chart's face crops come from `assets/faces.json`: run `gozen faces <game-dir>` to make it, then `gozen check <game-dir>` to catch unknown targets and kinds.
 
 ## Keep a monster book
 
-Add `lore` to each enemy that can appear in an encounter and set `ui.bestiary: true`. Seeing an enemy in battle reveals its name, picture and lore; defeating it reveals its record and increments `bestiary.<id>.defeated`. Expressions can read `bestiary.<id>.seen` and `bestiary.<id>.defeated`. Under `--dev`, F4 opens every page.
+Add `lore` to each enemy met in encounters and set `ui.bestiary: true`. Meeting an enemy in battle reveals its name, picture and lore; beating it reveals its record and counts up `bestiary.<id>.defeated`, which expressions read along with `bestiary.<id>.seen`. Under `--dev`, F4 opens every page.
 
 <!-- verify: parse the game setting shown by the following enemy example -->
 ```yaml
@@ -1231,7 +1228,7 @@ Use `open: bestiary` to open the book from an event. `gozen check` warns with GZ
 
 ## Collect, raise and breed monsters
 
-Use schema version 6. Give each species a family, a positive rank and a class that defines its growth and level skills. Add `recruit` only to species that may ask to join after a won battle. This short data file assumes `attack` and `guard` are already defined, and that the two pictures exist under `assets/`.
+Use schema version 6. Give each species a family, a positive rank and a class for its growth and level skills; `monster_class` defaults to `monster_<family>` when the game has that class. Add `recruit` only to species that may ask to join after a won battle. The data file below assumes `attack`, `guard` and the two pictures under `assets/`.
 
 ![the party wins, and a Drip Slime rises and asks to join, with Yes and No](/images/go-zen-recruit.mp4)
 
@@ -1271,9 +1268,9 @@ breeding:
   families: [{parents: [slime, slime], children: [dewdrop, silverdrop]}]
 ```
 
-At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. Each monster instance has a saved male or female sex (♂ or ♀); only opposite-sex parents can breed. A species can specify `sex: male` or `sex: female`, or use `any` with an optional male `sex_ratio`. The ranch shows active and reserve members, swaps them, asks before release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. A full party sends a new recruit to the reserve. `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}` are commands usable by YAML events and development scripts; the IDs refer to saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
+At a safe location, add an action such as `- {label: Monster ranch, do: [{open: ranch}]}`. The ranch shows active and reserve members, swaps them, asks before a release, previews a child (`?` until seen), lets the player choose inherited skills and stages the fusion. Each monster has a saved sex (♂ or ♀), and only a male and a female can breed; a species sets `sex: male`, `sex: female`, or `any` (the default) with an optional male `sex_ratio`. YAML events and development scripts can run `reserve: {in: monster_2, out: monster_1}`, `release: monster_2` and `breed: {parents: [monster_1, monster_2], skills: [attack]}`, whose IDs are saved instances, not species. Expressions read `reserve.size`, `monster.monster_1.family`, `monster.monster_1.plus`, `monster.monster_1.sex` and `bestiary.dewdrop.caught`.
 
-To require recruits to travel with the active group, use `recruit: {chance: 0.2, level: 1, admission: party_only}`. The default is `admission: reserve`. Capacity is checked when each offer is accepted, including after loading a pending choice. A full party gets a rejection message, with no new instance, caught-count increase or recruitment reward. Breeding still replaces its parents normally.
+The Yes/No request after a battle also works in Session scripts and traces. A full party sends a new recruit to the reserve, unless the species has `recruit: {chance: 0.2, level: 1, admission: party_only}` (the default is `admission: reserve`). Capacity is checked when each offer is accepted, also after loading a pending choice, and a full party gets a rejection message with no new instance, caught count or recruitment reward. Breeding still replaces its parents normally.
 
 An event can recruit a specific species directly and react to a full party:
 
@@ -1285,11 +1282,11 @@ An event can recruit a specific species directly and react to a full party:
     - say: Make room in the active party before returning.
 ```
 
-`capture` requires a non-boss species with `recruit` settings and schema version 6 or later. It attempts admission directly, without rolling the post-battle invitation chance. The saved `var.capture_result` is `party`, `reserve`, `party_full` or `unavailable`; each attempt replaces the previous result.
+`capture` needs a non-boss species with `recruit` and schema version 6 or later, and follows `admission` too. It tries admission directly, without the post-battle chance, and stores `party`, `reserve`, `party_full` or `unavailable` in `var.capture_result`, replacing the previous result.
 
-Run `gozen check game`, `gozen sim breed game --format json`, `gozen book game` and battle and dive simulations while tuning. GZN1112 identifies invalid rules; GZN0116 warns of non-boss species unreachable from capturable monsters. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank.
+While tuning, run `gozen check game` (GZN1112 for invalid rules, GZN0116 for non-boss species no capturable monster can lead to), `gozen sim breed game --format json` for reachable and unreachable species, `gozen book game` for the rules, and battle and dive simulations. A specific pair wins over a family rule, and family offspring are chosen by the mean parent rank.
 
-The monster book shows the shortest recipe first as a picture tree of up to seven monsters: the current species, its parents and its grandparents. Captured leaves show their locations; family rules name the families and example parents. Arrows move between pictures, Z places the chosen species at the top, X returns along the breadcrumb, Tab changes the top species' recipe, and Q opens the chosen known species' page. A parent with a deeper recipe has a `more` mark. An unseen species is shown as `?`; `--dev` reveals all species. `gozen book game --format json` supplies the same tree as structured data. In Go Zen, Yorn at the Breeding Altar opens the ranch. Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two children can produce Succubus. `gozen sim breed examples/go-zen/game` reports that two-generation path.
+The monster book shows the shortest recipe first as a tree of up to seven pictures: the species, its two parents and four grandparents. Captured leaves show their locations, specific recipes both species, and family rules the families and an example pair. Arrows move between pictures, Z puts the chosen species at the top, X goes back along the breadcrumb, Tab changes the top species' recipe, and Q opens a known species' page. A parent with a deeper recipe has a `more` mark, an unseen species shows as `?`, and `--dev` reveals all. `gozen book game --format json` gives the same tree as data. In Go Zen, Yorn at the Breeding Altar opens the ranch: Whisper Imp comes from a male Incense Bloom and Pale Sylph, Vampire from Night Bat and Ghoul, and those two can produce Succubus, the two-generation path `gozen sim breed examples/go-zen/game` reports.
 
 ![Go Zen's two-generation family tree](/images/go-zen-lineage.jpg)
 ![Breeding at the altar: Yorn in the center, the parents, a silhouette reveal and the child](/images/go-zen-breeding.mp4)
@@ -1381,7 +1378,7 @@ Run `gozen puppet assets/sprite/puppet.yaml` to inspect the picture parts.
 
 ## Play music for places, battles and moods
 
-A song is a file, or a modular song with one module per mood. A location plays its `music`, ordinary battles there play `battle_music`, and a troop's `music` comes first. Mood rules switch the mood of a modular song by the moment.
+A song is a file, or a modular song with one module per mood. A location plays its `music`, its ordinary battles play `battle_music`, and a troop's `music` comes first. Mood rules switch a modular song's mood as the moment changes.
 
 <!-- verify: load group=music -->
 ```yaml
@@ -1420,7 +1417,7 @@ A song named `battle` is the battle music by default. `music: town` in an event 
 
 ## Change the language and the engine's wording
 
-`language` picks the engine's own words (menus, battle messages, settings): `en` or `ja`. `text` replaces any of them, keyed by the engine's Japanese source text; `terms` names the money and the stats.
+`language` picks the engine's own words (menus, battle messages, settings, saves): `en` (the default) or `ja`. `text` replaces any of them, keyed by the engine's Japanese source text; a format keeps its `%d` and `%s`, and the value may reorder them (`%[2]d`). `terms` names the money and the stats.
 
 <!-- verify: load group=language as=game.yaml -->
 ```yaml
@@ -1431,11 +1428,11 @@ text:
   はじめから: New journey
 ```
 
-[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/base/text/catalog/english.go) lists every key, and `gozen check` warns when the font lacks letters of the chosen words. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
+[The English catalog](https://github.com/nao1215/gozen/blob/main/internal/base/text/catalog/english.go) lists every key. `gozen check` warns when the regular font lacks letters of the chosen words, and when `language` is unset but the game is written in Japanese. Reference: [Game](/schema/#game), [Terms](/schema/#terms).
 
 ## Offer the game in two languages
 
-Write `data/` in one language and translate it in `lang/<code>.yaml`: a map `text` from each text as written to its translation, with the `{expressions}` kept. `languages` lets the player choose in the settings; the choice is kept with the settings.
+Write `data/` in one language and translate it in `lang/<code>.yaml`, a map `text` from each text as written to its translation, `{expressions}` kept. `languages` lets the player choose in the settings, which keep the choice.
 
 ![the settings switch to Japanese, the line on the screen turns Japanese at once with a reading over a word, and so does the next](/images/novel-language.mp4)
 
@@ -1467,15 +1464,15 @@ text:
   "Bread": "Pan"
 ```
 
-Lines, speakers, choices, prompts and notices are translated as they are shown, and the names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes, shops, the title and the gallery's pictures, scenes and endings when the language changes.
+Lines, speakers, choices, prompts and notices are translated as they are shown. The names and descriptions of places, people, actions, exits, items, skills, states, enemies, classes and shops, the title, and the gallery's pictures, scenes and endings change when the language does.
 
-A line marks the reading of a word as web novels do: `|base《reading》` puts the reading small above the base, and the bar may be left out when the base is a run of kanji (`乾杯《かんぱい》`). The video above shows it in the Japanese lines. The backlog shows the base alone, and `gozen check` measures a line without its marks. A `《` with no base before it, or no `》` after it, is shown as written. Read lines are kept by the text as written, so they stay read in every language. One text has one translation: when the same words must be translated differently in two places, write them differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
+`|base《reading》` puts a reading in small type above a word, as web novels do; the bar may be left out when the base is a run of kanji (`乾杯《かんぱい》`), as in the Japanese lines of the video. The backlog shows the base alone, `gozen check` measures a line without its marks, and a `《` with no base before it or no `》` after it is shown as written. Read lines are kept by the text as written, so they stay read in every language. One text has one translation, so words that need two translations must be written differently. The same map may also replace the engine's own words in that language, as `text` in `game.yaml` does.
 
-`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of every text not translated yet (GZN0111, each with its path; `--format json` lists them for a script or an agent to fill the file), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` changed to `language: ja` (an internal integration test overlay); its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
+`gozen check` reports a translation that drops or changes an `{expression}`, warns of a key that is no text of the game (GZN0110) and of each untranslated text (GZN0111, with its path; `--format json` lists them for a script or an agent to fill in), and lays out the lines in each language. A test of the Japanese game loads the same files with `game.yaml` set to `language: ja` (an internal integration test overlay), and its requests are in Japanese. Reference: [Game](/schema/#game) (`written_in`, `languages`).
 
 ## Test-play with notes, reload and quick starts
 
-Run your game with `--dev`: F5 reloads the YAML without losing your place, F9 writes a note (a screenshot, the state and your comment), and `--start` and its friends begin anywhere. `memo` in `game.yaml` sets the kinds of note and the numbers kept with each.
+With `--dev`, F5 reloads the YAML without losing your place, F9 writes a note (a screenshot, the state and your comment), and `--start` and related options begin anywhere. `memo` in `game.yaml` sets the kinds of note and the values kept with each.
 
 <!-- verify: load group=memo as=game.yaml -->
 ```yaml
@@ -1494,13 +1491,13 @@ The commands are in [Test play](#test-play). Reference: [MemoCfg](/schema/#memoc
 
 ## Measure battles with sim battle and sim dive
 
-`gozen sim battle` fights a troop many times on AUTO and prints the win rate; `gozen sim dive` takes the party down a generated dungeon floor by floor, with its levels, gold and boss win rates. Change a stat, an AI rule or a troop, and measure again. The F7 panel shows the same numbers while you play.
+`gozen sim battle` fights a troop many times on AUTO and prints the win rate; `gozen sim dive` takes the party down a generated dungeon floor by floor and prints levels, gold and boss win rates. Measure again after each change to a stat, an AI rule or a troop. The F7 panel shows the same numbers while you play.
 
 The commands are in [Check and measure](#check-and-measure). Reference: [Commands](/commands/#sim).
 
 ## Check and measure in CI
 
-Let every push run the check and the numbers. In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums:
+In GitHub Actions, [setup-gozen](https://github.com/nao1215/setup-gozen) installs the release binary of the version in your `go.mod`, checked against the release checksums, so every push can run the check and the simulations:
 
 <!-- verify: skip runs in GitHub Actions -->
 ```yaml
@@ -1517,11 +1514,11 @@ jobs:
       - run: gozen sim campaign game --format json      # for a campaign
 ```
 
-`gozen check` exits 1 on any error, so the job fails on a broken reference. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the version in `go.mod`. Reference: [Install](/install/#in-github-actions), [Commands](/commands/#check).
+`gozen check` exits 1 on any error, so a broken reference fails the job. Without the action, `go run github.com/nao1215/gozen/cmd/gozen check game` builds the version in `go.mod`. Reference: [Install](/install/#in-github-actions), [Commands](/commands/#check).
 
 ## Cut a release and a trial
 
-`gozen release` copies the game with only approved pictures; `gozen trial` keeps the part of the game within the range of `trial.yaml`, a demo. The selector removes definitions and assets it can prove are outside the trial range. Analysis is conservative: unresolved branches and retained files can still contain later content. Inspect the output before distribution; this is not encryption or an asset-secrecy guarantee. `-n` counts what would be kept, and `--list` writes what was kept and what was dropped, to check before you ship. Here the demo stops at the third floor of the grotto and leaves out the ending event:
+`gozen release` copies the game with only approved pictures. `gozen trial` builds a demo from the part of the game inside the range of `trial.yaml`, removing the definitions and assets it can prove are outside; `-n` counts what would be kept, and `--list` writes what was kept and dropped. The analysis is conservative, so unresolved branches and kept files can still hold later content: it is no encryption or secrecy guarantee, and you should inspect the output before you ship ([Check the contents of a trial](#check-the-contents-of-a-trial)). This demo stops at the grotto's third floor and leaves out the ending event:
 
 <!-- verify: same internal/dev/docs/testdata/fixtures/cookbook/game/trial.yaml -->
 ```yaml
@@ -1544,7 +1541,7 @@ inspection: {file: file, source: source, required: required, approved: approved}
 records: {file: file, source: source, required: required, approved: approved, output: output}
 ```
 
-A trial built without `--overlay` keeps the game's `asset-policy.yaml`, so `gozen export` refuses it until its assets are approved; with `--overlay` and `--inspect` the trial is an approved tree. Either way it holds the game's translations whole and its license notices.
+A trial built without `--overlay` keeps the game's `asset-policy.yaml`, so `gozen export` refuses it until its assets are approved; with `--overlay` and `--inspect` it is an approved tree. Either way it keeps all the game's translations and its license notices.
 
 The commands are in [Release and trial](#release-and-trial). Reference: [Commands](/commands/#release), [Commands](/commands/#trial).
 
@@ -1611,8 +1608,7 @@ gozen trial game --out trial --list trial.txt           # build it, and list wha
 
 ## A speaker who remembers a greeting
 
-Create a novel with `gozen new my-story --template novel`. In `game.yaml`, add
-`reactions: {rowan: rowan.yaml}`. Save this reaction book as `assets/rowan.yaml`:
+Create a novel with `gozen new my-story --template novel`, add `reactions: {rowan: rowan.yaml}` to `game.yaml`, and save this reaction book as `assets/rowan.yaml`:
 
 <!-- verify: parse reaction book loaded by the narrative resume integration test -->
 ```yaml
@@ -1623,20 +1619,13 @@ people:
       - {id: welcome, say: [Hello.]}
 ```
 
-In a location's `on_enter` or an event's `do`, use
-`- respond: {who: rowan, text: Hello}`. The first greeting produces "Hello.";
-a repeated greeting produces "Welcome back.". Saving and loading preserves
-that memory. Keep ordinary scripted lines as `say`; use `respond` only where
-rule-based variation is useful. A speaker needs no battle class or stats.
+With `- respond: {who: rowan, text: Hello}` in a location's `on_enter` or an event's `do`, the first greeting gets "Hello." and later ones "Welcome back.", and saves keep that memory. Keep ordinary lines as `say` and use `respond` where rule-based variation helps. The speaker needs no battle class or stats.
 
 ## Check the contents of a trial
 
-Trial analysis is conservative: a condition it cannot prove false retains its
-branch. `gozen trial game -n` reports the count of unresolved conditions;
-`--list trial.txt` includes their paths as well as retained definitions and assets.
-Do not infer that all later story content was removed from a successful build.
+A condition the trial analysis cannot prove false keeps its branch, so a successful build does not mean the later story is gone. `gozen trial game -n` counts the unresolved conditions, and `--list trial.txt` lists their paths with the kept definitions and assets.
 
-Use `forbid` in `trial.yaml` to fail if selected definitions or assets remain:
+`forbid` in `trial.yaml` fails the build when chosen definitions or assets remain:
 
 <!-- verify: parse trial configuration fragment -->
 ```yaml
@@ -1644,55 +1633,21 @@ cut: [ending]
 forbid: [events.ending, assets/ending/*]
 ```
 
-`cut` replaces calls to the named event with the configured blocked sequence.
-`forbid` checks retained IDs in `events`, `troops`, `enemies`, `locations`,
-`skills`, `ai`, `shops` and `songs`, plus asset paths, using the same glob syntax
-as the other selection patterns; it reports an error before writing the output.
-Inspect the resulting game and test its routes before distribution.
+`cut` replaces calls to the named event with the `blocked` commands. `forbid` checks kept IDs in `events`, `troops`, `enemies`, `locations`, `skills`, `ai`, `shops` and `songs`, and asset paths, with the same glob syntax as the other patterns, and reports an error before writing anything. Still play the trial's routes before you ship it.
 
 ## Record filled stream lines
 
-For a stream game, set `voices: voice` in the streams file and an optional
-`voice_fallback: Thank you.` on each channel (schema version 9).
-Record that translated phrase as Ogg Vorbis in the channel's voice folder.
-Lookup tries the filled text, then the translated unfilled template, then the
-channel fallback for dynamic lines, then no recording. The subtitle keeps the
-full filled line. Without a recording, the browser uses speech synthesis by default.
-Player tip quotations also use the fallback. Static lines keep their usual behavior.
+For a stream game (schema version 9), set `voices: voice` in the streams file and, optionally, `voice_fallback: Thank you.` on each channel, with the translated phrase recorded as Ogg Vorbis in the channel's voice folder. A dynamic line plays the recording of its filled text, else of its translated unfilled template, else the channel fallback, else none; player tip quotations also use the fallback, and static lines work as usual. The subtitle shows the full filled line. Without a recording, the browser speaks the line with speech synthesis by default.
 
-Export the recording inventory with `gozen book GAME --section voices --format json`.
-The command result's `data` contains `version: 1` and `lines`.
-Each line carries `channel`, `language`, `text` and `file`.
-Generate the exact text as Ogg Vorbis at that game-relative path, deduplicating by
-path. Records with `fields` are templates: their `file` hashes the translated
-text with placeholders intact. Record these without speaking the name or other
-runtime values, and save at that path. Set `voices` before exporting paths.
+`gozen book GAME --section voices --format json` exports what to record. The result's `data` has `version: 1` and `lines`, each with `channel`, `language`, `text` and `file`; record each exact text as Ogg Vorbis at its game-relative `file`, once per path, and set `voices` before exporting. Records with `fields` are templates whose `file` hashes the translated text with placeholders intact, so record them without speaking the name or other runtime values.
 
-The inventory expands NPC names for their authored question options and candidate
-bot-tip reactions from crowd names and tip lines. Player names and input, visit
-counts, reaction mood, matched slots and remembered values remain runtime values.
-Reaction candidates may include rules that will not run for a particular tip.
-Translations are applied before filling and hashing. Existing recordings named
-after translated unfilled templates remain usable. `gozen check` checks template
-and expanded keys, missing fallback recordings (GZN0119) and audio format (GZN0120).
-The browser checks its file manifest before loading a voice; an absent recording
-does not incur a network request.
+The inventory expands NPC names for their question options, and bot-tip reactions from crowd names and tip lines. Player names and input, visit counts, reaction mood, matched slots and remembered values stay runtime values, and reaction candidates may include rules that do not run for a given tip. Translations are applied before filling and hashing, and recordings named after translated unfilled templates still work. `gozen check` checks template and expanded keys, missing fallback recordings (GZN0119) and audio format (GZN0120). The browser checks its file manifest before loading a voice, so a missing recording costs no network request.
 
-To keep unvoiced lines silent, write `missing_voice: captions` beside `voices`
-in the file named by `game.yaml`'s `streams`. This optional schema version 9
-field accepts `speech` (the default when omitted) or `captions`; other values
-fail `gozen check` with GZN1104. It applies to absent recordings, decode errors
-and fetch timeouts, including an unavailable channel fallback.
-
-Captions mode uses the same caption duration and mouth timing as desktop
-playback without speech synthesis, including the existing loading deadline and
-question-answer hold. It does not change recording playback or timeout logs.
-The speaker ON/OFF button controls recorded audio when `voices` is configured;
-without recorded audio it is hidden. The captions button remains independent.
+`missing_voice: captions` beside `voices` (in the file that `game.yaml`'s `streams` names) keeps unvoiced lines silent. The field takes `speech` (the default) or `captions`, and anything else fails `gozen check` with GZN1104. It covers missing recordings, decode errors and fetch timeouts, an unavailable channel fallback included. Captions mode keeps the desktop caption duration and mouth timing, the loading deadline and the question-answer hold, and does not change recording playback or timeout logs. The speaker ON/OFF button controls recorded audio when `voices` is set and is hidden otherwise; the captions button is separate.
 
 ## Wear stone sets and fuse stones
 
-A stone is an item with a `slot`; an item of slot `stone` fits the equip slots `stone1`, `stone2` and so on. A `stone_sets` entry names stones worn together by one member: while all of them are worn, the member has the set's `stats` and its `skill`. `for` lists the members a set suits, and `only: true` makes it work for those members alone.
+An item of slot `stone` fits the equip slots `stone1`, `stone2` and so on. A `stone_sets` entry names stones worn together: while one member wears all of them, the member has the set's `stats` and `skill`. `for` lists the members a set suits, and `only: true` limits it to them.
 
 <!-- verify: load group=stones as=game.yaml -->
 ```yaml
@@ -1742,13 +1697,13 @@ locations:
     exits: [{to: field, label: Out to the field}]
 ```
 
-`manual: true` keeps the menu's best-equipment choice and its offers away from a slot, which suits stones: a set is worth more than the numbers of its stones. `equip_stones` takes the stones from the bag, or from members not using them; `actor` and `set` are expressions, so a fixed ID is quoted. `stone_suggest: tip` looks for the strongest way to wear every owned stone and writes `var.tip`, the number of members whose stones would change (0 when the party already wears the best), with one text per member in `var.tip_page1`, `var.tip_page2` and so on; `stone_apply: tip` then re-equips everyone that way. `stone_choose`, `stone_wearer` and `stone_decline` let the player pick a set and its wearer, or refuse the advice until the owned stones change.
+`manual: true` keeps the menu's best-equipment choice and its offers away from a slot, which suits stones, since a set is worth more than its stones' numbers. `equip_stones` takes the stones from the bag or from members not using them; `actor` and `set` are expressions, so a fixed ID is quoted. `stone_suggest: tip` finds the strongest way to wear every owned stone and writes `var.tip`, the number of members whose stones would change (0 when the party already wears the best), with a text per member in `var.tip_page1`, `var.tip_page2` and so on; `stone_apply: tip` re-equips everyone that way. `stone_choose`, `stone_wearer` and `stone_decline` let the player pick a set and its wearer, or refuse the advice until the owned stones change.
 
-`open: fusion` opens the screen of the `fusions`: a recipe takes the stones of `from` and the `price`, and gives the stone `to`. Reference: [StoneSet](/schema/#stoneset), [Fusion](/schema/#fusion), [EquipStones](/schema/#equipstones), [Slot](/schema/#slot).
+`open: fusion` opens the `fusions` screen, where a recipe takes the stones of `from` and the `price` and gives the stone `to`. Reference: [StoneSet](/schema/#stoneset), [Fusion](/schema/#fusion), [EquipStones](/schema/#equipstones), [Slot](/schema/#slot).
 
 ## Set a retry point with a checkpoint
 
-`checkpoint: EVENT` keeps the state and the random numbers of that moment as the retry point, replacing the one before (schema version 9). `restore_checkpoint: true` gives up what happened since, goes back to that state and runs the event the checkpoint named. A save holds the retry point, so restoring also works after loading.
+`checkpoint: EVENT` (schema version 9) keeps the state and random numbers of that moment as the retry point, replacing the previous one. `restore_checkpoint: true` drops what happened since, returns to that state and runs the named event. Saves hold the retry point, so restoring works after loading too.
 
 <!-- verify: load group=checkpoint as=game.yaml -->
 ```yaml
@@ -1772,11 +1727,11 @@ events:
       - say: You are back where the trail begins.
 ```
 
-Everything changed after the checkpoint is undone, flags and variables included: keep what must survive a retry (a count of attempts, say) in the checkpoint's event. Reference: [Command](/schema/#command).
+Everything changed after the checkpoint is undone, flags and variables included, so set what must survive a retry (a count of attempts, say) in the checkpoint's event. Reference: [Command](/schema/#command).
 
 ## Insert a thought after a speaker's lines
 
-`asides` in `game.yaml` insert an event right after a line by a given speaker is shown, while `when` holds; the conversation goes on when the inserted event ends. Name the speaker by `actor`, by the line's `name`, or by a pattern for its `face`.
+`asides` in `game.yaml` run an event right after a given speaker's line, while `when` holds, and the conversation resumes when it ends. Name the speaker by `actor`, by the line's `name`, or by a pattern for its `face`.
 
 <!-- verify: load group=asides as=game.yaml -->
 ```yaml
@@ -1794,11 +1749,11 @@ events:
       - set: {flag.walker_wondered: true}
 ```
 
-An aside is not inserted during a battle, inside another aside, or while an event matching `skip` (or one it calls) runs. How often it comes is yours to write: the engine does not count, so set a flag or a variable in the event and test it in `when`. Reference: [Aside](/schema/#aside).
+No aside runs during a battle, inside another aside, or while an event matching `skip` (or one it calls) runs. The engine does not count asides, so limit how often one comes with a flag or variable set in the event and tested in `when`. Reference: [Aside](/schema/#aside).
 
 ## Dress the title screen
 
-`ui.title` dresses the title screen: `background` is the picture behind the title, and `picture` a logo or key art drawn over it. `pictures` stand pictures on the title screen instead, the later ones in front; with figures, `picture` is not drawn. `text` letters the title and the subtitle, and `music` plays.
+In `ui.title`, `background` is the picture behind the title and `picture` a logo or key art over it. `pictures` stand figures on the screen instead, later ones in front, and then `picture` is not drawn. `text` letters the title and subtitle, and `music` plays.
 
 <!-- verify: load group=title as=game.yaml -->
 ```yaml
@@ -1815,7 +1770,7 @@ ui:
 
 ## Review pictures and scenes while writing
 
-`cg_review` and `scene_review` in `game.yaml` set up the tags of two review tools for authors. Start the game with `--review-log FILE`: with `cg_review` written, pictures can be tagged, and with `--gallery-all` too the gallery gains a column that lists the `gallery.scenes` to tag. `gozen run game --dev --review --review-log review.jsonl` starts by showing the pictures of every event one by one.
+`cg_review` and `scene_review` in `game.yaml` set the tags of two review tools. With `--review-log FILE` and `cg_review`, pictures can be tagged; adding `--gallery-all` gives the gallery a column listing the `gallery.scenes` to tag. `gozen run game --dev --review --review-log review.jsonl` starts by showing every event's pictures one by one.
 
 <!-- verify: load group=review as=game.yaml -->
 ```yaml
@@ -1837,11 +1792,9 @@ scene_review:
     - {id: pacing, label: Pacing}
 ```
 
-The first ten tags are attached with the number keys. A tag with `ok: true` marks a picture as done, and the filter that hides finished pictures leaves it out. `extra` adds pictures the gallery does not list, and a `groups` entry is a set of pictures that is left out until it is chosen before the review. Picture tags are written to the review log as JSON Lines; scene tags go to `scene-review.jsonl` beside it. Reference: [CGReviewCfg](/schema/#cgreviewcfg), [SceneReviewCfg](/schema/#scenereviewcfg).
+The number keys attach the first ten tags. A tag with `ok: true` marks a picture done, and the filter for finished pictures hides it. `extra` adds pictures the gallery does not list, and a `groups` entry is a set left out unless chosen before the review. Picture tags go to the review log as JSON Lines, scene tags to `scene-review.jsonl` beside it. Reference: [CGReviewCfg](/schema/#cgreviewcfg), [SceneReviewCfg](/schema/#scenereviewcfg).
 
 ## Tune a place, the windows and the battle pace
-
-A few single keys change how a place, the windows or every battle behave.
 
 <!-- verify: load group=tuning as=game.yaml -->
 ```yaml
@@ -1881,11 +1834,9 @@ locations:
     exits: [{to: snow_town, label: Back outside}]
 ```
 
-A `passives` state is put on the member at the start of each battle while its `when` holds, and does not last after the battle. An enemy aims at one front-row member with weight 4 and at one back-row member with weight 1 unless `front_weight` and `back_weight` say otherwise. `hide_gold` takes `field`, `dungeon`, `map` and `stage`. With `talk_on_enter`, people who have something new to say come first. Reference: [BattleCfg](/schema/#battlecfg), [Passive](/schema/#passive), [UIStyle](/schema/#uistyle), [Location](/schema/#location).
+A `passives` state is put on the member at the start of each battle while its `when` holds, and ends with the battle. Enemies aim at a front-row member with weight 4 and a back-row member with weight 1 unless `front_weight` and `back_weight` say otherwise. `hide_gold` takes `field`, `dungeon`, `map` and `stage`. With `talk_on_enter`, people who have something new to say come first. Reference: [BattleCfg](/schema/#battlecfg), [Passive](/schema/#passive), [UIStyle](/schema/#uistyle), [Location](/schema/#location).
 
 ## Change states, duels and skill points from an event
-
-These commands reach what the menus and battles usually own.
 
 <!-- verify: load group=eventverbs -->
 ```yaml
@@ -1915,9 +1866,9 @@ locations:
     exits: [{to: field, label: Down to the field}]
 ```
 
-`affect` puts a state on party members outside a battle (`who` is an actor's ID or `all`), for the state's own `turns` unless `turns` is given, or takes one off with `remove` (`remove: bad` takes off every bad state). A battle with `on_lose` goes on with those commands after a defeat instead of the game over. `reset_tree` gives back the SP spent in the skill tree of one actor or of `all`. `sp_suggest: plan` plans how each member's spare SP would be spent and writes `var.plan`, the number of members with a plan, and a text per member in `var.plan_page1` and so on, without spending anything; `sp_apply: plan` spends it.
+`affect` puts a state on party members outside a battle (`who` is an actor's ID or `all`) for the state's `turns` unless `turns` is given, or takes one off with `remove` (`remove: bad` takes off every bad state). A battle with `on_lose` runs those commands after a defeat instead of the game over. `reset_tree` refunds the SP spent in the skill tree of one actor or `all`. `sp_suggest: plan` plans how each member's spare SP would be spent, without spending it, and writes `var.plan` (the number of members with a plan) and a text per member in `var.plan_page1` and so on; `sp_apply: plan` spends it.
 
-In a dungeon, `open_wall: H` turns the wall beside the party's cell (the one it faces first) into the tile `H` and turns the party to it; the floor and saves keep it. Written under the dungeon's `complete`, it makes a stair appear once every cell has been seen:
+In a dungeon, `open_wall: H` turns the wall beside the party's cell (the one it faces first) into the tile `H` and turns the party to it, and the floor and saves keep it. Under the dungeon's `complete`, it makes a stair appear once every cell has been seen:
 
 <!-- verify: load group=eventverbs -->
 ```yaml
