@@ -2549,3 +2549,70 @@ func TestPhoneStoreWords(t *testing.T) {
 		})
 	}
 }
+
+// TestPhonePlaced: a phone placed left or right sits a third of the way in from
+// that side, so a character beside it stays in view, and a tap is read where it
+// is drawn; with no place it keeps the middle.
+func TestPhonePlaced(t *testing.T) {
+	rows := []data.PhoneRow{{Text: "Hi"}}
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: rows})
+	sw, _ := g.screen()
+	for _, c := range []struct {
+		place string
+		want  float64
+	}{{"", 0.5}, {"left", 0.3}, {"right", 0.7}} {
+		g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "page", Place: c.place, Rows: rows}})
+		x, _, w, _ := g.phoneScreenRect(false)
+		if got := x + w/2; math.Abs(got-sw*c.want) > 1 {
+			t.Errorf("place %q: middle %v, want %v", c.place, got, sw*c.want)
+		}
+	}
+}
+
+// TestScreenAdapt: with screen.adapt, a window taller than wide (a phone held
+// upright) lays the play out upright, and a wide one keeps the game's wide screen.
+func TestScreenAdapt(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.db.Game.Screen.Adapt = true
+	g.fitView(390, 844, 1)
+	if w, h := g.screen(); w >= h {
+		t.Fatalf("upright window: screen %vx%v, want taller than wide", w, h)
+	}
+	g.fitView(1920, 1080, 1)
+	if w, h := g.screen(); w <= h {
+		t.Fatalf("wide window: screen %vx%v, want wider than tall", w, h)
+	}
+}
+
+// TestLocationBare: a bare place draws no header, money or menu over its
+// background, even with nothing else on the screen.
+func TestLocationBare(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.closePhone()
+	if !g.placeHUDShown() {
+		t.Fatal("a plain place with nothing over it shows its header")
+	}
+	g.db.Locations[g.st.Location].Bare = true
+	if g.placeHUDShown() {
+		t.Fatal("a bare place shows its header")
+	}
+}
+
+// TestLanguageCommand: the language command shows the game in that language and
+// keeps it in the settings, as the settings' language row does.
+func TestLanguageCommand(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.db.Game.Languages = []string{"en", "ja"}
+	g.Handle(event.LanguageEffect{Code: "ja"})
+	if g.cfg.Language != "ja" || g.language() != "ja" {
+		t.Fatalf("after language ja: settings %q, shown %q", g.cfg.Language, g.language())
+	}
+	g.Handle(event.LanguageEffect{Code: "next"})
+	if g.language() != "en" {
+		t.Fatalf("next after ja: shown %q, want en", g.language())
+	}
+	g.Handle(event.LanguageEffect{Code: "next"})
+	if g.language() != "ja" {
+		t.Fatalf("next after en: shown %q, want ja", g.language())
+	}
+}

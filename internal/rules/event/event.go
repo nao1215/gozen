@@ -62,7 +62,12 @@ type ImageEffect struct{ Picture data.CG }
 
 // PhoneEffect shows a phone over the scene (the phone command, ADR 0057) with
 // its texts already filled; the event waits on a Tap while it is up.
-type PhoneEffect struct{ Phone data.PhoneCue }
+type PhoneEffect struct {
+	Phone data.PhoneCue
+	// Again is the same phone shown anew after a button that stays: the
+	// screen keeps it up where it was, without the lift.
+	Again bool
+}
 
 // CallCameraEffect turns a call participant's camera view on or off; it is
 // presentation only.
@@ -80,6 +85,9 @@ type CallShareEffect struct {
 
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
+
+// LanguageEffect shows the game in Code and keeps it in the settings (the language command).
+type LanguageEffect struct{ Code string }
 
 // BreedEffect presents the two consumed parents and their child during a birth scene.
 type BreedEffect struct {
@@ -122,6 +130,7 @@ func (MusicEffect) isEffect()      {}
 func (MoodEffect) isEffect()       {}
 func (ImageEffect) isEffect()      {}
 func (SoundEffect) isEffect()      {}
+func (LanguageEffect) isEffect()   {}
 func (CallCameraEffect) isEffect() {}
 func (CallShareEffect) isEffect()  {}
 func (PhoneEffect) isEffect()      {}
@@ -314,6 +323,9 @@ type Checkpoint struct {
 	Restore bool
 }
 
+// Autosave asks the frontend to write the autosave now; loading it starts Event.
+type Autosave struct{ Event string }
+
 // Save opens the save screen.
 type Save struct{}
 
@@ -496,6 +508,7 @@ func (Battle) isRequest()     {}
 func (Shop) isRequest()       {}
 func (Wait) isRequest()       {}
 func (Checkpoint) isRequest() {}
+func (Autosave) isRequest()   {}
 func (Save) isRequest()       {}
 func (Open) isRequest()       {}
 func (Clear) isRequest()      {}
@@ -568,6 +581,10 @@ type Runner struct {
 	phoneWait bool
 	// phoneReturn marks app navigation options that redisplay their owning phone.
 	phoneReturn []bool
+	// phoneStay marks the options of buttons that stay (data.PhoneRow.Stay), and
+	// phoneAgain tells the phone command shown next it is that phone shown anew.
+	phoneStay  []bool
+	phoneAgain bool
 	// phoneUnshown marks the results whose row a when hides: the screen does
 	// not offer them, so an unattended run does not take them either.
 	phoneUnshown []bool
@@ -676,7 +693,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes, r.phoneWait, r.phoneReturn, r.phoneUnshown = nil, false, nil, nil
+	r.likes, r.phoneWait, r.phoneReturn, r.phoneUnshown, r.phoneStay, r.phoneAgain = nil, false, nil, nil, nil, false
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -778,8 +795,9 @@ func (r *Runner) Answer(n int) {
 		// Resume the current phone after its child event, without recursively
 		// entering the parent event or growing the stack on each app visit.
 		r.stack[len(r.stack)-1].pc--
+		r.phoneAgain = n < len(r.phoneStay) && r.phoneStay[n]
 	}
-	r.phoneReturn, r.phoneUnshown = nil, nil
+	r.phoneReturn, r.phoneUnshown, r.phoneStay = nil, nil, nil
 	r.phoneWait = false
 	switch {
 	case r.likes != nil:
@@ -983,7 +1001,7 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // over).
 func (r *Runner) Next() Request {
 	if r.phoneWait {
-		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn, r.phoneUnshown = false, nil, nil, nil, nil, nil
+		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn, r.phoneUnshown, r.phoneStay = false, nil, nil, nil, nil, nil, nil
 	}
 	if r.gameOver {
 		r.gameOver = false
@@ -1441,7 +1459,8 @@ func (r *Runner) run(c *data.Command) Request {
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
 		shown := r.fillPhone(*c.Phone, env)
-		r.emit(PhoneEffect{shown})
+		r.emit(PhoneEffect{Phone: shown, Again: r.phoneAgain})
+		r.phoneAgain = false
 		if c.Phone.App == "banner" && c.Phone.Var == "" {
 			break
 		}
@@ -1461,11 +1480,17 @@ func (r *Runner) run(c *data.Command) Request {
 					continue
 				}
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
-				if res.Event != "" {
+				if res.Event != "" || res.Stay {
 					if r.phoneReturn == nil {
 						r.phoneReturn = make([]bool, len(results))
 					}
 					r.phoneReturn[i] = true
+				}
+				if res.Stay {
+					if r.phoneStay == nil {
+						r.phoneStay = make([]bool, len(results))
+					}
+					r.phoneStay[i] = true
 				}
 			}
 			r.phoneWait = true
@@ -1489,6 +1514,8 @@ func (r *Runner) run(c *data.Command) Request {
 		if len(r.st.Inbox) > rpg.InboxLimit {
 			r.st.Inbox = r.st.Inbox[len(r.st.Inbox)-rpg.InboxLimit:]
 		}
+	case "language":
+		r.emit(LanguageEffect{c.Language})
 	case "sfx":
 		r.emit(SoundEffect{c.SFX.Name})
 		if c.SFX.Wait {
@@ -1562,6 +1589,8 @@ func (r *Runner) run(c *data.Command) Request {
 		return Checkpoint{Event: c.Checkpoint}
 	case "restore_checkpoint":
 		return Checkpoint{Restore: true}
+	case "autosave":
+		return Autosave{Event: c.Autosave}
 	case "save":
 		return Save{}
 	case "open":
@@ -1914,6 +1943,16 @@ func (r *Runner) fillPhoneRows(rows []data.PhoneRow, env expr.Env, fill func(str
 			r.logf(err)
 			row.Shut = shut
 		}
+		if row.Selected.Set() {
+			lit, err := row.Selected.Bool(env)
+			r.logf(err)
+			row.Lit = lit
+		}
+		if row.Marked.Set() {
+			mark, err := row.Marked.Bool(env)
+			r.logf(err)
+			row.Mark = mark
+		}
 		if row.Item != nil {
 			it := *row.Item
 			it.Title, it.Text, it.Value = fill(it.Title), fill(it.Text), fill(it.Value)
@@ -1968,7 +2007,7 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 		switch q := request.(type) {
 		case nil:
 			return nil, fmt.Errorf("load: event ended before saved line %d", line)
-		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
+		case Checkpoint, Autosave, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
 		case Tap:
 			var err error

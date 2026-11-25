@@ -34,8 +34,10 @@ type phoneView struct {
 
 	cue data.PhoneCue
 	// age counts ticks since the phone came up; closing counts down the ticks
-	// left of putting it down (0 while it is up).
+	// left of putting it down (0 while it is up), and quick tells it goes at
+	// once rather than lowered (a still phone, or a button that stays).
 	age, closing int
+	quick        bool
 	// side tells the phone is held on its side; turned counts the ticks since
 	// it last turned (phoneTurn and over: it rests).
 	side   bool
@@ -76,6 +78,8 @@ type phoneView struct {
 	// rows are a page's rows laid out for a screen rowsW wide.
 	rows           []pageRow
 	rowsW, rowsEnd float64
+	// cards are the page's cards behind its rows, laid out with them.
+	cards []pageCard
 	// chatRead is how far the newest message, when it is taller than the
 	// screen, has been read down from its top.
 	chatRead float64
@@ -126,6 +130,12 @@ func newPhoneView(cue data.PhoneCue) *phoneView {
 		seenPic: map[int]bool{}, pics: map[int]picRect{}, qrs: map[string]*ebiten.Image{},
 		bubbles: map[int]chatBubble{}, imageUse: map[*ebiten.Image]bool{}, bodies: map[*phoneClip]bool{},
 	}
+	if cue.Still {
+		p.age = phoneRise
+		// A still page skips the rise and so the turn after it: held sideways,
+		// it is shown sideways at once.
+		p.side = cue.Hold == "landscape"
+	}
 	switch cue.App {
 	case "chat":
 		p.shown = p.nextChat(0) + 1
@@ -156,16 +166,71 @@ func (p *phoneView) putDown(row, notice int, missed bool) {
 		p.selectedApp = id
 		return
 	}
-	p.closing = phoneRise
 	results := p.cue.Results()
 	if p.appRows != nil {
 		results = p.homeResults
 	}
+	stay := false
 	for i, r := range results {
 		if r.Row == row && r.Notice == notice && r.Missed == missed {
-			p.result = i
+			p.result, stay = i, r.Stay
 		}
 	}
+	p.putAway(stay)
+}
+
+// putAway starts putting the phone down: lowered over phoneRise ticks, or at
+// once when it is still or a button that stays was pressed (the same page
+// comes back at once, so lowering it would flash the scene between).
+func (p *phoneView) putAway(stay bool) {
+	p.quick = stay || p.cue.Still
+	p.closing = phoneRise
+	if p.quick {
+		p.closing = 1
+	}
+}
+
+// phoneHand is where a page was when a button that stays put it down, so the
+// same page shown anew (event.PhoneEffect.Again) comes back scrolled and
+// focused as it was rather than lifted from the top.
+type phoneHand struct {
+	scroll float64
+	focus  int
+	keyed  bool
+	// side tells the page was held on its side and done turning: a sideways
+	// page after it comes up already turned instead of turning again.
+	side bool
+	// held is the page itself, still drawn after a quick put-down until the
+	// next page replaces it (or phoneHoldTicks pass): the event between the
+	// two takes a tick or more, and drawing nothing there flashed the scene
+	// and its menu under the phone at every tap of a button that stays.
+	held     *phoneView
+	heldTick int
+}
+
+// phoneHoldTicks is how long a page put down quickly stays drawn waiting for
+// the page that replaces it.
+const phoneHoldTicks = 6
+
+// hand is the page's place, to hand to the page shown anew.
+func (p *phoneView) hand() *phoneHand {
+	return &phoneHand{scroll: p.scroll, focus: p.focus, keyed: p.keyed, side: p.side && p.resting()}
+}
+
+// follow brings a sideways page up where a sideways page was just put down:
+// up and turned at once, so a run of sideways pages does not rise and turn
+// at every page.
+func (p *phoneView) follow(h *phoneHand) {
+	if h.side && p.cue.Hold == "landscape" {
+		p.age, p.side, p.turned = phoneRise, true, phoneTurn
+	}
+}
+
+// takeHand puts a page shown anew where the last one was: up at once, scrolled
+// and focused the same.
+func (p *phoneView) takeHand(h *phoneHand) {
+	p.age, p.scroll, p.focus, p.keyed = phoneRise, h.scroll, h.focus, h.keyed
+	p.follow(h)
 }
 
 // answer is what the phone answers its event with: the result it was put
@@ -469,7 +534,7 @@ func (g *Game) updatePhoneWatch(p *phoneView) {
 		g.stopWatching(p)
 		return
 	}
-	p.closing = phoneRise
+	p.putAway(false)
 }
 
 func (g *Game) stopWatching(p *phoneView) {
@@ -525,14 +590,37 @@ func phoneBezel(w, h float64) float64 { return math.Min(w, h) * 0.035 }
 // phoneScreenRect is the phone's screen as it rests, in UI units of the game's
 // screen: its top left and its size.
 func (g *Game) phoneScreenRect(side bool) (x, y, w, h float64) {
-	sw, sh := g.screen()
+	_, sh := g.screen()
 	pw, ph := g.phoneSize(side)
 	b := phoneBezel(pw, ph)
-	return (sw-pw)/2 + b, (sh-ph)/2 + b, pw - b*2, ph - b*2
+	return g.phoneMidX() - pw/2 + b, (sh-ph)/2 + b, pw - b*2, ph - b*2
+}
+
+// phoneMidX is where the phone's middle is across the screen: the middle, or
+// for a cue placed left or right, a third of the way in, leaving the scene
+// beside it in view (a character answering what the phone shows).
+func (g *Game) phoneMidX() float64 {
+	sw, _ := g.screen()
+	p := g.phone
+	if p == nil && g.phoneHand != nil {
+		p = g.phoneHand.held
+	}
+	if p != nil {
+		switch p.cue.Place {
+		case "left":
+			return sw * 0.3
+		case "right":
+			return sw * 0.7
+		}
+	}
+	return sw / 2
 }
 
 func (g *Game) drawPhone(dst *ebiten.Image) {
 	p := g.phone
+	if p == nil && g.phoneHand != nil {
+		p = g.phoneHand.held
+	}
 	if p == nil {
 		return
 	}
@@ -554,10 +642,13 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	defer p.trimImages()
 	sw, sh := g.screen()
 	rise := easeOut(math.Min(1, float64(p.age)/phoneRise))
-	if p.closing > 0 {
+	if p.closing > 0 && !p.quick {
 		rise = easeOut(float64(p.closing) / phoneRise)
 	}
-	gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), alphaColor(phoneVeil, rise), false)
+	if p.cue.Place == "" {
+		// A phone placed aside leaves the scene beside it undimmed.
+		gfx.FillRect(dst, 0, 0, float32(sw), float32(sh), alphaColor(phoneVeil, rise), false)
+	}
 
 	w, h := g.phoneSize(p.side)
 	k := gfx.Scale()
@@ -584,7 +675,7 @@ func (g *Game) drawPhone(dst *ebiten.Image) {
 	op.GeoM.Translate(-float64(pw)/2, -float64(ph)/2)
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Rotate(angle)
-	op.GeoM.Translate(sw/2*k, (sh/2+(1-rise)*sh*0.9)*k)
+	op.GeoM.Translate(g.phoneMidX()*k, (sh/2+(1-rise)*sh*0.9)*k)
 	op.ColorScale.ScaleAlpha(float32(math.Min(1, rise*1.5)))
 	dst.DrawImage(p.canvas, op)
 	if g.controlFrame() != nil {
@@ -982,12 +1073,44 @@ func (p *phoneView) trimImages() {
 // closePhone puts the phone away when its wait ends or the game resets (a
 // load, a new game, closing the game), freeing what it holds.
 func (g *Game) closePhone() {
+	g.releaseHeldPhone()
 	if g.phone != nil {
 		g.failure = errors.Join(g.failure, g.stopPhoneGame(g.phone))
 	}
 	if g.phone != nil {
 		g.phone.close()
 		g.phone = nil
+	}
+}
+
+// putPhoneDown ends the phone's wait. A page put down quickly (a button that
+// stays, or a still page) is kept drawn in phoneHand until the next page comes
+// up, so the scene does not flash between the two.
+func (g *Game) putPhoneDown() {
+	p := g.phone
+	g.phoneHand = p.hand()
+	if !p.quick {
+		g.closePhone()
+		return
+	}
+	g.failure = errors.Join(g.failure, g.stopPhoneGame(p))
+	g.phone = nil
+	g.phoneHand.held, g.phoneHand.heldTick = p, g.tick
+}
+
+// releaseHeldPhone frees the page kept drawn after a quick put-down.
+func (g *Game) releaseHeldPhone() {
+	if h := g.phoneHand; h != nil && h.held != nil {
+		h.held.close()
+		h.held = nil
+	}
+}
+
+// dropStaleHeldPhone lets go of a held page no next page replaced in time
+// (the story went on without the phone).
+func (g *Game) dropStaleHeldPhone() {
+	if h := g.phoneHand; h != nil && h.held != nil && g.tick-h.heldTick > phoneHoldTicks {
+		g.releaseHeldPhone()
 	}
 }
 

@@ -383,6 +383,10 @@ type Screen struct {
 
 	Width  int `yaml:"width"`
 	Height int `yaml:"height"`
+	// Adapt turns the screen with the window: a window taller than wide (a phone held
+	// upright) gets an upright screen of its own shape, a wide one keeps Width×Height. The
+	// play's places, pictures and phone lay themselves out to the size they are given.
+	Adapt bool `yaml:"adapt"`
 }
 
 // Fonts are the font files (paths under assets/).
@@ -594,6 +598,11 @@ type PhoneStyle struct {
 	Text       Color `yaml:"text"`
 	Muted      Color `yaml:"muted"`
 	Accent     Color `yaml:"accent"`
+	// Card fills a page's cards (rows with card); Soft fills its cells that
+	// are not selected and its secondary buttons; Mark fills its marked cells.
+	Card Color `yaml:"card"`
+	Soft Color `yaml:"soft"`
+	Mark Color `yaml:"mark"`
 }
 
 // UIStyle are the colors of the windows.
@@ -610,6 +619,11 @@ type UIStyle struct {
 	Light *LightStyle `yaml:"light"`
 	// BattleAIHistory shows the battle AI history button and enables its input (default true).
 	BattleAIHistory *bool `yaml:"battle_ai_history"`
+	// AutoRead starts every play with the lines going on by themselves (the auto key still
+	// turns it off), for a game left to run; AutoWait is the auto pace a player who has
+	// not set one gets, 0 (fastest) to 4 (slowest), default 2.
+	AutoRead bool `yaml:"auto_read"`
+	AutoWait *int `yaml:"auto_wait"`
 	// Message is the message window: "box" (a framed box, the default) or "novel" (as a
 	// visual novel's: across the bottom of the screen, the speaker's picture large behind
 	// it, and buttons for the backlog, auto and hiding the window).
@@ -1571,6 +1585,9 @@ type Location struct {
 	// TalkOnEnter: instead of listing "話す：〜", play one person's talk each time the party enters (people with a new talk first, otherwise in order).
 	TalkOnEnter bool `yaml:"talk_on_enter"`
 	NoMenu      bool `yaml:"no_menu"` // do not open the menu (status, equipment, save ...) here (for example, a town opens it only at the inn)
+	// Bare shows only the place's background: no header with its name, no money, meters,
+	// menu or party over it (a backdrop for a game played on the phone or in pictures).
+	Bare bool `yaml:"bare"`
 	// BattleMusic is the song for common battles here (the enemy group's music takes precedence. If the dungeon's looks has battle_music, that one.
 	// Otherwise game.yaml's battle.music)
 	BattleMusic MusicCue `yaml:"battle_music"`

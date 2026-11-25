@@ -82,6 +82,10 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 		g.updatePhoneHistory(p)
 		return
 	}
+	if p.cue.Auto {
+		g.updatePhoneChatAuto(p)
+		return
+	}
 	if p.typing > 0 {
 		p.typing--
 		if p.typing == 0 {
@@ -113,7 +117,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	// The newest message is a picture or a video not yet seen: the press opens it.
 	last := p.shown - 1
 	if last < 0 {
-		p.closing = phoneRise
+		p.putAway(false)
 		return
 	}
 	if m := p.cue.Messages[last]; !g.autoRead && g.openNewest(p, last, m) {
@@ -121,7 +125,7 @@ func (g *Game) updatePhoneChat(p *phoneView) {
 	}
 	nextIndex := p.nextChat(p.shown)
 	if nextIndex >= len(p.cue.Messages) {
-		p.closing = phoneRise
+		p.putAway(false)
 		return
 	}
 	if next := p.cue.Messages[nextIndex]; next.Mine || next.Text == "" && next.Picture == "" && next.Video == nil {
@@ -497,4 +501,18 @@ func (g *Game) drawPhoneHistory(p *phoneView, dst *ebiten.Image, w, h float64) {
 	}
 	g.clipScreenRecords(textStart, controlStart, phoneFeedTop, w, h)
 	g.drawPhoneHeader(dst, w, p.cue.Title, 34)
+}
+
+// phoneChatHold is how long a chat with auto stays up, every message shown,
+// before it puts itself down: time to read one screen of an exchange.
+const phoneChatHold = 6 * 60
+
+// updatePhoneChatAuto runs a chat with auto: its whole exchange is shown at
+// once (meant to fit one screen) and held for reading, then the phone goes
+// down by itself; a press puts it down sooner.
+func (g *Game) updatePhoneChatAuto(p *phoneView) {
+	p.shown = len(p.cue.Messages)
+	if p.age-phoneRise >= phoneChatHold || g.in.advance() {
+		p.putAway(false)
+	}
 }

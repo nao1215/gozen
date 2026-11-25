@@ -79,7 +79,7 @@ func (g *Game) updatePhoneLock(p *phoneView) {
 		p.shown, p.since = p.shown+1, 0
 		return
 	}
-	p.closing = phoneRise
+	p.putAway(false)
 }
 
 // phonePoint is a point on the game's screen.

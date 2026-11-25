@@ -31,6 +31,9 @@ func (c *checker) novelWindow(u *UIStyle) {
 			c.errorf(diag.OutOfRange, "game.yaml ui.choice_position", "want center, got %q", u.ChoicePosition)
 		}
 	}
+	if w := u.AutoWait; w != nil && (*w < 0 || *w > 4) {
+		c.errorf(diag.OutOfRange, "game.yaml ui.auto_wait", "want 0 (fastest) to 4 (slowest), got %d", *w)
+	}
 	if u.WheelUp != "" {
 		c.needsVersion("game.yaml ui.wheel_up", "ui.wheel_up", SchemaVersion10)
 		if u.WheelUp != "log" {

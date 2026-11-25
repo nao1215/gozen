@@ -307,6 +307,9 @@ MessageCue:
   tag: "Short interpolated mark on the notification and the bubble, such as DM for a one-to-one message."
 
 PhoneCue:
+  place: "left or right holds the phone a third of the way in from that side, with the scene beside it in view and not dimmed (a character reacting to the phone). Default: the middle."
+  bar: "large draws a page's title large on the page's own ground, left aligned, instead of on a bar of color: a figure that heads the page (the money, a result). Page with a title only."
+  still: "True shows the phone and puts it down at once, without the lift, so phones that follow each other read as one screen that changes."
   game: "Local phone app ID to launch. Required for app game; other apps do not accept it."
   history: "True displays authored chat messages as a scrollable history. Visibility is evaluated when opened; no dynamic transcript is stored."
   replies: "Fixed chat reply buttons with optional id, set and when. Explicit selection sends one reply; Cancel never sends. Requires app chat and history: true."
@@ -320,7 +323,7 @@ PhoneCue:
   color: "A page's app bar and buttons color, #rrggbb."
   time: "Interpolated clock of the lock screen (the phone's clock when empty)."
   date: "Interpolated date under the lock screen's clock."
-  auto: "True brings the lock screen's notices by themselves, one every second and a half."
+  auto: "True brings the lock screen's notices by themselves, one every second and a half; on a chat, the whole exchange shows at once (keep it to one screen) and stays six seconds for reading, then the phone goes down by itself (a press puts it down sooner)."
   var: "A var (var.x) that receives what the phone was put down with: a page button's id or label, answer, decline or missed for a call, open/dismiss for a result banner, or timeout_result on expiry. A feed has none: its posts keep their likes with set."
   scroll: "How a feed moves: down (the default), a column scrolled up and down, or across, a post a screen swiped sideways."
   browse: "True makes a feed only looked at: a tap or a click likes no post."
@@ -331,8 +334,13 @@ PhoneCue:
   notices: "The lock screen's notices, arriving one by one, or the banners shown at the top of the screen."
 
 PhoneRow:
+  marked: "Condition that fills a page cell with ui.phone mark, over selected: a second highlight such as the drawn numbers that match. Cells only."
+  round: "True draws a page cell as a circle (a ball, a token) instead of a rounded key. Cells only."
+  card: "Name of a card: the page's consecutive rows with the same card sit on one card of ui.phone card color, as an app sets its sections apart."
+  bottom: "True pins a page row to the bottom of the screen, over the rows that scroll: the page's main button where the thumb rests. Not on a card."
+  style: "secondary draws a page's plain button in ui.phone soft with the accent as its text, for the actions beside the main one."
   when: "Condition evaluated when opened; false hides this row or reply and prevents its assignments or event."
-  event: "Parameterless event opened by a home or contacts button. Returning from it redisplays the parent phone. Requires button."
+  event: "Parameterless event opened by a home or contacts button, or by a page button that stays (after its set). Returning from it redisplays the parent phone. Requires button."
   _: "A page row, home app, contact or fixed chat reply. Home allows button plus item; contacts allows item plus button."
   text: "Interpolated paragraphs of the row, wrapped to the page's width."
   size: "large or small text (the default is between)."
@@ -340,7 +348,7 @@ PhoneRow:
   picture: "Path of a picture under assets/, shown whole in its own shape."
   caption: "Interpolated line under the picture or the QR code."
   pictures: "Paths of pictures under assets/ in a grid."
-  columns: "Pictures a line in the grid: 2 or 3 (0 is 3)."
+  columns: "Pictures a line in the grid: 2 or 3 (0 is 3). On a page's button or text row, 2 to 8 makes the row a cell that part of the line wide, sharing its line with the cells that follow (a keypad, a row of drawn numbers)."
   item: "A list row: icon, title, text and a value on the right."
   button: "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down. With an item, or a page's picture, the item or the picture itself is tapped and the label names it."
   qr: "Interpolated text drawn as a QR code (a link, a contact), black on white and crisp, with the caption under it."
@@ -348,6 +356,8 @@ PhoneRow:
   set: "Assignments made when the button is pressed, written as the set command's."
   locked: "A condition (or true) that, holding when the phone comes up, shows the picture or the grid darkened with a lock."
   label: "Interpolated short label on a locked picture, such as Supporters only."
+  stay: "True keeps the phone up when this page button is pressed: its set runs and the phone's var gets its id, then the same page comes back at once with every when, text and selected worked out anew. For forms whose keys toggle before a button that puts the phone down."
+  selected: "A condition that, holding when the phone comes up, fills a page's button or text cell with the page's color (a picked number, a matched ball)."
 
 PhoneItem:
   _: "A row of a list on a page."

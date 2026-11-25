@@ -292,7 +292,15 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 // placeHUDShown tells whether the place's header, gold, meters, menu and party
 // show: not under a line, a picture, a screen over the place or a phone up.
 func (g *Game) placeHUDShown() bool {
-	return !g.talk.active && g.cg.File == "" && len(g.stack) <= 1 && g.phone == nil
+	// A page kept drawn between two phone pages (phoneHand.held) is the phone still up:
+	// the header showing there flashed the place's name at every page of a loop.
+	held := g.phoneHand != nil && g.phoneHand.held != nil
+	if g.st != nil {
+		if loc := g.db.Locations[g.st.Location]; loc != nil && loc.Bare {
+			return false // location bare: the background alone
+		}
+	}
+	return !g.talk.active && g.cg.File == "" && len(g.stack) <= 1 && g.phone == nil && !held
 }
 
 func (f *field) head(g *Game) (area, name, desc string) {

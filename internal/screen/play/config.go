@@ -67,6 +67,9 @@ func (g *Game) configPath() string { return "config.json" }
 
 func (g *Game) loadConfig() {
 	g.cfg = defaultConfig()
+	if w := g.db.Game.UI.AutoWait; w != nil {
+		g.cfg.AutoWait = clampInt(*w, 0, 4)
+	}
 	if b, err := g.storeRead(g.configPath()); err == nil {
 		if err := json.Unmarshal(b, &g.cfg); err != nil {
 			g.failure = fmt.Errorf("settings: %w", err)
