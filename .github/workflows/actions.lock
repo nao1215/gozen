@@ -7,36 +7,36 @@ workflows:
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
     '.github/workflows/bench.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a'
         - 'nao1215/setup-himorime@05b4d293796e34a46c59f1363e15841a18e83e92'
     '.github/workflows/ci.yml':
         - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'nao1215/setup-atago@e573acee4be10bbfc6089f3319cb406918d566fa'
         - 'nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a'
     '.github/workflows/coverage.yml':
         - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'k1low/octocov-action@a167dc0dee441b7ffc45e1b862ab55ec0d87f278'
         - 'nao1215/setup-atago@e573acee4be10bbfc6089f3319cb406918d566fa'
         - 'nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a'
     '.github/workflows/docs.yml':
         - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'nao1215/setup-ebitengine@cfefbee9dc7af161aebb2c8d36c07a0e1727271a'
     '.github/workflows/fuzz.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
     '.github/workflows/game-catalog.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532'
     '.github/workflows/gitleaks.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
@@ -46,26 +46,26 @@ workflows:
         - 'securego/gosec@244f1f6f4d1d0d14f89e79a73dab1219eabb5228'
     '.github/workflows/licenses.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
     '.github/workflows/release-smoke.yml':
         - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de'
         - 'nao1215/setup-atago@e573acee4be10bbfc6089f3319cb406918d566fa'
     '.github/workflows/release.yml':
         - 'actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c'
         - 'goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de'
         - 'sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532'
         - 'slsa-framework/slsa-verifier@ea584f4502babc6f60d9bc799dbbb13c1caa9ee6'
     '.github/workflows/reviewdog.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'reviewdog/action-actionlint@ae857e78c1b42b3d0a49637181b09d3d56d402b4'
         - 'reviewdog/action-golangci-lint@284129a3ac23bc5d8ac1522e0b6511df74a8836d'
         - 'reviewdog/action-misspell@c846b6b0996029d2d39540c8ffebebbd957072db'
@@ -76,7 +76,7 @@ workflows:
         - 'ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5'
     '.github/workflows/security.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'github/codeql-action@33d7b85da1a04171e211befe2c739303b9a4c066'
     '.github/workflows/trivy.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
@@ -86,7 +86,7 @@ workflows:
         - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346'
-        - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+        - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9'
 dependencies:
@@ -142,9 +142,9 @@ dependencies:
         commit: 'sha1-3a2844b7e9c422d3c10d287c895573f7108da1b3'
         owner_id: 44036562
         repo_id: 205262760
-    'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e':
-        ref: 'v7.0.0'
-        commit: 'sha1-b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
+    'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5':
+        ref: 'v7.1.0'
+        commit: 'sha1-d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         owner_id: 44036562
         repo_id: 192624594
     'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f':

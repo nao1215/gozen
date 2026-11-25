@@ -76,7 +76,7 @@ jobs:
       # tests cover the floor, and Go before 1.27.2 can fail a clean run with
       # "context deadline exceeded" the moment -fuzztime expires
       # (go.dev/issue/75804; FuzzCellsStayInsideAndDoNotRepeat on 2026-11-25).
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: stable
       - name: Fuzz
