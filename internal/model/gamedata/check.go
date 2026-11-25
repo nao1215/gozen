@@ -502,6 +502,9 @@ func (c *checker) phonePageLook(at, app string, r PhoneRow) {
 	if r.Bottom && r.Card != "" {
 		c.errorf(diag.Shape, at, "a row at the bottom cannot be on a card")
 	}
+	if r.Corner && (app != "page" || r.Button == "" || r.Item != nil || r.Picture != "" || r.Columns != 0 || r.Card != "" || r.Bottom) {
+		c.errorf(diag.Shape, at+".corner", "corner is for a page's plain button, not on a card, in columns or at the bottom")
+	}
 }
 
 // phoneRowShape checks which content and navigation actions an app supports.

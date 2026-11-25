@@ -2737,3 +2737,67 @@ func TestScreenAdaptMessageFits(t *testing.T) {
 		}
 	}
 }
+
+// TestPhonePageCorner: a page button with corner sits in the app bar's right
+// end, takes no line of the page and is hit and pressed there.
+func TestPhonePageCorner(t *testing.T) {
+	g, err := New(Options{FS: os.DirFS("testdata/phone-app"), NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.storeGiven = true
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	frame := func() {
+		t.Helper()
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		g.Draw(dst)
+	}
+	for range 60 {
+		frame()
+	}
+	p := g.phone
+	if p == nil || p.cue.App != "page" {
+		t.Fatalf("the raffle page is not up: %+v", p)
+	}
+	_, _, w, _ := g.phoneScreenRect(p.side)
+	rows := p.pageLayout(g, w)
+	const corner = 7 // the language button
+	l := rows[corner]
+	if !l.corner || l.top+l.h > phoneFeedTop || l.x+l.w > w-phonePagePad+0.5 || l.x < w/2 {
+		t.Fatalf("the language button is not in the app bar's right end: %+v (screen %g wide)", l, w)
+	}
+	if pageCornerLeft(rows, w) >= w {
+		t.Fatal("the title does not stop short of the corner")
+	}
+	if !g.pageInView(p, l) {
+		t.Fatal("the corner button is not counted on the screen")
+	}
+	sx, sy, _, _ := g.phoneScreenRect(p.side)
+	at := image.Pt(int(sx+l.x+l.w/2), int(sy+l.top+l.h/2))
+	if got := g.pageCornerAt(p, rows, at); got != corner {
+		t.Fatalf("a tap on the corner hits row %d, want %d", got, corner)
+	}
+	if got := g.pageCornerAt(p, rows, image.Pt(int(sx+8), int(sy+l.top+l.h/2))); got != -1 {
+		t.Fatalf("a tap on the title hits row %d", got)
+	}
+	before := p.cue.Rows[corner].Button
+	p.focus, p.keyed = corner, true
+	phonePress(g, btnOK)
+	for range 20 {
+		frame()
+	}
+	if g.phone == nil || g.phone.cue.App != "page" {
+		t.Fatalf("the page did not stay up after the corner button: %+v", g.phone)
+	}
+	if after := g.phone.cue.Rows[corner].Button; after == before {
+		t.Fatalf("the corner button did not switch the language: still %q", after)
+	}
+}

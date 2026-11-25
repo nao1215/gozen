@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- A page button with `corner: true` sits small at the right end of the page's app bar, where it does not scroll and takes no line of the page: a setting kept by the title, such as a language switch. It is a plain button, not on a card, in columns or at the bottom, and is tapped, focused and picked as the page's other buttons are.
+
 ### Fixed
 
 - A line no longer breaks inside an amount: digits, separators and a currency sign stay on one line, so `¥280,000` breaks before the amount instead of as `¥280,` / `000` (#254).

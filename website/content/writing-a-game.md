@@ -551,7 +551,7 @@ A page can hold a whole small app, such as a lottery's number pad. A page button
 
 ![a raffle played on the phone alone: the number keys stay up as 1 and 2 are picked, each lighting at once and the count following; Draw brings up a chat placed left that shows its whole exchange at once, and the raffle comes back with the drawn 2 marked and the prize won](/images/phone-pad.mp4)
 
-`card` puts the page's consecutive rows of the same name on one card of `ui.phone.card`, `bottom: true` pins a row to the bottom of the screen where the thumb rests, `style: secondary` draws a softer button in `ui.phone.soft`, and `size: display` is a large figure. `bar: large` writes the page's title large on the page's own ground instead of on a bar of `color`. `still: true` shows the phone and puts it down without the lift, so pages that follow each other read as one screen.
+`card` puts the page's consecutive rows of the same name on one card of `ui.phone.card`, `bottom: true` pins a row to the bottom of the screen where the thumb rests, `style: secondary` draws a softer button in `ui.phone.soft`, `corner: true` puts a small button at the right end of the app bar (a setting kept by the title, such as the language), and `size: display` is a large figure. `bar: large` writes the page's title large on the page's own ground instead of on a bar of `color`. `still: true` shows the phone and puts it down without the lift, so pages that follow each other read as one screen.
 
 <!-- verify: parse a fragment of an event -->
 ```yaml
@@ -568,6 +568,7 @@ A page can hold a whole small app, such as a lottery's number pad. A page button
     - {text: "7", columns: 7, marked: var.hit7 == 1}
     - {button: Buy, id: buy, bottom: true}
     - {button: Auto, id: auto, bottom: true, style: secondary}
+    - {button: English, id: lang, corner: true, stay: true, event: switch_language}
 ```
 
 `ui.phone` takes `card`, `soft` and `mark` beside `background`, `text`, `muted` and `accent`. `place: left` or `right` holds the phone a third of the way in from that side and leaves the scene beside it undimmed, for a character who reacts to what the phone shows. A chat with `auto: true` shows its whole exchange at once and puts itself down after six seconds of reading, or sooner on a press.

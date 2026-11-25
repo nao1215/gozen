@@ -16731,6 +16731,19 @@
           },
           "x-type": "integer"
         },
+        "corner": {
+          "description": "True puts a page's plain button small at the right end of the page's app bar, where it does not scroll and takes no line of the page: a setting kept by the title, such as a language. Not on a card, in columns or at the bottom.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "event": {
           "description": "Parameterless event opened by a home or contacts button, or by a page button that stays (after its set). Returning from it redisplays the parent phone. Requires button.",
           "type": "string",
