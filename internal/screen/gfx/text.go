@@ -388,6 +388,10 @@ func wrapWith(s string, fits func([]rune) bool) []string {
 						}
 					}
 				}
+				// A number is not split: "¥280,000" broke as "¥280," / "000" (nao1215/gozen#254).
+				if j := amountStart(line, k, r); j > 0 {
+					k = j
+				}
 				if k > 0 && k < len(line) {
 					out = append(out, string(line[:k]))
 					line = append(append([]rune{}, line[k:]...), r)
@@ -402,6 +406,39 @@ func wrapWith(s string, fits func([]rune) bool) []string {
 		out = append(out, string(line))
 	}
 	return out
+}
+
+// amountRune is a rune of a written amount: a digit, a separator or a currency sign.
+func amountRune(r rune) bool {
+	return r >= '0' && r <= '9' || strings.ContainsRune(",.¥￥$€£", r)
+}
+
+// amountStart is where the amount around the break before line[k] begins when the break would
+// split it (digits on both sides of a separator, or a sign and its digits), else -1; next is the
+// rune after the line.
+func amountStart(line []rune, k int, next rune) int {
+	if k <= 0 || k > len(line) {
+		return -1
+	}
+	after := next
+	if k < len(line) {
+		after = line[k]
+	}
+	if !amountRune(line[k-1]) || !amountRune(after) {
+		return -1
+	}
+	j := k
+	for j > 0 && amountRune(line[j-1]) {
+		j--
+	}
+	digit := false
+	for _, r := range line[j:k] {
+		digit = digit || r >= '0' && r <= '9'
+	}
+	if !digit && !(after >= '0' && after <= '9') {
+		return -1
+	}
+	return j
 }
 
 // numberUnit reports whether the space at line[i] joins a number to a unit written

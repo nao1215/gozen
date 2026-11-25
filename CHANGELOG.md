@@ -6,7 +6,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Fixed
 
-- Under `screen.adapt`, the message window breaks a line for the window it is shown in. A line broken for `game.yaml`'s wide screen ran past the window on a phone held upright, and a choice was as wide as on the wide screen.
+- A line no longer breaks inside an amount: digits, separators and a currency sign stay on one line, so `¥280,000` breaks before the amount instead of as `¥280,` / `000` (#254).
+- Under `screen.adapt`, the message window breaks a line for the window it is shown in. A line broken for `game.yaml`'s wide screen ran past the window on a phone held upright, and a choice was as wide as on the wide screen (#255).
 
 ## v0.27.0 - 2026-11-25
 
