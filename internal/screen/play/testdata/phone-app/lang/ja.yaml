@@ -1,0 +1,13 @@
+# The Japanese is written in romaji so that the fixture needs no font with kana.
+text:
+  'Raffle': 'Tombola'
+  'English': 'Nihongo'
+  'Draw': 'Hiku'
+  'Quit': 'Yameru'
+  'Last prize': 'Zenkai'
+  'Desk': 'Tsukue'
+  'Ann': 'An'
+  'Drew 2.': '2 ga deta.'
+  'Won {var.won}.': '{var.won} atatta.'
+  'Picked {var.a + var.b + var.c}': '{var.a + var.b + var.c} ko'
+  '{gold} gold': '{gold} G'

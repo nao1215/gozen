@@ -555,6 +555,23 @@ type frame struct {
 	checkedAfter bool
 }
 
+// phoneAsk is what a Runner knows of the phone whose answer it waits for.
+type phoneAsk struct {
+	// wait tells that the options or likes waiting are a phone's: a
+	// driver that runs on without answering its Tap (headless, a session) puts
+	// the phone down unread, so the next choice's answer is not taken for it.
+	wait bool
+	// back marks app navigation options that redisplay their owning phone.
+	back []bool
+	// stay marks the options of buttons that stay (data.PhoneRow.Stay), and
+	// again tells the phone command shown next it is that phone shown anew.
+	stay  []bool
+	again bool
+	// unshown marks the results whose row a when hides: the screen does
+	// not offer them, so an unattended run does not take them either.
+	unshown []bool
+}
+
 // Runner runs events.
 type Runner struct {
 	db    *data.DB
@@ -575,20 +592,9 @@ type Runner struct {
 	// likes is the feed whose answer is waited for: a number with a bit for
 	// each post it keeps liked (data.PhoneCue.Liking), not an option's index.
 	likes *data.PhoneCue
-	// phoneWait tells that the options or likes waiting are a phone's: a
-	// driver that runs on without answering its Tap (headless, a session) puts
-	// the phone down unread, so the next choice's answer is not taken for it.
-	phoneWait bool
-	// phoneReturn marks app navigation options that redisplay their owning phone.
-	phoneReturn []bool
-	// phoneStay marks the options of buttons that stay (data.PhoneRow.Stay), and
-	// phoneAgain tells the phone command shown next it is that phone shown anew.
-	phoneStay  []bool
-	phoneAgain bool
-	// phoneUnshown marks the results whose row a when hides: the screen does
-	// not offer them, so an unattended run does not take them either.
-	phoneUnshown []bool
-	battle       *data.Command
+	// phone is the phone whose answer is waited for, kept in one place.
+	phone  phoneAsk
+	battle *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
 	battleBefore *rpg.BattleOutcome
@@ -693,7 +699,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes, r.phoneWait, r.phoneReturn, r.phoneUnshown, r.phoneStay, r.phoneAgain = nil, false, nil, nil, nil, false
+	r.likes, r.phone = nil, phoneAsk{}
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -735,8 +741,8 @@ func (r *Runner) unattendedResult() int {
 		return 0
 	}
 	for i := range r.options {
-		hidden := i < len(r.phoneUnshown) && r.phoneUnshown[i]
-		returns := i < len(r.phoneReturn) && r.phoneReturn[i]
+		hidden := i < len(r.phone.unshown) && r.phone.unshown[i]
+		returns := i < len(r.phone.back) && r.phone.back[i]
 		if !hidden && !returns {
 			return i
 		}
@@ -791,14 +797,14 @@ func (r *Runner) logf(err error) {
 
 // Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
 func (r *Runner) Answer(n int) {
-	if r.phoneWait && n >= 0 && n < len(r.phoneReturn) && r.phoneReturn[n] && len(r.stack) > 0 {
+	if r.phone.wait && n >= 0 && n < len(r.phone.back) && r.phone.back[n] && len(r.stack) > 0 {
 		// Resume the current phone after its child event, without recursively
 		// entering the parent event or growing the stack on each app visit.
 		r.stack[len(r.stack)-1].pc--
-		r.phoneAgain = n < len(r.phoneStay) && r.phoneStay[n]
+		r.phone.again = n < len(r.phone.stay) && r.phone.stay[n]
 	}
-	r.phoneReturn, r.phoneUnshown, r.phoneStay = nil, nil, nil
-	r.phoneWait = false
+	r.phone.back, r.phone.unshown, r.phone.stay = nil, nil, nil
+	r.phone.wait = false
 	switch {
 	case r.likes != nil:
 		feed := r.likes
@@ -1000,8 +1006,9 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // Next runs commands until one needs the screen, and returns it (nil when the events are
 // over).
 func (r *Runner) Next() Request {
-	if r.phoneWait {
-		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn, r.phoneUnshown, r.phoneStay = false, nil, nil, nil, nil, nil, nil
+	if r.phone.wait {
+		r.likes, r.options, r.pick = nil, nil, nil
+		r.phone = phoneAsk{again: r.phone.again}
 	}
 	if r.gameOver {
 		r.gameOver = false
@@ -1459,41 +1466,41 @@ func (r *Runner) run(c *data.Command) Request {
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
 		shown := r.fillPhone(*c.Phone, env)
-		r.emit(PhoneEffect{Phone: shown, Again: r.phoneAgain})
-		r.phoneAgain = false
+		r.emit(PhoneEffect{Phone: shown, Again: r.phone.again})
+		r.phone.again = false
 		if c.Phone.App == "banner" && c.Phone.Var == "" {
 			break
 		}
 		if likes := c.Phone.Liking(); len(likes) > 0 {
 			r.asked, r.optionAt, r.pick, r.options = nil, nil, nil, nil
-			r.likes, r.phoneWait = &shown, true
+			r.likes, r.phone.wait = &shown, true
 			return Tap{Results: len(likes)}
 		}
 		results := c.Phone.Results()
 		if len(results) > 0 {
 			r.asked, r.optionAt, r.pick = nil, nil, nil
 			r.options = make([]data.ChoiceOption, len(results))
-			r.phoneUnshown = make([]bool, len(results))
+			r.phone.unshown = make([]bool, len(results))
 			for i, res := range results {
 				if phoneResultHidden(shown, res) {
-					r.phoneUnshown[i] = true
+					r.phone.unshown[i] = true
 					continue
 				}
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
 				if res.Event != "" || res.Stay {
-					if r.phoneReturn == nil {
-						r.phoneReturn = make([]bool, len(results))
+					if r.phone.back == nil {
+						r.phone.back = make([]bool, len(results))
 					}
-					r.phoneReturn[i] = true
+					r.phone.back[i] = true
 				}
 				if res.Stay {
-					if r.phoneStay == nil {
-						r.phoneStay = make([]bool, len(results))
+					if r.phone.stay == nil {
+						r.phone.stay = make([]bool, len(results))
 					}
-					r.phoneStay[i] = true
+					r.phone.stay[i] = true
 				}
 			}
-			r.phoneWait = true
+			r.phone.wait = true
 		}
 		return Tap{Results: len(results)}
 	case "call_view":

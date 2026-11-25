@@ -67,6 +67,7 @@ events:
     - call: {event: phone_puppet}
     - call: {event: phone_shop}
     - call: {event: phone_bank}
+    - call: {event: phone_pad}
     - call: {event: phone_lock}
     - call: {event: phone_call}
     - call: {event: phone_sso}
@@ -168,6 +169,30 @@ events:
     - if: 'var.transfer == "confirm"'
       then: [{say: {who: martin, text: Paid. Blue Tide gets their money on time.}}]
       else: [{say: {who: martin, text: Later. Elena will ask about it at three.}}]
+  phone_pad:
+    - say: {who: martin, text: 'The office raffle closes at noon. Two numbers, one ticket.'}
+    - phone:
+        app: page
+        bar: large
+        title: Office raffle
+        still: true
+        var: var.raffle
+        rows:
+        - {text: 'Picked {var.pad1 + var.pad2 + var.pad3 + var.pad4 + var.pad5 + var.pad6} of 2', size: small, card: picks}
+        - {button: '1', id: n1, columns: 6, round: true, stay: true, selected: var.pad1 == 1, set: {var.pad1: 1 - var.pad1}, card: picks}
+        - {button: '2', id: n2, columns: 6, round: true, stay: true, selected: var.pad2 == 1, set: {var.pad2: 1 - var.pad2}, card: picks}
+        - {button: '3', id: n3, columns: 6, round: true, stay: true, selected: var.pad3 == 1, set: {var.pad3: 1 - var.pad3}, card: picks}
+        - {button: '4', id: n4, columns: 6, round: true, stay: true, selected: var.pad4 == 1, set: {var.pad4: 1 - var.pad4}, card: picks}
+        - {button: '5', id: n5, columns: 6, round: true, stay: true, selected: var.pad5 == 1, set: {var.pad5: 1 - var.pad5}, card: picks}
+        - {button: '6', id: n6, columns: 6, round: true, stay: true, selected: var.pad6 == 1, set: {var.pad6: 1 - var.pad6}, card: picks}
+        - {button: Clear, id: clear, columns: 2, stay: true, set: {var.pad1: 0, var.pad2: 0, var.pad3: 0, var.pad4: 0, var.pad5: 0, var.pad6: 0}, card: picks}
+        - {button: Lucky dip, id: dip, columns: 2, stay: true, set: {var.pad1: 0, var.pad2: 1, var.pad3: 0, var.pad4: 0, var.pad5: 1, var.pad6: 0}, card: picks}
+        - {text: 'Draw at noon in the kitchen. One ticket each.', size: small}
+        - {button: Buy a ticket, id: buy, bottom: true}
+        - {button: Not today, id: later, bottom: true, style: secondary}
+    - if: 'var.raffle == "buy"'
+      then: [{say: {who: martin, text: 'Ticket bought. Elena says the coffee machine is the prize.'}}]
+      else: [{say: {who: martin, text: Maybe next month.}}]
   phone_lock:
     - say: {who: martin, text: Morning. The lock screen is already busy.}
     - phone:

@@ -1,0 +1,15 @@
+# A game played on the phone alone (a raffle): no title or menus, a bare place,
+# a page that stays up while numbers are picked, a resumable autosave from the
+# event, a screen that turns with the window and a button that switches the language.
+schema_version: 11
+id: phone-app
+title: Raffle
+language: en
+languages: [en, ja]
+menus: none
+start: {location: desk}
+screen: {width: 1280, height: 720, adapt: true}
+ui:
+  auto_read: true
+  auto_wait: 4
+  phone: {background: '#eef6f4', text: '#21332f', muted: '#7b8f8a', accent: '#13a58a', card: '#ffffff', soft: '#f1f7f5', mark: '#ffb020'}

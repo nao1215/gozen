@@ -59,16 +59,16 @@ func TestGraphicsEntryPartsAtCaptureScales(t *testing.T) {
 
 func TestGraphicsGuideVeilOwnership(t *testing.T) {
 	g := openFlowHoldGame(t)
-	g.guideVeil = ebiten.NewImage(1920, 1080)
+	g.guides.veil = ebiten.NewImage(1920, 1080)
 	g.reloadAssets()
-	if g.guideVeil != nil {
+	if g.guides.veil != nil {
 		t.Fatal("reload retained veil")
 	}
-	g.guideVeil = ebiten.NewImage(3840, 2160)
+	g.guides.veil = ebiten.NewImage(3840, 2160)
 	if err := g.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if g.guideVeil != nil {
+	if g.guides.veil != nil {
 		t.Fatal("Close retained veil")
 	}
 }

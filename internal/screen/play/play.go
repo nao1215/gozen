@@ -246,6 +246,13 @@ type overlay interface{ overlay() bool }
 
 type modal interface{ modal() bool }
 
+// guideDesk is what the screen guides keep between guides: the veil drawn
+// under them and whether a scripted play shows them (the script command guides on).
+type guideDesk struct {
+	veil     *ebiten.Image // Owned by this game; released on reload and Close.
+	scripted bool
+}
+
 type Game struct {
 	hiddenCleanup       func()
 	suspendCleanup      func()
@@ -318,11 +325,10 @@ type Game struct {
 	callerSpeaks bool
 	// inboxShown is the chat message being decided (its event runs under it).
 	inboxShown *rpg.InboxMessage
-	// guide is the screen guide showing now (guide.go); guideScripted shows
-	// guides in a scripted play (the script command guides on).
-	guideVeil     *ebiten.Image // Owned by this game; released on reload and Close.
-	guide         *guideRun
-	guideScripted bool
+	// guide is the screen guide showing now (guide.go); guides holds what
+	// outlives one guide.
+	guide  *guideRun
+	guides guideDesk
 	// faceSquare cuts planning faces as rounded squares while a screen with
 	// face_shape square draws (ui.face_shape or the screen's view).
 	faceSquare bool

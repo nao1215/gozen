@@ -356,22 +356,22 @@ func (p *phoneView) nextChat(from int) int {
 // historyLayout computes positions only when an opted-in history opens or changes
 // width. Bubble text layouts are still retained only for messages on screen.
 func (g *Game) historyLayout(p *phoneView, w, h float64) float64 {
-	if p.historyRows == nil || p.historyW != w {
-		first := p.historyRows == nil
-		p.historyRows = make([]pageRow, len(p.cue.Messages))
-		p.replyRows = make([]pageRow, len(p.cue.Replies))
-		p.historyW = w
-		p.historyVisible = p.historyVisible[:0]
-		p.historyStops = p.historyStops[:0]
+	if p.history.rows == nil || p.history.w != w {
+		first := p.history.rows == nil
+		p.history.rows = make([]pageRow, len(p.cue.Messages))
+		p.history.replies = make([]pageRow, len(p.cue.Replies))
+		p.history.w = w
+		p.history.visible = p.history.visible[:0]
+		p.history.stops = p.history.stops[:0]
 		y := phonePageGap
 		for i, m := range p.cue.Messages {
 			if m.Hidden {
 				continue
 			}
 			b := g.layChatBubble(p, i, w*0.68)
-			p.historyRows[i] = pageRow{top: y, h: b.h}
-			p.historyVisible = append(p.historyVisible, i)
-			p.historyStops = append(p.historyStops, y-phonePageGap)
+			p.history.rows[i] = pageRow{top: y, h: b.h}
+			p.history.visible = append(p.history.visible, i)
+			p.history.stops = append(p.history.stops, y-phonePageGap)
 			y += b.h + 12
 		}
 		for i, r := range p.cue.Replies {
@@ -380,16 +380,16 @@ func (g *Game) historyLayout(p *phoneView, w, h float64) float64 {
 			}
 			lines := gfx.Wrap(r.Button, 16, w-phonePagePad*2-24)
 			height := float64(len(lines))*gfx.LineHeight(16) + 42
-			p.replyRows[i] = pageRow{top: y, h: height, lines: lines}
-			p.historyStops = append(p.historyStops, y-phonePageGap)
+			p.history.replies[i] = pageRow{top: y, h: height, lines: lines}
+			p.history.stops = append(p.history.stops, y-phonePageGap)
 			y += height + phonePageGap
 		}
-		p.historyHeight = y
+		p.history.height = y
 		if first {
 			p.scroll = math.Max(0, y-(h-phoneFeedTop))
 		}
 	}
-	return math.Max(0, p.historyHeight-(h-phoneFeedTop))
+	return math.Max(0, p.history.height-(h-phoneFeedTop))
 }
 
 func (g *Game) updatePhoneHistory(p *phoneView) {
@@ -399,14 +399,14 @@ func (g *Game) updatePhoneHistory(p *phoneView) {
 		return
 	}
 
-	g.scrollPhone(p, p.historyStops, end, func(at image.Point) {
+	g.scrollPhone(p, p.history.stops, end, func(at image.Point) {
 		y, on := g.phoneColumnAt(p, at)
 		if !on {
 			return
 		}
 		sx, _, _, _ := g.phoneScreenRect(p.side)
 		x := float64(at.X) - sx
-		for i, r := range p.replyRows {
+		for i, r := range p.history.replies {
 			if r.h > 0 && x >= phonePagePad && x < w-phonePagePad && y >= r.top && y < r.top+r.h {
 				p.putDown(-(i + 10), -1, false)
 				return
@@ -454,7 +454,7 @@ func (g *Game) historyReplyKeys(p *phoneView, end, h float64) bool {
 		at = (at + d + len(buttons)) % len(buttons)
 	}
 	p.focus, p.keyed = buttons[at], true
-	r := p.replyRows[p.focus]
+	r := p.history.replies[p.focus]
 	p.aim = math.Max(0, math.Min(end, r.top+r.h+phonePageGap-(h-phoneFeedTop)))
 	if r.top < p.scroll {
 		p.aim = math.Max(0, r.top-phonePageGap)
@@ -468,14 +468,14 @@ func (g *Game) drawPhoneHistory(p *phoneView, dst *ebiten.Image, w, h float64) {
 	p.scroll = math.Max(0, math.Min(p.scroll, end))
 	clear(p.pics)
 	for i := range p.bubbles {
-		r := p.historyRows[i]
+		r := p.history.rows[i]
 		if r.top+r.h <= p.scroll || r.top >= p.scroll+h-phoneFeedTop {
 			delete(p.bubbles, i)
 		}
 	}
-	first := sort.Search(len(p.historyVisible), func(k int) bool { r := p.historyRows[p.historyVisible[k]]; return r.top+r.h > p.scroll })
-	for _, i := range p.historyVisible[first:] {
-		r := p.historyRows[i]
+	first := sort.Search(len(p.history.visible), func(k int) bool { r := p.history.rows[p.history.visible[k]]; return r.top+r.h > p.scroll })
+	for _, i := range p.history.visible[first:] {
+		r := p.history.rows[i]
 		y := phoneFeedTop + r.top - p.scroll
 		if y >= h {
 			break
@@ -483,7 +483,7 @@ func (g *Game) drawPhoneHistory(p *phoneView, dst *ebiten.Image, w, h float64) {
 		b := g.chatBubble(p, i, w*0.68)
 		g.drawChatBubble(dst, p, b, w, y)
 	}
-	for i, r := range p.replyRows {
+	for i, r := range p.history.replies {
 		y := phoneFeedTop + r.top - p.scroll
 		if r.h == 0 || y+r.h <= phoneFeedTop || y >= h {
 			continue

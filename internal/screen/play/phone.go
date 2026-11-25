@@ -19,6 +19,15 @@ import (
 	"github.com/nao1215/gozen/internal/screen/puppet"
 )
 
+// chatHistory is a chat's scrollback laid out for a screen w wide: its rows and
+// the reply rows, how tall it is, the rows on the screen and where a step stops.
+type chatHistory struct {
+	rows, replies []pageRow
+	w, height     float64
+	visible       []int
+	stops         []float64
+}
+
 // phoneView is a phone shown over the scene by the phone command (ADR 0057):
 // held upright or on its side, with a chat, a photo feed or a video on it. It
 // changes no state itself: the event waits on a Tap until the player puts it
@@ -87,11 +96,8 @@ type phoneView struct {
 	// bubblesW wide (only the visible ones are kept).
 	bubbles  map[int]chatBubble
 	bubblesW float64
-	// History positions are prepared only for the opt-in scrollback view.
-	historyRows, replyRows  []pageRow
-	historyW, historyHeight float64
-	historyVisible          []int
-	historyStops            []float64
+	// history is the chat's scrollback, laid out only for the opt-in view.
+	history chatHistory
 	// clips are the clips the phone has played, by where they are (so a feed's
 	// post keeps its place when it comes back), each with its own puppet motion.
 	clips map[string]*phoneClip

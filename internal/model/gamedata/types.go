@@ -605,6 +605,19 @@ type PhoneStyle struct {
 	Mark Color `yaml:"mark"`
 }
 
+// Reading is how the player goes through the lines: on auto and by rolling
+// back (ui.auto_read, auto_wait and rollback, flat in ui).
+type Reading struct {
+	// AutoRead starts every play with the lines going on by themselves (the auto key still
+	// turns it off), for a game left to run; AutoWait is the auto pace a player who has
+	// not set one gets, 0 (fastest) to 4 (slowest), default 2.
+	AutoRead bool `yaml:"auto_read"`
+	AutoWait *int `yaml:"auto_wait"`
+	// Rollback is how many earlier events the player can roll back into, besides the one
+	// running (default 8; 0 turns rolling back off). Needs schema version 4 (ADR 0025).
+	Rollback *int `yaml:"rollback"`
+}
+
 // UIStyle are the colors of the windows.
 type UIStyle struct {
 	// Phone colors the phone's page bodies, text and owner bubbles.
@@ -619,11 +632,9 @@ type UIStyle struct {
 	Light *LightStyle `yaml:"light"`
 	// BattleAIHistory shows the battle AI history button and enables its input (default true).
 	BattleAIHistory *bool `yaml:"battle_ai_history"`
-	// AutoRead starts every play with the lines going on by themselves (the auto key still
-	// turns it off), for a game left to run; AutoWait is the auto pace a player who has
-	// not set one gets, 0 (fastest) to 4 (slowest), default 2.
-	AutoRead bool `yaml:"auto_read"`
-	AutoWait *int `yaml:"auto_wait"`
+	Reading         `yaml:",inline"`
+	// Backlog is how many lines the backlog keeps (default 300).
+	Backlog int `yaml:"backlog"`
 	// Message is the message window: "box" (a framed box, the default) or "novel" (as a
 	// visual novel's: across the bottom of the screen, the speaker's picture large behind
 	// it, and buttons for the backlog, auto and hiding the window).
@@ -635,11 +646,6 @@ type UIStyle struct {
 	// TalkPortrait places the speaker's standing picture beside the "box" message window
 	// (schema_version 3). Empty, it stands as tall as the screen at the box's left end.
 	TalkPortrait TalkPortrait `yaml:"talk_portrait"`
-	// Backlog is how many lines the backlog keeps (default 300).
-	Backlog int `yaml:"backlog"`
-	// Rollback is how many earlier events the player can roll back into, besides the one
-	// running (default 8; 0 turns rolling back off). Needs schema version 4 (ADR 0025).
-	Rollback *int `yaml:"rollback"`
 	// Profiles puts Characters, the character book, in the title, the field menu and the
 	// novel bar (ADR 0031). Under --dev the menus offer it anyway.
 	Profiles bool `yaml:"profiles"`

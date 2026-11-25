@@ -545,6 +545,48 @@ In a chat, `time` shows beside a bubble, `read: true` marks the owner's message 
     notices: [{app: Chat, icon: icons/ann.png, title: Ann, text: Are you coming?, event: ann_chat}]
 ```
 
+#### A page as a small app
+
+A page can hold a whole small app, such as a lottery's number pad. A page button with `stay: true` keeps the phone up: its `set` and `event` run, the phone's `var` gets its id, and the same page comes back at once with every `when`, text and `selected` worked out again. A row with `columns` (2 to 8) is a cell that shares its line with the next cells; six or more columns make a dense grid of square cells. `selected` fills a cell with `ui.phone.accent`, `marked` fills it with `ui.phone.mark` for a second highlight such as the drawn numbers that match, and `round: true` draws a cell as a ball.
+
+![an office raffle page: the number keys stay up as 2 and 5 are picked, each lighting at once and the count above them following](/images/phone-pad.mp4)
+
+`card` puts the page's consecutive rows of the same name on one card of `ui.phone.card`, `bottom: true` pins a row to the bottom of the screen where the thumb rests, `style: secondary` draws a softer button in `ui.phone.soft`, and `size: display` is a large figure. `bar: large` writes the page's title large on the page's own ground instead of on a bar of `color`. `still: true` shows the phone and puts it down without the lift, so pages that follow each other read as one screen.
+
+<!-- verify: parse a fragment of an event -->
+```yaml
+- phone:
+    app: page
+    bar: large
+    title: "{gold} gold"
+    var: var.pick
+    still: true
+    rows:
+    - {text: "Picked {var.count}/6", size: small, card: picks}
+    - {button: "1", columns: 7, round: true, stay: true, selected: var.n1 == 1, set: {var.n1: 1 - var.n1}, card: grid}
+    - {button: "2", columns: 7, round: true, stay: true, selected: var.n2 == 1, set: {var.n2: 1 - var.n2}, card: grid}
+    - {text: "7", columns: 7, marked: var.hit7 == 1}
+    - {button: Buy, id: buy, bottom: true}
+    - {button: Auto, id: auto, bottom: true, style: secondary}
+```
+
+`ui.phone` takes `card`, `soft` and `mark` beside `background`, `text`, `muted` and `accent`. `place: left` or `right` holds the phone a third of the way in from that side and leaves the scene beside it undimmed, for a character who reacts to what the phone shows. A chat with `auto: true` shows its whole exchange at once and puts itself down after six seconds of reading, or sooner on a press.
+
+#### A game played on the phone
+
+A game can run on the phone alone, left on auto for as long as the player likes. `menus: none` in `game.yaml` leaves out the title and the menus, and the play starts from the newest save. Because an event that loops on a phone page never returns to the field, the idle autosave never comes; `autosave: EVENT` writes the autosave from inside the event, and loading it starts `EVENT` at the place. A location with `bare: true` shows only its background, with no header, money or party over it. `screen: {width: 1920, height: 1080, adapt: true}` turns the screen with the window: upright on a phone held upright, wide on a PC or a phone on its side. The web export then asks no one to turn the phone. `ui.auto_read: true` starts every play with the lines going on by themselves (the auto key still turns it off), and `ui.auto_wait` is the auto pace a player who has not chosen one gets, 0 (fastest) to 4 (slowest), so the game can be left running. `language: CODE` switches to one of `game.yaml`'s languages as the settings do, and `language: next` goes to the next one, so a single button on a page switches between two.
+
+<!-- verify: parse a fragment of an event -->
+```yaml
+- autosave: resume
+- phone:
+    app: page
+    var: var.pick
+    rows:
+    - {button: Buy, id: buy}
+    - {button: English, id: lang, stay: true, event: switch_language}
+```
+
 ## Campaigns
 
 A campaign (`schema_version: 5`) is a war of regions over turns, in the same game as its towns and dungeons. `regions` are the land (neighbours, owner, garrison, values such as wealth, terrain, the defending troop), `factions` are the sides with their colours, capitals and `ai` rules, and `campaign` in `game.yaml` sets the player's side, the turns, the generals (actors with troops), the orders and how a march is decided ([the recipe](/cookbook/#make-a-campaign)).

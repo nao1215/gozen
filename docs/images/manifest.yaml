@@ -76,6 +76,10 @@ runs:
     sample: office
     script: scripts/capture-phone-bank.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_bank, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
+  phone-pad:
+    sample: office
+    script: scripts/capture-phone-pad.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --event, phone_pad, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   phone-lock:
     sample: office
     script: scripts/capture-phone-lock.txt
@@ -505,6 +509,11 @@ images:
     frames:
       - {shots: pb*}
     mp4: {fps: 12, width: 1280, height: 720}
+  phone-pad.mp4:
+    run: phone-pad
+    frames:
+      - {shots: pp*}
+    mp4: {fps: 12, width: 1280, height: 720}
   phone-lock.mp4:
     run: phone-lock
     frames:
@@ -903,6 +912,11 @@ images:
     run: phone-bank
     frames:
       - {shots: "pb*"}
+    gif: {fps: 12, width: 720, height: 405, colors: 256}
+  phone-pad.gif:
+    run: phone-pad
+    frames:
+      - {shots: pp*}
     gif: {fps: 12, width: 720, height: 405, colors: 256}
   phone-lock.gif:
     run: phone-lock

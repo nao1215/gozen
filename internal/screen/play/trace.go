@@ -1437,7 +1437,7 @@ func (g *Game) act(name string, args traceLine) bool {
 		g.devJump(s("event"), n("line"))
 		return true
 	case "guides":
-		g.guideScripted = args["on"] == true
+		g.guides.scripted = args["on"] == true
 		return true
 	case "window":
 		w, h := n("width"), n("height")
