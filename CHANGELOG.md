@@ -4,6 +4,8 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+## v0.27.0 - 2026-11-25
+
 ### Added
 
 - A browser export opens again without a network once it has been played (ADR 0065). The export writes `sw.js`, a service worker the page registers: it asks the host first, keeps every file the page reads and answers from them when the host cannot be reached. Online the page plays the export the host serves now, and the files of an earlier export are removed once the new one has come whole. The recorded voices of a stream are kept once heard. Service workers need an HTTPS host or `localhost`.
