@@ -128,20 +128,20 @@ func TestMessageMetrics(t *testing.T) {
 		t.Fatal("a short prompt was cut")
 	}
 	gm.UI.Message = "novel"
-	_, nw := messageMetrics(gm)
+	_, nw := messageMetrics(gm, logicalWidth(gm))
 	gm.UI.Message = ""
-	_, bw := messageMetrics(gm)
+	_, bw := messageMetrics(gm, logicalWidth(gm))
 	if nw == bw {
 		t.Fatal("the novel window has the same width as the box")
 	}
-	if w := choiceWidth(gm, []string{"a"}); w != 300 {
+	if w := choiceWidth(gm, logicalWidth(gm), []string{"a"}); w != 300 {
 		t.Fatalf("narrow choice width %v", w)
 	}
-	if w := choiceWidth(gm, []string{strings.Repeat("W", 200)}); w <= 300 || w > logicalWidth(gm) {
+	if w := choiceWidth(gm, logicalWidth(gm), []string{strings.Repeat("W", 200)}); w <= 300 || w > logicalWidth(gm) {
 		t.Fatalf("wide choice width %v", w)
 	}
 	gm.UI.Message = "novel"
-	if w := choiceWidth(gm, []string{strings.Repeat("W", 200)}); w <= 300 {
+	if w := choiceWidth(gm, logicalWidth(gm), []string{strings.Repeat("W", 200)}); w <= 300 {
 		t.Fatalf("novel choice width %v", w)
 	}
 	gm.UI.Message = ""

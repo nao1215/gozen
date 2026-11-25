@@ -11,8 +11,10 @@ import (
 	"github.com/nao1215/gozen/internal/screen/gfx"
 )
 
-func messageMetrics(gm *data.Game) (size, width float64) {
-	sw := logicalWidth(gm)
+// messageMetrics is the message window's text size and width on a screen sw wide. sw is the
+// screen as laid out now: under screen.adapt an upright window is narrower than game.yaml's
+// screen, and lines broken for that width ran out of the window (lottery6, 2026-11-25).
+func messageMetrics(gm *data.Game, sw float64) (size, width float64) {
 	if gm.UI.Message == "novel" {
 		return novelSize, novelTextWidth(gm, sw)
 	}
@@ -22,13 +24,13 @@ func messageMetrics(gm *data.Game) (size, width float64) {
 // MessagePages pages a line as the message window shows it, its ruby marks taken out:
 // gozen check measures an authored line with it before play does.
 func MessagePages(gm *data.Game, text string) ([][]string, float64) {
-	return messagePagesAt(gm, text, 1)
+	return messagePagesAt(gm, logicalWidth(gm), text, 1)
 }
 
 // messagePagesAt pages a line at k times the message window's size (the player's text
 // size): a larger size takes a line fewer a page, so the pages stay inside the window.
-func messagePagesAt(gm *data.Game, text string, k float64) ([][]string, float64) {
-	size, width := messageMetrics(gm)
+func messagePagesAt(gm *data.Game, sw float64, text string, k float64) ([][]string, float64) {
+	size, width := messageMetrics(gm, sw)
 	if k <= 1 {
 		return gfx.Paginate(rubyText(text), size, width, talkLines)
 	}
@@ -38,17 +40,16 @@ func messagePagesAt(gm *data.Game, text string, k float64) ([][]string, float64)
 func MessageLines() int { return talkLines }
 
 func MessageWrap(gm *data.Game, text string) []string {
-	size, width := messageMetrics(gm)
+	size, width := messageMetrics(gm, logicalWidth(gm))
 	return gfx.Wrap(rubyText(text), size, width)
 }
 
-func choiceWidth(gm *data.Game, options []string) float64 {
+func choiceWidth(gm *data.Game, sw float64, options []string) float64 {
 	w := 300.0
 	for _, o := range options {
 		w = math.Max(w, gfx.TextWidth(o, sizeM)+100)
 	}
 	const minTextW = 380.0
-	sw := logicalWidth(gm)
 	maxW := (sw - 80) * 0.6
 	if gm.UI.Message == "novel" {
 		maxW = sw - 40 - 180 - minTextW
@@ -57,7 +58,7 @@ func choiceWidth(gm *data.Game, options []string) float64 {
 }
 
 func PromptLines(gm *data.Game, text string) ([]string, float64, bool) {
-	size, width := messageMetrics(gm)
+	size, width := messageMetrics(gm, logicalWidth(gm))
 	return gfx.FitLinesCut(text, size, width, talkLines)
 }
 

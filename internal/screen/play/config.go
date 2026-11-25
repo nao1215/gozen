@@ -438,7 +438,8 @@ func (s *configScreen) draw(g *Game, dst *ebiten.Image) {
 	if s.row(l.sel) == rowTextSize {
 		// the sample is one line as large as the lines of the message window will be
 		sample, lines = lang.T("この大きさで表示します。"), 1
-		size, _ = messageMetrics(&g.db.Game)
+		sw, _ := g.screen()
+		size, _ = messageMetrics(&g.db.Game, sw)
 		size *= g.cfg.textScale()
 	}
 	ls, sz := gfx.FitLines(sample, size, l.w-48, lines)

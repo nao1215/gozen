@@ -48,6 +48,10 @@ func TestWrapRespectsLineBreakRules(t *testing.T) {
 		{"a number keeps its unit", "あいうえ12年です", 6, []string{"あいうえ", "12年です"}},
 		{"a number keeps its unit across a space", "あいう 12 年です", 7, []string{"あいう ", "12 年です"}},
 		{"a closing mark may follow a number", "あいうえ12。です", 6, []string{"あいうえ", "12。です"}},
+		{"an amount is not split at its separator", "this. ¥280,000", 11, []string{"this. ", "¥280,000"}},
+		{"an amount is not split after its sign", "a bc ¥280", 6, []string{"a bc", "¥280"}},
+		{"an amount in brackets stays whole", "[Sent ¥280,000]", 12, []string{"[Sent ", "¥280,000]"}},
+		{"a decimal is not split", "pi is 3.14159", 10, []string{"pi is ", "3.14159"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
