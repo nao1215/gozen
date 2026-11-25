@@ -646,11 +646,13 @@ func (g *Game) pageSoft(p *phoneView) color.NRGBA {
 	return c
 }
 
-// pageInkOn is inkOn as the page's text color: dark on a light fill (a gold
-// or a pale key), white on a dark one.
+// pageInkOn is the text color on a fill: black on a light one (a gold or a
+// pale key), white on a dark one. inkOn gives the same as a color.Color.
 func pageInkOn(c color.NRGBA) color.NRGBA {
-	r, g, b, a := inkOn(c).RGBA()
-	return color.NRGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)} //nolint:gosec // RGBA gives 16-bit channels; the high byte is the 8-bit value.
+	if 0.299*float64(c.R)+0.587*float64(c.G)+0.114*float64(c.B) < 140 {
+		return colorWhite
+	}
+	return colorBlack
 }
 
 // drawPageTapRing marks an item or a picture that is itself the row's button:

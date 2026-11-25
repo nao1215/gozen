@@ -2652,7 +2652,11 @@ func TestPhoneAppPlays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = g.Close() })
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	g.storeGiven = true
 	dst := ebiten.NewImage(1280, 720)
 	defer dst.Deallocate()

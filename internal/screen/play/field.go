@@ -430,12 +430,7 @@ func (g *Game) drawTagRows(dst *ebiten.Image, rows [][]string, x, y, dy float64)
 	}
 }
 
-func inkOn(c color.NRGBA) color.Color {
-	if 0.299*float64(c.R)+0.587*float64(c.G)+0.114*float64(c.B) < 140 {
-		return colorWhite
-	}
-	return colorBlack
-}
+func inkOn(c color.NRGBA) color.Color { return pageInkOn(c) }
 
 func (g *Game) stateTagsWidth(states map[string]int) float64 {
 	w := 0.0
