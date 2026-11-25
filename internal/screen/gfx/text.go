@@ -435,7 +435,7 @@ func amountStart(line []rune, k int, next rune) int {
 	for _, r := range line[j:k] {
 		digit = digit || r >= '0' && r <= '9'
 	}
-	if !digit && !(after >= '0' && after <= '9') {
+	if !digit && (after < '0' || after > '9') {
 		return -1
 	}
 	return j
