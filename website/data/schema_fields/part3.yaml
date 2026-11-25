@@ -338,6 +338,7 @@ PhoneRow:
   round: "True draws a page cell as a circle (a ball, a token) instead of a rounded key. Cells only."
   card: "Name of a card: the page's consecutive rows with the same card sit on one card of ui.phone card color, as an app sets its sections apart."
   bottom: "True pins a page row to the bottom of the screen, over the rows that scroll: the page's main button where the thumb rests. Not on a card."
+  corner: "True puts a page's plain button small at the right end of the page's app bar, where it does not scroll and takes no line of the page: a setting kept by the title, such as a language. Not on a card, in columns or at the bottom."
   style: "secondary draws a page's plain button in ui.phone soft with the accent as its text, for the actions beside the main one."
   when: "Condition evaluated when opened; false hides this row or reply and prevents its assignments or event."
   event: "Parameterless event opened by a home or contacts button, or by a page button that stays (after its set). Returning from it redisplays the parent phone. Requires button."

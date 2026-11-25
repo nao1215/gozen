@@ -704,6 +704,10 @@ type PhoneRow struct {
 	// Style secondary draws a page button in a soft fill with the accent's
 	// text, for the actions beside the main one.
 	Style string `yaml:"style"`
+	// Corner puts a page button at the right end of the page's app bar, small,
+	// as an app keeps a setting (a language, a filter) by its title: it does
+	// not scroll and takes no line of the page.
+	Corner bool `yaml:"corner"`
 	// Shut is Locked worked out when the phone came up.
 	Shut bool `yaml:"-" json:"-"`
 	// Lit is Selected worked out when the phone came up.

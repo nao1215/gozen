@@ -37,6 +37,9 @@ type pageRow struct {
 	// pin is, for a row at the bottom, how far its top is above the screen's
 	// bottom edge; it does not scroll.
 	pin float64
+	// corner tells a button in the app bar's right end: top and x are on the
+	// screen, and it does not scroll.
+	corner bool
 }
 
 // pageCard is a card behind some of a page's rows, from the page's top unscrolled.
@@ -46,6 +49,8 @@ const (
 	pageCardPad    = 12.0 // a card's padding around its rows
 	pageCardRadius = 18.0
 	pageBottomGap  = 16.0 // under the last row at the bottom
+	pageCornerH    = 32.0 // a button in the app bar's corner
+	pageCornerText = 14.0
 )
 
 func pageTextSize(r data.PhoneRow) float64 {
@@ -79,7 +84,7 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 	out := make([]pageRow, len(p.cue.Rows))
 	y := phonePageGap
 	var line pageLine
-	var bottom []int
+	var bottom, corner []int
 	p.cards = p.cards[:0]
 	card, inset := "", 0.0
 	for i, r := range p.cue.Rows {
@@ -88,6 +93,10 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 		}
 		if r.Bottom {
 			bottom = append(bottom, i)
+			continue
+		}
+		if r.Corner {
+			corner = append(corner, i)
 			continue
 		}
 		if r.Card != card {
@@ -131,6 +140,15 @@ func (p *phoneView) pageLayout(g *Game, w float64) []pageRow {
 	}
 	if len(bottom) > 0 {
 		y += pin
+	}
+	// The buttons in the corner line up from the app bar's right end, the
+	// first at the edge.
+	right := w - phonePagePad
+	for _, i := range corner {
+		bw := gfx.TextWidth(p.cue.Rows[i].Button, pageCornerText) + 28
+		right -= bw
+		out[i] = pageRow{top: phoneFeedTop - pageCornerH - 12, h: pageCornerH, x: right, w: bw, corner: true}
+		right -= 8
 	}
 	p.rows, p.rowsW, p.rowsEnd = out, w, y
 	return out
@@ -277,11 +295,15 @@ func (g *Game) updatePhonePage(p *phoneView) {
 	}
 	stops := make([]float64, 0, len(rows))
 	for _, l := range rows {
-		if l.h > 0 && l.pin == 0 {
+		if l.h > 0 && l.pin == 0 && !l.corner {
 			stops = append(stops, l.top-phonePageGap)
 		}
 	}
 	g.scrollPhone(p, stops, end, func(at image.Point) {
+		if i := g.pageCornerAt(p, rows, at); i >= 0 {
+			p.putDown(i, -1, false)
+			return
+		}
 		y, ok := g.phoneColumnAt(p, at)
 		sx, _, _, _ := g.phoneScreenRect(p.side)
 		x := float64(at.X) - sx
@@ -289,7 +311,7 @@ func (g *Game) updatePhonePage(p *phoneView) {
 		for _, pinned := range []bool{true, false} {
 			for i, l := range rows {
 				top := g.pageRowTop(p, l)
-				if ok && (l.pin > 0) == pinned && p.cue.Rows[i].Button != "" && y >= top && y < top+l.h && (l.w == 0 || x >= l.x && x < l.x+l.w) {
+				if ok && !l.corner && (l.pin > 0) == pinned && p.cue.Rows[i].Button != "" && y >= top && y < top+l.h && (l.w == 0 || x >= l.x && x < l.x+l.w) {
 					p.putDown(i, -1, false)
 					return
 				}
@@ -299,6 +321,20 @@ func (g *Game) updatePhonePage(p *phoneView) {
 	if in := &g.in; in.pressedKey(btnUp) || in.pressedKey(btnDown) {
 		g.focusInView(p, rows, true)
 	}
+}
+
+// pageCornerAt is the button in the app bar's corner under at (a point on the
+// game's screen), or -1.
+func (g *Game) pageCornerAt(p *phoneView, rows []pageRow, at image.Point) int {
+	sx, sy, _, _ := g.phoneScreenRect(p.side)
+	x, y := float64(at.X)-sx, float64(at.Y)-sy
+	for i, l := range rows {
+		// A finger is wider than the small button: a few points around it count.
+		if l.corner && l.h > 0 && x >= l.x-6 && x < l.x+l.w+6 && y >= l.top-8 && y < l.top+l.h+8 {
+			return i
+		}
+	}
+	return -1
 }
 
 // pageButtons are the rows of the page that are buttons.
@@ -328,7 +364,7 @@ func (g *Game) pagePickables(p *phoneView) []pickable {
 
 // pageInView tells that a row is all on the screen.
 func (g *Game) pageInView(p *phoneView, l pageRow) bool {
-	if l.pin > 0 {
+	if l.pin > 0 || l.corner {
 		return true
 	}
 	_, _, _, h := g.phoneScreenRect(p.side)
@@ -341,6 +377,9 @@ func (g *Game) pageRowTop(p *phoneView, l pageRow) float64 {
 	if l.pin > 0 {
 		_, _, _, h := g.phoneScreenRect(p.side)
 		return p.scroll + h - phoneFeedTop - l.pin
+	}
+	if l.corner {
+		return p.scroll + l.top - phoneFeedTop
 	}
 	return l.top
 }
@@ -447,6 +486,9 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 			pinTop = math.Min(pinTop, h-l.pin)
 			continue
 		}
+		if l.corner {
+			continue
+		}
 		y := phoneFeedTop + l.top - p.scroll
 		if y+l.h <= phoneFeedTop || y >= h {
 			continue
@@ -467,7 +509,7 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 	switch accent, ok := g.pageAccent(p); {
 	case p.cue.Bar == "large":
 		gfx.FillRect(dst, 0, 0, float32(w), float32(phoneFeedTop), ground, false)
-		title := gfx.Ellipsis(p.cue.Title, pageTextSize(data.PhoneRow{Size: "display"}), w-phonePagePad*2)
+		title := gfx.Ellipsis(p.cue.Title, pageTextSize(data.PhoneRow{Size: "display"}), pageCornerLeft(rows, w)-phonePagePad*2)
 		g.text(dst, title, phonePagePad+4, 38, 30, g.pageInk(p))
 		g.text(dst, title, phonePagePad+4.8, 38, 30, g.pageInk(p))
 	case p.cue.URL != "":
@@ -481,6 +523,42 @@ func (g *Game) drawPhonePage(p *phoneView, dst *ebiten.Image, w, h float64) {
 	default:
 		g.drawPhoneHeader(dst, w, p.cue.Title, 34)
 	}
+	for i, l := range rows {
+		if l.corner && l.h > 0 {
+			g.drawPageCorner(dst, p, i, l)
+		}
+	}
+}
+
+// pageCornerLeft is where the app bar's buttons in the corner begin, or the
+// page's width when it has none: the title stops short of them.
+func pageCornerLeft(rows []pageRow, w float64) float64 {
+	left := w
+	for _, l := range rows {
+		if l.corner && l.h > 0 {
+			left = math.Min(left, l.x-8+phonePagePad)
+		}
+	}
+	return left
+}
+
+// drawPageCorner draws a button in the app bar's corner: a small pill in the
+// page's soft fill with the accent's text, as the secondary buttons are.
+func (g *Game) drawPageCorner(dst *ebiten.Image, p *phoneView, i int, l pageRow) {
+	label := p.cue.Rows[i].Button
+	if g.controlFrame() != nil {
+		g.traceControl(label, roundRect(l.x, l.top, l.w, l.h), p.ready(), p.keyed && p.focus == i, "transition")
+	}
+	accent := g.pageSelection(p)
+	if p.keyed && p.focus == i {
+		gfx.StrokeRoundRect(dst, float32(l.x-3), float32(l.top-3), float32(l.w+6), float32(l.h+6), float32(l.h/2+3), 2, g.pageInk(p))
+	}
+	gfx.FillRoundRect(dst, float32(l.x), float32(l.top), float32(l.w), float32(l.h), float32(l.h/2), g.pageSoft(p))
+	edge := accent
+	edge.A = 0x30
+	gfx.StrokeRoundRect(dst, float32(l.x), float32(l.top), float32(l.w), float32(l.h), float32(l.h/2), 1, edge)
+	ty := l.top + (l.h-gfx.LineHeight(pageCornerText))/2 + 1
+	g.screenText(dst, label, l.x+l.w/2, ty, pageCornerText, accent)
 }
 
 func (g *Game) drawPageRow(dst *ebiten.Image, p *phoneView, i int, l pageRow, y, w float64) {

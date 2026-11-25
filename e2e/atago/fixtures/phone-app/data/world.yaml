@@ -17,7 +17,7 @@ events:
         - {text: "2", columns: 3, round: true, marked: var.b == 1, card: drawn}
         - {text: "Last prize", size: small, card: drawn}
         - {text: "{var.won}", size: display, card: drawn}
-        - {button: English, id: lang, stay: true, event: switch_language}
+        - {button: English, id: lang, corner: true, stay: true, event: switch_language}
         - {button: Draw, id: draw, bottom: true}
         - {button: Quit, id: quit, bottom: true, style: secondary}
     - if: var.pick == "draw"
