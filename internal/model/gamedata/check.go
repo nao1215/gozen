@@ -475,11 +475,8 @@ func (c *checker) phoneCell(at, app string, r PhoneRow) {
 	if r.Selected.Set() && !cell {
 		c.errorf(diag.Shape, at+".selected", "selected is for a page's button or text row")
 	}
-	if r.Stay {
-		switch {
-		case app != "page" || r.Button == "" || r.Item != nil || r.Picture != "":
-			c.errorf(diag.Shape, at+".stay", "stay is for a page's plain button (no item or picture)")
-		}
+	if r.Stay && (app != "page" || r.Button == "" || r.Item != nil || r.Picture != "") {
+		c.errorf(diag.Shape, at+".stay", "stay is for a page's plain button (no item or picture)")
 	}
 }
 
@@ -510,7 +507,7 @@ func (c *checker) phonePageLook(at, app string, r PhoneRow) {
 // phoneRowShape checks which content and navigation actions an app supports.
 func (c *checker) phoneRowShape(at, app string, r PhoneRow) {
 	if r.Event != "" {
-		if (app != "home" && app != "contacts" && !(app == "page" && r.Stay)) || r.Button == "" {
+		if (app != "home" && app != "contacts" && (app != "page" || !r.Stay)) || r.Button == "" {
 			c.errorf(diag.Shape, at+".event", "event needs a home or contacts button, or a page button that stays")
 		}
 		_, exists := c.db.Events[r.Event]

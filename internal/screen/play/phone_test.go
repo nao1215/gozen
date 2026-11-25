@@ -2642,3 +2642,69 @@ func TestPhoneAppFixture(t *testing.T) {
 		t.Fatal("the drawn number is not marked")
 	}
 }
+
+// TestPhoneAppPlays plays testdata/phone-app through whole frames: entering the
+// bare place autosaves a resumable save at the draw event, the page lays its
+// round keys out on cards with Draw and Quit pinned to the bottom, a key that
+// stays lights and keeps the phone up, and every frame draws.
+func TestPhoneAppPlays(t *testing.T) {
+	g, err := New(Options{FS: os.DirFS("testdata/phone-app"), NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = g.Close() })
+	g.storeGiven = true
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	frame := func() {
+		t.Helper()
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		g.Draw(dst)
+	}
+	for range 60 {
+		frame()
+	}
+	p := g.phone
+	if p == nil || p.cue.App != "page" {
+		t.Fatalf("the raffle page is not up: %+v", p)
+	}
+	b, err := g.store.Read(g.autoPath())
+	if err != nil || !strings.Contains(strings.Join(strings.Fields(string(b)), ""), `"event":"draw"`) {
+		t.Fatalf("the autosave does not resume the draw event: %v %s", err, b)
+	}
+	_, _, w, _ := g.phoneScreenRect(false)
+	rows := p.pageLayout(g, w)
+	if len(p.cards) != 2 {
+		t.Fatalf("%d cards, want picks and drawn", len(p.cards))
+	}
+	if rows[8].pin == 0 || rows[9].pin == 0 || rows[9].pin >= rows[8].pin {
+		t.Fatalf("Draw and Quit are not pinned to the bottom in order: %v %v", rows[8].pin, rows[9].pin)
+	}
+	if rows[1].w != rows[2].w || rows[1].top != rows[2].top {
+		t.Fatalf("the number keys do not share a line: %+v %+v", rows[1], rows[2])
+	}
+	p.focus, p.keyed = 2, true // the row of the key "2"
+	phonePress(g, btnOK)
+	for range 10 {
+		frame()
+	}
+	if g.phone == nil || g.st.Vars["b"] != 1.0 {
+		t.Fatalf("the staying key: phone up %v, var.b %v", g.phone != nil, g.st.Vars["b"])
+	}
+	g.phone.focus, g.phone.keyed = 8, true // Draw
+	phonePress(g, btnOK)
+	for range 40 {
+		frame()
+	}
+	if g.phone == nil || g.phone.cue.App != "chat" || g.phoneMidX() >= 640 {
+		t.Fatalf("Draw did not bring up the chat placed left: %+v", g.phone)
+	}
+	for range 420 {
+		frame()
+	}
+	if g.phone == nil || g.phone.cue.App != "page" || g.st.Gold != 10 {
+		t.Fatalf("after the chat held: phone %+v, gold %d", g.phone, g.st.Gold)
+	}
+}
