@@ -65,7 +65,7 @@ func (g *Game) boundary() {
 // isBoundary reports whether a request is a boundary.
 func isBoundary(r event.Request) bool {
 	switch r.(type) {
-	case event.Checkpoint, event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
+	case event.Checkpoint, event.Autosave, event.Battle, event.Shop, event.Save, event.Open, event.Clear, event.GameOver, event.SortieScene:
 		return true
 	}
 	return false

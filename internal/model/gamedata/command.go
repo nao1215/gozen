@@ -142,6 +142,15 @@ type Command struct {
 	Clear bool   `yaml:"clear" command:"verb"`
 	// Checkpoint replaces the saved retry point; its value is the event run on restoration.
 	Checkpoint string `yaml:"checkpoint" command:"verb"`
+	// Autosave writes the autosave now, even while the event runs on (a phone up, a loop
+	// that never comes back to the field); loading it starts its value, an event, at the
+	// place. A game whose play is one event that runs for good keeps its progress this way.
+	Autosave string `yaml:"autosave" command:"verb"`
+	// Language shows the game in another of game.yaml's languages and keeps it in the
+	// settings, as the settings' language row does: a button on a phone page can switch it
+	// in a game without a title or menus. next is the language after the one shown, so one
+	// button switches between them.
+	Language string `yaml:"language" command:"verb"`
 	// RestoreCheckpoint abandons the current execution and resumes the saved retry point.
 	RestoreCheckpoint bool       `yaml:"restore_checkpoint" command:"verb"`
 	Save              bool       `yaml:"save" command:"verb"`
@@ -606,24 +615,35 @@ type PhoneCue struct {
 	Replies []PhoneRow `yaml:"replies" json:",omitempty"`
 	// Timeout ends a lock, page or banner after these seconds without an outcome.
 	// TimeoutResult is stored in Var (default expired); zero disables the timer.
-	Timeout       float64        `yaml:"timeout"`
-	TimeoutResult string         `yaml:"timeout_result"`
-	Hold          string         `yaml:"hold"`
-	App           string         `yaml:"app"`
-	Title         string         `yaml:"title"`
-	URL           string         `yaml:"url"`
-	Color         string         `yaml:"color"`
-	Time          string         `yaml:"time"`
-	Date          string         `yaml:"date"`
-	Auto          bool           `yaml:"auto"`
-	Var           string         `yaml:"var"`
-	Scroll        string         `yaml:"scroll"`
-	Browse        bool           `yaml:"browse"`
-	Messages      []PhoneMessage `yaml:"messages" json:",omitempty"`
-	Posts         []PhonePost    `yaml:"posts" json:",omitempty"`
-	Video         *PhoneVideo    `yaml:"video" json:",omitempty"`
-	Rows          []PhoneRow     `yaml:"rows" json:",omitempty"`
-	Notices       []PhoneNotice  `yaml:"notices" json:",omitempty"`
+	Timeout       float64 `yaml:"timeout"`
+	TimeoutResult string  `yaml:"timeout_result"`
+	Hold          string  `yaml:"hold"`
+	// Bar large draws a page's title large on the page's own ground, left
+	// aligned, instead of on a bar of Color: a figure that heads the page
+	// (the money, a result).
+	Bar string `yaml:"bar"`
+	// Place left or right holds the phone a third of the way in from that
+	// side, the scene beside it in view and not dimmed (default: the middle).
+	Place    string         `yaml:"place"`
+	App      string         `yaml:"app"`
+	Title    string         `yaml:"title"`
+	URL      string         `yaml:"url"`
+	Color    string         `yaml:"color"`
+	Time     string         `yaml:"time"`
+	Date     string         `yaml:"date"`
+	Auto     bool           `yaml:"auto"`
+	Var      string         `yaml:"var"`
+	Scroll   string         `yaml:"scroll"`
+	Browse   bool           `yaml:"browse"`
+	Messages []PhoneMessage `yaml:"messages" json:",omitempty"`
+	Posts    []PhonePost    `yaml:"posts" json:",omitempty"`
+	Video    *PhoneVideo    `yaml:"video" json:",omitempty"`
+	Rows     []PhoneRow     `yaml:"rows" json:",omitempty"`
+	Notices  []PhoneNotice  `yaml:"notices" json:",omitempty"`
+	// Still shows the phone at once and puts it down at once, without the
+	// lift: a run of phones that follow each other (a draw revealed number by
+	// number) then reads as one phone whose screen changes.
+	Still bool `yaml:"still"`
 }
 
 // PhoneRow is one row of a page, stacked top to bottom: Text (paragraphs, of
@@ -634,10 +654,14 @@ type PhoneCue struct {
 // Var to its ID. An Item, and on a page a single Picture, may also carry a
 // Button: the item or the picture is then what the player taps, its Button the
 // label a trace and the keys' focus name. Other rows contain one content kind.
+// On a page a Button or a Text row with Columns (2 to 8) is a cell that part of
+// the line wide, and the cells that follow share its line, as a keypad's keys
+// or a row of drawn numbers do.
 // A picture or a grid is Locked (blurred,
 // with a lock and its Label) while the condition holds when the phone comes up.
 type PhoneRow struct {
-	// Event opens a parameterless app event from home or contacts and returns to this phone.
+	// Event opens a parameterless app event from home or contacts, or from a
+	// page button that stays (after its set), and returns to this phone.
 	Event string `yaml:"event"`
 	// When is checked by the event owner once when opening the phone.
 	When Expr `yaml:"when"`
@@ -657,8 +681,35 @@ type PhoneRow struct {
 	Set      Assignments `yaml:"set" json:",omitempty"`
 	Locked   Expr        `yaml:"locked"`
 	Label    string      `yaml:"label"`
+	// Stay keeps the phone up when this page button is pressed: its set runs
+	// (and the phone's var gets its id), then the same page is shown again with
+	// every when, text and selected worked out anew, so a page can be a form
+	// whose keys toggle (pick six numbers) before a button that puts it down.
+	Stay bool `yaml:"stay"`
+	// Selected marks a page button or text row as on (filled with the page's
+	// color) while the condition holds when the phone comes up.
+	Selected Expr `yaml:"selected"`
+	// Marked fills a page cell with ui.phone's mark color while the condition
+	// holds, over Selected: a second highlight (the drawn numbers that match).
+	Marked Expr `yaml:"marked"`
+	// Round draws a page cell as a circle (a lottery ball, a token) rather
+	// than a rounded key.
+	Round bool `yaml:"round"`
+	// Card groups the page's consecutive rows of the same name on one card of
+	// ui.phone's card color, as an app sets its sections apart.
+	Card string `yaml:"card"`
+	// Bottom pins a page row to the bottom of the screen, over the rows that
+	// scroll: the page's main button where the thumb rests.
+	Bottom bool `yaml:"bottom"`
+	// Style secondary draws a page button in a soft fill with the accent's
+	// text, for the actions beside the main one.
+	Style string `yaml:"style"`
 	// Shut is Locked worked out when the phone came up.
 	Shut bool `yaml:"-" json:"-"`
+	// Lit is Selected worked out when the phone came up.
+	Lit bool `yaml:"-" json:"-"`
+	// Mark is Marked worked out when the phone came up.
+	Mark bool `yaml:"-" json:"-"`
 }
 
 // PhoneItem is a row of a list on a page: a round Icon under assets/, a Title,
@@ -696,7 +747,9 @@ type PhoneNotice struct {
 // Row -(i+10) with Notice -1 identifies the authored reply at index i.
 type PhoneResult struct {
 	// Event is the authored app opened by the event owner after assignments.
-	Event       string
+	Event string
+	// Stay shows the same phone again after the result's assignments (PhoneRow.Stay).
+	Stay        bool
 	Row, Notice int
 	ID          string
 	Set         Assignments
@@ -716,8 +769,8 @@ func (p PhoneCue) Results() []PhoneResult {
 		if id == "" {
 			id = r.Button
 		}
-		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set, Event: r.Event})
-		keeps = keeps || len(r.Set) > 0 || r.Event != ""
+		out = append(out, PhoneResult{Row: i, Notice: -1, ID: id, Set: r.Set, Event: r.Event, Stay: r.Stay})
+		keeps = keeps || len(r.Set) > 0 || r.Event != "" || r.Stay
 	}
 	calls := false
 	for i, n := range p.Notices {

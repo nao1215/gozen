@@ -1,0 +1,36 @@
+locations:
+  desk: {name: Desk, bare: true, on_enter: [{call: {event: draw}}]}
+events:
+  draw:
+    - autosave: draw
+    - phone:
+        app: page
+        bar: large
+        title: "{gold} gold"
+        still: true
+        var: var.pick
+        rows:
+        - {text: "Picked {var.a + var.b + var.c}", size: small, card: picks}
+        - {button: "1", id: a, columns: 3, round: true, stay: true, selected: var.a == 1, set: {var.a: 1 - var.a}, card: picks}
+        - {button: "2", id: b, columns: 3, round: true, stay: true, selected: var.b == 1, set: {var.b: 1 - var.b}, card: picks}
+        - {button: "3", id: c, columns: 3, round: true, stay: true, selected: var.c == 1, set: {var.c: 1 - var.c}, card: picks}
+        - {text: "2", columns: 3, round: true, marked: var.b == 1, card: drawn}
+        - {text: "Last prize", size: small, card: drawn}
+        - {text: "{var.won}", size: display, card: drawn}
+        - {button: English, id: lang, stay: true, event: switch_language}
+        - {button: Draw, id: draw, bottom: true}
+        - {button: Quit, id: quit, bottom: true, style: secondary}
+    - if: var.pick == "draw"
+      then:
+        - set: {var.won: var.b * 10, gold: gold + var.b * 10}
+        - phone:
+            app: chat
+            auto: true
+            place: left
+            title: Desk
+            messages:
+            - {from: Ann, text: "Drew 2."}
+            - {mine: true, text: "Won {var.won}."}
+        - call: {event: draw}
+  switch_language:
+    - language: next

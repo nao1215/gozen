@@ -292,7 +292,15 @@ func (f *field) draw(g *Game, dst *ebiten.Image) {
 // placeHUDShown tells whether the place's header, gold, meters, menu and party
 // show: not under a line, a picture, a screen over the place or a phone up.
 func (g *Game) placeHUDShown() bool {
-	return !g.talk.active && g.cg.File == "" && len(g.stack) <= 1 && g.phone == nil
+	// A page kept drawn between two phone pages (phoneHand.held) is the phone still up:
+	// the header showing there flashed the place's name at every page of a loop.
+	held := g.phoneHand != nil && g.phoneHand.held != nil
+	if g.st != nil {
+		if loc := g.db.Locations[g.st.Location]; loc != nil && loc.Bare {
+			return false // location bare: the background alone
+		}
+	}
+	return !g.talk.active && g.cg.File == "" && len(g.stack) <= 1 && g.phone == nil && !held
 }
 
 func (f *field) head(g *Game) (area, name, desc string) {
@@ -422,12 +430,7 @@ func (g *Game) drawTagRows(dst *ebiten.Image, rows [][]string, x, y, dy float64)
 	}
 }
 
-func inkOn(c color.NRGBA) color.Color {
-	if 0.299*float64(c.R)+0.587*float64(c.G)+0.114*float64(c.B) < 140 {
-		return colorWhite
-	}
-	return colorBlack
-}
+func inkOn(c color.NRGBA) color.Color { return pageInkOn(c) }
 
 func (g *Game) stateTagsWidth(states map[string]int) float64 {
 	w := 0.0

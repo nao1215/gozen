@@ -5477,6 +5477,24 @@
         {
           "additionalProperties": false,
           "properties": {
+            "autosave": {}
+          },
+          "required": [
+            "autosave"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "language": {}
+          },
+          "required": [
+            "language"
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "restore_checkpoint": {}
           },
           "required": [
@@ -5751,6 +5769,19 @@
             "zero": "-",
             "required": "optional; only with move, dive",
             "reference": "character of the destination dungeon's tiles",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "autosave": {
+          "description": "Writes the autosave now, while the event runs on (a phone up, a loop that never returns to the field). Names the event that loading it starts at the place; the running event is not kept. For a game whose play is one endless event; schema version 10.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
             "version": "0, 1, 2"
           },
           "x-type": "string"
@@ -6181,6 +6212,19 @@
             "zero": "-",
             "required": "exactly one verb per command",
             "reference": "actors",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "language": {
+          "description": "Shows the game in another of game.yaml's languages and keeps it in the settings, as the settings' language row does; for a button that switches it in a game without a title or menus. next goes to the language after the one shown, so one button switches between them.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "exactly one verb per command",
+            "reference": "-",
             "version": "0, 1, 2"
           },
           "x-type": "string"
@@ -13383,6 +13427,19 @@
           },
           "x-type": "[Picture](#picture) or string"
         },
+        "bare": {
+          "description": "True shows only the place's background: no header with its name, no money, meters, menu or party over it. For a backdrop of a game played on the phone or in pictures.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "battle_background": {
           "$ref": "#/$defs/Picture",
           "description": "The picture shown behind battles fought here.",
@@ -15667,7 +15724,7 @@
           "x-type": "string"
         },
         "auto": {
-          "description": "True brings the lock screen's notices by themselves, one every second and a half.",
+          "description": "True brings the lock screen's notices by themselves, one every second and a half; on a chat, the whole exchange shows at once (keep it to one screen) and stays six seconds for reading, then the phone goes down by itself (a press puts it down sooner).",
           "type": "boolean",
           "x-contract": {
             "default": "false",
@@ -15678,6 +15735,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "boolean"
+        },
+        "bar": {
+          "description": "large draws a page's title large on the page's own ground, left aligned, instead of on a bar of color: a figure that heads the page (the money, a result). Page with a title only.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "browse": {
           "description": "True makes a feed only looked at: a tap or a click likes no post.",
@@ -15795,6 +15865,19 @@
           },
           "x-type": "[PhoneNotice](#phonenotice)[]"
         },
+        "place": {
+          "description": "left or right holds the phone a third of the way in from that side, with the scene beside it in view and not dimmed (a character reacting to the phone). Default: the middle.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "posts": {
           "description": "The feed's posts, stacked top to bottom and scrolled.",
           "items": {
@@ -15864,6 +15947,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "still": {
+          "description": "True shows the phone and puts it down at once, without the lift, so phones that follow each other read as one screen that changes.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
         },
         "time": {
           "description": "Interpolated clock of the lock screen (the phone's clock when empty).",
@@ -16570,6 +16666,19 @@
           },
           "x-type": "boolean"
         },
+        "bottom": {
+          "description": "True pins a page row to the bottom of the screen, over the rows that scroll: the page's main button where the thumb rests. Not on a card.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "button": {
           "description": "Interpolated label of a button; a tap on it, or OK on it after the keys moved to it, puts the phone down. With an item, or a page's picture, the item or the picture itself is tapped and the label names it.",
           "type": "string",
@@ -16596,8 +16705,21 @@
           },
           "x-type": "string"
         },
+        "card": {
+          "description": "Name of a card: the page's consecutive rows with the same card sit on one card of ui.phone card color, as an app sets its sections apart.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
         "columns": {
-          "description": "Pictures a line in the grid: 2 or 3 (0 is 3).",
+          "description": "Pictures a line in the grid: 2 or 3 (0 is 3). On a page's button or text row, 2 to 8 makes the row a cell that part of the line wide, sharing its line with the cells that follow (a keypad, a row of drawn numbers).",
           "type": "integer",
           "x-contract": {
             "default": "0",
@@ -16610,7 +16732,7 @@
           "x-type": "integer"
         },
         "event": {
-          "description": "Parameterless event opened by a home or contacts button. Returning from it redisplays the parent phone. Requires button.",
+          "description": "Parameterless event opened by a home or contacts button, or by a page button that stays (after its set). Returning from it redisplays the parent phone. Requires button.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -16679,6 +16801,24 @@
           },
           "x-type": "expression"
         },
+        "marked": {
+          "description": "Condition that fills a page cell with ui.phone mark, over selected: a second highlight such as the drawn numbers that match. Cells only.",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
+        },
         "picture": {
           "description": "Path of a picture under assets/, shown whole in its own shape.",
           "type": "string",
@@ -16723,6 +16863,37 @@
             "version": "0, 1, 2"
           },
           "x-type": "string"
+        },
+        "round": {
+          "description": "True draws a page cell as a circle (a ball, a token) instead of a rounded key. Cells only.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "selected": {
+          "description": "A condition that, holding when the phone comes up, fills a page's button or text cell with the page's color (a picked number, a matched ball).",
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ],
+          "x-contract": {
+            "default": "no expression (true as a condition, 0 as a number)",
+            "legacy_default": "no expression (true as a condition, 0 as a number)",
+            "zero": "expression value 0 (false as a condition)",
+            "required": "optional",
+            "reference": "expression; checked by gozen check",
+            "version": "0, 1, 2"
+          },
+          "x-type": "expression"
         },
         "set": {
           "additionalProperties": {
@@ -16777,6 +16948,32 @@
         },
         "size": {
           "description": "large or small text (the default is between).",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "stay": {
+          "description": "True keeps the phone up when this page button is pressed: its set runs and the phone's var gets its id, then the same page comes back at once with every when, text and selected worked out anew. For forms whose keys toggle before a button that puts the phone down.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "style": {
+          "description": "secondary draws a page's plain button in ui.phone soft with the accent as its text, for the actions beside the main one.",
           "type": "string",
           "x-contract": {
             "default": "empty string",
@@ -16854,8 +17051,50 @@
           },
           "x-type": "color string"
         },
+        "card": {
+          "description": "Fill of a page's cards (rows with card); default white.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "mark": {
+          "description": "Fill of a page's marked cells; default the accent.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
         "muted": {
           "description": "Page caption and secondary text color; default #808690.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "soft": {
+          "description": "Fill of a page's unselected cells and secondary buttons; default a faint wash of the accent (cells: a white tile with a hairline).",
           "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
           "type": "string",
           "x-contract": {
@@ -20117,6 +20356,19 @@
       "additionalProperties": false,
       "description": "The logical screen size the game is drawn at.",
       "properties": {
+        "adapt": {
+          "description": "True turns the screen with the window: taller than wide (a phone held upright) gives an upright screen of the window's shape, wide keeps width x height. A web export then asks no one to turn the phone and does not lock the app's orientation.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
         "height": {
           "description": "The logical screen height in pixels.",
           "type": "integer",
@@ -26639,6 +26891,32 @@
             "version": "0, 1, 2"
           },
           "x-type": "color string"
+        },
+        "auto_read": {
+          "description": "True starts every play (new or loaded) with the lines going on by themselves; the auto key still turns it off. For a game left to run.",
+          "type": "boolean",
+          "x-contract": {
+            "default": "false",
+            "legacy_default": "false",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "boolean"
+        },
+        "auto_wait": {
+          "description": "The auto pace a player who has not chosen one gets: 0 (fastest) to 4 (slowest); default 2.",
+          "type": "integer",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         },
         "backlog": {
           "description": "How many lines the backlog keeps. The default is 300.",

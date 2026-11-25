@@ -5,6 +5,7 @@ import (
 	"image"
 	"io/fs"
 	"math"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -1985,7 +1986,7 @@ func TestPhoneHiddenChatAndIdleCost(t *testing.T) {
 	if allocs := testing.AllocsPerRun(100, func() { g.in = input{}; g.updatePhone() }); allocs != 0 {
 		t.Fatalf("ordinary idle chat allocated %g times", allocs)
 	}
-	if p.historyRows != nil || p.replyRows != nil || p.historyVisible != nil || p.historyStops != nil {
+	if p.history.rows != nil || p.history.replies != nil || p.history.visible != nil || p.history.stops != nil {
 		t.Fatal("ordinary chat prepared history")
 	}
 	phonePress(g, btnOK)
@@ -2007,8 +2008,8 @@ func TestPhoneHistoryRepliesAndCache(t *testing.T) {
 	g := phoneGame(t, cue)
 	p := g.phone
 	phoneTicks(g, phoneRise+1)
-	if p.scroll <= 0 || len(p.historyVisible) != 66 || p.historyRows[0].h != 0 {
-		t.Fatalf("history scroll=%g visible=%d", p.scroll, len(p.historyVisible))
+	if p.scroll <= 0 || len(p.history.visible) != 66 || p.history.rows[0].h != 0 {
+		t.Fatalf("history scroll=%g visible=%d", p.scroll, len(p.history.visible))
 	}
 	dst := ebiten.NewImage(1280, 720)
 	defer dst.Deallocate()
@@ -2026,7 +2027,7 @@ func TestPhoneHistoryRepliesAndCache(t *testing.T) {
 	}
 	_, _, hw, hh := g.phoneScreenRect(false)
 	p.scroll = g.historyLayout(p, hw, hh)
-	rows := &p.historyRows[0]
+	rows := &p.history.rows[0]
 	if allocs := testing.AllocsPerRun(100, func() { _, _, w, h := g.phoneScreenRect(false); g.historyLayout(p, w, h) }); allocs != 0 {
 		t.Fatalf("cached layout allocated %g times", allocs)
 	}
@@ -2034,7 +2035,7 @@ func TestPhoneHistoryRepliesAndCache(t *testing.T) {
 	g.in = input{}
 	g.in.wheel = 2
 	g.updatePhone()
-	if p.scroll >= before || &p.historyRows[0] != rows {
+	if p.scroll >= before || &p.history.rows[0] != rows {
 		t.Fatal("scroll did not reuse history layout")
 	}
 	phonePress(g, btnOK)
@@ -2248,7 +2249,7 @@ func TestPhoneScrolledControlsExcludeHeader(t *testing.T) {
 			switch app {
 			case "chat":
 				g.historyLayout(p, w, h)
-				p.scroll = p.replyRows[0].top + p.replyRows[0].h - 10
+				p.scroll = p.history.replies[0].top + p.history.replies[0].h - 10
 			case "feed":
 				posts, _, _, _ := g.feedView(p)
 				p.scroll = posts[0].pic + posts[0].picH + phoneFeedLikes - 10
@@ -2547,5 +2548,167 @@ func TestPhoneStoreWords(t *testing.T) {
 				t.Fatalf("the rising store: title %q with %d rows, want %q and its rows", p.cue.Title, len(p.cue.Rows), title)
 			}
 		})
+	}
+}
+
+// TestPhonePlaced: a phone placed left or right sits a third of the way in from
+// that side, so a character beside it stays in view, and a tap is read where it
+// is drawn; with no place it keeps the middle.
+func TestPhonePlaced(t *testing.T) {
+	rows := []data.PhoneRow{{Text: "Hi"}}
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: rows})
+	sw, _ := g.screen()
+	for _, c := range []struct {
+		place string
+		want  float64
+	}{{"", 0.5}, {"left", 0.3}, {"right", 0.7}} {
+		g.Handle(event.PhoneEffect{Phone: data.PhoneCue{App: "page", Place: c.place, Rows: rows}})
+		x, _, w, _ := g.phoneScreenRect(false)
+		if got := x + w/2; math.Abs(got-sw*c.want) > 1 {
+			t.Errorf("place %q: middle %v, want %v", c.place, got, sw*c.want)
+		}
+	}
+}
+
+// TestScreenAdapt: with screen.adapt, a window taller than wide (a phone held
+// upright) lays the play out upright, and a wide one keeps the game's wide screen.
+func TestScreenAdapt(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.db.Game.Screen.Adapt = true
+	g.fitView(390, 844, 1)
+	if w, h := g.screen(); w >= h {
+		t.Fatalf("upright window: screen %vx%v, want taller than wide", w, h)
+	}
+	g.fitView(1920, 1080, 1)
+	if w, h := g.screen(); w <= h {
+		t.Fatalf("wide window: screen %vx%v, want wider than tall", w, h)
+	}
+}
+
+// TestLocationBare: a bare place draws no header, money or menu over its
+// background, even with nothing else on the screen.
+func TestLocationBare(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.closePhone()
+	if !g.placeHUDShown() {
+		t.Fatal("a plain place with nothing over it shows its header")
+	}
+	g.db.Locations[g.st.Location].Bare = true
+	if g.placeHUDShown() {
+		t.Fatal("a bare place shows its header")
+	}
+}
+
+// TestLanguageCommand: the language command shows the game in that language and
+// keeps it in the settings, as the settings' language row does.
+func TestLanguageCommand(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.db.Game.Languages = []string{"en", "ja"}
+	g.Handle(event.LanguageEffect{Code: "ja"})
+	if g.cfg.Language != "ja" || g.language() != "ja" {
+		t.Fatalf("after language ja: settings %q, shown %q", g.cfg.Language, g.language())
+	}
+	g.Handle(event.LanguageEffect{Code: "next"})
+	if g.language() != "en" {
+		t.Fatalf("next after ja: shown %q, want en", g.language())
+	}
+	g.Handle(event.LanguageEffect{Code: "next"})
+	if g.language() != "ja" {
+		t.Fatalf("next after en: shown %q, want ja", g.language())
+	}
+}
+
+// TestPhoneAppFixture: testdata/phone-app, a raffle played on the phone alone
+// (the E2E in e2e/atago/phone-app.atago.yaml plays its copy), loads with every
+// word of a phone-only game in place: a screen that turns, a bare place, an
+// autosave from the event and a page of round keys that stay.
+func TestPhoneAppFixture(t *testing.T) {
+	db, err := data.LoadDir(os.DirFS("testdata"), "phone-app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !db.Game.Screen.Adapt || !db.Game.UI.AutoRead || !db.Locations["desk"].Bare {
+		t.Fatalf("adapt %v, auto_read %v, bare %v", db.Game.Screen.Adapt, db.Game.UI.AutoRead, db.Locations["desk"].Bare)
+	}
+	draw := db.Events["draw"].Do
+	if draw[0].Autosave != "draw" {
+		t.Fatalf("first command autosaves %q, want draw", draw[0].Autosave)
+	}
+	rows := draw[1].Phone.Rows
+	if key := rows[1]; !key.Stay || !key.Round || !key.Selected.Set() || key.Card != "picks" {
+		t.Fatalf("a number key: %+v", key)
+	}
+	if !rows[4].Marked.Set() {
+		t.Fatal("the drawn number is not marked")
+	}
+}
+
+// TestPhoneAppPlays plays testdata/phone-app through whole frames: entering the
+// bare place autosaves a resumable save at the draw event, the page lays its
+// round keys out on cards with Draw and Quit pinned to the bottom, a key that
+// stays lights and keeps the phone up, and every frame draws.
+func TestPhoneAppPlays(t *testing.T) {
+	g, err := New(Options{FS: os.DirFS("testdata/phone-app"), NoSound: true, SaveDir: t.TempDir(), Seed: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := g.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g.storeGiven = true
+	dst := ebiten.NewImage(1280, 720)
+	defer dst.Deallocate()
+	frame := func() {
+		t.Helper()
+		if err := g.Update(); err != nil {
+			t.Fatal(err)
+		}
+		g.Draw(dst)
+	}
+	for range 60 {
+		frame()
+	}
+	p := g.phone
+	if p == nil || p.cue.App != "page" {
+		t.Fatalf("the raffle page is not up: %+v", p)
+	}
+	b, err := g.store.Read(g.autoPath())
+	if err != nil || !strings.Contains(strings.Join(strings.Fields(string(b)), ""), `"event":"draw"`) {
+		t.Fatalf("the autosave does not resume the draw event: %v %s", err, b)
+	}
+	_, _, w, _ := g.phoneScreenRect(false)
+	rows := p.pageLayout(g, w)
+	if len(p.cards) != 2 {
+		t.Fatalf("%d cards, want picks and drawn", len(p.cards))
+	}
+	if rows[8].pin == 0 || rows[9].pin == 0 || rows[9].pin >= rows[8].pin {
+		t.Fatalf("Draw and Quit are not pinned to the bottom in order: %v %v", rows[8].pin, rows[9].pin)
+	}
+	if rows[1].w != rows[2].w || rows[1].top != rows[2].top {
+		t.Fatalf("the number keys do not share a line: %+v %+v", rows[1], rows[2])
+	}
+	p.focus, p.keyed = 2, true // the row of the key "2"
+	phonePress(g, btnOK)
+	for range 10 {
+		frame()
+	}
+	if g.phone == nil || g.st.Vars["b"] != 1.0 {
+		t.Fatalf("the staying key: phone up %v, var.b %v", g.phone != nil, g.st.Vars["b"])
+	}
+	g.phone.focus, g.phone.keyed = 8, true // Draw
+	phonePress(g, btnOK)
+	for range 40 {
+		frame()
+	}
+	if g.phone == nil || g.phone.cue.App != "chat" || g.phoneMidX() >= 640 {
+		t.Fatalf("Draw did not bring up the chat placed left: %+v", g.phone)
+	}
+	for range 420 {
+		frame()
+	}
+	if g.phone == nil || g.phone.cue.App != "page" || g.st.Gold != 10 {
+		t.Fatalf("after the chat held: phone %+v, gold %d", g.phone, g.st.Gold)
 	}
 }

@@ -179,6 +179,18 @@ func (c *checker) phone(where string, p PhoneCue, names []string) {
 	default:
 		c.errorf(diag.Shape, where+".hold", lang.T("hold は portrait または landscape を指定してください（指定値 %q）"), p.Hold)
 	}
+	switch p.Place {
+	case "", "left", "right":
+	default:
+		c.errorf(diag.Shape, where+".place", "place must be left or right, not %q", p.Place)
+	}
+	switch {
+	case p.Bar == "":
+	case p.Bar != "large":
+		c.errorf(diag.Shape, where+".bar", "bar must be large, not %q", p.Bar)
+	case p.App != "page" || p.URL != "":
+		c.errorf(diag.Shape, where+".bar", "bar is for a page with a title (not a browser page)")
+	}
 	apps := []string{"chat", "feed", "video", "page", "lock", "banner", "home", "contacts"}
 	if p.App == "game" || p.App == "store" {
 		if len(p.Messages)+len(p.Posts)+len(p.Rows)+len(p.Notices)+len(p.Replies) > 0 || p.Video != nil || p.History || p.Auto || p.Browse || p.Scroll != "" || p.Timeout != 0 || p.TimeoutResult != "" || p.Var != "" || p.URL != "" || p.Time != "" || p.Date != "" {
@@ -408,13 +420,12 @@ func (c *checker) phoneRows(where, app string, rows []PhoneRow, names []string) 
 			c.text(at+".qr", r.QR, names)
 		}
 		switch r.Size {
-		case "", "large", "small":
+		case "", "large", "small", "display":
 		default:
-			c.errorf(diag.Shape, at+".size", "size must be large or small, not %q", r.Size)
+			c.errorf(diag.Shape, at+".size", "size must be large, small or display, not %q", r.Size)
 		}
-		if r.Columns != 0 && r.Columns != 2 && r.Columns != 3 {
-			c.errorf(diag.Shape, at+".columns", "columns must be 2 or 3, not %d", r.Columns)
-		}
+		c.phonePageLook(at, app, r)
+		c.phoneCell(at, app, r)
 		if r.Button == "" && (len(r.Set) > 0 || r.ID != "") {
 			c.errorf(diag.Shape, at, "only a button has set or id")
 		}
@@ -423,6 +434,8 @@ func (c *checker) phoneRows(where, app string, rows []PhoneRow, names []string) 
 		}
 		c.assignments(at+".set", r.Set, names)
 		c.expr(at+".locked", r.Locked, names)
+		c.expr(at+".selected", r.Selected, names)
+		c.expr(at+".marked", r.Marked, names)
 		c.text(at+".label", r.Label, names)
 		c.text(at+".text", r.Text, names)
 		c.text(at+".caption", r.Caption, names)
@@ -443,11 +456,59 @@ func (c *checker) phoneRows(where, app string, rows []PhoneRow, names []string) 
 	}
 }
 
+// phoneCell checks columns, stay and selected: pictures take 2 or 3 columns;
+// a page's button or text row may be a cell 2 to 8 to a line, and only such a
+// row can be selected; only a page's plain button stays.
+func (c *checker) phoneCell(at, app string, r PhoneRow) {
+	cell := app == "page" && r.Item == nil && r.Picture == "" && (r.Button != "" || r.Text != "")
+	switch {
+	case r.Columns == 0:
+	case len(r.Pictures) > 0:
+		if r.Columns != 2 && r.Columns != 3 {
+			c.errorf(diag.Shape, at+".columns", "columns of pictures must be 2 or 3, not %d", r.Columns)
+		}
+	case !cell:
+		c.errorf(diag.Shape, at+".columns", "columns is for pictures, or a page's button or text row")
+	case r.Columns < 2 || r.Columns > 8:
+		c.errorf(diag.Shape, at+".columns", "columns of a button or text cell must be 2 to 8, not %d", r.Columns)
+	}
+	if r.Selected.Set() && !cell {
+		c.errorf(diag.Shape, at+".selected", "selected is for a page's button or text row")
+	}
+	if r.Stay && (app != "page" || r.Button == "" || r.Item != nil || r.Picture != "") {
+		c.errorf(diag.Shape, at+".stay", "stay is for a page's plain button (no item or picture)")
+	}
+}
+
+// phonePageLook checks the looks only a page's rows take: marked and round
+// for a cell, style for a plain button, card and bottom for any page row.
+func (c *checker) phonePageLook(at, app string, r PhoneRow) {
+	cell := app == "page" && r.Columns >= 2 && r.Item == nil && r.Picture == "" && (r.Button != "" || r.Text != "")
+	if (r.Marked.Set() || r.Round) && !cell {
+		c.errorf(diag.Shape, at, "marked and round are for a page's cell (a button or text with columns)")
+	}
+	switch r.Style {
+	case "":
+	case "secondary":
+		if app != "page" || r.Button == "" || r.Item != nil || r.Picture != "" {
+			c.errorf(diag.Shape, at+".style", "style is for a page's plain button")
+		}
+	default:
+		c.errorf(diag.Shape, at+".style", "style must be secondary, not %q", r.Style)
+	}
+	if (r.Card != "" || r.Bottom) && app != "page" {
+		c.errorf(diag.Shape, at, "card and bottom are for a page's rows")
+	}
+	if r.Bottom && r.Card != "" {
+		c.errorf(diag.Shape, at, "a row at the bottom cannot be on a card")
+	}
+}
+
 // phoneRowShape checks which content and navigation actions an app supports.
 func (c *checker) phoneRowShape(at, app string, r PhoneRow) {
 	if r.Event != "" {
-		if (app != "home" && app != "contacts") || r.Button == "" {
-			c.errorf(diag.Shape, at+".event", "event needs a home or contacts button")
+		if (app != "home" && app != "contacts" && (app != "page" || !r.Stay)) || r.Button == "" {
+			c.errorf(diag.Shape, at+".event", "event needs a home or contacts button, or a page button that stays")
 		}
 		_, exists := c.db.Events[r.Event]
 		c.ref(at+".event", "event", r.Event, exists)
@@ -2327,6 +2388,15 @@ func (c *checker) commands(where string, cmds []Command, names []string) {
 			c.ref(w+".checkpoint", "event", cmd.Checkpoint, ok)
 		case "restore_checkpoint":
 			c.needsVersion(w+".restore_checkpoint", "restore_checkpoint", SchemaVersion10)
+		case "language":
+			c.needsVersion(w+".language", "language", SchemaVersion10)
+			if cmd.Language != "next" && !slices.Contains(db.Game.Offered(), cmd.Language) && cmd.Language != db.Game.Language {
+				c.errorf(diag.UnknownReference, w+".language", "language %q is not one of game.yaml's languages %v", cmd.Language, db.Game.Offered())
+			}
+		case "autosave":
+			c.needsVersion(w+".autosave", "autosave", SchemaVersion10)
+			_, ok := db.Events[cmd.Autosave]
+			c.ref(w+".autosave", "event", cmd.Autosave, ok)
 		case "call":
 			c.eventCall(w+".call", cmd.Call, names)
 		case "stone_suggest", "stone_apply", "stone_choose", "stone_wearer", "stone_decline":

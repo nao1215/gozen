@@ -38,6 +38,9 @@ TitleScreen:
   hide_disabled: "Schema 10: leave out the menu entries that cannot be chosen now (Continue with no save, Gallery with nothing to show) instead of graying them. Off by default."
 PhoneStyle:
   _: "The phone's colors, game-wide, with no per-cue flag."
+  card: "Fill of a page's cards (rows with card); default white."
+  soft: "Fill of a page's unselected cells and secondary buttons; default a faint wash of the accent (cells: a white tile with a hairline)."
+  mark: "Fill of a page's marked cells; default the accent."
   background: "Page body color; default white (#ffffff)."
   text: "Page body text color; default #1d1f24."
   muted: "Page caption and secondary text color; default #808690."
@@ -61,6 +64,8 @@ UIStyle:
   battle_foe_names: "A plate under each foe that is not a boss: name (its name, the default), hp (its name and a bar of its HP) or none."
   hide_gold: "The kinds of place (field, dungeon, map, stage) where the windows of the money are not shown: the field's, with the play time, and the menu's. Omitted: shown everywhere."
   battle_ai_history: "Show the battle AI history button and enable B/PageUp, controller L1 and pointer activation. True when omitted. False hides the panel entry and the tactic explanation appended to action messages, without changing decisions or replay traces."
+  auto_read: "True starts every play (new or loaded) with the lines going on by themselves; the auto key still turns it off. For a game left to run."
+  auto_wait: "The auto pace a player who has not chosen one gets: 0 (fastest) to 4 (slowest); default 2."
   _: "The colors and layout of the windows and message display."
   face_shape: "How faces are cut on planning screens: round (the default) or square, a rounded square. A screen view may choose its own; a video call always keeps round faces."
   bestiary: "Show Monsters, the monster book, in the title and field menu. Off by default; under `--dev` the menus show it anyway. Needs schema version 4."

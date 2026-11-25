@@ -1,0 +1,68 @@
+version: '1'
+suite:
+  name: A game played on the phone
+scenarios:
+- name: a raffle on a page that stays up, switches the language and autosaves
+  steps:
+  - fixture:
+      file: raffle.txt
+      content: |
+        wait 20
+        pick 2
+        wait 5
+        pick English
+        wait 5
+        pick Hiku
+        wait 30
+        snapshot
+        quit
+  - run:
+      command: gozen sim script "${specdir}/fixtures/phone-app" --script raffle.txt --save-dir raffle-saves --trace raffle.jsonl
+  - assert:
+      exit_code: 0
+      file:
+        path: raffle.jsonl
+        contains: ['"t":"autosave","tick":2,"at":"desk","event":"draw"', '"label":"Hiku","on":"phone:page"', '"gold":10']
+  - assert:
+      file:
+        path: raffle-saves/config.json
+        contains: ['"language": "ja"']
+  - assert:
+      file:
+        path: raffle-saves/auto.json
+        contains: ['"event": "draw"']
+- name: check names a missing autosave event, a language the game lacks and an unknown button style
+  steps:
+  - fixture:
+      file: app/game.yaml
+      content: |
+        schema_version: 11
+        id: app
+        language: en
+        languages: [en, ja]
+        menus: none
+        start: {location: desk}
+        screen: {width: 1280, height: 720, adapt: true}
+        ui:
+          auto_read: true
+          phone: {card: '#ffffff', soft: '#f1f7f5', mark: '#ffb020'}
+  - fixture:
+      file: app/data/world.yaml
+      content: |
+        locations:
+          desk: {name: Desk, bare: true}
+        events:
+          draw:
+            - autosave: nowhere
+            - language: fr
+            - phone:
+                app: page
+                rows:
+                - {text: "1", columns: 3, round: true, marked: var.a == 1, selected: var.a == 2, card: picks}
+                - {button: Draw, bottom: true, style: tertiary}
+  - run:
+      command: gozen check app
+  - assert:
+      exit_code: 1
+      stderr:
+        contains: ['autosave: unknown event "nowhere"', 'language "fr" is not one of game.yaml''s languages', 'style must be secondary, not "tertiary"']

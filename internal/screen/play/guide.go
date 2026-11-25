@@ -36,7 +36,7 @@ func (g *Game) guidesOn() bool {
 		return false
 	}
 	if g.testRun() {
-		return g.guideScripted
+		return g.guides.scripted
 	}
 	return true
 }
@@ -333,21 +333,21 @@ func (g *Game) drawGuide(dst *ebiten.Image) {
 	accent := g.lightPalette().accent
 	if len(rects) > 0 {
 		b := dst.Bounds()
-		if g.guideVeil == nil || g.guideVeil.Bounds().Size() != b.Size() {
-			if g.guideVeil != nil {
-				g.guideVeil.Deallocate()
+		if g.guides.veil == nil || g.guides.veil.Bounds().Size() != b.Size() {
+			if g.guides.veil != nil {
+				g.guides.veil.Deallocate()
 			}
-			g.guideVeil = ebiten.NewImage(b.Dx(), b.Dy())
+			g.guides.veil = ebiten.NewImage(b.Dx(), b.Dy())
 		}
-		g.guideVeil.Fill(color.NRGBA{14, 20, 32, 120})
+		g.guides.veil.Fill(color.NRGBA{14, 20, 32, 120})
 		k := gfx.Scale()
 		for _, r := range rects {
 			hole := image.Rect(int(float64(r.Min.X-4)*k), int(float64(r.Min.Y-4)*k), int(math.Ceil(float64(r.Max.X+4)*k)), int(math.Ceil(float64(r.Max.Y+4)*k)))
-			if cut, ok := g.guideVeil.SubImage(hole.Add(b.Min)).(*ebiten.Image); ok {
+			if cut, ok := g.guides.veil.SubImage(hole.Add(b.Min)).(*ebiten.Image); ok {
 				cut.Clear()
 			}
 		}
-		dst.DrawImage(g.guideVeil, nil)
+		dst.DrawImage(g.guides.veil, nil)
 		for _, r := range rects {
 			x, y, w, h := float32(r.Min.X-4), float32(r.Min.Y-4), float32(r.Dx()+8), float32(r.Dy()+8)
 			glow := withAlpha(accent, uint8(70+80*pulse))
@@ -383,8 +383,8 @@ func (g *Game) drawGuide(dst *ebiten.Image) {
 }
 
 func (g *Game) releaseGuideVeil() {
-	if g.guideVeil != nil {
-		g.guideVeil.Deallocate()
-		g.guideVeil = nil
+	if g.guides.veil != nil {
+		g.guides.veil.Deallocate()
+		g.guides.veil = nil
 	}
 }

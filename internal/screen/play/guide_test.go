@@ -54,7 +54,7 @@ func openGuideGame(t *testing.T, trace *bytes.Buffer) *Game {
 		opts.Trace = trace
 	}
 	g := wldOpenWith(t, opts)
-	g.guideScripted = true
+	g.guides.scripted = true
 	wldFrames(t, g, 30)
 	return g
 }
@@ -142,7 +142,7 @@ func TestGuideLeadsOnceAndBlocksTheRest(t *testing.T) {
 // Scripted plays start as a player who has seen the guides.
 func TestGuideOffInScriptsByDefault(t *testing.T) {
 	g := openGuideGame(t, nil)
-	g.guideScripted = false
+	g.guides.scripted = false
 	g.openScreen("look_board", func() {})
 	wldFrames(t, g, 6)
 	if g.guide != nil {
@@ -174,7 +174,7 @@ func TestGuideCompletionReloadsFromGallery(t *testing.T) {
 		t.Fatal(err)
 	}
 	next := wldOpenWith(t, opts)
-	next.guideScripted = true
+	next.guides.scripted = true
 	wldFrames(t, next, 30)
 	next.openScreen("look_board", func() {})
 	wldFrames(t, next, 6)
@@ -199,7 +199,7 @@ func TestInteractiveFirstVisitGuideIsTraced(t *testing.T) {
 	g.newGame()
 	g.openScreen("look_board", func() {})
 	wldFrames(t, g, 4)
-	if g.testRun() || g.guideScripted || g.guide == nil {
+	if g.testRun() || g.guides.scripted || g.guide == nil {
 		t.Fatal("interactive first visit did not show its default guide")
 	}
 	if len(traceLines(t, buf.Bytes(), "guide")) == 0 || len(traceLines(t, buf.Bytes(), "act")) != 0 {

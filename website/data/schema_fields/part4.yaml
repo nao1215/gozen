@@ -55,6 +55,7 @@ LevelScale:
   stats: "The stats that grow. By default `mhp`, `atk` and `mat`."
   unbounded: "If `true`, lifts the limit that bosses have on `max` so the foe keeps following the party's level further."
 Location:
+  bare: "True shows only the place's background: no header with its name, no money, meters, menu or party over it. For a backdrop of a game played on the phone or in pictures."
   _: "A place the party can be: a picture with people to talk to, things to do and ways out."
   actions: "Things the party can do here, shown as menu entries."
   stream: "`lobby` shows the location as the stream lobby, with the place's entries listed under the channels. Needs `streams` in game.yaml and schema version 9."

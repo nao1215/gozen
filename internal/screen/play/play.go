@@ -246,6 +246,13 @@ type overlay interface{ overlay() bool }
 
 type modal interface{ modal() bool }
 
+// guideDesk is what the screen guides keep between guides: the veil drawn
+// under them and whether a scripted play shows them (the script command guides on).
+type guideDesk struct {
+	veil     *ebiten.Image // Owned by this game; released on reload and Close.
+	scripted bool
+}
+
 type Game struct {
 	hiddenCleanup       func()
 	suspendCleanup      func()
@@ -305,6 +312,9 @@ type Game struct {
 	// phone is the phone over the scene (the phone command, ADR 0057), nil
 	// while none is up.
 	phone *phoneView
+	// phoneHand is where the phone just put down was, for the same page shown
+	// anew after a button that stays (event.PhoneEffect.Again).
+	phoneHand *phoneHand
 	// banners are the phone banners waiting, the first on the screen.
 	banners []phoneBanner
 	// callShare is the screen shared on the call's stage (call_view.share;
@@ -315,11 +325,10 @@ type Game struct {
 	callerSpeaks bool
 	// inboxShown is the chat message being decided (its event runs under it).
 	inboxShown *rpg.InboxMessage
-	// guide is the screen guide showing now (guide.go); guideScripted shows
-	// guides in a scripted play (the script command guides on).
-	guideVeil     *ebiten.Image // Owned by this game; released on reload and Close.
-	guide         *guideRun
-	guideScripted bool
+	// guide is the screen guide showing now (guide.go); guides holds what
+	// outlives one guide.
+	guide  *guideRun
+	guides guideDesk
 	// faceSquare cuts planning faces as rounded squares while a screen with
 	// face_shape square draws (ui.face_shape or the screen's view).
 	faceSquare bool
@@ -869,7 +878,7 @@ func (g *Game) layout(ow, oh float64) (int, int) {
 		}
 	case g.rep != nil && g.rep.scripted:
 		w, h = float64(g.db.Game.Screen.Width), float64(g.db.Game.Screen.Height)
-	case g.streamShown() || g.db.Game.Screen.Native: // opt-in screens draw at device pixels
+	case g.streamShown() || g.db.Game.Screen.Native || g.db.Game.Screen.Adapt: // opt-in screens draw at device pixels
 		if g.deviceScale != nil {
 			dsf = g.deviceScale()
 		}
@@ -885,7 +894,9 @@ func (g *Game) fitView(ow, oh, dsf float64) {
 	v := gameView{}
 	if g.db.Game.Screen.Native {
 		v = nativeView(ow, oh, dsf)
-	} else if g.streamShown() {
+	} else if g.streamShown() || g.db.Game.Screen.Adapt {
+		// screen.adapt: the play takes the window's shape as the stream screens do, upright
+		// on a phone held upright and the game's own screen on a wide window.
 		k := UIScale(&g.db.Game)
 		v = streamView(ow, oh, dsf, float64(g.db.Game.Screen.Width)/k, float64(g.db.Game.Screen.Height)/k)
 	}
@@ -1052,6 +1063,7 @@ func (g *Game) Update() error {
 		defer g.tr.performance.updated(time.Now())
 	}
 	g.tick++
+	g.dropStaleHeldPhone()
 	defer func(tick int) {
 		// Memo and tag editors roll the tick back while they hold the game.
 		if g.tick == tick && (g.phone == nil || g.phone.child == nil) {
@@ -1749,6 +1761,8 @@ func (g *Game) startState() {
 		g.sortieTactics = map[string]string{}
 	}
 	g.replace(g.newPlace())
+	// ui.auto_read: a game left to run starts with its lines going on by themselves.
+	g.autoRead = g.db.Game.UI.AutoRead
 	g.songOverride, g.moodOverride = "", ""
 	g.playLocationMusic()
 	var faces []string
@@ -2244,7 +2258,7 @@ func (g *Game) updateTapOrPhone(r event.Tap, answer func(int)) bool {
 		return false
 	}
 	result := g.phone.answer()
-	g.closePhone()
+	g.putPhoneDown()
 	if r.Results > 0 {
 		answer(result)
 	}
@@ -2349,6 +2363,9 @@ func (g *Game) begin(r event.Request) {
 			return
 		}
 		g.push(newShop(g, r.ID, done))
+	case event.Autosave:
+		g.autosaveAt(r.Event)
+		done()
 	case event.Checkpoint:
 		if err := g.checkpoint(r); err != nil {
 			g.failure = err
@@ -2660,10 +2677,31 @@ func (g *Game) Handle(e event.Effect) {
 			}
 			break
 		}
-		g.closePhone()
+		g.closePhone() // frees a page held since a quick put-down too
 		g.phone = newPhoneView(e.Phone)
+		if g.phoneHand != nil {
+			if e.Again {
+				g.phone.takeHand(g.phoneHand)
+			} else {
+				g.phone.follow(g.phoneHand)
+			}
+		}
+		g.phoneHand = nil
 	case event.SoundEffect:
 		g.SFX(e.Name)
+	case event.LanguageEffect:
+		if g.fast == nil {
+			code := e.Code
+			if code == "next" {
+				// the language after the one shown, among game.yaml's languages (a switch button)
+				offered := g.db.Game.Offered()
+				code = offered[(slices.Index(offered, g.language())+1)%len(offered)]
+			}
+			g.setLanguage(code)
+			if err := g.saveConfig(); err != nil {
+				log.Printf("settings: %v", err)
+			}
+		}
 	case event.CallCameraEffect:
 		if g.callCamera == nil {
 			g.callCamera = map[string]bool{}

@@ -69,6 +69,7 @@ SceneReviewCfg:
   title: "The name of the review section. It defaults to a translatable built-in title."
 Screen:
   native: "Render a 16:9 viewport at native device resolution."
+  adapt: "True turns the screen with the window: taller than wide (a phone held upright) gives an upright screen of the window's shape, wide keeps width x height. A web export then asks no one to turn the phone and does not lock the app's orientation."
   _: "The logical screen size the game is drawn at."
   height: "The logical screen height in pixels."
   width: "The logical screen width in pixels."

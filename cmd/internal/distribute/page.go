@@ -56,7 +56,11 @@ func pageFor(src, stage string, db *gamedata.DB) ([]byte, error) {
 	title := html.EscapeString(cmp.Or(db.Game.Title, "Loading game"))
 	language := cmp.Or(db.Game.Language, "en")
 	turn := "landscape"
-	if db.Game.Screen.Height > db.Game.Screen.Width {
+	switch {
+	case db.Game.Screen.Adapt:
+		// the screen turns with the phone: no note asks to turn it, the app is not locked
+		turn = "any"
+	case db.Game.Screen.Height > db.Game.Screen.Width:
 		turn = "portrait"
 	}
 	page := bytes.Replace(webPage, []byte(`<html lang="en">`), fmt.Appendf(nil, `<html lang="%s" data-screen="%s">`, html.EscapeString(language), turn), 1)

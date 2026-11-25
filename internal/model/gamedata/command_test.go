@@ -19,6 +19,8 @@ import (
 // written.
 var commandExamples = map[string]string{
 	"checkpoint":         `checkpoint: sub`,
+	"autosave":           `autosave: sub`,
+	"language":           `language: en`,
 	"carry":              `carry: true`,
 	"restore_checkpoint": `restore_checkpoint: true`,
 	"plan":               `plan: {op: observe}`,
@@ -94,7 +96,7 @@ func TestCommandFieldMatrix(t *testing.T) {
 		db.Events["matrix"] = &data.Event{Do: []data.Command{cmd}}
 		errs := db.Check()
 		campaign := wantVerb == "order" || wantVerb == "end_turn" || wantVerb == "game_over"
-		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "restore_checkpoint" || wantVerb == "weather" || wantVerb == "tone" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
+		if slices.Contains(data.NewVerbs, wantVerb) || wantVerb == "stand" || campaign || wantVerb == "checkpoint" || wantVerb == "autosave" || wantVerb == "language" || wantVerb == "restore_checkpoint" || wantVerb == "weather" || wantVerb == "tone" { // a spec version 2 (stand: 4, a campaign's: 5) command yields only a version error in older versions
 			var rest []error
 			for _, e := range errs {
 				if !strings.Contains(e.Error(), "needs schema_version: 2") && !strings.Contains(e.Error(), "stand needs schema_version: 4") && !strings.Contains(e.Error(), "needs schema_version: 5") && !strings.Contains(e.Error(), "needs schema_version: 10") && !strings.Contains(e.Error(), "needs schema_version: 12") {

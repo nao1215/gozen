@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	lang "github.com/nao1215/gozen/internal/base/text"
+	"github.com/nao1215/gozen/internal/model/rpg"
 	"github.com/nao1215/gozen/internal/rules/dungeon"
 )
 
@@ -94,6 +95,42 @@ func (g *Game) autoSave() {
 	}
 	g.autoKey = key
 	g.emit("autosave", traceLine{"at": key})
+}
+
+// autosaveAt writes the autosave from an event (the autosave command): the state as
+// it is now, with a cursor that starts event on loading. The event that asked runs on,
+// so nothing of it is kept; a replay and the title write nothing, and a failed write is
+// tried again by the next command as by the idle autosave.
+func (g *Game) autosaveAt(event string) {
+	if g.replaying || g.rep != nil || g.st == nil || g.testRun() && !g.storeGiven || g.tick < g.autoSaveRetry.next {
+		return
+	}
+	err := g.writeResumeAt(g.autoPath(), event)
+	g.autoSaveRetry.record(g.tick, "autosave", err)
+	if err == nil {
+		g.emit("autosave", traceLine{"at": g.st.Location, "event": event})
+	}
+}
+
+func (g *Game) writeResumeAt(path, event string) error {
+	b, err := g.st.Save()
+	if err != nil {
+		return err
+	}
+	var rnd []byte
+	if g.pcg != nil {
+		if rnd, err = g.pcg.MarshalBinary(); err != nil {
+			return err
+		}
+	}
+	c := rpg.Cursor{Event: event}
+	if err := c.Seal(g.db); err != nil {
+		return err
+	}
+	if b, err = rpg.WithCursor(b, c, rnd); err != nil {
+		return err
+	}
+	return g.store.Write(path, b)
 }
 
 // suspendSave writes the autosave when the page is hidden in the middle of play (another

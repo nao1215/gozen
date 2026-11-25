@@ -55,6 +55,8 @@ Command:
   retry: "With `battle`, set to false to skip the offer to retry after losing."
   recover: "With `battle`, defaults to true. False preserves final HP after defeat, independently of retry. Outcome branches can read last_battle for participant IDs and HP before recovery."
   checkpoint: "Replaces the retry point with current state and random stream. Names the event to run when restored; schema version 9. Included in ordinary saves."
+  autosave: "Writes the autosave now, while the event runs on (a phone up, a loop that never returns to the field). Names the event that loading it starts at the place; the running event is not kept. For a game whose play is one endless event; schema version 10."
+  language: "Shows the game in another of game.yaml's languages and keeps it in the settings, as the settings' language row does; for a button that switches it in a game without a title or menus. next goes to the language after the one shown, so one button switches between them."
   restore_checkpoint: "If true, discards the current execution and restores the latest checkpoint, then runs its entry event; schema version 9."
   save: "If true, opens the save screen."
   say: "Shows a line of dialog. It can be plain text or a map with speaker, face, side and text."

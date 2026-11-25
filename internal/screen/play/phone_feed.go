@@ -207,7 +207,7 @@ func (g *Game) swipePhone(p *phoneView, stops []float64, w, end float64, tap fun
 		p.aim = p.scrollNext(stops, -1)
 	case in.ok():
 		if p.scroll >= end-1 {
-			p.closing = phoneRise
+			p.putAway(false)
 			return
 		}
 		p.aim = p.scrollNext(stops, 1)
@@ -229,7 +229,7 @@ func (g *Game) scrollPhone(p *phoneView, stops []float64, end float64, tap func(
 		p.aim = p.scrollNext(stops, -1)
 	case in.ok():
 		if p.scroll >= end-1 {
-			p.closing = phoneRise
+			p.putAway(false)
 			return
 		}
 		p.aim = p.scrollNext(stops, 1)

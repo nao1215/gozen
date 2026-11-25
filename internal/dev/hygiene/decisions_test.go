@@ -450,15 +450,15 @@ add_state addresses admission advice affect affection affiliation after_win
 again all anim answer answer_chance answers any appear args armies army asides
 ask assignee at_point attack_skill attribute attributes auto auto_start
 auto_tactics auto_tempo auto_wait avoid away back back_weight backdrop
-backgrounds backlog bad badge balloon band bar bare bars battle_ai_history
+backgrounds backlog bad badge balloon band bar bars battle_ai_history
 battle_background battle_foe_names battle_fx battle_message battle_music
 beats_per_bar before behind below bestiary blink block_lines blocked blocks blur
-body bold bonus bonus_item bonus_skill border boss boss_win_music bottom bounce
+body bold bonus bonus_item bonus_skill border boss boss_win_music bounce
 bounds bpm breed breeding bridges brightness browse burnup bust buttons buy c
-call_view camera camera_off camera_on can_escape cap_hours caption capture card
+call_view camera camera_off camera_on can_escape cap_hours caption capture
 card_bubbles carousel carry ceiling ceiling_texture cg_review cgs chance
 channels char charge checkpoint child children choice_position chrome clash
-clear col colors columns command comment compact complete condition consume
+clear col colors command comment compact complete condition consume
 control controls cost counter cover crit critical critical_rate critical_ratio
 crowd currency cursor cut cutin cutin_box cutin_lines cx damage damage_rate
 darkness data data_version date date_format date_link deadline deal defeat
@@ -480,12 +480,12 @@ hits hitstop host hp hp_triggers hurt image_height images in indexed_names
 initial instant instead into intro items join join_exp joined keeper kinds
 label_size labels landmark landmark_ground landmark_scale learn leave ledger
 ledgers left legacy_keys legend_rank level_scale light likes lines live lobby
-locked logo look looks loop_start loops lore lose lost manual mark mark_labels
+locked logo look looks loop_start loops lore lose lost manual mark_labels
 marker markers marks mask match material materials max max_level max_party
-max_runes max_soldiers max_value max_zoom maximum maximum_key meet memo menus
+max_runes max_soldiers max_value max_zoom maximum maximum_key meet memo
 merge met meter meters might milestone min min_block_nodes min_level min_plus
 min_share minutes missed missing_voice monster_class monster_families mood
-mood_names moods morning motion mp music_pictures muted name_tag nav near new
+mood_names moods morning motion mp music_pictures name_tag nav near new
 no_map no_menu no_standing node north note notice novel_window now npc
 observation observations observed ok on on_appear on_draw on_enter on_escape
 on_leave on_turn on_turn_end on_turn_end_allies on_user on_win one_shot one_way
@@ -509,8 +509,8 @@ simple_tactics size skill skill_slots skip sky slide soldiers solid song songs
 sortie south sp sp_apply sp_decline sp_pitch sp_suggest speaking speech spent
 spin stage_drop stage_framing stage_puppets stage_scale stages staging stairs
 stand_ins star_bonus start_sp stat state_resist states stats_by stay stayed step
-step_ticks still stone_apply stone_choose stone_decline stone_sets stone_suggest
-stone_wearer stones stop streak stream streams strict style subject subtitle
+step_ticks stone_apply stone_choose stone_decline stone_sets stone_suggest
+stone_wearer stones stop streak stream streams strict subject subtitle
 summon summon_max surfaces symbol tabs tactic tactic_actions tactic_conditions
 tactic_presets tactic_targets tactics tag tagline take talk_on_enter
 talk_portrait tempo terms terrain text_key theme thickness things ticket tile

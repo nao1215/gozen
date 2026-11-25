@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/goccy/go-yaml"
 
@@ -391,6 +392,9 @@ func (db *DB) SourceTexts() []SourceText {
 			}
 			add(cw+".prompt", c.Prompt)
 			add(cw+".notice", c.Notice)
+			if c.Phone != nil {
+				phoneTexts(cw+".phone", c.Phone, add)
+			}
 			for j, o := range c.Choice {
 				add(fmt.Sprintf("%s.choice[%d].label", cw, j), o.Label)
 			}
@@ -495,6 +499,9 @@ func (c *checker) languages() {
 			}
 		}
 		for _, t := range texts {
+			if !hasWords(t.Text) {
+				continue // a number or an expression alone ("7", "{gold}") reads the same in every language
+			}
 			if w, ok := words[t.Text]; !ok || w == "" {
 				c.warnf(diag.Untranslated, t.Path, "not translated to %s: %q", code, t.Text)
 			}
@@ -504,4 +511,63 @@ func (c *checker) languages() {
 
 func sortedInterpolations(s string) []string {
 	return slices.Sorted(slices.Values(Interpolations(s)))
+}
+
+// phoneTexts adds the texts of a phone cue the event runner translates when the phone
+// comes up (event.(*Runner).phoneCue): its title, messages, posts, rows, notices and replies.
+func phoneTexts(w string, p *PhoneCue, add func(where, text string)) {
+	add(w+".title", p.Title)
+	add(w+".time", p.Time)
+	add(w+".date", p.Date)
+	for i, m := range p.Messages {
+		mw := fmt.Sprintf("%s.messages[%d]", w, i)
+		add(mw+".from", m.From)
+		add(mw+".text", m.Text)
+		add(mw+".time", m.Time)
+		add(mw+".day", m.Day)
+	}
+	for i, post := range p.Posts {
+		pw := fmt.Sprintf("%s.posts[%d]", w, i)
+		add(pw+".who", post.Who)
+		add(pw+".text", post.Text)
+	}
+	rows := func(field string, rs []PhoneRow) {
+		for i, r := range rs {
+			rw := fmt.Sprintf("%s.%s[%d]", w, field, i)
+			add(rw+".text", r.Text)
+			add(rw+".caption", r.Caption)
+			add(rw+".button", r.Button)
+			add(rw+".label", r.Label)
+			if it := r.Item; it != nil {
+				add(rw+".item.title", it.Title)
+				add(rw+".item.text", it.Text)
+				add(rw+".item.value", it.Value)
+			}
+		}
+	}
+	rows("rows", p.Rows)
+	rows("replies", p.Replies)
+	for i, n := range p.Notices {
+		nw := fmt.Sprintf("%s.notices[%d]", w, i)
+		add(nw+".app", n.App)
+		add(nw+".title", n.Title)
+		add(nw+".text", n.Text)
+	}
+}
+
+// hasWords tells that a text has letters to translate outside its {expressions}: a
+// number key or a value shown alone has none.
+func hasWords(text string) bool {
+	depth := 0
+	for _, r := range text {
+		switch {
+		case r == '{':
+			depth++
+		case r == '}' && depth > 0:
+			depth--
+		case depth == 0 && unicode.IsLetter(r):
+			return true
+		}
+	}
+	return false
 }

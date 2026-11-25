@@ -62,7 +62,12 @@ type ImageEffect struct{ Picture data.CG }
 
 // PhoneEffect shows a phone over the scene (the phone command, ADR 0057) with
 // its texts already filled; the event waits on a Tap while it is up.
-type PhoneEffect struct{ Phone data.PhoneCue }
+type PhoneEffect struct {
+	Phone data.PhoneCue
+	// Again is the same phone shown anew after a button that stays: the
+	// screen keeps it up where it was, without the lift.
+	Again bool
+}
 
 // CallCameraEffect turns a call participant's camera view on or off; it is
 // presentation only.
@@ -80,6 +85,9 @@ type CallShareEffect struct {
 
 // SoundEffect requests a named sound.
 type SoundEffect struct{ Name string }
+
+// LanguageEffect shows the game in Code and keeps it in the settings (the language command).
+type LanguageEffect struct{ Code string }
 
 // BreedEffect presents the two consumed parents and their child during a birth scene.
 type BreedEffect struct {
@@ -122,6 +130,7 @@ func (MusicEffect) isEffect()      {}
 func (MoodEffect) isEffect()       {}
 func (ImageEffect) isEffect()      {}
 func (SoundEffect) isEffect()      {}
+func (LanguageEffect) isEffect()   {}
 func (CallCameraEffect) isEffect() {}
 func (CallShareEffect) isEffect()  {}
 func (PhoneEffect) isEffect()      {}
@@ -314,6 +323,9 @@ type Checkpoint struct {
 	Restore bool
 }
 
+// Autosave asks the frontend to write the autosave now; loading it starts Event.
+type Autosave struct{ Event string }
+
 // Save opens the save screen.
 type Save struct{}
 
@@ -496,6 +508,7 @@ func (Battle) isRequest()     {}
 func (Shop) isRequest()       {}
 func (Wait) isRequest()       {}
 func (Checkpoint) isRequest() {}
+func (Autosave) isRequest()   {}
 func (Save) isRequest()       {}
 func (Open) isRequest()       {}
 func (Clear) isRequest()      {}
@@ -542,6 +555,23 @@ type frame struct {
 	checkedAfter bool
 }
 
+// phoneAsk is what a Runner knows of the phone whose answer it waits for.
+type phoneAsk struct {
+	// wait tells that the options or likes waiting are a phone's: a
+	// driver that runs on without answering its Tap (headless, a session) puts
+	// the phone down unread, so the next choice's answer is not taken for it.
+	wait bool
+	// back marks app navigation options that redisplay their owning phone.
+	back []bool
+	// stay marks the options of buttons that stay (data.PhoneRow.Stay), and
+	// again tells the phone command shown next it is that phone shown anew.
+	stay  []bool
+	again bool
+	// unshown marks the results whose row a when hides: the screen does
+	// not offer them, so an unattended run does not take them either.
+	unshown []bool
+}
+
 // Runner runs events.
 type Runner struct {
 	db    *data.DB
@@ -562,16 +592,9 @@ type Runner struct {
 	// likes is the feed whose answer is waited for: a number with a bit for
 	// each post it keeps liked (data.PhoneCue.Liking), not an option's index.
 	likes *data.PhoneCue
-	// phoneWait tells that the options or likes waiting are a phone's: a
-	// driver that runs on without answering its Tap (headless, a session) puts
-	// the phone down unread, so the next choice's answer is not taken for it.
-	phoneWait bool
-	// phoneReturn marks app navigation options that redisplay their owning phone.
-	phoneReturn []bool
-	// phoneUnshown marks the results whose row a when hides: the screen does
-	// not offer them, so an unattended run does not take them either.
-	phoneUnshown []bool
-	battle       *data.Command
+	// phone is the phone whose answer is waited for, kept in one place.
+	phone  phoneAsk
+	battle *data.Command
 	// battleBefore is the record of the battle before the one asked for: a new record
 	// when the answer comes means a battle was fought and left its last_kill counts
 	battleBefore *rpg.BattleOutcome
@@ -676,7 +699,7 @@ func (r *Runner) Stop() {
 	r.afterPending = false
 	r.offers = nil
 	r.stack, r.notes, r.options, r.battle, r.later, r.pick, r.ups, r.walks = nil, nil, nil, nil, nil, nil, nil, nil
-	r.likes, r.phoneWait, r.phoneReturn, r.phoneUnshown = nil, false, nil, nil
+	r.likes, r.phone = nil, phoneAsk{}
 }
 
 // runLater runs cmds separately from the current event (and its end), after the current event finishes.
@@ -718,8 +741,8 @@ func (r *Runner) unattendedResult() int {
 		return 0
 	}
 	for i := range r.options {
-		hidden := i < len(r.phoneUnshown) && r.phoneUnshown[i]
-		returns := i < len(r.phoneReturn) && r.phoneReturn[i]
+		hidden := i < len(r.phone.unshown) && r.phone.unshown[i]
+		returns := i < len(r.phone.back) && r.phone.back[i]
 		if !hidden && !returns {
 			return i
 		}
@@ -774,13 +797,14 @@ func (r *Runner) logf(err error) {
 
 // Answer answers the last Choice (the option's index) or Battle (BattleWon ...).
 func (r *Runner) Answer(n int) {
-	if r.phoneWait && n >= 0 && n < len(r.phoneReturn) && r.phoneReturn[n] && len(r.stack) > 0 {
+	if r.phone.wait && n >= 0 && n < len(r.phone.back) && r.phone.back[n] && len(r.stack) > 0 {
 		// Resume the current phone after its child event, without recursively
 		// entering the parent event or growing the stack on each app visit.
 		r.stack[len(r.stack)-1].pc--
+		r.phone.again = n < len(r.phone.stay) && r.phone.stay[n]
 	}
-	r.phoneReturn, r.phoneUnshown = nil, nil
-	r.phoneWait = false
+	r.phone.back, r.phone.unshown, r.phone.stay = nil, nil, nil
+	r.phone.wait = false
 	switch {
 	case r.likes != nil:
 		feed := r.likes
@@ -982,8 +1006,9 @@ func (r *Runner) Frames() (cmds [][]data.Command, pc []int) {
 // Next runs commands until one needs the screen, and returns it (nil when the events are
 // over).
 func (r *Runner) Next() Request {
-	if r.phoneWait {
-		r.phoneWait, r.likes, r.options, r.pick, r.phoneReturn, r.phoneUnshown = false, nil, nil, nil, nil, nil
+	if r.phone.wait {
+		r.likes, r.options, r.pick = nil, nil, nil
+		r.phone = phoneAsk{again: r.phone.again}
 	}
 	if r.gameOver {
 		r.gameOver = false
@@ -1441,34 +1466,41 @@ func (r *Runner) run(c *data.Command) Request {
 		return Notice{Text: data.Render(r.db.Tr(c.Notice), env)}
 	case "phone":
 		shown := r.fillPhone(*c.Phone, env)
-		r.emit(PhoneEffect{shown})
+		r.emit(PhoneEffect{Phone: shown, Again: r.phone.again})
+		r.phone.again = false
 		if c.Phone.App == "banner" && c.Phone.Var == "" {
 			break
 		}
 		if likes := c.Phone.Liking(); len(likes) > 0 {
 			r.asked, r.optionAt, r.pick, r.options = nil, nil, nil, nil
-			r.likes, r.phoneWait = &shown, true
+			r.likes, r.phone.wait = &shown, true
 			return Tap{Results: len(likes)}
 		}
 		results := c.Phone.Results()
 		if len(results) > 0 {
 			r.asked, r.optionAt, r.pick = nil, nil, nil
 			r.options = make([]data.ChoiceOption, len(results))
-			r.phoneUnshown = make([]bool, len(results))
+			r.phone.unshown = make([]bool, len(results))
 			for i, res := range results {
 				if phoneResultHidden(shown, res) {
-					r.phoneUnshown[i] = true
+					r.phone.unshown[i] = true
 					continue
 				}
 				r.options[i] = data.ChoiceOption{ID: res.ID, Do: c.Phone.Do(res)}
-				if res.Event != "" {
-					if r.phoneReturn == nil {
-						r.phoneReturn = make([]bool, len(results))
+				if res.Event != "" || res.Stay {
+					if r.phone.back == nil {
+						r.phone.back = make([]bool, len(results))
 					}
-					r.phoneReturn[i] = true
+					r.phone.back[i] = true
+				}
+				if res.Stay {
+					if r.phone.stay == nil {
+						r.phone.stay = make([]bool, len(results))
+					}
+					r.phone.stay[i] = true
 				}
 			}
-			r.phoneWait = true
+			r.phone.wait = true
 		}
 		return Tap{Results: len(results)}
 	case "call_view":
@@ -1489,6 +1521,8 @@ func (r *Runner) run(c *data.Command) Request {
 		if len(r.st.Inbox) > rpg.InboxLimit {
 			r.st.Inbox = r.st.Inbox[len(r.st.Inbox)-rpg.InboxLimit:]
 		}
+	case "language":
+		r.emit(LanguageEffect{c.Language})
 	case "sfx":
 		r.emit(SoundEffect{c.SFX.Name})
 		if c.SFX.Wait {
@@ -1562,6 +1596,8 @@ func (r *Runner) run(c *data.Command) Request {
 		return Checkpoint{Event: c.Checkpoint}
 	case "restore_checkpoint":
 		return Checkpoint{Restore: true}
+	case "autosave":
+		return Autosave{Event: c.Autosave}
 	case "save":
 		return Save{}
 	case "open":
@@ -1914,6 +1950,16 @@ func (r *Runner) fillPhoneRows(rows []data.PhoneRow, env expr.Env, fill func(str
 			r.logf(err)
 			row.Shut = shut
 		}
+		if row.Selected.Set() {
+			lit, err := row.Selected.Bool(env)
+			r.logf(err)
+			row.Lit = lit
+		}
+		if row.Marked.Set() {
+			mark, err := row.Marked.Bool(env)
+			r.logf(err)
+			row.Mark = mark
+		}
 		if row.Item != nil {
 			it := *row.Item
 			it.Title, it.Text, it.Value = fill(it.Title), fill(it.Text), fill(it.Value)
@@ -1968,7 +2014,7 @@ func (r *Runner) ReplayTo(line int, answers []int) (Request, error) {
 		switch q := request.(type) {
 		case nil:
 			return nil, fmt.Errorf("load: event ended before saved line %d", line)
-		case Checkpoint, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
+		case Checkpoint, Autosave, Battle, Shop, Save, Open, Clear, GameOver, SortieScene:
 			return nil, fmt.Errorf("load: saved cursor crosses a replay boundary (%T)", q)
 		case Tap:
 			var err error

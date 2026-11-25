@@ -10,6 +10,7 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | --- | --- |
 | `act` | Queues one move for the next auto battle: who acts, the skill or item, and the target. |
 | `affect` | Puts a state on party members or removes one outside battle. |
+| `autosave` | Writes the autosave from inside an event; loading it starts the named event at the place. For a game whose play is one event that never returns to the field. |
 | `battle` | Starts a battle against a troop, an ID of troops. |
 | `breed` | Breeds two owned monster instances and chooses inherited skills. Needs schema version 6. |
 | `buy` | Buys items from a shop, the same as the Buy screen: the shop, the item and the count. |
@@ -35,6 +36,7 @@ are local to that game. Prefer typed `call.args` for reusable behavior.
 | `if` | An expression. The `then` commands run when it holds, otherwise the `else` commands. |
 | `image` | Shows a full-screen picture. It can be a file path or a map with options. |
 | `join` | Adds an actor to the party, an ID of actors. |
+| `language` | Shows the game in another of game.yaml's languages and keeps it in the settings; `next` goes to the next one, for a switch button. |
 | `learn` | Teaches a party member a skill: the actor and the skill. |
 | `leave` | Removes an actor from the party, an ID of actors. |
 | `message` | Queues a chat message ({who, text, event}) as a top-right notification on full-screen surfaces; opening shows a bubble and runs the event, which asks for the decision. Queuing does not stop the event. |
