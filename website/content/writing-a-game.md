@@ -549,7 +549,7 @@ In a chat, `time` shows beside a bubble, `read: true` marks the owner's message 
 
 A page can hold a whole small app, such as a lottery's number pad. A page button with `stay: true` keeps the phone up: its `set` and `event` run, the phone's `var` gets its id, and the same page comes back at once with every `when`, text and `selected` worked out again. A row with `columns` (2 to 8) is a cell that shares its line with the next cells; six or more columns make a dense grid of square cells. `selected` fills a cell with `ui.phone.accent`, `marked` fills it with `ui.phone.mark` for a second highlight such as the drawn numbers that match, and `round: true` draws a cell as a ball.
 
-![an office raffle page: the number keys stay up as 2 and 5 are picked, each lighting at once and the count above them following](/images/phone-pad.mp4)
+![a raffle played on the phone alone: the number keys stay up as 1 and 2 are picked, each lighting at once and the count following; Draw brings up a chat placed left that shows its whole exchange at once, and the raffle comes back with the drawn 2 marked and the prize won](/images/phone-pad.mp4)
 
 `card` puts the page's consecutive rows of the same name on one card of `ui.phone.card`, `bottom: true` pins a row to the bottom of the screen where the thumb rests, `style: secondary` draws a softer button in `ui.phone.soft`, and `size: display` is a large figure. `bar: large` writes the page's title large on the page's own ground instead of on a bar of `color`. `still: true` shows the phone and puts it down without the lift, so pages that follow each other read as one screen.
 

@@ -102,8 +102,6 @@ A phone home screen opens contacts, chats, feeds and games, and messages and fix
 | ![a sign-in check asks to approve a sign-in to the production console; the keys ring Approve and Deny and press Approve](docs/images/phone-sso.gif) | ![a timeline of text posts with avatars and times about the booking app being down, with likes, replies and reposts, scrolled](docs/images/phone-timeline.gif) |
 | Banner: a push notification over a scene | Page: a supporter site with locked posts |
 | ![a push banner slides down over the novel window while the scene goes on, and a tap on it opens its event](docs/images/phone-banner.gif) | ![an illustrator's supporter page: a tap on a tier row supports her, and the locked posts open when the page is shown again](docs/images/phone-support.gif) |
-| Page: number keys that stay up | |
-| ![an office raffle page: the number keys stay up as 2 and 5 are picked, each lighting at once and the count above them following](docs/images/phone-pad.gif) | |
 | Page: a contact to add with a QR code |  |
 | ![an Add contact page with a QR code of the gozen repository; the keys ring and press Add, and Mia's first private message arrives](docs/images/phone-contact.gif) |  |
 
