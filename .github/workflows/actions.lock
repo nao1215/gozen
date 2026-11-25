@@ -66,7 +66,7 @@ workflows:
     '.github/workflows/reviewdog.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
-        - 'reviewdog/action-actionlint@78b296370c5c75abca79860e9baa9846e3286a29'
+        - 'reviewdog/action-actionlint@ae857e78c1b42b3d0a49637181b09d3d56d402b4'
         - 'reviewdog/action-golangci-lint@284129a3ac23bc5d8ac1522e0b6511df74a8836d'
         - 'reviewdog/action-misspell@c846b6b0996029d2d39540c8ffebebbd957072db'
     '.github/workflows/scorecard.yml':
@@ -233,9 +233,9 @@ dependencies:
         commit: 'sha1-23f22cd43608bae7a1f1fa2603d7314dee9538a5'
         owner_id: 67707773
         repo_id: 421101922
-    'reviewdog/action-actionlint@78b296370c5c75abca79860e9baa9846e3286a29':
-        ref: 'v1.84.0'
-        commit: 'sha1-78b296370c5c75abca79860e9baa9846e3286a29'
+    'reviewdog/action-actionlint@ae857e78c1b42b3d0a49637181b09d3d56d402b4':
+        ref: 'v1.84.1'
+        commit: 'sha1-ae857e78c1b42b3d0a49637181b09d3d56d402b4'
         owner_id: 48765237
         repo_id: 385059686
     'reviewdog/action-golangci-lint@284129a3ac23bc5d8ac1522e0b6511df74a8836d':
