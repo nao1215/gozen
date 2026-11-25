@@ -4,6 +4,10 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Fixed
+
+- Under `screen.adapt`, the message window breaks a line for the window it is shown in. A line broken for `game.yaml`'s wide screen ran past the window on a phone held upright, and a choice was as wide as on the wide screen.
+
 ## v0.27.0 - 2026-11-25
 
 ### Added

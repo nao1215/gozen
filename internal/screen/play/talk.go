@@ -156,7 +156,8 @@ func (t *talk) setPage(i int) {
 // layout breaks the line into the window's pages and shows the first.
 func (t *talk) layout(g *Game) {
 	t.plain, t.ruby = parseRuby(t.say.Text)
-	t.pages, t.size = messagePagesAt(&g.db.Game, t.plain, g.cfg.textScale())
+	sw, _ := g.screen()
+	t.pages, t.size = messagePagesAt(&g.db.Game, sw, t.plain, g.cfg.textScale())
 	if def := g.db.Game.Screens[t.say.Ensemble]; g.novel() && def != nil && captionsOnStage(def.View) {
 		sw, sh := g.screen()
 		width := sw - 48 - min(340.0, (sw-48)*.30) - 68
@@ -242,7 +243,8 @@ func (t *talk) question(g *Game, c event.Choice, again bool) {
 		items = append(items, it)
 	}
 	bx, by, bw, bh := g.talkBox()
-	w := choiceWidth(&g.db.Game, c.Options)
+	sw, _ := g.screen()
+	w := choiceWidth(&g.db.Game, sw, c.Options)
 	l := newList(items, bx+bw-w, 0, w, 6)
 	l.y = by - l.height() - 16
 

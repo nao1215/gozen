@@ -2712,3 +2712,28 @@ func TestPhoneAppPlays(t *testing.T) {
 		t.Fatalf("after the chat held: phone %+v, gold %d", g.phone, g.st.Gold)
 	}
 }
+
+// TestScreenAdaptMessageFits: under screen.adapt, a line is broken for the window it is shown in.
+// Broken for game.yaml's wide screen, a line that fits there ran past an upright window.
+func TestScreenAdaptMessageFits(t *testing.T) {
+	g := phoneGame(t, data.PhoneCue{App: "page", Rows: []data.PhoneRow{{Text: "Hi"}}})
+	g.closePhone()
+	g.db.Game.Screen.Adapt = true
+	line := "I'm winning a hundred million, and then a hundred million more after that!"
+	g.fitView(1920, 1080, 1)
+	wide := &talk{say: event.Say{Text: line}}
+	wide.layout(g)
+	g.fitView(390, 844, 1)
+	tall := &talk{say: event.Say{Text: line}}
+	tall.layout(g)
+	if len(tall.pages[0]) <= len(wide.pages[0]) && len(tall.pages) <= len(wide.pages) {
+		t.Fatalf("an upright window broke the line as the wide one: %q vs %q", tall.pages, wide.pages)
+	}
+	sw, _ := g.screen()
+	_, width := messageMetrics(&g.db.Game, sw)
+	for _, l := range tall.pages[0] {
+		if w := gfx.TextWidth(l, tall.size); w > width+1 {
+			t.Fatalf("line %q is %v wide in a window %v wide", l, w, width)
+		}
+	}
+}
