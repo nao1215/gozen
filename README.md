@@ -207,8 +207,8 @@ See [installation](https://nao1215.github.io/gozen/install/) for platform requir
 ## Made with Gozen
 
 | [Succubus Live](https://github.com/nao1215/succubus-live): a streaming-site game with succubus VTubers ([watch in your browser](https://nao1215.github.io/succubus-live/)) | [lottery6](https://github.com/nao1215/lottery6): a 6-of-43 number lottery played on a phone ([play in your browser](https://nao1215.github.io/lottery6/)) |
-|:--|:--|
-| ![Succubus Live: channel listing and fullscreen streams featuring all seven characters](https://raw.githubusercontent.com/nao1215/succubus-live/main/doc/img/showcase.gif) | ![lottery6: auto buy running, the draws come one after another on the phone](https://raw.githubusercontent.com/nao1215/lottery6/main/doc/img/demo.gif) |
+| :-: | :-: |
+| <img src="https://raw.githubusercontent.com/nao1215/succubus-live/main/doc/img/showcase.gif" width="420" alt="Succubus Live: channel listing and fullscreen streams featuring all seven characters"> | <img src="https://raw.githubusercontent.com/nao1215/lottery6/main/doc/img/demo.gif" width="420" alt="lottery6: auto buy running, the draws come one after another on the phone"> |
 
 ## Limitations
 
