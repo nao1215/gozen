@@ -98,3 +98,27 @@ func TestSpaceSpriteBoundsIncludeOversizedArt(t *testing.T) {
 		t.Fatal("behind-camera billboard projected")
 	}
 }
+
+// A person standing at dusk takes the scene's light: full daylight leaves the
+// picture as painted, night sinks it into blue, and a lantern warms it.
+func TestSpriteLightFollowsTheScene(t *testing.T) {
+	day, dusk, night := 1.0, .45, 0.0
+	at := [3]float64{2.5, 0, 2.5}
+	if got := spriteLight(&data.Space{Daylight: &day}, at); got != [3]float64{1, 1, 1} {
+		t.Fatalf("daylight changed a picture: %v", got)
+	}
+	dark := spriteLight(&data.Space{Daylight: &night}, at)
+	if dark[0] > .15 || dark[2] <= dark[0] {
+		t.Fatalf("night should be dark and blue: %v", dark)
+	}
+	lantern := data.SpaceLight{Level: 1, X: 2, Y: 2, Radius: 4}
+	lit := spriteLight(&data.Space{Daylight: &dusk, Lights: []data.SpaceLight{lantern}}, at)
+	unlit := spriteLight(&data.Space{Daylight: &dusk}, at)
+	if lit[0] <= unlit[0] || lit[0]-unlit[0] <= lit[2]-unlit[2] {
+		t.Fatalf("a warm lantern should brighten red more than blue: lit %v unlit %v", lit, unlit)
+	}
+	far := data.SpaceLight{Level: 1, X: 20, Y: 20, Radius: 4}
+	if got := spriteLight(&data.Space{Daylight: &dusk, Lights: []data.SpaceLight{far}}, at); got != unlit {
+		t.Fatalf("a light out of reach changed the picture: %v", got)
+	}
+}

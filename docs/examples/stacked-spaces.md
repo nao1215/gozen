@@ -82,6 +82,8 @@ Use `tiles.<character>.picture` on a floor tile for an upright, camera-facing im
 
 `solid: true` blocks walking through the anchor cell without turning its image into a full-height wall. `when`, `else`, `once`, `after` and commands retain their tile semantics. Pictures are anchored to the actual level and its floor/stair height, and use the interpolated camera. Walls, slab sides/undersides and closed stair volumes occlude images using the same ray intersections as the terrain. Transparent pixels reveal more distant sprites and scenery.
 
+Each upright picture casts a soft round contact shadow on the floor under its anchor, about as wide as the picture, so a standing figure meets the ground. It is also lit by the scene: unchanged in full daylight, sinking toward the night's blue as `daylight` falls, and warmed by the color of the `lights` within reach. Up to 32 pictures nearest the camera cast shadows.
+
 Flat/floor decals, wall/door-mounted tile pictures and `away` pictures are not supported in stacked spaces and receive validation errors. Ordinary dungeon pictures retain their behavior. See the [original asset provenance](space-town-assets.md) and [performance measurements](../development/space-performance.md).
 
 ## Continuous walking

@@ -523,6 +523,36 @@ func TestGraphicsSpaceSprites(t *testing.T) {
 	if colored("bed", true) < 100 {
 		t.Error("upstairs bed is not visible")
 	}
+	// The innkeeper stands on the floor: beside the bottom of the legs (dark
+	// blue trousers) the floor is in shadow, darker than the floor farther out.
+	img := shotImage(t, out, "ground-npc")
+	bounds := img.Bounds()
+	minX, maxX, maxY := bounds.Dx(), 0, 0
+	for y := bounds.Dy() / 2; y < bounds.Dy(); y++ {
+		for x := bounds.Dx() / 5; x < bounds.Dx()*4/5; x++ {
+			r, g, blue, _ := img.At(x, y).RGBA()
+			if blue > r*3/2 && blue > g*5/4 && blue>>8 < 120 {
+				minX, maxX, maxY = min(minX, x), max(maxX, x), max(maxY, y)
+			}
+		}
+	}
+	luma := func(x0, x1, y0, y1 int) float64 {
+		sum, n := 0.0, 0
+		for y := y0; y < y1; y++ {
+			for x := x0; x < x1; x++ {
+				r, g, blue, _ := img.At(x, y).RGBA()
+				sum += .3*float64(r>>8) + .59*float64(g>>8) + .11*float64(blue>>8)
+				n++
+			}
+		}
+		return sum / float64(max(n, 1))
+	}
+	w := max(maxX-minX, 8)
+	near := luma(maxX+4, maxX+4+w/4, maxY-10, maxY)
+	far := luma(maxX+w+w/2, maxX+w+w/2+w/4, maxY-10, maxY)
+	if maxX == 0 || near > far*.8 {
+		t.Errorf("no contact shadow beside the innkeeper's feet: near %.1f, far %.1f (legs x %d-%d, bottom y %d)", near, far, minX, maxX, maxY)
+	}
 }
 
 func TestGraphicsSpaceSpriteOcclusion(t *testing.T) {
