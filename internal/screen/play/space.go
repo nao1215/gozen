@@ -2,6 +2,7 @@ package play
 
 import (
 	"bytes"
+	"cmp"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -34,6 +35,8 @@ type spaceView struct {
 	lights, lightColors                     []float32
 	openingPlane, openingRect, openingLook  []float32
 	buildingGlow                            []float32
+	shadows                                 []float32
+	shadowOrder                             []spaceSprite
 	materialFrames                          [][]string
 	materialFramesDungeon                   *data.Dungeon
 	clock                                   int
@@ -169,6 +172,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 	}
 	v.roofUniforms(d, op.Uniforms)
 	v.lightUniforms(d, op.Uniforms)
+	v.shadowUniforms(g, [3]float64{x, height, z}, op.Uniforms)
 	v.buildingMaterials(g, d, op)
 	v.frame.DrawTrianglesShader([]ebiten.Vertex{{DstX: 0, DstY: 0}, {DstX: float32(w), DstY: 0}, {DstX: 0, DstY: float32(h)}, {DstX: float32(w), DstY: float32(h)}}, []uint16{0, 1, 2, 1, 3, 2}, v.shader, op)
 	v.drawSprites(g, d, [3]float64{x, height, z}, yaw, w, h)
@@ -219,20 +223,68 @@ func (v *spaceView) lightUniforms(d *data.Dungeon, uniforms map[string]any) {
 	uniforms["Lights"], uniforms["LightColors"] = v.lights, v.lightColors
 }
 
-// spriteLight is how lit an upright picture at a point is: the daylight fill
-// and the reach of the point lights, without shadows (a picture stands in one
-// cell and is lit as a whole).
-func spriteLight(s *data.Space, at [3]float64) float64 {
+// shadowUniforms passes the feet of the upright pictures nearest the eye, each
+// with a shadow about as wide as its picture, for the floor's contact shadows.
+func (v *spaceView) shadowUniforms(g *Game, eye [3]float64, uniforms map[string]any) {
+	if len(v.shadows) != 32*4 {
+		v.shadows = make([]float32, 32*4)
+	}
+	near := v.sprites
+	if len(near) > 32 {
+		// Only a crowded space pays for ordering, in a buffer kept across frames.
+		v.shadowOrder = append(v.shadowOrder[:0], v.sprites...)
+		slices.SortFunc(v.shadowOrder, func(a, b spaceSprite) int {
+			da := (a.at[0]-eye[0])*(a.at[0]-eye[0]) + (a.at[2]-eye[2])*(a.at[2]-eye[2])
+			db := (b.at[0]-eye[0])*(b.at[0]-eye[0]) + (b.at[2]-eye[2])*(b.at[2]-eye[2])
+			return cmp.Compare(da, db)
+		})
+		near = v.shadowOrder
+	}
+	n := 0
+	for _, sp := range near {
+		if n == 32 {
+			break
+		}
+		img := g.pics.get(sp.tile.Picture.File)
+		if img == nil {
+			continue
+		}
+		width := sp.tile.Size * data.SpaceStoryHeight * float64(img.Bounds().Dx()) / float64(img.Bounds().Dy())
+		v.shadows[n*4], v.shadows[n*4+1], v.shadows[n*4+2], v.shadows[n*4+3] = float32(sp.at[0]), float32(sp.at[1]), float32(sp.at[2]), float32(max(.3, min(.7, width*.75)))
+		n++
+	}
+	uniforms["ShadowCount"] = float32(n)
+	uniforms["Shadows"] = v.shadows
+}
+
+// spriteLight is the color an upright picture at a point is lit with: white in
+// full daylight (pictures keep their own painted light), the night's blue as
+// daylight falls, and the colored reach of the point lights around it, so a
+// person at dusk sits in the scene's light instead of glowing like a cutout. It
+// has no shadows: a picture stands in one cell and is lit as a whole.
+func spriteLight(s *data.Space, at [3]float64) [3]float64 {
 	day := s.DaylightLevel()
-	light := day + (1-day)*.12
+	night := [3]float64{.09, .10, .14}
+	var light [3]float64
+	for i := range light {
+		light[i] = day + (1-day)*night[i]
+	}
 	for _, l := range s.Lights[:min(len(s.Lights), data.MaxSpaceLights)] {
 		x, y, z, r := l.Position()
 		d := math.Sqrt((x-at[0])*(x-at[0]) + (y-at[1]-.45)*(y-at[1]-.45) + (z-at[2])*(z-at[2]))
-		if d < r {
-			light += (1 - d/r) * (1 - d/r) * l.Strength()
+		if d >= r {
+			continue
 		}
+		c := l.Color.Or(color.NRGBA{R: 255, G: 214, B: 160, A: 255})
+		reach := (1 - d/r) * (1 - d/r) * l.Strength() * .8
+		light[0] += reach * float64(c.R) / 255
+		light[1] += reach * float64(c.G) / 255
+		light[2] += reach * float64(c.B) / 255
 	}
-	return min(light, 1.3)
+	for i := range light {
+		light[i] = min(light[i], 1)
+	}
+	return light
 }
 
 // Share one sampler between the ceiling tile and the sky panorama. Rebuild only

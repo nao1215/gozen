@@ -98,14 +98,15 @@ func (v *spaceView) drawSprites(g *Game, d *data.Dungeon, eye [3]float64, yaw fl
 		at := item.sprite.at
 		pic := item.sprite.tile.Picture
 		color := pic.Tint.Or(color.NRGBA{R: 255, G: 255, B: 255, A: 255})
-		brightness := float32(pic.Brightness() * spriteLight(d.Space, at))
+		brightness := float32(pic.Brightness())
+		lit := spriteLight(d.Space, at)
 		op := &ebiten.DrawTrianglesShaderOptions{Uniforms: map[string]any{
 			"Eye":    []float32{float32(eye[0]), float32(eye[1]), float32(eye[2])},
 			"Facing": float32(yaw), "ViewSize": []float32{float32(w), float32(h)},
 			"MapSize": []float32{float32(mw), float32(mh)}, "Levels": float32(len(d.Space.Levels)), "Far": float32(d.Depth),
 			"SpriteOrigin":   []float32{float32(at[0]), float32(at[1]), float32(at[2])},
 			"SpriteSize":     []float32{float32(item.width), float32(item.height)},
-			"SpriteTint":     []float32{float32(color.R) / 255 * brightness, float32(color.G) / 255 * brightness, float32(color.B) / 255 * brightness},
+			"SpriteTint":     []float32{float32(color.R) / 255 * brightness * float32(lit[0]), float32(color.G) / 255 * brightness * float32(lit[1]), float32(color.B) / 255 * brightness * float32(lit[2])},
 			"SpriteDarkness": float32(d.Dark),
 		}}
 		op.Images[0], op.Images[1] = v.atlas, item.image
