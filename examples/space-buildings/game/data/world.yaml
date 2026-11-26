@@ -26,7 +26,7 @@ locations:
           trigger: look
           do: [{set: {flag.bed_seen: true}}]
       space:
-        render_width: 1280
+        render_width: 960
         daylight: 0.45
         lights:
           - {level: 1, x: 12, y: 7, height: 1.3, radius: 5, power: 1.6, flicker: 0.25}
