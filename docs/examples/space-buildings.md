@@ -7,7 +7,7 @@ gozen check examples/space-buildings/game
 gozen run examples/space-buildings/game --start inn
 ```
 
-Up/Down walk, Left/Right turn, Shift+Left/Right strafe, and Z interacts. The sample enables continuous movement and draws the view up to 1280 pixels across with `render_width: 1280`; omitted, a space is drawn at most 640 pixels across and scaled to the window, which bounds browser and CI cost. `scripts/capture-space-buildings.txt` walks through the shop, climbs the stone building, visits the inn's upper floor, returns to the street and reloads at an arbitrary yaw.
+Up/Down walk, Left/Right turn, Shift+Left/Right strafe, and Z interacts. The sample enables continuous movement and draws the view at its full 960-pixel screen width with `render_width: 960`; omitted, a space is drawn at most 640 pixels across and scaled to the window, which bounds browser and CI cost. `scripts/capture-space-buildings.txt` walks through the shop, climbs the stone building, visits the inn's upper floor, returns to the street and reloads at an arbitrary yaw.
 
 ## Facades
 
@@ -72,7 +72,7 @@ Tops use world X/Z like roofs, so `width: 4, height: 4` lays one picture over fo
 <!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
 ```yaml
 space:
-  render_width: 1280
+  render_width: 960
   daylight: 0.45
   materials:
     stone: {picture: stone.jpg, normal: normal/stone.jpg, width: 2, height: 1.5}
@@ -84,7 +84,7 @@ space:
 
 `lights` are up to 16 point lights at a cell's center, `height` above that level's floor (default 1.2). `radius` is their reach in cells (default 4, at most 16), `color` defaults to warm white, `power` (default 1, at most 8) scales them and `flicker` from 0 to 1 makes them waver like a flame. Full-height walls between a light and a surface block it; upright pictures are lit by the lights around them as a whole. The sample is set at dusk with lanterns at the inn's door, the shop's sign, the street and inside both buildings.
 
-`render_width` is the most pixels across the view is drawn at before it is scaled to the window. Omitted, it is 640, which keeps browser and CI cost bounded; up to 3840 draws sharper facades on a desktop. The cost grows with the pixel count and with the lights that reach the view.
+`render_width` is the most pixels across the view is drawn at before it is scaled to the window. Omitted, it is 640, which keeps browser and CI cost bounded; up to 3840 draws sharper facades on a desktop, never wider than the screen itself. The cost grows with the pixel count: the sample at 960 draws about 2.25 times the pixels of 640. A smaller value, such as the Lantern Inn fixture's 480, makes a slow machine or browser cheaper.
 
 ## Roofs and canopies
 

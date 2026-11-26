@@ -13,7 +13,7 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - A building material's `normal` map (OpenGL convention, as Poly Haven's `nor_gl`) gives it relief under the sun and lights, and `glow` makes it shine by itself, for lit windows, signs and screens.
 - `space.lights` are up to 16 point lights (lanterns, lit rooms) with reach, color, power and flicker; full-height walls block them, and upright pictures are lit by the lights around them. `space.daylight` dims the sun and the sky from day (1) to night (0).
 - `space.openings` cut recesses with real depth into the faces of full-height walls: windows, niches and shop fronts whose back shows a material and whose sides fold the wall's own material around the rim.
-- Visual change: the Lantern Quarter is set at dusk at 1280 pixels across, with normal maps, lanterns, recessed glowing windows in the shop and the inn, and a cobbled street laid as floor regions.
+- Visual change: the Lantern Quarter is set at dusk at its full 960-pixel width, with normal maps, lanterns, recessed glowing windows in the shop and the inn, and a cobbled street laid as floor regions.
 
 ### Changed
 

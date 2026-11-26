@@ -784,7 +784,10 @@ func TestGraphicsSpaceBuildings(t *testing.T) {
 	t.Parallel() // Each scenario owns a separate native host process and output directory.
 	out := t.TempDir()
 	trace := filepath.Join(out, "trace.jsonl")
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	// The Lantern Quarter draws its view 960 pixels across with lights and
+	// recesses (render_width), about 2.25 times the pixels of the 640 default;
+	// on the Windows runner the route took just over 3 minutes, so it has 6.
+	ctx, cancel := context.WithTimeout(t.Context(), 6*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, hostBin, "--dir", "../../../examples/space-buildings/game", "--start", "inn", "--dev", "--mute", "--script", "../../../scripts/capture-space-buildings.txt", "--shots", out, "--trace", trace, "--save-dir", filepath.Join(out, "saves")) //nolint:gosec // Fixed public fixture and isolated output.
 	var stdout, stderr bytes.Buffer
