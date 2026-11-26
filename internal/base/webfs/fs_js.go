@@ -1,7 +1,5 @@
 //go:build js
 
-// Package webfs provides the browser examples with a filesystem backed by game files
-// served next to the page.
 package webfs
 
 import (

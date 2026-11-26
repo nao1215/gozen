@@ -1,5 +1,8 @@
 GO ?= go
-ARCH_LINT ?= go-arch-lint
+# Pinned like golangci-lint so a local run checks what CI checks: newer
+# releases reject a package whose files are all for another platform.
+ARCH_LINT_VERSION ?= v1.19.0
+ARCH_LINT ?= GOTOOLCHAIN=$(LINT_GO) $(GO) run github.com/fe3dback/go-arch-lint@$(ARCH_LINT_VERSION)
 # gofmt's output changes between Go releases (Go 1.27 aligns map literals with
 # wide characters differently from 1.26), and golangci-lint formats with the Go
 # it was built with. So the linter is built and run with one pinned Go here and
