@@ -32,6 +32,8 @@ type spaceView struct {
 	materialSourcesBuilding                 []*ebiten.Image
 	materialNormalSources                   []*ebiten.Image
 	lights, lightColors                     []float32
+	openingPlane, openingRect, openingLook  []float32
+	buildingGlow                            []float32
 	materialFrames                          [][]string
 	materialFramesDungeon                   *data.Dungeon
 	clock                                   int
@@ -188,6 +190,29 @@ func (v *spaceView) lightUniforms(d *data.Dungeon, uniforms map[string]any) {
 		v.lights[i*4], v.lights[i*4+1], v.lights[i*4+2], v.lights[i*4+3] = float32(x), float32(y), float32(z), float32(r)
 		v.lightColors[i*4], v.lightColors[i*4+1], v.lightColors[i*4+2], v.lightColors[i*4+3] = float32(float64(c.R)/255*p), float32(float64(c.G)/255*p), float32(float64(c.B)/255*p), float32(l.Flicker)
 	}
+	if len(v.openingPlane) != data.MaxSpaceOpenings*4 {
+		v.openingPlane, v.openingRect, v.openingLook = make([]float32, data.MaxSpaceOpenings*4), make([]float32, data.MaxSpaceOpenings*4), make([]float32, data.MaxSpaceOpenings)
+	}
+	openings := d.Space.Openings[:min(len(d.Space.Openings), data.MaxSpaceOpenings)]
+	for i, o := range openings {
+		axis, at, out := o.Plane()
+		base := float64(o.Level-1) * data.SpaceStoryHeight
+		v.openingPlane[i*4], v.openingPlane[i*4+1], v.openingPlane[i*4+2], v.openingPlane[i*4+3] = float32(axis), float32(at), float32(out), float32(o.Depth)
+		v.openingRect[i*4], v.openingRect[i*4+1], v.openingRect[i*4+2], v.openingRect[i*4+3] = float32(o.Along), float32(o.Along+o.Width), float32(base+o.Bottom), float32(base+o.Bottom+o.Height)
+		v.openingLook[i] = 0
+		if j, ok := slices.BinarySearch(v.materialNames, o.Material); ok {
+			v.openingLook[i] = float32(j + 1)
+		}
+	}
+	uniforms["OpeningCount"] = float32(len(openings))
+	uniforms["OpeningPlane"], uniforms["OpeningRect"], uniforms["OpeningLook"] = v.openingPlane, v.openingRect, v.openingLook
+	if len(v.buildingGlow) != 33 {
+		v.buildingGlow = make([]float32, 33)
+	}
+	for i, name := range v.materialNames[:min(len(v.materialNames), 32)] {
+		v.buildingGlow[i+1] = float32(d.Space.Materials[name].Glow)
+	}
+	uniforms["BuildingGlow"] = v.buildingGlow
 	uniforms["Daylight"] = float32(d.Space.DaylightLevel())
 	uniforms["Time"] = float32(float64(v.clock) / 60)
 	uniforms["LightCount"] = float32(n)

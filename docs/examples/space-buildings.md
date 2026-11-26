@@ -29,7 +29,22 @@ Names start with a lowercase letter and contain lowercase letters, digits and un
 
 A material can also animate. `frames` lists pictures under `assets/` (a pattern such as `shop/*.jpg` stands for the files it matches, sorted) that replace the picture's file in turn, `fps` times a second (default 12), keeping its tint and brightness. The sample's shop sign blinks with two frames at `fps: 2`; torches, water, signs and screens work the same way, on walls, floors, stairs and roofs. Only a frame change redraws that material's atlas tile. One space keeps at most 256 frames loaded, and every frame of a material shares its width, height and origins.
 
-The sample's windows are painted, opaque decoration. Doorways are genuinely walkable floor cells with no wall. Partial-height windows, railings and door-frame geometry are not supported: use grid openings and decorative art, or redesign the facade. The renderer does not claim painted windows are see-through.
+## Openings and glow
+
+<!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
+```yaml
+space:
+  materials:
+    glass: {picture: glass.jpg, normal: normal/glass.jpg, glow: 0.55, width: 0.7, height: 0.76, origin_v: 0.18}
+  openings:
+    - {level: 1, x: 12, y: 6, face: south, along: 12.32, bottom: 0.18, width: 1.41, height: 0.76, depth: 0.22, material: glass}
+```
+
+An opening cuts a recess with real depth into the face of full-height walls: a window, a niche, a shop front. `face` is the outward direction of the face of the wall cell at `x`/`y`, `along` is where it starts along the face in world units (world X on north and south faces, world Z on east and west faces), `bottom` is its sill above the floor, `width` and `height` its size (it may cross several wall cells) and `depth` how far it goes in, at most 0.75. Its back shows `material`; its sides show the wall's own material, so a recess seen at an angle shows bricks or plaster turning into the wall. Every wall cell it crosses must have open floor in front of it. Openings are closed at the back and change neither collision nor what lies behind the wall; at most 32 in one space.
+
+`glow` makes a material shine by itself from 0 to 1, whatever the sun and lights, so the sample's glass reads as lit rooms at dusk. Glow also suits signs and screens.
+
+The sample's remaining windows are painted, opaque decoration. Doorways are genuinely walkable floor cells with no wall. Partial-height windows, railings and door-frame geometry are not supported: use grid openings and decorative art, or redesign the facade. The renderer does not claim painted windows are see-through.
 
 ## Floors and stairs
 

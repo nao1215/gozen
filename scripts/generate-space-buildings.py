@@ -141,6 +141,35 @@ def main():
         (root / 'shop').mkdir(exist_ok=True)
         shop.save(root / 'shop' / f'{frame}.jpg', quality=88)
 
+    # Glass for the recessed windows: one pane in a wooden glazing bar, warm
+    # light inside and a pale reflection; repeated, it reads as many panes.
+    glass = Image.new('RGB', (512, 512))
+    g = ImageDraw.Draw(glass)
+    for y in range(512):
+        t = y / 511
+        g.line((0, y, 511, y), fill=(int(250 - 70 * t), int(196 - 70 * t), int(120 - 60 * t)))
+    sheen = Image.new('L', (512, 512), 0)
+    ImageDraw.Draw(sheen).polygon([(60, 0), (170, 0), (40, 511), (0, 511), (0, 340)], fill=60)
+    glass = Image.composite(Image.new('RGB', (512, 512), (255, 236, 200)), glass, sheen.filter(ImageFilter.GaussianBlur(18)))
+    g = ImageDraw.Draw(glass)
+    bar = (88, 60, 36)
+    g.rectangle((0, 0, 511, 21), fill=bar)
+    g.rectangle((0, 490, 511, 511), fill=bar)
+    g.rectangle((0, 0, 21, 511), fill=bar)
+    g.rectangle((490, 0, 511, 511), fill=bar)
+    glass.save(root / 'glass.jpg', quality=90)
+    glass_n = Image.new('RGB', (512, 512), FLAT)
+    n = ImageDraw.Draw(glass_n)
+    n.rectangle((0, 0, 511, 8), fill=(128, 200, 200))
+    n.rectangle((0, 13, 511, 21), fill=(128, 56, 200))
+    n.rectangle((0, 490, 511, 498), fill=(128, 200, 200))
+    n.rectangle((0, 503, 511, 511), fill=(128, 56, 200))
+    n.rectangle((0, 0, 8, 511), fill=(56, 128, 200))
+    n.rectangle((13, 0, 21, 511), fill=(200, 128, 200))
+    n.rectangle((490, 0, 498, 511), fill=(56, 128, 200))
+    n.rectangle((503, 0, 511, 511), fill=(200, 128, 200))
+    glass_n.save(root / 'normal' / 'glass.jpg', quality=92)
+
     # The canopy: cream and red awning stripes with soft folds.
     canopy = Image.new('RGB', (512, 256))
     d = ImageDraw.Draw(canopy)

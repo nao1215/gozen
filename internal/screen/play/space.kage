@@ -16,6 +16,11 @@ var Time float
 var LightCount float
 var Lights [16]vec4
 var LightColors [16]vec4
+var BuildingGlow [33]float
+var OpeningCount float
+var OpeningPlane [32]vec4
+var OpeningRect [32]vec4
+var OpeningLook [32]float
 
 // Bilinear within the material's own tile: a facade seen up close is smooth
 // rather than blocky, and never bleeds into its neighbor in the atlas.
@@ -114,6 +119,8 @@ func pointLights(point, normal, shade vec3) vec3 {
   blocked:=false
   for j:=1;j<8;j++ {
    q:=start+to*(float(j)/8)
+   // A recess starts inside its wall cell; only later cells can block.
+   if floor(q.x)==floor(start.x) && floor(q.z)==floor(start.z) {continue}
    if cell(floor(vec3(q.x,q.y/1.5,q.z))).x==2 {blocked=true}
   }
   if blocked {continue}
@@ -148,6 +155,50 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
  if hit<10000 {
    point:=Eye+ray*hit
    if dot(face,ray)>0 {face=-face}
+   // A recess cut into this wall face: step in to its back or to a side. A
+   // side keeps the face's material, folded around the opening's rim so the
+   // bricks or plaster just outside it turn into the wall.
+   om:=float(0)
+   wid:=float(-1)
+   fold:=vec2(0)
+   if c.x==2 && OpeningCount>0 {
+    for i:=0;i<32;i++ {
+     if float(i)>=OpeningCount {break}
+     pl:=OpeningPlane[i]
+     rc:=OpeningRect[i]
+     along:=point.x
+     n:=face.z
+     coord:=point.z
+     if pl.x<.5 {along=point.z;n=face.x;coord=point.x}
+     if abs(n-pl.z)>.01 || abs(coord-pl.y)>.003 || along<rc.x || along>rc.y || point.y<rc.z || point.y>rc.w {continue}
+     if BuildingEnabled>0 {wid=wallMaterial(point,face)}
+     inward:=-dot(ray,face)
+     va:=ray.x
+     if pl.x<.5 {va=ray.z}
+     back:=pl.w/max(inward,.0001)
+     sa:=float(10000)
+     if va>.00001 {sa=(rc.y-along)/va}
+     if va< -.00001 {sa=(rc.x-along)/va}
+     sy:=float(10000)
+     if ray.y>.00001 {sy=(rc.w-point.y)/ray.y}
+     if ray.y< -.00001 {sy=(rc.z-point.y)/ray.y}
+     if back<=min(sa,sy) {
+      point+=ray*back;hit+=back;om=OpeningLook[i];wid=-1
+     } else if sa<sy {
+      edge:=rc.x
+      if va>0 {edge=rc.y}
+      fold=vec2(edge+sign(va)*inward*sa,-(point.y+ray.y*sa))
+      point+=ray*sa;hit+=sa
+      if pl.x<.5 {face=vec3(0,0,-sign(va))} else {face=vec3(-sign(va),0,0)}
+     } else {
+      edge:=rc.z
+      if ray.y>0 {edge=rc.w}
+      fold=vec2(along+va*sy,-(edge+sign(ray.y)*inward*sy))
+      point+=ray*sy;hit+=sy;face=vec3(0,-sign(ray.y),0)
+     }
+     break
+    }
+   }
    col:=FloorColor
    tex:=fract(point.xz)
    // The material and coordinates that also pick the normal map, and the
@@ -168,9 +219,12 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
     }
     if BuildingEnabled>0 {
      id:=wallMaterial(point,face)
+     if om>0 {id=om}
      u:=point.x
      if abs(face.x)>.5 {u=point.z}
-     if id>0 {col=buildingColor(id,vec2(u,-point.y));mid=id;muv=vec2(u,-point.y)}
+     wuv:=vec2(u,-point.y)
+     if wid>=0 {id=wid;wuv=fold}
+     if id>0 {col=buildingColor(id,wuv);mid=id;muv=wuv}
     }
    } else if c.x==5 {
     col=vec3(.65,.24,.13)
@@ -223,6 +277,7 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    // openings. Daylight dims both toward night, leaving a faint moonlit floor.
    light:=(vec3(.68,.70,.75)+vec3(.36,.30,.20)*sun)*(.82+.18*abs(face.y))*Daylight+vec3(.07,.08,.11)*(1-Daylight)
    light+=pointLights(point,face,shade)
+   if mid>0 {light+=vec3(BuildingGlow[int(mid)])}
    fog:=exp(-hit*Darkness*.11)
    return vec4(mix(backdrop(ray),col*light,fog),1)
  }

@@ -21,9 +21,11 @@ type Space struct {
 	FloorRegions []SpaceFloorRegion `yaml:"floor_regions"`
 	// Lights are point lights; Daylight scales the sun and the sky's fill from
 	// 1 (omitted, full day) down to 0 (night, lit only by Lights).
-	Lights    []SpaceLight `yaml:"lights"`
-	Daylight  *float64     `yaml:"daylight"`
-	Roofs     []SpaceRoof  `yaml:"roofs"`
+	Lights   []SpaceLight `yaml:"lights"`
+	Daylight *float64     `yaml:"daylight"`
+	// Openings are recesses with real depth cut into wall faces.
+	Openings  []SpaceOpening `yaml:"openings"`
+	Roofs     []SpaceRoof    `yaml:"roofs"`
 	roofParts []SpaceRoofPart
 	roofCells map[[2]int][]int
 	// FreeMove opts the layer-3 controller and presentation into continuous motion.
