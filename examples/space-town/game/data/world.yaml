@@ -25,6 +25,15 @@ locations:
           trigger: look
           do: [{set: {flag.bed_seen: true}}]
       space:
+        render_width: 960
+        daylight: 0.8
+        lights:
+          - {level: 2, x: 4, y: 3, height: 1.1, radius: 3, flicker: 0.2}
+        materials:
+          boards: {color: '#8a5a32'}
+        floor_regions:
+          - {level: 1, x: 2, y: 2, width: 5, depth: 4, material: boards}
+          - {level: 2, x: 3, y: 2, width: 3, depth: 3, material: boards}
         levels:
           - |
               ..........
@@ -48,4 +57,4 @@ locations:
               __________
               __________
               __________
-        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3}]
+        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3, material: boards}]

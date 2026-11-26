@@ -154,8 +154,10 @@ func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawT
 		sources[i+1] = g.pics.get(file)
 	}
 	if v.buildingMaterialAtlas == nil {
-		v.buildingMaterialAtlas = ebiten.NewImage(8*512, 5*512)
-		v.materialSourcesBuilding = nil
+		// Colors in 512-pixel tiles, normal maps in 256-pixel tiles beneath:
+		// 4096 pixels across keeps it within a browser's texture limit.
+		v.buildingMaterialAtlas = ebiten.NewImage(8*512, 5*512+5*256)
+		v.materialSourcesBuilding, v.materialNormalSources = nil, nil
 	}
 	for i, img := range sources {
 		if i < len(v.materialSourcesBuilding) && v.materialSourcesBuilding[i] == img {
@@ -174,6 +176,29 @@ func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawT
 		v.buildingMaterialAtlas.DrawImage(img, draw)
 	}
 	v.materialSourcesBuilding = sources
+	normals := make([]*ebiten.Image, len(sources))
+	for i, name := range v.materialNames {
+		if file := d.Space.Materials[name].Normal; file != "" {
+			normals[i+1] = g.pics.get(file)
+		}
+	}
+	for i, img := range normals {
+		if i < len(v.materialNormalSources) && v.materialNormalSources[i] == img {
+			continue
+		}
+		tile := image.Rect(i%8*256, 2560+i/8*256, i%8*256+256, 2560+i/8*256+256)
+		if slot, ok := v.buildingMaterialAtlas.SubImage(tile).(*ebiten.Image); ok {
+			slot.Fill(color.NRGBA{R: 128, G: 128, B: 255, A: 255}) // flat: the face's own normal
+		}
+		if img == nil {
+			continue
+		}
+		draw := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		draw.GeoM.Scale(256/float64(img.Bounds().Dx()), 256/float64(img.Bounds().Dy()))
+		draw.GeoM.Translate(float64(tile.Min.X), float64(tile.Min.Y))
+		v.buildingMaterialAtlas.DrawImage(img, draw)
+	}
+	v.materialNormalSources = normals
 	// Uniforms are static until DB replacement; the material images above can
 	// change independently during hot reload.
 	if v.buildingColors == nil || v.buildingColorDungeon != d {

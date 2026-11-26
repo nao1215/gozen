@@ -19,16 +19,24 @@ type Space struct {
 	// FloorRegions give walking surfaces their own material: a paved street,
 	// a wooden inn floor and a carpeted shop in one location.
 	FloorRegions []SpaceFloorRegion `yaml:"floor_regions"`
-	Roofs        []SpaceRoof        `yaml:"roofs"`
-	roofParts    []SpaceRoofPart
-	roofCells    map[[2]int][]int
+	// Lights are point lights; Daylight scales the sun and the sky's fill from
+	// 1 (omitted, full day) down to 0 (night, lit only by Lights).
+	Lights    []SpaceLight `yaml:"lights"`
+	Daylight  *float64     `yaml:"daylight"`
+	Roofs     []SpaceRoof  `yaml:"roofs"`
+	roofParts []SpaceRoofPart
+	roofCells map[[2]int][]int
 	// FreeMove opts the layer-3 controller and presentation into continuous motion.
 	// Nil retains grid movement and its existing camera durations.
 	FreeMove *SpaceFreeMove `yaml:"free_move"`
 	// StepTicks and TurnTicks are the presentation's independent camera durations
 	// at 60 updates per second. Zero selects 18; explicit durations are [1, 120].
 	StepTicks int `yaml:"step_ticks"`
-	TurnTicks int `yaml:"turn_ticks"`
+	// RenderWidth is the most pixels across the 3D view is drawn at before it
+	// is scaled to the window: 0 keeps 640, which bounds browser and CI cost;
+	// a desktop game can raise it up to 3840 for sharp facades.
+	RenderWidth int `yaml:"render_width"`
+	TurnTicks   int `yaml:"turn_ticks"`
 	// Sky is an optional horizontally wrapping upper-hemisphere panorama.
 	// Its top is the zenith and its bottom is the horizon; tint and brightness apply.
 	Sky    Picture      `yaml:"sky"`
@@ -191,9 +199,31 @@ func DungeonLevel(d *Dungeon, level int) *Dungeon {
 	return &c
 }
 
+// DaylightLevel is the sun and sky fill, from 0 (night) to 1 (omitted).
+func (s *Space) DaylightLevel() float64 {
+	if s.Daylight == nil {
+		return 1
+	}
+	return *s.Daylight
+}
+
+// SpaceRenderWidth is the view's width cap when render_width is omitted.
+const SpaceRenderWidth = 640
+
+// ViewWidth is the width cap of the 3D view in pixels.
+func (s *Space) ViewWidth() int {
+	if s.RenderWidth > 0 {
+		return s.RenderWidth
+	}
+	return SpaceRenderWidth
+}
+
 func (c *checker) space(w string, d *Dungeon, used map[rune]bool) {
 	s := d.Space
 	w += ".space"
+	if s.RenderWidth != 0 && (s.RenderWidth < 320 || s.RenderWidth > 3840) {
+		c.errorf(diag.OutOfRange, w+".render_width", "want a render width from 320 to 3840 pixels, or omit it for %d", SpaceRenderWidth)
+	}
 	if f := s.FreeMove; f != nil {
 		if !finiteNumber(f.Speed) || f.Speed <= 0 || f.Speed > 12 || !finiteNumber(f.TurnSpeed) || f.TurnSpeed <= 0 || f.TurnSpeed > 360 {
 			c.errorf(diag.OutOfRange, w+".free_move", "speed must be in (0,12] cells/s and turn_speed in (0,360] degrees/s")

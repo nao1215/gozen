@@ -21506,6 +21506,19 @@
       "additionalProperties": false,
       "description": "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top.",
       "properties": {
+        "daylight": {
+          "description": "Sun and sky fill from 0 (night, lit only by lights) to 1. Omitted means 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "floor_regions": {
           "description": "Up to 128 non-overlapping rectangular floor material assignments: floor tops, slab edges and stairs.",
           "items": {
@@ -21557,6 +21570,25 @@
           },
           "x-type": "string[]"
         },
+        "lights": {
+          "description": "Up to 16 point lights such as lanterns and lit windows; full-height walls block them.",
+          "items": {
+            "$ref": "#/$defs/SpaceLight"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceLight](#spacelight)[]"
+        },
         "materials": {
           "additionalProperties": {
             "$ref": "#/$defs/SpaceMaterial"
@@ -21575,6 +21607,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [SpaceMaterial](#spacematerial)"
+        },
+        "render_width": {
+          "description": "Most pixels across the 3D view before it is scaled to the window, from 320 to 3840. Omitted or 0 keeps 640, which bounds browser and CI cost; raise it for sharp facades on a desktop game.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         },
         "roofs": {
           "description": "Up to 32 bounded gable, shed or flat roof primitives with indexed collision and occlusion.",
@@ -21825,6 +21870,118 @@
       },
       "type": "object"
     },
+    "SpaceLight": {
+      "additionalProperties": false,
+      "description": "A point light at a cell's center; full-height walls between it and a surface block it.",
+      "properties": {
+        "color": {
+          "description": "Light color. Omitted means warm white.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "flicker": {
+          "description": "How much it wavers, from 0 (steady) to 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "height": {
+          "description": "Height above the level's floor, from 0 to 1.5. Omitted or 0 means 1.2.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "level": {
+          "description": "One-based existing grid level.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "power": {
+          "description": "Strength from 0 to 8. Omitted or 0 means 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "radius": {
+          "description": "Reach in cells, up to 16. Omitted or 0 means 4.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "x": {
+          "description": "Zero-based column, inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "y": {
+          "description": "Zero-based row, inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "SpaceMaterial": {
       "additionalProperties": false,
       "description": "An opaque facade or roof material. Pictures are batched into 512-pixel atlas tiles and filtered bilinearly.",
@@ -21887,6 +22044,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "number"
+        },
+        "normal": {
+          "description": "Optional tangent-space normal map under assets/ in the OpenGL convention (green up, as Poly Haven's nor_gl maps): relief under the sun and lights. Kept at 256 pixels.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "origin_u": {
           "description": "World-space horizontal texture origin, in [-128,128].",

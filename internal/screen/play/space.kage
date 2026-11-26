@@ -11,6 +11,11 @@ var BuildingEnabled float
 var BuildingColors [33]vec4
 var BuildingUV [33]vec4
 var RoofAppearance [64]vec2
+var Daylight float
+var Time float
+var LightCount float
+var Lights [16]vec4
+var LightColors [16]vec4
 
 // Bilinear within the material's own tile: a facade seen up close is smooth
 // rather than blocky, and never bleeds into its neighbor in the atlas.
@@ -40,6 +45,27 @@ func floorMaterial(p vec3) float {
  return floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,1152+p.y*64+p.z+.5)).g*255+.5)
 }
 
+// materialUV is where a world-space surface coordinate falls in a material's
+// picture, with its repetition size and origin.
+func materialUV(id float, uv vec2) vec2 {
+ config:=BuildingUV[int(id)]
+ return fract((uv-config.zw)/config.xy)
+}
+
+// buildingNormal is a material's tangent-space normal (x right, y up the
+// picture, z out of the surface), from the 256-pixel tiles under the colors.
+// A material without a normal map has a flat tile.
+func buildingNormal(id float, uv vec2) vec3 {
+ o:=imageSrc0Origin()+vec2(mod(id,8)*256,2560+floor(id/8)*256)
+ p:=clamp(uv*256-.5,vec2(0),vec2(255))
+ b:=floor(p);f:=p-b;n:=min(b+1,vec2(255))
+ c00:=imageSrc1UnsafeAtFromSrc0Pos(o+b+.5).rgb
+ c10:=imageSrc1UnsafeAtFromSrc0Pos(o+vec2(n.x,b.y)+.5).rgb
+ c01:=imageSrc1UnsafeAtFromSrc0Pos(o+vec2(b.x,n.y)+.5).rgb
+ c11:=imageSrc1UnsafeAtFromSrc0Pos(o+n+.5).rgb
+ return normalize(mix(mix(c00,c10,f.x),mix(c01,c11,f.x),f.y)*2-1)
+}
+
 func buildingColor(id float, uv vec2) vec3 {
  index:=int(id)
  config:=BuildingUV[index]
@@ -51,7 +77,7 @@ func buildingColor(id float, uv vec2) vec3 {
 
 // Trace sunlight through the same bounded occupancy used for visible geometry.
 // Horizontal slabs occlude the sky even where there is no full-height wall.
-func sunlight(point, normal vec3) float {
+func sunlight(point, normal, shade vec3) float {
  light:=normalize(vec3(-.35,1,-.22))
  start:=point+normal*.004
  for level:=0;level<8;level++ {
@@ -67,7 +93,36 @@ func sunlight(point, normal vec3) float {
   q:=start+light*float(i)*.35
   if cell(floor(vec3(q.x,q.y/1.5,q.z))).x==2 {return 0}
  }
- return max(0,dot(normal,light))
+ return max(0,dot(shade,light))
+}
+
+// pointLights sums the lanterns that reach a point and see it: a few samples
+// along the way stop at full-height walls, so a light does not shine through
+// a wall into the next room.
+func pointLights(point, normal, shade vec3) vec3 {
+ sum:=vec3(0)
+ start:=point+normal*.01
+ for i:=0;i<16;i++ {
+  if float(i)>=LightCount {break}
+  l:=Lights[i]
+  to:=l.xyz-start
+  d:=length(to)
+  if d>=l.w {continue}
+  dir:=to/max(d,.0001)
+  lit:=max(0,dot(shade,dir))*max(0,dot(normal,dir)+.15)
+  if lit<=0 {continue}
+  blocked:=false
+  for j:=1;j<8;j++ {
+   q:=start+to*(float(j)/8)
+   if cell(floor(vec3(q.x,q.y/1.5,q.z))).x==2 {blocked=true}
+  }
+  if blocked {continue}
+  fall:=1-d/l.w
+  c:=LightColors[i]
+  flick:=1-c.w*.35*(1+sin(Time*(7.3+float(i)*1.7)+float(i)*2.1)*sin(Time*3.1+float(i)))
+  sum+=c.rgb*lit*fall*fall*flick
+ }
+ return sum
 }
 
 // Match distant clipping to the horizon instead of drawing a dark wall
@@ -79,7 +134,11 @@ func backdrop(ray vec3) vec3 {
   v:=clamp(1-asin(max(ray.y,0))*2/3.14159265,0,.999)
   sky=imageSrc3UnsafeAtFromSrc0Pos(imageSrc0Origin()+vec2(u*1024,512+v*512)).rgb*SkyTint
  }
- if ray.y<0 {return mix(sky,vec3(.57,.59,.56),clamp(-ray.y*12,0,1))}
+ ground:=vec3(.57,.59,.56)
+ // Night darkens the sky and the horizon to a deep blue.
+ sky=mix(vec3(.015,.025,.06),sky,Daylight)
+ ground=mix(vec3(.02,.025,.04),ground,Daylight)
+ if ray.y<0 {return mix(sky,ground,clamp(-ray.y*12,0,1))}
  return sky
 }
 
@@ -91,6 +150,16 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
    if dot(face,ray)>0 {face=-face}
    col:=FloorColor
    tex:=fract(point.xz)
+   // The material and coordinates that also pick the normal map, and the
+   // directions its picture runs along the surface.
+   mid:=float(0)
+   muv:=vec2(0)
+   along:=vec3(1,0,0)
+   up:=vec3(0,0,-1)
+   if abs(face.y)<.5 {
+    up=vec3(0,1,0)
+    if abs(face.x)>.5 {along=vec3(0,0,1)}
+   }
    if c.x==2 {
     col=vec3(.78,.72,.60)
     tex=fract(vec2(point.x+point.z, -point.y/1.5))
@@ -101,14 +170,14 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
      id:=wallMaterial(point,face)
      u:=point.x
      if abs(face.x)>.5 {u=point.z}
-     if id>0 {col=buildingColor(id,vec2(u,-point.y))}
+     if id>0 {col=buildingColor(id,vec2(u,-point.y));mid=id;muv=vec2(u,-point.y)}
     }
    } else if c.x==5 {
     col=vec3(.65,.24,.13)
     ids:=RoofAppearance[int(c.y)]
     id:=ids.x
     if face.y<0 {id=ids.y;col=vec3(.45,.31,.19)}
-    if id>0 {col=buildingColor(id,point.xz)}
+    if id>0 {col=buildingColor(id,point.xz);mid=id;muv=point.xz}
    } else {
     if abs(face.y)<.5 {tex=fract(vec2(point.x+point.z,-point.y))}
     if Textured.y>0 {col=imageSrc2UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*imageSrc2Size()).rgb*FloorTint}
@@ -131,6 +200,8 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
        if abs(face.x)>.5 {uv.x=point.z}
       }
       col=buildingColor(id,uv)
+      mid=id
+      muv=uv
      }
     }
     if c.x==3 {
@@ -139,10 +210,19 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
      if abs(face.y)<.5 {col*=.62}
     }
    }
-   sun:=sunlight(point,face)
-   // Cool ambient fill keeps shaded interiors readable; warm direct light marks openings.
-   light:=vec3(.68,.70,.75)+vec3(.36,.30,.20)*sun
-   light*=.82+.18*abs(face.y)
+   shade:=face
+   if mid>0 {
+    // Tilt the surface's normal by its map, keeping the frame on the face.
+    t:=normalize(along-face*dot(along,face))
+    b:=normalize(up-face*dot(up,face)-t*dot(up,t))
+    m:=buildingNormal(mid,materialUV(mid,muv))
+    shade=normalize(t*m.x+b*m.y+face*m.z)
+   }
+   sun:=sunlight(point,face,shade)
+   // Cool ambient fill keeps shaded interiors readable; warm direct light marks
+   // openings. Daylight dims both toward night, leaving a faint moonlit floor.
+   light:=(vec3(.68,.70,.75)+vec3(.36,.30,.20)*sun)*(.82+.18*abs(face.y))*Daylight+vec3(.07,.08,.11)*(1-Daylight)
+   light+=pointLights(point,face,shade)
    fog:=exp(-hit*Darkness*.11)
    return vec4(mix(backdrop(ray),col*light,fog),1)
  }

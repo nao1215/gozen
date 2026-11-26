@@ -30,6 +30,8 @@ type spaceView struct {
 	buildingTop                             float32
 	materialNames                           []string
 	materialSourcesBuilding                 []*ebiten.Image
+	materialNormalSources                   []*ebiten.Image
+	lights, lightColors                     []float32
 	materialFrames                          [][]string
 	materialFramesDungeon                   *data.Dungeon
 	clock                                   int
@@ -91,8 +93,9 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 	if v.refreshOccupancy(g.st, d) || newAtlas {
 		v.atlas.WritePixels(v.pixels)
 	}
-	// Keep software-rendered CI and browser costs bounded independently of window size.
-	w := min(dst.Bounds().Dx(), 640)
+	// Keep software-rendered CI and browser costs bounded independently of window
+	// size; a game raises the cap with render_width.
+	w := min(dst.Bounds().Dx(), d.Space.ViewWidth())
 	h := max(1, w*dst.Bounds().Dy()/dst.Bounds().Dx())
 	if v.frame == nil || v.frame.Bounds().Dx() != w || v.frame.Bounds().Dy() != h {
 		if v.frame != nil {
@@ -163,12 +166,48 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		op.Uniforms[name] = tint
 	}
 	v.roofUniforms(d, op.Uniforms)
+	v.lightUniforms(d, op.Uniforms)
 	v.buildingMaterials(g, d, op)
 	v.frame.DrawTrianglesShader([]ebiten.Vertex{{DstX: 0, DstY: 0}, {DstX: float32(w), DstY: 0}, {DstX: 0, DstY: float32(h)}, {DstX: float32(w), DstY: float32(h)}}, []uint16{0, 1, 2, 1, 3, 2}, v.shader, op)
 	v.drawSprites(g, d, [3]float64{x, height, z}, yaw, w, h)
 	imageOp := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
 	imageOp.GeoM.Scale(float64(dst.Bounds().Dx())/float64(w), float64(dst.Bounds().Dy())/float64(h))
 	dst.DrawImage(v.frame, imageOp)
+}
+
+// lightUniforms passes the space's daylight, clock and point lights.
+func (v *spaceView) lightUniforms(d *data.Dungeon, uniforms map[string]any) {
+	if len(v.lights) != data.MaxSpaceLights*4 {
+		v.lights, v.lightColors = make([]float32, data.MaxSpaceLights*4), make([]float32, data.MaxSpaceLights*4)
+	}
+	n := min(len(d.Space.Lights), data.MaxSpaceLights)
+	for i, l := range d.Space.Lights[:n] {
+		x, y, z, r := l.Position()
+		c := l.Color.Or(color.NRGBA{R: 255, G: 214, B: 160, A: 255})
+		p := l.Strength()
+		v.lights[i*4], v.lights[i*4+1], v.lights[i*4+2], v.lights[i*4+3] = float32(x), float32(y), float32(z), float32(r)
+		v.lightColors[i*4], v.lightColors[i*4+1], v.lightColors[i*4+2], v.lightColors[i*4+3] = float32(float64(c.R)/255*p), float32(float64(c.G)/255*p), float32(float64(c.B)/255*p), float32(l.Flicker)
+	}
+	uniforms["Daylight"] = float32(d.Space.DaylightLevel())
+	uniforms["Time"] = float32(float64(v.clock) / 60)
+	uniforms["LightCount"] = float32(n)
+	uniforms["Lights"], uniforms["LightColors"] = v.lights, v.lightColors
+}
+
+// spriteLight is how lit an upright picture at a point is: the daylight fill
+// and the reach of the point lights, without shadows (a picture stands in one
+// cell and is lit as a whole).
+func spriteLight(s *data.Space, at [3]float64) float64 {
+	day := s.DaylightLevel()
+	light := day + (1-day)*.12
+	for _, l := range s.Lights[:min(len(s.Lights), data.MaxSpaceLights)] {
+		x, y, z, r := l.Position()
+		d := math.Sqrt((x-at[0])*(x-at[0]) + (y-at[1]-.45)*(y-at[1]-.45) + (z-at[2])*(z-at[2]))
+		if d < r {
+			light += (1 - d/r) * (1 - d/r) * l.Strength()
+		}
+	}
+	return min(light, 1.3)
 }
 
 // Share one sampler between the ceiling tile and the sky panorama. Rebuild only

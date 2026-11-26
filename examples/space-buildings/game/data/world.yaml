@@ -26,20 +26,40 @@ locations:
           trigger: look
           do: [{set: {flag.bed_seen: true}}]
       space:
+        render_width: 1280
+        daylight: 0.45
+        lights:
+          - {level: 1, x: 12, y: 7, height: 1.3, radius: 5, power: 1.6, flicker: 0.25}
+          - {level: 1, x: 17, y: 7, height: 1.3, radius: 5, power: 1.4, color: '#ffc88a', flicker: 0.25}
+          - {level: 1, x: 9, y: 9, height: 1.4, radius: 6, power: 1.2, color: '#ffe0b0'}
+          - {level: 1, x: 4, y: 7, height: 1.3, radius: 5, power: 1.4, flicker: 0.3}
+          - {level: 1, x: 14, y: 5, height: 1.2, radius: 4, power: 1.2}
+          - {level: 1, x: 4, y: 3, height: 1.2, radius: 4, power: 1.1}
+          - {level: 2, x: 4, y: 3, height: 1.1, radius: 3, power: 1}
         free_move: {speed: 2, turn_speed: 90, acceleration: 0}
         materials:
-          timber: {picture: timber.jpg, width: 4, height: 3}
-          shop: {frames: [shop/*.jpg], fps: 2, width: 6, height: 1.5, origin_u: 12}
-          stone: {picture: stone.jpg, width: 2, height: 1.5}
-          tile: {picture: roof.jpg, width: 2, height: 2}
+          timber: {picture: timber.jpg, normal: normal/timber.jpg, width: 4, height: 3}
+          shop: {frames: [shop/*.jpg], normal: normal/shop.jpg, fps: 2, width: 6, height: 1.5, origin_u: 12}
+          stone: {picture: stone.jpg, normal: normal/stone.jpg, width: 2, height: 1.5}
+          tile: {picture: roof.jpg, normal: normal/roof.jpg, width: 2, height: 2}
           wood: {color: '#96683e'}
           canvas: {picture: canopy.jpg, width: 2, height: 1}
-          boards: {picture: boards.jpg, width: 2, height: 2}
-          mosaic: {picture: mosaic.jpg, width: 2, height: 2}
+          boards: {picture: boards.jpg, normal: normal/boards.jpg, width: 2, height: 2}
+          mosaic: {picture: mosaic.jpg, normal: normal/mosaic.jpg, width: 2, height: 2}
+          street: {picture: cobble.jpg, normal: normal/cobble.jpg, width: 2, height: 2}
         floor_regions:
           - {level: 1, x: 2, y: 2, width: 5, depth: 4, material: boards}
           - {level: 2, x: 3, y: 2, width: 3, depth: 4, material: boards}
           - {level: 1, x: 13, y: 3, width: 4, depth: 4, material: mosaic}
+          - {level: 1, x: 0, y: 0, width: 20, depth: 2, material: street}
+          - {level: 1, x: 0, y: 2, width: 2, depth: 1, material: street}
+          - {level: 1, x: 7, y: 2, width: 13, depth: 1, material: street}
+          - {level: 1, x: 0, y: 3, width: 2, depth: 3, material: street}
+          - {level: 1, x: 7, y: 3, width: 6, depth: 3, material: street}
+          - {level: 1, x: 17, y: 3, width: 3, depth: 3, material: street}
+          - {level: 1, x: 0, y: 6, width: 13, depth: 1, material: street}
+          - {level: 1, x: 17, y: 6, width: 3, depth: 1, material: street}
+          - {level: 1, x: 0, y: 7, width: 20, depth: 11, material: street}
         wall_regions:
           - {level: 1, x: 1, y: 1, width: 7, depth: 6, material: timber}
           - {level: 2, x: 2, y: 1, width: 5, depth: 4, material: timber}

@@ -17,8 +17,13 @@ import (
 // sorted), animate the material at FPS frames a second (0 is 12) in place of
 // Picture's file, keeping its tint and brightness: a torch, water, a sign or a
 // screen on a wall.
+//
+// Normal, a tangent-space normal map under assets/ in the OpenGL convention
+// (green up, as Poly Haven's nor_gl maps), gives the surface relief under the
+// sun and lights without changing its geometry.
 type SpaceMaterial struct {
 	Picture Picture  `yaml:"picture"`
+	Normal  string   `yaml:"normal"`
 	Frames  []string `yaml:"frames" json:",omitempty"`
 	FPS     float64  `yaml:"fps"`
 	Color   Color    `yaml:"color"`
@@ -26,6 +31,45 @@ type SpaceMaterial struct {
 	Height  float64  `yaml:"height"`
 	OriginU float64  `yaml:"origin_u"`
 	OriginV float64  `yaml:"origin_v"`
+}
+
+// SpaceLight is a point light, such as a lantern or a lit window, on a
+// one-based level at a cell's center (X/Y zero-based) and Height above its
+// floor (0 is 1.2). Radius is how many cells it reaches (0 is 4), Color its
+// color (default warm white), Power its strength (0 is 1) and Flicker how much
+// it wavers, from 0 (steady) to 1. Walls between it and a surface block it.
+type SpaceLight struct {
+	Level   int     `yaml:"level"`
+	X       float64 `yaml:"x"`
+	Y       float64 `yaml:"y"`
+	Height  float64 `yaml:"height"`
+	Radius  float64 `yaml:"radius"`
+	Color   Color   `yaml:"color"`
+	Power   float64 `yaml:"power"`
+	Flicker float64 `yaml:"flicker"`
+}
+
+// MaxSpaceLights bounds the point lights one space evaluates per pixel.
+const MaxSpaceLights = 16
+
+// Position is the light's world position (x, height, z) and its reach.
+func (l SpaceLight) Position() (x, y, z, radius float64) {
+	height, radius := l.Height, l.Radius
+	if height == 0 {
+		height = 1.2
+	}
+	if radius == 0 {
+		radius = 4
+	}
+	return l.X + .5, float64(l.Level-1)*SpaceStoryHeight + height, l.Y + .5, radius
+}
+
+// Strength is the light's power (0 is 1).
+func (l SpaceLight) Strength() float64 {
+	if l.Power > 0 {
+		return l.Power
+	}
+	return 1
 }
 
 // MaxSpaceMaterialFrames bounds the animation pictures one space keeps loaded.
@@ -301,6 +345,9 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if m.Color.Valid && m.Color.A != 255 {
 			c.errorf(diag.Shape, where, "building material colors must be opaque")
 		}
+		if m.Normal != "" {
+			c.picture(where+".normal", Picture{File: m.Normal})
+		}
 		if !finiteNumber(m.FPS) || m.FPS < 0 || m.FPS > 60 {
 			c.errorf(diag.OutOfRange, where+".fps", "fps must be finite and in [0,60]")
 		}
@@ -343,6 +390,21 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if overlap {
 			c.errorf(diag.Shape, where, "wall regions on the same level cannot overlap")
 		}
+	}
+	if len(s.Lights) > MaxSpaceLights {
+		c.errorf(diag.OutOfRange, w+".lights", "want at most %d lights", MaxSpaceLights)
+	}
+	for i, l := range s.Lights {
+		where := fmt.Sprintf("%s.lights[%d]", w, i)
+		if l.Level < 1 || l.Level > len(s.Levels) || !finiteNumber(l.X+l.Y) || l.X < 0 || l.Y < 0 || l.X >= float64(width) || l.Y >= float64(height) {
+			c.errorf(diag.OutOfRange, where, "a light's level and cell must be inside the map")
+		}
+		if !finiteNumber(l.Height+l.Radius+l.Power+l.Flicker) || l.Height < 0 || l.Height > SpaceStoryHeight || l.Radius < 0 || l.Radius > 16 || l.Power < 0 || l.Power > 8 || l.Flicker < 0 || l.Flicker > 1 {
+			c.errorf(diag.OutOfRange, where, "want height in [0,1.5], radius in [0,16], power in [0,8] and flicker in [0,1]")
+		}
+	}
+	if d := s.Daylight; d != nil && (!finiteNumber(*d) || *d < 0 || *d > 1) {
+		c.errorf(diag.OutOfRange, w+".daylight", "want daylight from 0 (night) to 1")
 	}
 	floors := map[[3]int]bool{}
 	for i, r := range s.FloorRegions {
