@@ -98,7 +98,7 @@ func (v *spaceView) drawSprites(g *Game, d *data.Dungeon, eye [3]float64, yaw fl
 		at := item.sprite.at
 		pic := item.sprite.tile.Picture
 		color := pic.Tint.Or(color.NRGBA{R: 255, G: 255, B: 255, A: 255})
-		brightness := float32(pic.Brightness())
+		brightness := float32(pic.Brightness() * spriteLight(d.Space, at))
 		op := &ebiten.DrawTrianglesShaderOptions{Uniforms: map[string]any{
 			"Eye":    []float32{float32(eye[0]), float32(eye[1]), float32(eye[2])},
 			"Facing": float32(yaw), "ViewSize": []float32{float32(w), float32(h)},

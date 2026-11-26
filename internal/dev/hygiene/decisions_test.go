@@ -462,7 +462,7 @@ clear col colors command comment compact complete condition consume
 control controls cost counter cover crit critical critical_rate critical_ratio
 crowd currency cursor cut cutin cutin_box cutin_lines cx damage damage_rate
 darkness data data_version date date_format date_link deadline deal defeat
-defend defense dependency_ratio depth depth_bias desc description destination
+defend defense dependency_ratio depth_bias desc description destination
 detail dim dir done door dot drag drain draw_roads drop drops due duo_chance
 duos each east echo edge effect effects element elements else enabled end_turn
 end_turn_button endings endure enemy enter entity episodes equip_slots
@@ -470,7 +470,7 @@ equip_stones escape evening event_label event_when every exclusive exp expr
 expression_depth expression_length extra face_at face_box face_rules face_shade
 face_shade_top face_shape families family far fatal field_notices fight fighters
 file_lines files filled filter_label finish first first_person fit flash flat
-floor floor_regions floor_texture floors flows focus foe_scale foe_scale_when foes fonts
+floor floor_texture floors flows focus foe_scale foe_scale_when foes fonts
 footer for forecast_label frame free_move front_weight fronts full
 full_color fullscreen fusions fx game_over garrison gauge generate give goods
 greet greeting grid group groups guard_rate guard_skill guest guest_backdrops
@@ -481,7 +481,7 @@ initial instant instead into intro items join join_exp joined keeper kinds
 label_size labels landmark landmark_ground landmark_scale learn leave ledger
 ledgers left legacy_keys legend_rank level_scale light likes lines live lobby
 locked logo look looks loop_start loops lore lose lost manual mark_labels
-marker markers marks mask match material materials max max_level max_party
+marker markers marks mask match max max_level max_party
 max_runes max_soldiers max_value max_zoom maximum maximum_key meet memo
 merge met meter meters might milestone min min_block_nodes min_level min_plus
 min_share minutes missed missing_voice monster_class monster_families mood
@@ -504,7 +504,7 @@ revive ring rise roamers rollback roofs rooms rope rounds row rule rules
 sacrifice safe_area sample sample_freshness sample_label save scene_review
 scenes schedule screen_operations scroll search seed seed_xor seen
 selection_panel selector self self_backdrop self_label self_stage sell send sex
-sex_ratio sfx sfx_vary shadow shake shape share shops short side sight sign
+sex_ratio sfx sfx_vary shadow shake shape share shops short side sight
 simple_tactics size skill skill_slots skip sky slide soldiers solid song songs
 sortie south sp sp_apply sp_decline sp_pitch sp_suggest speaking speech spent
 spin stage_drop stage_framing stage_puppets stage_scale stages staging stairs
@@ -521,7 +521,7 @@ until until_taken unused_definitions url values variance vars verbs via video
 visible voice voice_fallback voices volume wait walk_speed walked wall
 wall_regions wallpaper wallpaper_strength warning_key wash web week_start
 weekdays weekdays_off weight west wheel_up win win_music window window_opacity
-with won written_in x y zoom
+with won written_in zoom
 `
 )
 

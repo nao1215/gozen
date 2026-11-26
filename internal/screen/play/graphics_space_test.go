@@ -861,9 +861,9 @@ func TestGraphicsSpaceBuildings(t *testing.T) {
 		y    int
 		rgb  [3]int
 	}{
-		{"brick wall", 200, [3]int{88, 63, 50}},
-		{"mosaic floor region", 450, [3]int{120, 101, 89}},
-		{"roof underside", 20, [3]int{103, 75, 50}},
+		{"brick wall", 200, [3]int{73, 48, 35}},
+		{"mosaic floor region", 450, [3]int{79, 65, 56}},
+		{"roof underside", 20, [3]int{54, 39, 27}},
 	} {
 		var sum [3]int
 		for y := probe.y - 3; y <= probe.y+3; y++ {

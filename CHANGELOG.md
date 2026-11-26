@@ -9,6 +9,11 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 - `space.floor_regions` give the floors of a rectangle on one level their own building material, and a stair its own `material`: a paved street, a wooden inn and a carpeted shop in one location. Tops, slab edges, treads and risers use them; ceilings and collision are unchanged. Visual change: the Lantern Quarter sample is retextured with CC0 Poly Haven photographs: a cobbled street, a plastered half-timbered inn with board floors and a wooden stair, a brick shop with a marble mosaic floor, a stone building with a stone stair and clay roof tiles.
 
 - A building material with `frames` animates: the pictures play in turn at `fps` frames a second (default 12) on every wall, floor, stair and roof that uses it, for a torch, water, a sign or a screen. At most 256 frames in one space. Visual change: the Lantern Quarter shop's sign blinks.
+- `space.render_width` raises the 640-pixel width the 3D view of a stacked space is drawn at before it is scaled to the window, up to 3840, for sharp facades on a desktop game. Omitted, the view is drawn as before.
+- A building material's `normal` map (OpenGL convention, as Poly Haven's `nor_gl`) gives it relief under the sun and lights, and `glow` makes it shine by itself, for lit windows, signs and screens.
+- `space.lights` are up to 16 point lights (lanterns, lit rooms) with reach, color, power and flicker; full-height walls block them, and upright pictures are lit by the lights around them. `space.daylight` dims the sun and the sky from day (1) to night (0).
+- `space.openings` cut recesses with real depth into the faces of full-height walls: windows, niches and shop fronts whose back shows a material and whose sides fold the wall's own material around the rim.
+- Visual change: the Lantern Quarter is set at dusk at 1280 pixels across, with normal maps, lanterns, recessed glowing windows in the shop and the inn, and a cobbled street laid as floor regions.
 
 ### Changed
 

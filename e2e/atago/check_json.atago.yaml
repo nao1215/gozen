@@ -38,6 +38,50 @@ scenarios:
       stdout:
         json: {path: $.data, equals: []}
       stderr: {equals: ''}
+- name: floor regions, stair materials, animated materials, lights, openings and the render width are checked
+  steps:
+  - fixture:
+      file: rich/game.yaml
+      content: |
+        schema_version: 8
+        id: rich-space-check
+        start: {location: room, party: [walker]}
+  - fixture:
+      file: rich/data/world.yaml
+      content: |
+        classes: {visitor: {stats: {mhp: 10, mmp: 0, atk: 1, def: 1, mat: 1, mdf: 1, agi: 1, luk: 1}, exp_for: level * 10}}
+        actors: {walker: {class: visitor}}
+        skills: {attack: {}, guard: {}}
+        locations:
+          room:
+            dungeon:
+              tiles: {S: {start: true}}
+              space:
+                render_width: 5000
+                daylight: 0.3
+                lights:
+                  - {level: 1, x: 2, y: 1, height: 1.2, radius: 20, flicker: 0.5}
+                materials:
+                  wood: {color: '#8a5a32'}
+                  sign: {color: '#ffffff', fps: 4, glow: 0.5}
+                openings:
+                  - {level: 1, x: 2, y: 0, face: south, along: 2.2, bottom: 0.3, width: 0.6, height: 0.8, depth: 0.2, material: sign}
+                  - {level: 1, x: 2, y: 1, face: north, along: 2.2, bottom: 0.3, width: 0.6, height: 0.8, depth: 0.2, material: sign}
+                floor_regions:
+                  - {level: 1, x: 1, y: 1, width: 2, depth: 1, material: wood}
+                  - {level: 1, x: 2, y: 1, width: 2, depth: 1, material: wood}
+                levels: ["######\n#S...#\n######"]
+  - run:
+      command: gozen check rich --format json
+  - assert:
+      exit_code: 1
+      stdout:
+        json:
+        - {path: '$.data[?(@.message =~ /render width from 320 to 3840/)].code', equals: GZN1106}
+        - {path: '$.data[?(@.message =~ /floor regions on the same level cannot overlap/)].file', equals: data/world.yaml}
+        - {path: '$.data[?(@.message =~ /fps is for frames/)].file', equals: data/world.yaml}
+        - {path: '$.data[?(@.message =~ /and flicker in/)].file', equals: data/world.yaml}
+        - {path: '$.data[?(@.message =~ /cut into full-height wall cells/)].file', equals: data/world.yaml}
 - name: opt-in continuous stacked space passes public validation
   steps:
   - fixture:

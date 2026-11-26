@@ -17,8 +17,16 @@ import (
 // sorted), animate the material at FPS frames a second (0 is 12) in place of
 // Picture's file, keeping its tint and brightness: a torch, water, a sign or a
 // screen on a wall.
+//
+// Normal, a tangent-space normal map under assets/ in the OpenGL convention
+// (green up, as Poly Haven's nor_gl maps), gives the surface relief under the
+// sun and lights without changing its geometry.
 type SpaceMaterial struct {
-	Picture Picture  `yaml:"picture"`
+	Picture Picture `yaml:"picture"`
+	Normal  string  `yaml:"normal"`
+	// Glow is how much the material shines by itself, from 0 to 1, whatever
+	// the sun and lights: a lit window, a sign or a screen at night.
+	Glow    float64  `yaml:"glow"`
 	Frames  []string `yaml:"frames" json:",omitempty"`
 	FPS     float64  `yaml:"fps"`
 	Color   Color    `yaml:"color"`
@@ -26,6 +34,83 @@ type SpaceMaterial struct {
 	Height  float64  `yaml:"height"`
 	OriginU float64  `yaml:"origin_u"`
 	OriginV float64  `yaml:"origin_v"`
+}
+
+// SpaceLight is a point light, such as a lantern or a lit window, on a
+// one-based level at a cell's center (X/Y zero-based) and Height above its
+// floor (0 is 1.2). Radius is how many cells it reaches (0 is 4), Color its
+// color (default warm white), Power its strength (0 is 1) and Flicker how much
+// it wavers, from 0 (steady) to 1. Walls between it and a surface block it.
+type SpaceLight struct {
+	Level   int     `yaml:"level"`
+	X       float64 `yaml:"x"`
+	Y       float64 `yaml:"y"`
+	Height  float64 `yaml:"height"`
+	Radius  float64 `yaml:"radius"`
+	Color   Color   `yaml:"color"`
+	Power   float64 `yaml:"power"`
+	Flicker float64 `yaml:"flicker"`
+}
+
+// SpaceOpening is a recess cut into the face of full-height walls: a window, a
+// doorway that does not open, a niche or a shop front, with real depth. Face is
+// the outward direction of the wall face (north, east, south or west) on a
+// one-based level. Along is where it starts along the face in world units
+// (world X on north/south faces, world Z on east/west faces), Bottom its sill
+// above the floor, Width and Height its size and Depth how far it goes in (at
+// most 0.75). Material is its back (glass, a door, a curtain); its sides show
+// the wall. X/Y name the wall cell the face belongs to.
+type SpaceOpening struct {
+	Level    int     `yaml:"level"`
+	X        int     `yaml:"x"`
+	Y        int     `yaml:"y"`
+	Face     string  `yaml:"face"`
+	Along    float64 `yaml:"along"`
+	Bottom   float64 `yaml:"bottom"`
+	Width    float64 `yaml:"width"`
+	Height   float64 `yaml:"height"`
+	Depth    float64 `yaml:"depth"`
+	Material string  `yaml:"material"`
+}
+
+// MaxSpaceOpenings bounds the recesses one space tests per wall pixel.
+const MaxSpaceOpenings = 32
+
+// Plane is the opening's wall plane: the axis it is perpendicular to (0: X,
+// 1: Z), its world coordinate there and the outward sign along that axis.
+func (o SpaceOpening) Plane() (axis int, at, out float64) {
+	switch o.Face {
+	case "north":
+		return 1, float64(o.Y), -1
+	case "south":
+		return 1, float64(o.Y) + 1, 1
+	case "west":
+		return 0, float64(o.X), -1
+	}
+	return 0, float64(o.X) + 1, 1
+}
+
+// MaxSpaceLights bounds the point lights one space evaluates per pixel.
+const MaxSpaceLights = 16
+
+// Position is the light's world position (x, height, z) and its reach.
+func (l SpaceLight) Position() (x, y, z, radius float64) {
+	height, radius := l.Height, l.Radius
+	if height == 0 {
+		height = 1.2
+	}
+	if radius == 0 {
+		radius = 4
+	}
+	return l.X + .5, float64(l.Level-1)*SpaceStoryHeight + height, l.Y + .5, radius
+}
+
+// Strength is the light's power (0 is 1).
+func (l SpaceLight) Strength() float64 {
+	if l.Power > 0 {
+		return l.Power
+	}
+	return 1
 }
 
 // MaxSpaceMaterialFrames bounds the animation pictures one space keeps loaded.
@@ -301,6 +386,12 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if m.Color.Valid && m.Color.A != 255 {
 			c.errorf(diag.Shape, where, "building material colors must be opaque")
 		}
+		if !finiteNumber(m.Glow) || m.Glow < 0 || m.Glow > 1 {
+			c.errorf(diag.OutOfRange, where+".glow", "want glow from 0 to 1")
+		}
+		if m.Normal != "" {
+			c.picture(where+".normal", Picture{File: m.Normal})
+		}
 		if !finiteNumber(m.FPS) || m.FPS < 0 || m.FPS > 60 {
 			c.errorf(diag.OutOfRange, where+".fps", "fps must be finite and in [0,60]")
 		}
@@ -343,6 +434,27 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if overlap {
 			c.errorf(diag.Shape, where, "wall regions on the same level cannot overlap")
 		}
+	}
+	if len(s.Lights) > MaxSpaceLights {
+		c.errorf(diag.OutOfRange, w+".lights", "want at most %d lights", MaxSpaceLights)
+	}
+	for i, l := range s.Lights {
+		where := fmt.Sprintf("%s.lights[%d]", w, i)
+		if l.Level < 1 || l.Level > len(s.Levels) || !finiteNumber(l.X+l.Y) || l.X < 0 || l.Y < 0 || l.X >= float64(width) || l.Y >= float64(height) {
+			c.errorf(diag.OutOfRange, where, "a light's level and cell must be inside the map")
+		}
+		if !finiteNumber(l.Height+l.Radius+l.Power+l.Flicker) || l.Height < 0 || l.Height > SpaceStoryHeight || l.Radius < 0 || l.Radius > 16 || l.Power < 0 || l.Power > 8 || l.Flicker < 0 || l.Flicker > 1 {
+			c.errorf(diag.OutOfRange, where, "want height in [0,1.5], radius in [0,16], power in [0,8] and flicker in [0,1]")
+		}
+	}
+	if len(s.Openings) > MaxSpaceOpenings {
+		c.errorf(diag.OutOfRange, w+".openings", "want at most %d openings", MaxSpaceOpenings)
+	}
+	for i, o := range s.Openings {
+		c.spaceOpening(fmt.Sprintf("%s.openings[%d]", w, i), d, o, material)
+	}
+	if d := s.Daylight; d != nil && (!finiteNumber(*d) || *d < 0 || *d > 1) {
+		c.errorf(diag.OutOfRange, w+".daylight", "want daylight from 0 (night) to 1")
 	}
 	floors := map[[3]int]bool{}
 	for i, r := range s.FloorRegions {
@@ -482,4 +594,47 @@ func roofPartsOverlap(p, q SpaceRoofPart) bool {
 		area += a[0]*b[1] - a[1]*b[0]
 	}
 	return math.Abs(area) > 1e-10
+}
+
+// spaceOpening checks that a recess lies on the face of full-height walls that
+// are deep enough to hold it, and that open floor is in front of it.
+func (c *checker) spaceOpening(where string, d *Dungeon, o SpaceOpening, material func(string, string)) {
+	s := d.Space
+	if o.Material == "" {
+		c.errorf(diag.Shape, where+".material", "an opening needs a material for its back")
+	}
+	material(where+".material", o.Material)
+	if o.Face != "north" && o.Face != "east" && o.Face != "south" && o.Face != "west" {
+		c.errorf(diag.Shape, where+".face", "face must be north, east, south or west")
+		return
+	}
+	if !finiteNumber(o.Along+o.Bottom+o.Width+o.Height+o.Depth) || o.Width < .05 || o.Width > MaxSpaceSide || o.Along < 0 || o.Height < .05 || o.Bottom < 0 || o.Bottom+o.Height > SpaceStoryHeight || o.Depth < .02 || o.Depth > .75 {
+		c.errorf(diag.OutOfRange, where, "want width (at most 64) and height of at least 0.05, a non-negative along, inside the story (bottom + height <= 1.5) and depth from 0.02 to 0.75")
+		return
+	}
+	if o.Level < 1 || o.Level > len(s.Levels) {
+		c.errorf(diag.OutOfRange, where+".level", "an opening's level must exist")
+		return
+	}
+	grid := DungeonLevel(d, o.Level-1)
+	axis, _, out := o.Plane()
+	// Every wall cell the opening crosses must be a wall with open floor in front.
+	for along := math.Floor(o.Along); along < o.Along+o.Width; along++ {
+		x, y := o.X, o.Y
+		if axis == 0 {
+			y = safeint.From(along)
+		} else {
+			x = safeint.From(along)
+		}
+		fx, fy := x, y
+		if axis == 0 {
+			fx += safeint.From(out)
+		} else {
+			fy += safeint.From(out)
+		}
+		if grid.At(x, y) != '#' || grid.At(fx, fy) == '#' || grid.At(fx, fy) == CellNone {
+			c.errorf(diag.Shape, where, "an opening must be cut into full-height wall cells (#) facing open cells; (%d,%d) does not", x, y)
+			return
+		}
+	}
 }

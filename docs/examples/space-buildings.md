@@ -7,7 +7,7 @@ gozen check examples/space-buildings/game
 gozen run examples/space-buildings/game --start inn
 ```
 
-Up/Down walk, Left/Right turn, Shift+Left/Right strafe, and Z interacts. The sample enables continuous movement. `scripts/capture-space-buildings.txt` walks through the shop, climbs the stone building, visits the inn's upper floor, returns to the street and reloads at an arbitrary yaw.
+Up/Down walk, Left/Right turn, Shift+Left/Right strafe, and Z interacts. The sample enables continuous movement and draws the view up to 1280 pixels across with `render_width: 1280`; omitted, a space is drawn at most 640 pixels across and scaled to the window, which bounds browser and CI cost. `scripts/capture-space-buildings.txt` walks through the shop, climbs the stone building, visits the inn's upper floor, returns to the street and reloads at an arbitrary yaw.
 
 ## Facades
 
@@ -29,7 +29,22 @@ Names start with a lowercase letter and contain lowercase letters, digits and un
 
 A material can also animate. `frames` lists pictures under `assets/` (a pattern such as `shop/*.jpg` stands for the files it matches, sorted) that replace the picture's file in turn, `fps` times a second (default 12), keeping its tint and brightness. The sample's shop sign blinks with two frames at `fps: 2`; torches, water, signs and screens work the same way, on walls, floors, stairs and roofs. Only a frame change redraws that material's atlas tile. One space keeps at most 256 frames loaded, and every frame of a material shares its width, height and origins.
 
-The sample's windows are painted, opaque decoration. Doorways are genuinely walkable floor cells with no wall. Partial-height windows, railings and door-frame geometry are not supported: use grid openings and decorative art, or redesign the facade. The renderer does not claim painted windows are see-through.
+## Openings and glow
+
+<!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
+```yaml
+space:
+  materials:
+    glass: {picture: glass.jpg, normal: normal/glass.jpg, glow: 0.55, width: 0.7, height: 0.76, origin_v: 0.18}
+  openings:
+    - {level: 1, x: 12, y: 6, face: south, along: 12.32, bottom: 0.18, width: 1.41, height: 0.76, depth: 0.22, material: glass}
+```
+
+An opening cuts a recess with real depth into the face of full-height walls: a window, a niche, a shop front. `face` is the outward direction of the face of the wall cell at `x`/`y`, `along` is where it starts along the face in world units (world X on north and south faces, world Z on east and west faces), `bottom` is its sill above the floor, `width` and `height` its size (it may cross several wall cells) and `depth` how far it goes in, at most 0.75. Its back shows `material`; its sides show the wall's own material, so a recess seen at an angle shows bricks or plaster turning into the wall. Every wall cell it crosses must have open floor in front of it. Openings are closed at the back and change neither collision nor what lies behind the wall; at most 32 in one space.
+
+`glow` makes a material shine by itself from 0 to 1, whatever the sun and lights, so the sample's glass reads as lit rooms at dusk. Glow also suits signs and screens.
+
+The sample's remaining windows are painted, opaque decoration. Doorways are genuinely walkable floor cells with no wall. Partial-height windows, railings and door-frame geometry are not supported: use grid openings and decorative art, or redesign the facade. The renderer does not claim painted windows are see-through.
 
 ## Floors and stairs
 
@@ -51,6 +66,25 @@ space:
 A floor region gives the walking surfaces of a rectangle on one one-based level their own material: the floor tops, the exposed edges of their slabs and the stairs that rise from that level. The sample's street keeps the dungeon's `floor_texture` (cobblestones), the inn has boards on both floors and the shop a marble mosaic. A stair's own `material` takes precedence over the region, so the inn's entrance stair is wooden and the outside stair stone. Ceilings and collision are unchanged.
 
 Tops use world X/Z like roofs, so `width: 4, height: 4` lays one picture over four by four cells and `origin_u`/`origin_v` place it; risers and edges use world X or Z and negative height like walls. Regions on the same level cannot overlap, at most 128 are allowed, and they share the 32 named materials with walls and roofs.
+
+## Relief and light
+
+<!-- verify: parse space fragment; merge with the sample levels, materials and locations -->
+```yaml
+space:
+  render_width: 1280
+  daylight: 0.45
+  materials:
+    stone: {picture: stone.jpg, normal: normal/stone.jpg, width: 2, height: 1.5}
+  lights:
+    - {level: 1, x: 12, y: 7, height: 1.3, radius: 5, power: 1.6, flicker: 0.25}
+```
+
+`normal` adds a tangent-space normal map in the OpenGL convention (green up, as Poly Haven's `nor_gl` maps) to a material. The sun and the lights then pick out mortar, cobbles and planks without changing the geometry; the map is kept at 256 pixels and shares the material's size and origins. `daylight` scales the sun and the sky from 1 (omitted, full day) to 0 (night, a faint blue floor), and darkens the sky with it.
+
+`lights` are up to 16 point lights at a cell's center, `height` above that level's floor (default 1.2). `radius` is their reach in cells (default 4, at most 16), `color` defaults to warm white, `power` (default 1, at most 8) scales them and `flicker` from 0 to 1 makes them waver like a flame. Full-height walls between a light and a surface block it; upright pictures are lit by the lights around them as a whole. The sample is set at dusk with lanterns at the inn's door, the shop's sign, the street and inside both buildings.
+
+`render_width` is the most pixels across the view is drawn at before it is scaled to the window. Omitted, it is 640, which keeps browser and CI cost bounded; up to 3840 draws sharper facades on a desktop. The cost grows with the pixel count and with the lights that reach the view.
 
 ## Roofs and canopies
 

@@ -21506,6 +21506,19 @@
       "additionalProperties": false,
       "description": "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top.",
       "properties": {
+        "daylight": {
+          "description": "Sun and sky fill from 0 (night, lit only by lights) to 1. Omitted means 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "nil; nothing is defined",
+            "legacy_default": "nil; nothing is defined",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "floor_regions": {
           "description": "Up to 128 non-overlapping rectangular floor material assignments: floor tops, slab edges and stairs.",
           "items": {
@@ -21557,6 +21570,25 @@
           },
           "x-type": "string[]"
         },
+        "lights": {
+          "description": "Up to 16 point lights such as lanterns and lit windows; full-height walls block them.",
+          "items": {
+            "$ref": "#/$defs/SpaceLight"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceLight](#spacelight)[]"
+        },
         "materials": {
           "additionalProperties": {
             "$ref": "#/$defs/SpaceMaterial"
@@ -21575,6 +21607,38 @@
             "version": "0, 1, 2"
           },
           "x-type": "string → [SpaceMaterial](#spacematerial)"
+        },
+        "openings": {
+          "description": "Up to 32 recesses with real depth cut into the faces of full-height walls: windows, niches, shop fronts.",
+          "items": {
+            "$ref": "#/$defs/SpaceOpening"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceOpening](#spaceopening)[]"
+        },
+        "render_width": {
+          "description": "Most pixels across the 3D view before it is scaled to the window, from 320 to 3840. Omitted or 0 keeps 640, which bounds browser and CI cost; raise it for sharp facades on a desktop game.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         },
         "roofs": {
           "description": "Up to 32 bounded gable, shed or flat roof primitives with indexed collision and occlusion.",
@@ -21825,6 +21889,118 @@
       },
       "type": "object"
     },
+    "SpaceLight": {
+      "additionalProperties": false,
+      "description": "A point light at a cell's center; full-height walls between it and a surface block it.",
+      "properties": {
+        "color": {
+          "description": "Light color. Omitted means warm white.",
+          "pattern": "^#?[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$",
+          "type": "string",
+          "x-contract": {
+            "default": "no color (the default of where it is drawn)",
+            "legacy_default": "no color (the default of where it is drawn)",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "color string"
+        },
+        "flicker": {
+          "description": "How much it wavers, from 0 (steady) to 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "height": {
+          "description": "Height above the level's floor, from 0 to 1.5. Omitted or 0 means 1.2.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "level": {
+          "description": "One-based existing grid level.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "power": {
+          "description": "Strength from 0 to 8. Omitted or 0 means 1.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "radius": {
+          "description": "Reach in cells, up to 16. Omitted or 0 means 4.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "x": {
+          "description": "Zero-based column, inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "y": {
+          "description": "Zero-based row, inside the map.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
     "SpaceMaterial": {
       "additionalProperties": false,
       "description": "An opaque facade or roof material. Pictures are batched into 512-pixel atlas tiles and filtered bilinearly.",
@@ -21875,6 +22051,19 @@
           },
           "x-type": "string[]"
         },
+        "glow": {
+          "description": "How much the material shines by itself, from 0 to 1, whatever the sun and lights: a lit window, a sign or a screen at night.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
         "height": {
           "description": "World units per vertical image repetition, in [0.125,128]; omitted or zero selects 1.",
           "type": "number",
@@ -21887,6 +22076,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "number"
+        },
+        "normal": {
+          "description": "Optional tangent-space normal map under assets/ in the OpenGL convention (green up, as Poly Haven's nor_gl maps): relief under the sun and lights. Kept at 256 pixels.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "origin_u": {
           "description": "World-space horizontal texture origin, in [-128,128].",
@@ -21939,6 +22141,143 @@
             "version": "0, 1, 2"
           },
           "x-type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SpaceOpening": {
+      "additionalProperties": false,
+      "description": "A recess cut into the face of full-height walls. Its back shows its material; its sides show the wall.",
+      "properties": {
+        "along": {
+          "description": "Where it starts along the face in world units: world X on north and south faces, world Z on east and west faces.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "bottom": {
+          "description": "Sill height above the level's floor; bottom + height is at most 1.5.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "depth": {
+          "description": "How far it goes into the wall, from 0.02 to 0.75.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "face": {
+          "description": "Outward direction of the face: north, east, south or west. Open floor must be in front of every wall cell it crosses.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "height": {
+          "description": "Height, at least 0.05.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "level": {
+          "description": "One-based existing grid level.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "material": {
+          "description": "Required named material for the back: glass, a door, a curtain.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "width": {
+          "description": "Width along the face, at least 0.05; it may cross several wall cells.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "x": {
+          "description": "Zero-based column of the wall cell the face belongs to.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "y": {
+          "description": "Zero-based row of the wall cell the face belongs to.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
         }
       },
       "type": "object"
