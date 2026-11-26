@@ -21843,6 +21843,38 @@
           },
           "x-type": "color string"
         },
+        "fps": {
+          "description": "Frames a second for frames, in [0,60]; omitted or zero selects 12. Only with frames.",
+          "type": "number",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "number"
+        },
+        "frames": {
+          "description": "Optional animation pictures under assets/, played in order in place of the picture's file; a pattern such as signs/*.png stands for the files it matches, sorted. At most 256 frames in one space.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string[]"
+        },
         "height": {
           "description": "World units per vertical image repetition, in [0.125,128]; omitted or zero selects 1.",
           "type": "number",

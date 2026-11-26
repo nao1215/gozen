@@ -31,6 +31,8 @@ SpaceSpeedStage:
 SpaceMaterial:
   _: "An opaque facade or roof material. Pictures are batched into 512-pixel atlas tiles and filtered bilinearly."
   picture: "Optional image, tint and brightness; alpha is composited against white."
+  frames: "Optional animation pictures under assets/, played in order in place of the picture's file; a pattern such as signs/*.png stands for the files it matches, sorted. At most 256 frames in one space."
+  fps: "Frames a second for frames, in [0,60]; omitted or zero selects 12. Only with frames."
   color: "Optional opaque base color, multiplied by picture tint and brightness."
   width: "World units per horizontal image repetition, in [0.125,128]; omitted or zero selects 1."
   height: "World units per vertical image repetition, in [0.125,128]; omitted or zero selects 1."

@@ -6,7 +6,9 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ### Added
 
-- `space.floor_regions` give the floors of a rectangle on one level their own building material, and a stair its own `material`: a paved street, a wooden inn and a carpeted shop in one location. Tops, slab edges, treads and risers use them; ceilings and collision are unchanged. Visual change: the Lantern Quarter sample has board floors and a wooden stair in the inn, a red carpet in the shop and a stone stair outside.
+- `space.floor_regions` give the floors of a rectangle on one level their own building material, and a stair its own `material`: a paved street, a wooden inn and a carpeted shop in one location. Tops, slab edges, treads and risers use them; ceilings and collision are unchanged. Visual change: the Lantern Quarter sample is retextured with CC0 Poly Haven photographs: a cobbled street, a plastered half-timbered inn with board floors and a wooden stair, a brick shop with a marble mosaic floor, a stone building with a stone stair and clay roof tiles.
+
+- A building material with `frames` animates: the pictures play in turn at `fps` frames a second (default 12) on every wall, floor, stair and roof that uses it, for a torch, water, a sign or a screen. At most 256 frames in one space. Visual change: the Lantern Quarter shop's sign blinks.
 
 ### Changed
 

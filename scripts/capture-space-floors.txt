@@ -1,0 +1,236 @@
+# The inn's wooden stair and board floor, then down the cobbled street to the brick shop and its blinking sign (space-floors.gif).
+gap 8
+wait 30
+wait 6
+shot fl-0001
+wait 6
+shot fl-0002
+wait 6
+shot fl-0003
+wait 6
+shot fl-0004
+wait 6
+shot fl-0005
+wait 6
+shot fl-0006
+hold down 6
+shot fl-0007
+hold down 6
+shot fl-0008
+hold down 6
+shot fl-0009
+hold down 6
+shot fl-0010
+hold down 6
+shot fl-0011
+hold down 6
+shot fl-0012
+hold down 6
+shot fl-0013
+hold down 6
+shot fl-0014
+hold down 6
+shot fl-0015
+hold down 6
+shot fl-0016
+hold right 6
+shot fl-0017
+hold right 6
+shot fl-0018
+hold right 6
+shot fl-0019
+hold right 6
+shot fl-0020
+hold right 6
+shot fl-0021
+hold right 6
+shot fl-0022
+hold right 6
+shot fl-0023
+hold right 6
+shot fl-0024
+hold right 6
+shot fl-0025
+hold right 6
+shot fl-0026
+hold up 6
+shot fl-0027
+hold up 6
+shot fl-0028
+hold up 6
+shot fl-0029
+hold up 6
+shot fl-0030
+hold up 6
+shot fl-0031
+hold up 6
+shot fl-0032
+hold up 6
+shot fl-0033
+hold up 6
+shot fl-0034
+hold up 6
+shot fl-0035
+hold up 6
+shot fl-0036
+hold up 6
+shot fl-0037
+hold up 6
+shot fl-0038
+hold up 6
+shot fl-0039
+hold up 6
+shot fl-0040
+hold up 6
+shot fl-0041
+hold up 6
+shot fl-0042
+hold up 6
+shot fl-0043
+hold up 6
+shot fl-0044
+hold up 6
+shot fl-0045
+hold up 6
+shot fl-0046
+hold up 6
+shot fl-0047
+hold up 6
+shot fl-0048
+hold up 6
+shot fl-0049
+hold up 6
+shot fl-0050
+hold up 6
+shot fl-0051
+hold up 6
+shot fl-0052
+hold up 6
+shot fl-0053
+hold up 6
+shot fl-0054
+hold up 6
+shot fl-0055
+hold up 6
+shot fl-0056
+hold up 6
+shot fl-0057
+hold up 6
+shot fl-0058
+hold up 6
+shot fl-0059
+hold up 6
+shot fl-0060
+hold up 6
+shot fl-0061
+hold up 6
+shot fl-0062
+hold up 6
+shot fl-0063
+hold up 6
+shot fl-0064
+hold up 6
+shot fl-0065
+hold up 6
+shot fl-0066
+hold up 6
+shot fl-0067
+hold up 6
+shot fl-0068
+hold up 6
+shot fl-0069
+hold up 6
+shot fl-0070
+hold up 6
+shot fl-0071
+hold up 6
+shot fl-0072
+hold up 6
+shot fl-0073
+hold up 6
+shot fl-0074
+hold up 6
+shot fl-0075
+hold up 6
+shot fl-0076
+hold up 6
+shot fl-0077
+hold up 6
+shot fl-0078
+hold up 6
+shot fl-0079
+hold up 6
+shot fl-0080
+hold up 6
+shot fl-0081
+hold left 6
+shot fl-0082
+hold left 6
+shot fl-0083
+hold left 6
+shot fl-0084
+hold left 6
+shot fl-0085
+hold left 6
+shot fl-0086
+hold left 6
+shot fl-0087
+hold left 6
+shot fl-0088
+hold left 6
+shot fl-0089
+hold left 6
+shot fl-0090
+hold left 6
+shot fl-0091
+hold down 6
+shot fl-0092
+hold down 6
+shot fl-0093
+hold down 6
+shot fl-0094
+hold down 6
+shot fl-0095
+hold down 6
+shot fl-0096
+wait 6
+shot fl-0097
+wait 6
+shot fl-0098
+wait 6
+shot fl-0099
+wait 6
+shot fl-0100
+wait 6
+shot fl-0101
+wait 6
+shot fl-0102
+wait 6
+shot fl-0103
+wait 6
+shot fl-0104
+wait 6
+shot fl-0105
+wait 6
+shot fl-0106
+wait 6
+shot fl-0107
+wait 6
+shot fl-0108
+wait 6
+shot fl-0109
+wait 6
+shot fl-0110
+wait 6
+shot fl-0111
+wait 6
+shot fl-0112
+wait 6
+shot fl-0113
+wait 6
+shot fl-0114
+wait 6
+shot fl-0115
+wait 6
+shot fl-0116
+quit

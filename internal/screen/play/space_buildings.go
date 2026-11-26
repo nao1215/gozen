@@ -1,6 +1,7 @@
 package play
 
 import (
+	"image"
 	"image/color"
 	"maps"
 	"math"
@@ -129,32 +130,50 @@ func (v *spaceView) roofUniforms(d *data.Dungeon, uniforms map[string]any) {
 
 // A single atlas batches all facade and roof textures, 512 pixels a side each
 // (a picture hung on a wall stays legible up close). Keep original images as
-// cache keys so an asset reload rebuilds it without per-frame uploads.
+// cache keys so an asset reload rebuilds it without per-frame uploads; an
+// animated material redraws only its own tile, when its frame changes.
 func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawTrianglesShaderOptions) {
 	if spaceAtlasHeight(d) == 512 {
 		return
 	}
+	if v.materialFramesDungeon != d {
+		v.materialFramesDungeon = d
+		v.materialFrames = make([][]string, len(v.materialNames))
+		for i, name := range v.materialNames {
+			v.materialFrames[i] = d.Space.Materials[name].FramePictures(g.db.FS)
+		}
+	}
 	sources := make([]*ebiten.Image, len(v.materialNames)+1)
 	sources[0] = g.pics.get(d.Wall.File)
 	for i, name := range v.materialNames {
-		sources[i+1] = g.pics.get(d.Space.Materials[name].Picture.File)
-	}
-	if v.buildingMaterialAtlas == nil || !slices.Equal(sources, v.materialSourcesBuilding) {
-		if v.buildingMaterialAtlas == nil {
-			v.buildingMaterialAtlas = ebiten.NewImage(8*512, 5*512)
+		m := d.Space.Materials[name]
+		file := m.Picture.File
+		if frames := v.materialFrames[i]; len(frames) > 0 {
+			file = frames[int(float64(v.clock)*m.FrameRate()/60)%len(frames)]
 		}
-		v.buildingMaterialAtlas.Fill(color.White)
-		for i, img := range sources {
-			if img == nil {
-				continue
-			}
-			draw := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
-			draw.GeoM.Scale(512/float64(img.Bounds().Dx()), 512/float64(img.Bounds().Dy()))
-			draw.GeoM.Translate(float64(i%8*512), float64(i/8*512))
-			v.buildingMaterialAtlas.DrawImage(img, draw)
-		}
-		v.materialSourcesBuilding = sources
+		sources[i+1] = g.pics.get(file)
 	}
+	if v.buildingMaterialAtlas == nil {
+		v.buildingMaterialAtlas = ebiten.NewImage(8*512, 5*512)
+		v.materialSourcesBuilding = nil
+	}
+	for i, img := range sources {
+		if i < len(v.materialSourcesBuilding) && v.materialSourcesBuilding[i] == img {
+			continue
+		}
+		tile := image.Rect(i%8*512, i/8*512, i%8*512+512, i/8*512+512)
+		if slot, ok := v.buildingMaterialAtlas.SubImage(tile).(*ebiten.Image); ok {
+			slot.Fill(color.White)
+		}
+		if img == nil {
+			continue
+		}
+		draw := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
+		draw.GeoM.Scale(512/float64(img.Bounds().Dx()), 512/float64(img.Bounds().Dy()))
+		draw.GeoM.Translate(float64(tile.Min.X), float64(tile.Min.Y))
+		v.buildingMaterialAtlas.DrawImage(img, draw)
+	}
+	v.materialSourcesBuilding = sources
 	// Uniforms are static until DB replacement; the material images above can
 	// change independently during hot reload.
 	if v.buildingColors == nil || v.buildingColorDungeon != d {
@@ -168,7 +187,7 @@ func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawT
 			b := float32(m.Picture.Brightness()) / 255 / 255
 			n := (i + 1) * 4
 			v.buildingColors[n], v.buildingColors[n+1], v.buildingColors[n+2] = float32(c.R)*float32(tint.R)*b, float32(c.G)*float32(tint.G)*b, float32(c.B)*float32(tint.B)*b
-			if m.Picture.File != "" {
+			if m.Textured() {
 				v.buildingColors[n+3] = 1
 			}
 			v.buildingUV[n], v.buildingUV[n+1], v.buildingUV[n+2], v.buildingUV[n+3] = float32(m.Width), float32(m.Height), float32(m.OriginU), float32(m.OriginV)

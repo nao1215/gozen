@@ -852,27 +852,29 @@ func TestGraphicsSpaceBuildings(t *testing.T) {
 	for _, name := range []string{"town", "shop", "elevated", "inn-landing"} {
 		checkSpaceFrame(t, filepath.Join(out, name+".png"))
 	}
-	// This close interior has only a few flat colors. Count-free probes check
-	// its wall, floor and roof underside without relying on backend rounding
-	// to add extra color buckets along texture edges.
+	// The shop's brick wall, its mosaic floor region and the wooden roof
+	// underside: the mean of a small patch tells textured surfaces apart without
+	// depending on backend rounding along texture edges.
 	room := shotImage(t, out, "shop-room")
 	for _, probe := range []struct {
 		name string
 		y    int
 		rgb  [3]int
 	}{
-		{"wall", 200, [3]int{94, 52, 44}},
-		{"carpet floor region", 450, [3]int{142, 48, 58}},
+		{"brick wall", 200, [3]int{88, 63, 50}},
+		{"mosaic floor region", 450, [3]int{120, 101, 89}},
 		{"roof underside", 20, [3]int{103, 75, 50}},
 	} {
+		var sum [3]int
 		for y := probe.y - 3; y <= probe.y+3; y++ {
 			for x := 497; x <= 503; x++ {
 				r, g, b, _ := room.At(x, y).RGBA()
-				for channel, got := range []uint32{r, g, b} {
-					if abs(int(got>>8)-probe.rgb[channel]) > 20 {
-						t.Fatalf("shop %s at (%d,%d): RGB=%d,%d,%d", probe.name, x, y, r>>8, g>>8, b>>8)
-					}
-				}
+				sum[0], sum[1], sum[2] = sum[0]+int(r>>8), sum[1]+int(g>>8), sum[2]+int(b>>8)
+			}
+		}
+		for channel := range sum {
+			if abs(sum[channel]/49-probe.rgb[channel]) > 24 {
+				t.Fatalf("shop %s around (500,%d): mean RGB=%d,%d,%d", probe.name, probe.y, sum[0]/49, sum[1]/49, sum[2]/49)
 			}
 		}
 	}
