@@ -4,6 +4,18 @@ Changes not yet released are tracked under Unreleased. All packages and the goze
 
 ## Unreleased
 
+### Added
+
+- `space.floor_regions` give the floors of a rectangle on one level their own building material, and a stair its own `material`: a paved street, a wooden inn and a carpeted shop in one location. Tops, slab edges, treads and risers use them; ceilings and collision are unchanged. Visual change: the Lantern Quarter sample has board floors and a wooden stair in the inn, a red carpet in the shop and a stone stair outside.
+
+### Changed
+
+- Visual change: building material pictures are kept at 512 pixels a side instead of 256 and filtered bilinearly, so a picture on a wall stays sharp up close.
+
+### Fixed
+
+- `move` with `at` into a stacked space arrives on the story that has the character. It always arrived on the lowest story, so a tower built from several locations could not come back down onto the top floor of the one below, and `gozen check` rejected such an `at`.
+
 ## v0.28.0 - 2026-11-26
 
 ### Added

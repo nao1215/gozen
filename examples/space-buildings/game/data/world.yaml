@@ -33,6 +33,12 @@ locations:
           tile: {picture: roof.png, color: '#b84830', width: 1, height: 1}
           wood: {color: '#96683e'}
           canvas: {picture: canopy.png, width: 2, height: 1}
+          boards: {picture: boards.png, width: 2, height: 2}
+          carpet: {color: '#8c2f3c'}
+        floor_regions:
+          - {level: 1, x: 2, y: 2, width: 5, depth: 4, material: boards}
+          - {level: 2, x: 3, y: 2, width: 3, depth: 4, material: boards}
+          - {level: 1, x: 13, y: 3, width: 4, depth: 4, material: carpet}
         wall_regions:
           - {level: 1, x: 1, y: 1, width: 7, depth: 6, material: timber}
           - {level: 2, x: 2, y: 1, width: 5, depth: 4, material: timber}
@@ -81,4 +87,4 @@ locations:
               ____________......__
               ____________________
               ____________________
-        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3}, {level: 1, x: 11, y: 15, facing: north, length: 4}]
+        stairs: [{level: 1, x: 3, y: 7, facing: north, length: 3, material: boards}, {level: 1, x: 11, y: 15, facing: north, length: 4, material: stone}]

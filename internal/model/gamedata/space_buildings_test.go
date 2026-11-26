@@ -122,6 +122,11 @@ func TestSpaceMaterialDiagnostics(t *testing.T) {
 		{"wall_regions: [{level: 2, x: 0, y: 0, width: 2, depth: 2}]", "wall_regions[0]"},
 		{"wall_regions: [{level: 1, x: 0, y: 0, width: 7, depth: 2}]", "wall_regions[0]"},
 		{"wall_regions: [{level: 1, x: 0, y: 0, width: 2, depth: 2}, {level: 1, x: 1, y: 1, width: 2, depth: 2}]", "overlap"},
+		{"floor_regions: [{level: 1, x: 0, y: 0, width: 2, depth: 2}]", "floor_regions[0].material"},
+		{"floor_regions: [{level: 1, x: 0, y: 0, width: 2, depth: 2, material: absent}]", "floor_regions[0].material"},
+		{"stairs: [{level: 1, x: 0, y: 3, facing: north, length: 3, material: absent}]", "stairs[0].material"},
+		{"materials: {wood: {color: '#996633'}}\n        floor_regions: [{level: 3, x: 0, y: 0, width: 2, depth: 2, material: wood}]", "floor_regions[0]"},
+		{"materials: {wood: {color: '#996633'}}\n        floor_regions: [{level: 1, x: 0, y: 0, width: 2, depth: 2, material: wood}, {level: 1, x: 1, y: 1, width: 2, depth: 2, material: wood}]", "floor regions on the same level cannot overlap"},
 	} {
 		t.Run(tc.extra, func(t *testing.T) {
 			_, err := testgame.TryLoad(buildingData("        " + tc.extra + "\n"))

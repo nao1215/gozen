@@ -16,9 +16,12 @@ type Space struct {
 	// Building appearance is optional; global dungeon materials remain defaults.
 	Materials   map[string]SpaceMaterial `yaml:"materials"`
 	WallRegions []SpaceWallRegion        `yaml:"wall_regions"`
-	Roofs       []SpaceRoof              `yaml:"roofs"`
-	roofParts   []SpaceRoofPart
-	roofCells   map[[2]int][]int
+	// FloorRegions give walking surfaces their own material: a paved street,
+	// a wooden inn floor and a carpeted shop in one location.
+	FloorRegions []SpaceFloorRegion `yaml:"floor_regions"`
+	Roofs        []SpaceRoof        `yaml:"roofs"`
+	roofParts    []SpaceRoofPart
+	roofCells    map[[2]int][]int
 	// FreeMove opts the layer-3 controller and presentation into continuous motion.
 	// Nil retains grid movement and its existing camera durations.
 	FreeMove *SpaceFreeMove `yaml:"free_move"`
@@ -60,6 +63,9 @@ type SpaceStair struct {
 	Y      int    `yaml:"y"`
 	Facing string `yaml:"facing"`
 	Length int    `yaml:"length"`
+	// Material names a building material for the treads, risers and sides,
+	// taking precedence over a floor region (stone outside, wood inside).
+	Material string `yaml:"material"`
 }
 
 const (
@@ -153,6 +159,23 @@ func SpaceHeightAt(s *Space, level int, x, z float64) float64 {
 		}
 	}
 	return float64(level) * SpaceStoryHeight
+}
+
+// FindLevel is the lowest level whose grid has the character, and the cell on it.
+// A move into a stacked space can then arrive at a tile on an upper story (a
+// tower built from several locations arrives on the top floor of the one
+// below); a dungeon without a space has one level, its map.
+func (d *Dungeon) FindLevel(c rune) (level, x, y int, ok bool) {
+	if d.Space == nil {
+		x, y, ok = d.Find(c)
+		return 0, x, y, ok
+	}
+	for level := range d.Space.grids {
+		if x, y, ok := DungeonLevel(d, level).Find(c); ok {
+			return level, x, y, true
+		}
+	}
+	return 0, 0, 0, false
 }
 
 // DungeonLevel shares immutable definitions while selecting a level's grid.

@@ -862,7 +862,7 @@ func TestGraphicsSpaceBuildings(t *testing.T) {
 		rgb  [3]int
 	}{
 		{"wall", 200, [3]int{94, 52, 44}},
-		{"floor", 450, [3]int{186, 168, 130}},
+		{"carpet floor region", 450, [3]int{142, 48, 58}},
 		{"roof underside", 20, [3]int{103, 75, 50}},
 	} {
 		for y := probe.y - 3; y <= probe.y+3; y++ {

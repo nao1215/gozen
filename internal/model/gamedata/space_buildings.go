@@ -36,6 +36,19 @@ type SpaceWallRegion struct {
 	West     string `yaml:"west"`
 }
 
+// SpaceFloorRegion assigns play's walking surfaces in a grid rectangle on one
+// level: floor tops, the exposed edges of their slabs, and stairs whose base is
+// on that level unless the stair names its own material. Level is one-based.
+// Regions cannot overlap on the same level. Ceilings and collision are unchanged.
+type SpaceFloorRegion struct {
+	Level    int    `yaml:"level"`
+	X        int    `yaml:"x"`
+	Y        int    `yaml:"y"`
+	Width    int    `yaml:"width"`
+	Depth    int    `yaml:"depth"`
+	Material string `yaml:"material"`
+}
+
 // SpaceRoof is a closed, nonwalkable building roof for dungeon collision and
 // play rendering. Base offsets the one-based level's floor in world units.
 // Facing is the uphill direction; a gable also rises from the opposite edge.
@@ -236,8 +249,8 @@ func (s *Space) RoofRay(origin, direction [3]float64, limit float64) (float64, b
 
 func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 	s := d.Space
-	if len(s.Materials) > 32 || len(s.WallRegions) > 128 || len(s.Roofs) > 32 {
-		c.errorf(diag.OutOfRange, w, "want at most 32 materials, 128 wall regions and 32 roofs")
+	if len(s.Materials) > 32 || len(s.WallRegions) > 128 || len(s.FloorRegions) > 128 || len(s.Roofs) > 32 {
+		c.errorf(diag.OutOfRange, w, "want at most 32 materials, 128 wall regions, 128 floor regions and 32 roofs")
 	}
 	material := func(where, name string) {
 		if _, ok := s.Materials[name]; name != "" && !ok {
@@ -278,6 +291,32 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if overlap {
 			c.errorf(diag.Shape, where, "wall regions on the same level cannot overlap")
 		}
+	}
+	floors := map[[3]int]bool{}
+	for i, r := range s.FloorRegions {
+		where := fmt.Sprintf("%s.floor_regions[%d]", w, i)
+		if r.Material == "" {
+			c.errorf(diag.Shape, where+".material", "a floor region needs a material")
+		}
+		material(where+".material", r.Material)
+		if r.Level < 1 || r.Level > len(s.Levels) || r.X < 0 || r.Y < 0 || r.Width < 1 || r.Depth < 1 || r.Width > width || r.Depth > height || r.X > width-r.Width || r.Y > height-r.Depth {
+			c.errorf(diag.OutOfRange, where, "floor region level and bounds must fit the map")
+			continue
+		}
+		overlap := false
+		for z := r.Y; z < r.Y+r.Depth; z++ {
+			for x := r.X; x < r.X+r.Width; x++ {
+				key := [3]int{r.Level, x, z}
+				overlap = overlap || floors[key]
+				floors[key] = true
+			}
+		}
+		if overlap {
+			c.errorf(diag.Shape, where, "floor regions on the same level cannot overlap")
+		}
+	}
+	for i, stair := range s.Stairs {
+		material(fmt.Sprintf("%s.stairs[%d].material", w, i), stair.Material)
 	}
 	for i, r := range s.Roofs {
 		where := fmt.Sprintf("%s.roofs[%d]", w, i)

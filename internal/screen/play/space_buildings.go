@@ -74,6 +74,30 @@ func (v *spaceView) prepareBuildings(d *data.Dungeon) {
 			}
 		}
 	}
+	// Floor materials share the west-face rows: their red channel is the west
+	// wall and green is the walking surface of the same cell and story.
+	floor := func(level, x, z int, name string) {
+		if level < 1 || x < 0 || z < 0 || x >= 64 || z >= 64 {
+			return
+		}
+		v.buildingPixels[((640+(level-1)*64+z)*64+x)*4+1] = byte(id(name)) // #nosec G115 -- At most 32 validated material IDs.
+	}
+	for _, r := range d.Space.FloorRegions {
+		for z := r.Y; z < r.Y+r.Depth; z++ {
+			for x := r.X; x < r.X+r.Width; x++ {
+				floor(r.Level, x, z, r.Material)
+			}
+		}
+	}
+	for _, stair := range d.Space.Stairs {
+		if stair.Material == "" {
+			continue
+		}
+		dx, dy := data.StairDelta(stair)
+		for n := range stair.Length {
+			floor(stair.Level, stair.X+n*dx, stair.Y+n*dy, stair.Material)
+		}
+	}
 	for _, r := range d.Space.WallRegions {
 		names := [4]string{r.North, r.East, r.South, r.West}
 		for face, name := range names {
@@ -103,7 +127,8 @@ func (v *spaceView) roofUniforms(d *data.Dungeon, uniforms map[string]any) {
 	uniforms["GeometryTop"] = v.buildingTop
 }
 
-// A single atlas batches all facade and roof textures. Keep original images as
+// A single atlas batches all facade and roof textures, 512 pixels a side each
+// (a picture hung on a wall stays legible up close). Keep original images as
 // cache keys so an asset reload rebuilds it without per-frame uploads.
 func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawTrianglesShaderOptions) {
 	if spaceAtlasHeight(d) == 512 {
@@ -116,7 +141,7 @@ func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawT
 	}
 	if v.buildingMaterialAtlas == nil || !slices.Equal(sources, v.materialSourcesBuilding) {
 		if v.buildingMaterialAtlas == nil {
-			v.buildingMaterialAtlas = ebiten.NewImage(2048, 1280)
+			v.buildingMaterialAtlas = ebiten.NewImage(8*512, 5*512)
 		}
 		v.buildingMaterialAtlas.Fill(color.White)
 		for i, img := range sources {
@@ -124,8 +149,8 @@ func (v *spaceView) buildingMaterials(g *Game, d *data.Dungeon, op *ebiten.DrawT
 				continue
 			}
 			draw := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear}
-			draw.GeoM.Scale(256/float64(img.Bounds().Dx()), 256/float64(img.Bounds().Dy()))
-			draw.GeoM.Translate(float64(i%8*256), float64(i/8*256))
+			draw.GeoM.Scale(512/float64(img.Bounds().Dx()), 512/float64(img.Bounds().Dy()))
+			draw.GeoM.Translate(float64(i%8*512), float64(i/8*512))
 			v.buildingMaterialAtlas.DrawImage(img, draw)
 		}
 		v.materialSourcesBuilding = sources

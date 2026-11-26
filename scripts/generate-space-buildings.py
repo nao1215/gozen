@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw
 
 root = Path(__file__).resolve().parents[1] / 'examples/space-buildings/game/assets'
 root.mkdir(parents=True, exist_ok=True)
-for name in ('timber', 'shop', 'stone', 'roof', 'canopy'):
+for name in ('timber', 'shop', 'stone', 'roof', 'canopy', 'boards'):
     image = Image.new('RGB', (256, 256), '#e4d6b1')
     draw = ImageDraw.Draw(image)
     if name == 'timber':
@@ -38,6 +38,12 @@ for name in ('timber', 'shop', 'stone', 'roof', 'canopy'):
             draw.line((0, y, 255, y), fill='#94705d', width=4)
             for x in range(0, 256, 32):
                 draw.arc((x, y - 22, x + 32, y + 12), 0, 180, fill='#ad8a70', width=2)
+    elif name == 'boards':
+        draw.rectangle((0, 0, 255, 255), fill='#9a6a3c')
+        for y in range(0, 256, 32):
+            draw.line((0, y, 255, y), fill='#5e3d21', width=3)
+            offset = (y // 32) * 80 % 256
+            draw.line((offset, y, offset, y + 32), fill='#5e3d21', width=3)
     else:
         for x in range(0, 256, 32):
             draw.rectangle((x, 0, x + 15, 255), fill='#b65b45')

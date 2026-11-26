@@ -1,6 +1,7 @@
 Space:
   materials: "Up to 32 named opaque materials for building walls and roofs."
   wall_regions: "Up to 128 non-overlapping rectangular wall material assignments."
+  floor_regions: "Up to 128 non-overlapping rectangular floor material assignments: floor tops, slab edges and stairs."
   roofs: "Up to 32 bounded gable, shed or flat roof primitives with indexed collision and occlusion."
   free_move: "Opt in to continuous walking and turning on this stacked space. Omit to retain grid movement."
   step_ticks: "Camera interpolation duration for one step at 60 updates per second. Omitted or 0 means 18 ticks; otherwise 1 to 120."
@@ -16,6 +17,7 @@ SpaceStair:
   y: "Zero-based lower endpoint row."
   facing: "Ascending direction: north, east, south or west."
   length: "Horizontal distance to the upper endpoint, from 3 to 8 cells. Keep the space above the run empty."
+  material: "Optional named material for the treads, risers and sides; takes precedence over a floor region."
 SpaceFreeMove:
   _: "Fixed 60 Hz walking controller with a circular footprint, stair support and optional held-input speed stages."
   speed: "Base speed in cells per simulation second, in (0,12]. Omitted or zero selects 1.6."
@@ -27,7 +29,7 @@ SpaceSpeedStage:
   after: "Positive finite hold time in simulation seconds, at most 3600 and strictly greater than the previous stage."
   speed: "Absolute target speed in cells per simulation second, in (0,12]."
 SpaceMaterial:
-  _: "An opaque facade or roof material. Pictures are batched into 256-pixel atlas tiles."
+  _: "An opaque facade or roof material. Pictures are batched into 512-pixel atlas tiles and filtered bilinearly."
   picture: "Optional image, tint and brightness; alpha is composited against white."
   color: "Optional opaque base color, multiplied by picture tint and brightness."
   width: "World units per horizontal image repetition, in [0.125,128]; omitted or zero selects 1."
@@ -46,6 +48,14 @@ SpaceWallRegion:
   east: "Optional material override for outward east faces."
   south: "Optional material override for outward south faces."
   west: "Optional material override for outward west faces."
+SpaceFloorRegion:
+  _: "A non-overlapping grid rectangle assigning a walking-surface material on one level: floor tops, their slab edges and stairs based there. Ceilings and collision are unchanged."
+  level: "One-based existing grid level."
+  x: "Zero-based left column."
+  y: "Zero-based top row."
+  width: "Positive integer width in cells, inside the map."
+  depth: "Positive integer depth in cells, inside the map."
+  material: "Required named material; tops use world X/Z, edges and risers use world X or Z and negative height."
 SpaceRoof:
   _: "A closed nonwalkable roof primitive with actual sides and underside; at most 32 roofs."
   filled: "Fill down to a horizontal underside to close gable ends; default false retains constant vertical thickness."

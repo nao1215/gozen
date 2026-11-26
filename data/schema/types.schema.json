@@ -21506,6 +21506,25 @@
       "additionalProperties": false,
       "description": "A bounded stack of equal-sized maps (schema version 8). Blank cells are open air; levels are ordered bottom to top.",
       "properties": {
+        "floor_regions": {
+          "description": "Up to 128 non-overlapping rectangular floor material assignments: floor tops, slab edges and stairs.",
+          "items": {
+            "$ref": "#/$defs/SpaceFloorRegion"
+          },
+          "type": [
+            "array",
+            "null"
+          ],
+          "x-contract": {
+            "default": "empty list",
+            "legacy_default": "empty list",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "[SpaceFloorRegion](#spacefloorregion)[]"
+        },
         "free_move": {
           "$ref": "#/$defs/SpaceFreeMove",
           "description": "Opt in to continuous walking and turning on this stacked space. Omit to retain grid movement.",
@@ -21656,6 +21675,91 @@
       },
       "type": "object"
     },
+    "SpaceFloorRegion": {
+      "additionalProperties": false,
+      "description": "A non-overlapping grid rectangle assigning a walking-surface material on one level: floor tops, their slab edges and stairs based there. Ceilings and collision are unchanged.",
+      "properties": {
+        "depth": {
+          "description": "Positive integer depth in cells, inside the map.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "level": {
+          "description": "One-based existing grid level.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "material": {
+          "description": "Required named material; tops use world X/Z, edges and risers use world X or Z and negative height.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
+        },
+        "width": {
+          "description": "Positive integer width in cells, inside the map.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "x": {
+          "description": "Zero-based left column.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        },
+        "y": {
+          "description": "Zero-based top row.",
+          "type": "integer",
+          "x-contract": {
+            "default": "0",
+            "legacy_default": "0",
+            "zero": "0 is kept",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "SpaceFreeMove": {
       "additionalProperties": false,
       "description": "Fixed 60 Hz walking controller with a circular footprint, stair support and optional held-input speed stages.",
@@ -21723,7 +21827,7 @@
     },
     "SpaceMaterial": {
       "additionalProperties": false,
-      "description": "An opaque facade or roof material. Pictures are batched into 256-pixel atlas tiles.",
+      "description": "An opaque facade or roof material. Pictures are batched into 512-pixel atlas tiles and filtered bilinearly.",
       "properties": {
         "color": {
           "description": "Optional opaque base color, multiplied by picture tint and brightness.",
@@ -22058,6 +22162,19 @@
             "version": "0, 1, 2"
           },
           "x-type": "integer"
+        },
+        "material": {
+          "description": "Optional named material for the treads, risers and sides; takes precedence over a floor region.",
+          "type": "string",
+          "x-contract": {
+            "default": "empty string",
+            "legacy_default": "empty string",
+            "zero": "-",
+            "required": "optional",
+            "reference": "-",
+            "version": "0, 1, 2"
+          },
+          "x-type": "string"
         },
         "x": {
           "description": "Zero-based lower endpoint column.",

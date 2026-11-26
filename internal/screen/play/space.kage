@@ -12,9 +12,17 @@ var BuildingColors [33]vec4
 var BuildingUV [33]vec4
 var RoofAppearance [64]vec2
 
+// Bilinear within the material's own tile: a facade seen up close is smooth
+// rather than blocky, and never bleeds into its neighbor in the atlas.
 func buildingTexture(id float, uv vec2) vec3 {
- tile:=vec2(mod(id,8),floor(id/8))*256
- return imageSrc1UnsafeAtFromSrc0Pos(imageSrc0Origin()+tile+clamp(uv,vec2(.002),vec2(.998))*256).rgb
+ o:=imageSrc0Origin()+vec2(mod(id,8),floor(id/8))*512
+ p:=clamp(clamp(uv,vec2(0),vec2(1))*512-.5,vec2(0),vec2(511))
+ b:=floor(p);f:=p-b;n:=min(b+1,vec2(511))
+ c00:=imageSrc1UnsafeAtFromSrc0Pos(o+b+.5).rgb
+ c10:=imageSrc1UnsafeAtFromSrc0Pos(o+vec2(n.x,b.y)+.5).rgb
+ c01:=imageSrc1UnsafeAtFromSrc0Pos(o+vec2(b.x,n.y)+.5).rgb
+ c11:=imageSrc1UnsafeAtFromSrc0Pos(o+n+.5).rgb
+ return mix(mix(c00,c10,f.x),mix(c01,c11,f.x),f.y)
 }
 
 func wallMaterial(point,face vec3) float {
@@ -24,6 +32,12 @@ func wallMaterial(point,face vec3) float {
  if face.x>0 {return ids.y};if face.z>0 {return ids.z}
  if face.x<0 {return floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,1152+p.y*64+p.z+.5)).r*255+.5)}
  return ids.x
+}
+
+// floorMaterial is the walking-surface material of a cell on a story (0: none).
+func floorMaterial(p vec3) float {
+ if p.x<0 || p.z<0 || p.y<0 || p.x>=MapSize.x || p.z>=MapSize.y || p.y>=Levels {return 0}
+ return floor(imageSrc0UnsafeAt(imageSrc0Origin()+vec2(p.x+.5,1152+p.y*64+p.z+.5)).g*255+.5)
 }
 
 func buildingColor(id float, uv vec2) vec3 {
@@ -101,6 +115,23 @@ func Fragment(dst vec4, uv vec2, tint vec4) vec4 {
     if face.y < -.5 {
      col=CeilingColor
      if Textured.z>0 {col=imageSrc3UnsafeAtFromSrc0Pos(imageSrc0Origin()+tex*512).rgb*CeilingTint}
+    }
+    if BuildingEnabled>0 && face.y > -.5 {
+     // The story a surface belongs to: a floor top sits on it, a stair rises
+     // from it, and a slab edge hangs just below the story it carries.
+     inside:=point-face*.001
+     level:=floor(point.y/1.5+.5)
+     if c.x==3 {level=floor(inside.y/1.5)}
+     if c.x==4 {level=floor(point.y/1.5)+1}
+     id:=floorMaterial(vec3(floor(inside.x),level,floor(inside.z)))
+     if id>0 {
+      uv:=point.xz
+      if abs(face.y)<.5 {
+       uv=vec2(point.x,-point.y)
+       if abs(face.x)>.5 {uv.x=point.z}
+      }
+      col=buildingColor(id,uv)
+     }
     }
     if c.x==3 {
      // Reuse the floor stone on the treads, with darker risers.
