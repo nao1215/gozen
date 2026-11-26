@@ -159,7 +159,11 @@ Enemies can transform, merge, change pictures as they lose HP, and react with mo
 
 ### Multi-level maps
 
-[![Walking up to the second and third floors across the town](docs/images/space-stairs.gif)](docs/images/space-stairs.mp4)
+Streets, interiors and upper floors share one location, and walls, floors, stairs and roofs take their own materials, still or animated ([building a continuous town](docs/examples/space-buildings.md)).
+
+| Stairs between floors | Floors, stairs and an animated sign |
+|:--|:--|
+| [![Walking up to the second and third floors across the town](docs/images/space-stairs.gif)](docs/images/space-stairs.mp4) | ![The inn's wooden stair and board floor, the cobbled street, and the brick shop whose sign lamps blink](docs/images/space-floors.gif) |
 
 ## Playtesting
 

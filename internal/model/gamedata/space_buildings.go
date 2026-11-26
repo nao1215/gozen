@@ -2,7 +2,9 @@ package gamedata
 
 import (
 	"fmt"
+	"io/fs"
 	"math"
+	"strings"
 
 	"github.com/nao1215/gozen/internal/base/diag"
 	"github.com/nao1215/gozen/internal/base/safeint"
@@ -11,14 +13,43 @@ import (
 // SpaceMaterial supplies play with a building surface. Width/Height are world
 // units per image repetition (default 1); origins align neighboring faces.
 // Pictures and colors decorate opaque geometry and never create openings.
+// Frames, pictures under assets/ (a pattern stands for the files it matches,
+// sorted), animate the material at FPS frames a second (0 is 12) in place of
+// Picture's file, keeping its tint and brightness: a torch, water, a sign or a
+// screen on a wall.
 type SpaceMaterial struct {
-	Picture Picture `yaml:"picture"`
-	Color   Color   `yaml:"color"`
-	Width   float64 `yaml:"width"`
-	Height  float64 `yaml:"height"`
-	OriginU float64 `yaml:"origin_u"`
-	OriginV float64 `yaml:"origin_v"`
+	Picture Picture  `yaml:"picture"`
+	Frames  []string `yaml:"frames" json:",omitempty"`
+	FPS     float64  `yaml:"fps"`
+	Color   Color    `yaml:"color"`
+	Width   float64  `yaml:"width"`
+	Height  float64  `yaml:"height"`
+	OriginU float64  `yaml:"origin_u"`
+	OriginV float64  `yaml:"origin_v"`
 }
+
+// MaxSpaceMaterialFrames bounds the animation pictures one space keeps loaded.
+const MaxSpaceMaterialFrames = 256
+
+// FrameRate is the frames an animated material shows a second (0 is 12).
+func (m SpaceMaterial) FrameRate() float64 {
+	if m.FPS > 0 {
+		return m.FPS
+	}
+	return 12
+}
+
+// FramePictures are the pictures of Frames matched in fsys under assets/, as
+// a phone video's are. With no fsys, Frames as written.
+func (m SpaceMaterial) FramePictures(fsys fs.FS) []string {
+	if len(m.Frames) == 0 || fsys == nil {
+		return m.Frames
+	}
+	return CG{Files: m.Frames}.Pages(fsys)
+}
+
+// Textured reports whether the material draws a picture (a still or frames).
+func (m SpaceMaterial) Textured() bool { return m.Picture.File != "" || len(m.Frames) > 0 }
 
 // SpaceWallRegion assigns play's wall faces in a grid rectangle on one level.
 // Level is one-based; directional overrides take precedence over Material.
@@ -34,6 +65,19 @@ type SpaceWallRegion struct {
 	East     string `yaml:"east"`
 	South    string `yaml:"south"`
 	West     string `yaml:"west"`
+}
+
+// SpaceFloorRegion assigns play's walking surfaces in a grid rectangle on one
+// level: floor tops, the exposed edges of their slabs, and stairs whose base is
+// on that level unless the stair names its own material. Level is one-based.
+// Regions cannot overlap on the same level. Ceilings and collision are unchanged.
+type SpaceFloorRegion struct {
+	Level    int    `yaml:"level"`
+	X        int    `yaml:"x"`
+	Y        int    `yaml:"y"`
+	Width    int    `yaml:"width"`
+	Depth    int    `yaml:"depth"`
+	Material string `yaml:"material"`
 }
 
 // SpaceRoof is a closed, nonwalkable building roof for dungeon collision and
@@ -236,14 +280,15 @@ func (s *Space) RoofRay(origin, direction [3]float64, limit float64) (float64, b
 
 func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 	s := d.Space
-	if len(s.Materials) > 32 || len(s.WallRegions) > 128 || len(s.Roofs) > 32 {
-		c.errorf(diag.OutOfRange, w, "want at most 32 materials, 128 wall regions and 32 roofs")
+	if len(s.Materials) > 32 || len(s.WallRegions) > 128 || len(s.FloorRegions) > 128 || len(s.Roofs) > 32 {
+		c.errorf(diag.OutOfRange, w, "want at most 32 materials, 128 wall regions, 128 floor regions and 32 roofs")
 	}
 	material := func(where, name string) {
 		if _, ok := s.Materials[name]; name != "" && !ok {
 			c.errorf(diag.UnknownReference, where, "unknown building material %q", name)
 		}
 	}
+	frames := 0
 	for name, m := range s.Materials {
 		where := w + ".materials." + name
 		if !declaredName.MatchString(name) {
@@ -256,6 +301,26 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if m.Color.Valid && m.Color.A != 255 {
 			c.errorf(diag.Shape, where, "building material colors must be opaque")
 		}
+		if !finiteNumber(m.FPS) || m.FPS < 0 || m.FPS > 60 {
+			c.errorf(diag.OutOfRange, where+".fps", "fps must be finite and in [0,60]")
+		}
+		if len(m.Frames) == 0 && m.FPS != 0 {
+			c.errorf(diag.Shape, where+".fps", "fps is for frames")
+		}
+		for i, f := range m.Frames {
+			at := fmt.Sprintf("%s.frames[%d]", where, i)
+			pages := SpaceMaterial{Frames: []string{f}}.FramePictures(c.db.FS)
+			if strings.ContainsAny(f, "*?[") && len(pages) == 0 {
+				c.errorf(diag.MissingAsset, at, "no picture matches %s under assets/", f)
+			}
+			for _, p := range pages {
+				c.picture(at, Picture{File: p})
+			}
+			frames += len(pages)
+		}
+	}
+	if frames > MaxSpaceMaterialFrames {
+		c.errorf(diag.OutOfRange, w+".materials", "want at most %d animation frames in one space, got %d", MaxSpaceMaterialFrames, frames)
 	}
 	occupied := map[[3]int]bool{}
 	for i, r := range s.WallRegions {
@@ -278,6 +343,32 @@ func (c *checker) spaceBuildings(w string, d *Dungeon, width, height int) {
 		if overlap {
 			c.errorf(diag.Shape, where, "wall regions on the same level cannot overlap")
 		}
+	}
+	floors := map[[3]int]bool{}
+	for i, r := range s.FloorRegions {
+		where := fmt.Sprintf("%s.floor_regions[%d]", w, i)
+		if r.Material == "" {
+			c.errorf(diag.Shape, where+".material", "a floor region needs a material")
+		}
+		material(where+".material", r.Material)
+		if r.Level < 1 || r.Level > len(s.Levels) || r.X < 0 || r.Y < 0 || r.Width < 1 || r.Depth < 1 || r.Width > width || r.Depth > height || r.X > width-r.Width || r.Y > height-r.Depth {
+			c.errorf(diag.OutOfRange, where, "floor region level and bounds must fit the map")
+			continue
+		}
+		overlap := false
+		for z := r.Y; z < r.Y+r.Depth; z++ {
+			for x := r.X; x < r.X+r.Width; x++ {
+				key := [3]int{r.Level, x, z}
+				overlap = overlap || floors[key]
+				floors[key] = true
+			}
+		}
+		if overlap {
+			c.errorf(diag.Shape, where, "floor regions on the same level cannot overlap")
+		}
+	}
+	for i, stair := range s.Stairs {
+		material(fmt.Sprintf("%s.stairs[%d].material", w, i), stair.Material)
 	}
 	for i, r := range s.Roofs {
 		where := fmt.Sprintf("%s.roofs[%d]", w, i)

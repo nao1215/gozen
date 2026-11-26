@@ -727,7 +727,11 @@ func (c *checker) arrival(w, to, at, facing string) {
 		c.errorf(diag.UnknownReference, w+".at", "%q is not placed by the generate of %s (nor opened by open_wall)", at, to)
 		return
 	}
-	if _, _, ok := l.Dungeon.Find(r[0]); len(r) != 1 || !ok {
+	if len(r) != 1 {
+		c.errorf(diag.UnknownReference, w+".at", "%q is not on the map of %s", at, to)
+		return
+	}
+	if _, _, _, ok := l.Dungeon.FindLevel(r[0]); !ok {
 		c.errorf(diag.UnknownReference, w+".at", "%q is not on the map of %s", at, to)
 	}
 }

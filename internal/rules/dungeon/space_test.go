@@ -204,3 +204,27 @@ func TestSpacePlaceDefaultEntrance(t *testing.T) {
 		t.Fatalf("default entrance: %+v", st.Pos)
 	}
 }
+
+// A tower made of several locations: a move from the one above arrives at a tile
+// on the top story of the one below, not at the start on its ground story.
+func TestSpacePlaceAtUpperStory(t *testing.T) {
+	db, err := data.Load(os.DirFS("../../../examples/space/game"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := db.Locations["courtyard"].Dungeon
+	grid := data.DungeonLevel(d, 2)
+	grid.Grid[4][3] = 'B'
+	d.Tiles["B"] = &data.Tile{}
+	st := testgame.State(db, 7)
+	st.Pos = rpg.Pos{In: "elsewhere"}
+	dungeon.Place(db, st, "courtyard", "B", "west")
+	if st.Pos.Level != 2 || st.Pos.X != 3 || st.Pos.Y != 4 || st.Pos.Facing != data.FacingIndex("west") {
+		t.Fatalf("arrival on the upper story: %+v", st.Pos)
+	}
+	st.Pos = rpg.Pos{In: "courtyard", Level: 0, X: 10, Y: 15}
+	dungeon.Place(db, st, "courtyard", "B", "")
+	if st.Pos.Level != 2 || st.Pos.X != 3 || st.Pos.Y != 4 {
+		t.Fatalf("an at on another story of the same space: %+v", st.Pos)
+	}
+}

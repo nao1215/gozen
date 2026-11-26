@@ -21,6 +21,9 @@ samples:
   space:
     package: ./cmd/gozen
     game: examples/space/game
+  space-buildings:
+    package: ./cmd/gozen
+    game: examples/space-buildings/game
   go-zen:
     package: ./cmd/gozen
     game: examples/go-zen/game
@@ -120,6 +123,10 @@ runs:
     script: scripts/capture-space.txt
     args: [--dev, --mute, --seed, "7", --window, "1", --start, courtyard, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves", --trace, "{out}/trace.jsonl", --record, "{out}/tour.mp4"]
     check: [python3, scripts/check-space-capture.py]
+  space-floors:
+    sample: space-buildings
+    script: scripts/capture-space-floors.txt
+    args: [--dev, --mute, --seed, "7", --window, "1", --start, inn, --script, "{script}", --shots, "{out}", --save-dir, "{out}/saves"]
   opening:
     sample: go-zen
     script: scripts/capture-go-zen.txt
@@ -655,6 +662,11 @@ images:
     frames:
       - {shots: "peek*"}
     mp4: {fps: 12, width: 1280, height: 720}
+  space-floors.gif:
+    run: space-floors
+    frames:
+      - {shots: "fl-*"}
+    gif: {fps: 10, width: 720, height: 405, colors: 256}
   space-stairs.gif:
     run: space
     frames:

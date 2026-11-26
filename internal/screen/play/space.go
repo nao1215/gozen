@@ -30,6 +30,9 @@ type spaceView struct {
 	buildingTop                             float32
 	materialNames                           []string
 	materialSourcesBuilding                 []*ebiten.Image
+	materialFrames                          [][]string
+	materialFramesDungeon                   *data.Dungeon
+	clock                                   int
 	buildingMaterialAtlas                   *ebiten.Image
 	buildingColors, buildingUV              []float32
 	spriteShader                            *ebiten.Shader
@@ -69,6 +72,7 @@ func (s *dungeonScene) drawSpace(g *Game, dst *ebiten.Image, d *data.Dungeon) {
 		s.space = &spaceView{}
 	}
 	v := s.space
+	v.clock = s.age
 	newAtlas := v.atlas == nil || v.atlas.Bounds().Dy() != spaceAtlasHeight(d)
 	if v.shader == nil {
 		var err error

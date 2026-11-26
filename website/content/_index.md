@@ -144,6 +144,8 @@ See [the battle recipes](/cookbook/#transform-an-enemy).
 
 ![Walking up to the second and third floors across the town](/images/space-stairs.mp4)
 
+![The inn's wooden stair and board floor, the cobbled street, and the brick shop whose sign lamps blink](/images/space-floors.gif)
+
 ## Playtesting
 
 Start the game with `--dev` and these keys work while you play.

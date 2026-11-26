@@ -470,8 +470,8 @@ equip_stones escape evening event_label event_when every exclusive exp expr
 expression_depth expression_length extra face_at face_box face_rules face_shade
 face_shade_top face_shape families family far fatal field_notices fight fighters
 file_lines files filled filter_label finish first first_person fit flash flat
-floor floor_texture floors flows focus foe_scale foe_scale_when foes fonts
-footer for forecast_label fps frame free_move front_weight fronts full
+floor floor_regions floor_texture floors flows focus foe_scale foe_scale_when foes fonts
+footer for forecast_label frame free_move front_weight fronts full
 full_color fullscreen fusions fx game_over garrison gauge generate give goods
 greet greeting grid group groups guard_rate guard_skill guest guest_backdrops
 guests hair hard haze head header header_face header_tint heading heal held

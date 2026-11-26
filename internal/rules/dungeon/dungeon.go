@@ -145,18 +145,25 @@ func Place(db *data.DB, st *rpg.State, loc, at, facing string) {
 		return
 	}
 	d := l.Dungeon
-	level := 0
-	if d.Space != nil {
-		if st.Pos.In == loc && at != "" {
-			level = st.Pos.Level
-		}
-		d = data.DungeonLevel(d, level)
-	}
 	var c rune
 	if at != "" {
 		c = []rune(at)[0]
 	} else if s, ok := d.StartChar(); ok {
 		c = s
+	}
+	level := 0
+	if d.Space != nil {
+		// Within the same space an at stays on the current story when it can;
+		// otherwise it arrives on the lowest story that has the character.
+		if st.Pos.In == loc && at != "" {
+			level = st.Pos.Level
+		}
+		if _, _, ok := data.DungeonLevel(d, level).Find(c); at != "" && !ok {
+			if lv, _, _, found := d.FindLevel(c); found {
+				level = lv
+			}
+		}
+		d = data.DungeonLevel(d, level)
 	}
 	x, y, ok := d.Find(c)
 	if !ok {
